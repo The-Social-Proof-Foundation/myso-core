@@ -19,8 +19,15 @@ Manages social media platforms and their timelines
 -  [Struct `PlatformPromotionAdmin`](#social_contracts_platform_PlatformPromotionAdmin)
 -  [Struct `PlatformTreasuryKey`](#social_contracts_platform_PlatformTreasuryKey)
 -  [Struct `Platform`](#social_contracts_platform_Platform)
+-  [Struct `PlatformBadgeLedger`](#social_contracts_platform_PlatformBadgeLedger)
+-  [Struct `PlatformBadge`](#social_contracts_platform_PlatformBadge)
 -  [Struct `PlatformRegistry`](#social_contracts_platform_PlatformRegistry)
 -  [Struct `PlatformCreatedEvent`](#social_contracts_platform_PlatformCreatedEvent)
+-  [Struct `SharedBadgeAssignedEvent`](#social_contracts_platform_SharedBadgeAssignedEvent)
+-  [Struct `SharedBadgeRevokedEvent`](#social_contracts_platform_SharedBadgeRevokedEvent)
+-  [Struct `SharedBadgeExtendedEvent`](#social_contracts_platform_SharedBadgeExtendedEvent)
+-  [Struct `SharedBadgeSelectedEvent`](#social_contracts_platform_SharedBadgeSelectedEvent)
+-  [Struct `EcosystemBadgeLedgerSelectedEvent`](#social_contracts_platform_EcosystemBadgeLedgerSelectedEvent)
 -  [Struct `PlatformUpdatedEvent`](#social_contracts_platform_PlatformUpdatedEvent)
 -  [Struct `ModeratorPermissionsGrantedEvent`](#social_contracts_platform_ModeratorPermissionsGrantedEvent)
 -  [Struct `ModeratorPermissionsRevokedEvent`](#social_contracts_platform_ModeratorPermissionsRevokedEvent)
@@ -108,6 +115,26 @@ Manages social media platforms and their timelines
 -  [Function `governance_parameters`](#social_contracts_platform_governance_parameters)
 -  [Function `update_platform_governance`](#social_contracts_platform_update_platform_governance)
 -  [Function `withdraw_from_platform_treasury`](#social_contracts_platform_withdraw_from_platform_treasury)
+-  [Function `share_badge_ledger`](#social_contracts_platform_share_badge_ledger)
+-  [Function `copy_string`](#social_contracts_platform_copy_string)
+-  [Function `compute_platform_badge_id`](#social_contracts_platform_compute_platform_badge_id)
+-  [Function `expires_at_or_zero`](#social_contracts_platform_expires_at_or_zero)
+-  [Function `grant_is_active`](#social_contracts_platform_grant_is_active)
+-  [Function `assert_ledger_matches`](#social_contracts_platform_assert_ledger_matches)
+-  [Function `borrow_grant_mut`](#social_contracts_platform_borrow_grant_mut)
+-  [Function `borrow_grant`](#social_contracts_platform_borrow_grant)
+-  [Function `badge_ledger_id`](#social_contracts_platform_badge_ledger_id)
+-  [Function `ledger_platform_id`](#social_contracts_platform_ledger_platform_id)
+-  [Function `has_active_platform_badge`](#social_contracts_platform_has_active_platform_badge)
+-  [Function `selected_platform_badge_id`](#social_contracts_platform_selected_platform_badge_id)
+-  [Function `selected_ecosystem_badge_id`](#social_contracts_platform_selected_ecosystem_badge_id)
+-  [Function `assign_shared_badge`](#social_contracts_platform_assign_shared_badge)
+-  [Function `revoke_shared_badge`](#social_contracts_platform_revoke_shared_badge)
+-  [Function `extend_shared_badge`](#social_contracts_platform_extend_shared_badge)
+-  [Function `select_shared_badge`](#social_contracts_platform_select_shared_badge)
+-  [Function `clear_shared_badge_selection`](#social_contracts_platform_clear_shared_badge_selection)
+-  [Function `select_ecosystem_badge`](#social_contracts_platform_select_ecosystem_badge)
+-  [Function `clear_ecosystem_badge_selection`](#social_contracts_platform_clear_ecosystem_badge_selection)
 -  [Function `assign_badge`](#social_contracts_platform_assign_badge)
 -  [Function `revoke_badge`](#social_contracts_platform_revoke_badge)
 -  [Function `add_moderator_register`](#social_contracts_platform_add_moderator_register)
@@ -711,10 +738,145 @@ Platform object that contains information about a social media platform
  Optional OAuth redirect URI for the platform
 </dd>
 <dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+ Shared wallet-keyed platform badge ledger created with this platform
+</dd>
+<dt>
 <code>version: u64</code>
 </dt>
 <dd>
  Version for upgrades
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformBadgeLedger"></a>
+
+## Struct `PlatformBadgeLedger`
+
+Shared ledger of admin-managed platform badges, keyed by wallet then badge_id.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a> <b>has</b> key
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>version: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>grants: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadge">social_contracts::platform::PlatformBadge</a>&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>selections: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, <a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>ecosystem_selections: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, <a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_PlatformBadge"></a>
+
+## Struct `PlatformBadge`
+
+Admin-managed status badge (Premium+, Verified, Moderator, etc.).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadge">PlatformBadge</a> <b>has</b> drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>media_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>icon_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>issued_at: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>issued_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expires_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revoked: bool</code>
+</dt>
+<dd>
 </dd>
 </dl>
 
@@ -921,6 +1083,266 @@ Platform created event
 </dd>
 <dt>
 <code><a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_SharedBadgeAssignedEvent"></a>
+
+## Struct `SharedBadgeAssignedEvent`
+
+Emitted when a wallet-keyed platform badge is assigned or re-assigned
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeAssignedEvent">SharedBadgeAssignedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>media_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>icon_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>issued_at: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>issued_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expires_at: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>assigned_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>assigned_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_SharedBadgeRevokedEvent"></a>
+
+## Struct `SharedBadgeRevokedEvent`
+
+Emitted when a wallet-keyed platform badge is revoked
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeRevokedEvent">SharedBadgeRevokedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revoked_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>revoked_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_SharedBadgeExtendedEvent"></a>
+
+## Struct `SharedBadgeExtendedEvent`
+
+Emitted when only expiry is updated on a wallet-keyed platform badge
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeExtendedEvent">SharedBadgeExtendedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>expires_at: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>extended_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>extended_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_SharedBadgeSelectedEvent"></a>
+
+## Struct `SharedBadgeSelectedEvent`
+
+Emitted when the wallet owner selects or clears a platform badge
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeSelectedEvent">SharedBadgeSelectedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>selected_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_EcosystemBadgeLedgerSelectedEvent"></a>
+
+## Struct `EcosystemBadgeLedgerSelectedEvent`
+
+Emitted when the wallet owner selects or clears an ecosystem badge display pick
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeLedgerSelectedEvent">EcosystemBadgeLedgerSelectedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>selected_at: u64</code>
 </dt>
 <dd>
 </dd>
@@ -1640,6 +2062,42 @@ Error codes
 
 
 
+<a name="social_contracts_platform_ELedgerPlatformMismatch"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ELedgerPlatformMismatch">ELedgerPlatformMismatch</a>: u64 = 20;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EGrantNotFound"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EGrantNotFound">EGrantNotFound</a>: u64 = 21;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EGrantInactive"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EGrantInactive">EGrantInactive</a>: u64 = 22;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_ENotEcosystemBadge"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ENotEcosystemBadge">ENotEcosystemBadge</a>: u64 = 23;
+</code></pre>
+
+
+
 <a name="social_contracts_platform_MAX_BADGE_NAME_LENGTH"></a>
 
 Maximum lengths for badge fields
@@ -2179,6 +2637,8 @@ Create a new platform and transfer to developer
     // Check version compatibility
     <b>assert</b>!(registry.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     <b>let</b> platform_id = object::new(ctx);
+    <b>let</b> platform_addr = object::uid_to_address(&platform_id);
+    <b>let</b> <a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a> = <a href="../social_contracts/platform.md#social_contracts_platform_share_badge_ledger">share_badge_ledger</a>(platform_addr, ctx);
     <b>let</b> <a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> = tx_context::sender(ctx);
     <b>let</b> now = clock::timestamp_ms(clock);
     <a href="../social_contracts/platform.md#social_contracts_platform_validate_cover_photo">validate_cover_photo</a>(config, &<a href="../social_contracts/platform.md#social_contracts_platform_cover_photo">cover_photo</a>);
@@ -2243,6 +2703,7 @@ Create a new platform and transfer to developer
         quorum_votes: actual_quorum_votes,
         <a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a>: option::none(),
         <a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a>,
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <b>let</b> <b>mut</b> moderators_group = permissioned_group::new_derived&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>, <a href="../social_contracts/platform.md#social_contracts_platform_ModeratorsGroupTag">ModeratorsGroupTag</a>&gt;(
@@ -2356,6 +2817,7 @@ Create a new platform and transfer to developer
         quorum_votes: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.quorum_votes,
         <a href="../social_contracts/platform.md#social_contracts_platform_moderators_group_id">moderators_group_id</a>,
         <a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_redirect_uri">redirect_uri</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a>: <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a>,
     });
     // Share <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> <b>as</b> a shared object (publicly accessible)
     transfer::share_object(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
@@ -5008,6 +5470,746 @@ Callable by the platform developer or a moderator with treasury permission.
         });
         i = i + 1;
     };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_share_badge_ledger"></a>
+
+## Function `share_badge_ledger`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_share_badge_ledger">share_badge_ledger</a>(platform_id: <b>address</b>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_share_badge_ledger">share_badge_ledger</a>(platform_id: <b>address</b>, ctx: &<b>mut</b> TxContext): ID {
+    <b>let</b> ledger = <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a> {
+        <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: object::new(ctx),
+        platform_id,
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+        grants: table::new(ctx),
+        selections: table::new(ctx),
+        ecosystem_selections: table::new(ctx),
+    };
+    <b>let</b> ledger_id = object::id(&ledger);
+    transfer::share_object(ledger);
+    ledger_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_copy_string"></a>
+
+## Function `copy_string`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(s: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(s: &String): String {
+    string::utf8(*string::as_bytes(s))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_compute_platform_badge_id"></a>
+
+## Function `compute_platform_badge_id`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_compute_platform_badge_id">compute_platform_badge_id</a>(platform_id: <b>address</b>, badge_name: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_compute_platform_badge_id">compute_platform_badge_id</a>(platform_id: <b>address</b>, badge_name: &String): String {
+    <b>let</b> <b>mut</b> badge_id = string::utf8(b"badge_");
+    string::append(&<b>mut</b> badge_id, <a href="../myso/address.md#myso_address_to_string">myso::address::to_string</a>(platform_id));
+    string::append(&<b>mut</b> badge_id, string::utf8(b"_"));
+    string::append(&<b>mut</b> badge_id, <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(badge_name));
+    badge_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_expires_at_or_zero"></a>
+
+## Function `expires_at_or_zero`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_expires_at_or_zero">expires_at_or_zero</a>(expires_at: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_expires_at_or_zero">expires_at_or_zero</a>(expires_at: &Option&lt;u64&gt;): u64 {
+    <b>if</b> (option::is_some(expires_at)) {
+        *option::borrow(expires_at)
+    } <b>else</b> {
+        0
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_grant_is_active"></a>
+
+## Function `grant_is_active`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_grant_is_active">grant_is_active</a>(grant: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadge">social_contracts::platform::PlatformBadge</a>, now: u64): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_grant_is_active">grant_is_active</a>(grant: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadge">PlatformBadge</a>, now: u64): bool {
+    <b>if</b> (grant.revoked) {
+        <b>return</b> <b>false</b>
+    };
+    <b>if</b> (option::is_some(&grant.expires_at)) {
+        <b>return</b> *option::borrow(&grant.expires_at) &gt; now
+    };
+    <b>true</b>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_assert_ledger_matches"></a>
+
+## Function `assert_ledger_matches`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_ledger_matches">assert_ledger_matches</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_ledger_matches">assert_ledger_matches</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>, ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>) {
+    <b>assert</b>!(ledger.platform_id == object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>), <a href="../social_contracts/platform.md#social_contracts_platform_ELedgerPlatformMismatch">ELedgerPlatformMismatch</a>);
+    <b>assert</b>!(object::id(ledger) == <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_ELedgerPlatformMismatch">ELedgerPlatformMismatch</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_borrow_grant_mut"></a>
+
+## Function `borrow_grant_mut`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_grant_mut">borrow_grant_mut</a>(ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, owner: <b>address</b>, badge_id: &<a href="../std/string.md#std_string_String">std::string::String</a>): &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadge">social_contracts::platform::PlatformBadge</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_grant_mut">borrow_grant_mut</a>(
+    ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    owner: <b>address</b>,
+    badge_id: &String,
+): &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadge">PlatformBadge</a> {
+    <b>assert</b>!(table::contains(&ledger.grants, owner), <a href="../social_contracts/platform.md#social_contracts_platform_EGrantNotFound">EGrantNotFound</a>);
+    <b>let</b> inner = table::borrow_mut(&<b>mut</b> ledger.grants, owner);
+    <b>assert</b>!(table::contains(inner, *badge_id), <a href="../social_contracts/platform.md#social_contracts_platform_EGrantNotFound">EGrantNotFound</a>);
+    table::borrow_mut(inner, *badge_id)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_borrow_grant"></a>
+
+## Function `borrow_grant`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_grant">borrow_grant</a>(ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, owner: <b>address</b>, badge_id: &<a href="../std/string.md#std_string_String">std::string::String</a>): &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadge">social_contracts::platform::PlatformBadge</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_borrow_grant">borrow_grant</a>(
+    ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    owner: <b>address</b>,
+    badge_id: &String,
+): &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadge">PlatformBadge</a> {
+    <b>assert</b>!(table::contains(&ledger.grants, owner), <a href="../social_contracts/platform.md#social_contracts_platform_EGrantNotFound">EGrantNotFound</a>);
+    <b>let</b> inner = table::borrow(&ledger.grants, owner);
+    <b>assert</b>!(table::contains(inner, *badge_id), <a href="../social_contracts/platform.md#social_contracts_platform_EGrantNotFound">EGrantNotFound</a>);
+    table::borrow(inner, *badge_id)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_badge_ledger_id"></a>
+
+## Function `badge_ledger_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>): ID {
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_badge_ledger_id">badge_ledger_id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ledger_platform_id"></a>
+
+## Function `ledger_platform_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ledger_platform_id">ledger_platform_id</a>(ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ledger_platform_id">ledger_platform_id</a>(ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>): <b>address</b> {
+    ledger.platform_id
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_has_active_platform_badge"></a>
+
+## Function `has_active_platform_badge`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_has_active_platform_badge">has_active_platform_badge</a>(ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, owner: <b>address</b>, badge_id: &<a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_has_active_platform_badge">has_active_platform_badge</a>(
+    ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    owner: <b>address</b>,
+    badge_id: &String,
+    clock: &Clock,
+): bool {
+    <b>if</b> (!table::contains(&ledger.grants, owner)) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> inner = table::borrow(&ledger.grants, owner);
+    <b>if</b> (!table::contains(inner, *badge_id)) {
+        <b>return</b> <b>false</b>
+    };
+    <a href="../social_contracts/platform.md#social_contracts_platform_grant_is_active">grant_is_active</a>(table::borrow(inner, *badge_id), clock::timestamp_ms(clock))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_selected_platform_badge_id"></a>
+
+## Function `selected_platform_badge_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_selected_platform_badge_id">selected_platform_badge_id</a>(ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, owner: <b>address</b>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_selected_platform_badge_id">selected_platform_badge_id</a>(ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>, owner: <b>address</b>): Option&lt;String&gt; {
+    <b>if</b> (table::contains(&ledger.selections, owner)) {
+        option::some(*table::borrow(&ledger.selections, owner))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_selected_ecosystem_badge_id"></a>
+
+## Function `selected_ecosystem_badge_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_selected_ecosystem_badge_id">selected_ecosystem_badge_id</a>(ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, owner: <b>address</b>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_selected_ecosystem_badge_id">selected_ecosystem_badge_id</a>(ledger: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>, owner: <b>address</b>): Option&lt;String&gt; {
+    <b>if</b> (table::contains(&ledger.ecosystem_selections, owner)) {
+        option::some(*table::borrow(&ledger.ecosystem_selections, owner))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_assign_shared_badge"></a>
+
+## Function `assign_shared_badge`
+
+Assign a wallet-keyed platform badge. No Profile required.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_shared_badge">assign_shared_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, config: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">social_contracts::platform::PlatformConfig</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, recipient: <b>address</b>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, expires_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_shared_badge">assign_shared_badge</a>(
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
+    config: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">PlatformConfig</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    recipient: <b>address</b>,
+    badge_name: String,
+    badge_description: String,
+    badge_media_url: String,
+    badge_icon_url: String,
+    badge_type: u8,
+    expires_at: Option&lt;u64&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(ledger.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_ledger_matches">assert_ledger_matches</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, ledger);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
+    <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(badge_type &gt;= 1 && badge_type &lt;= 100, <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidBadgeType">EInvalidBadgeType</a>);
+    <b>assert</b>!(string::length(&badge_name) &gt; 0 && string::length(&badge_name) &lt;= config.max_badge_name_length, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeNameTooLong">EBadgeNameTooLong</a>);
+    <b>assert</b>!(string::length(&badge_description) &lt;= config.max_badge_description_length, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeDescriptionTooLong">EBadgeDescriptionTooLong</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_validate_badge_urls">validate_badge_urls</a>(&badge_media_url, &badge_icon_url);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>let</b> badge_id = <a href="../social_contracts/platform.md#social_contracts_platform_compute_platform_badge_id">compute_platform_badge_id</a>(platform_id, &badge_name);
+    <b>if</b> (!table::contains(&ledger.grants, recipient)) {
+        table::add(&<b>mut</b> ledger.grants, recipient, table::new(ctx));
+    };
+    <b>let</b> inner = table::borrow_mut(&<b>mut</b> ledger.grants, recipient);
+    <b>if</b> (table::contains(inner, badge_id)) {
+        <b>let</b> grant = table::borrow_mut(inner, badge_id);
+        grant.revoked = <b>false</b>;
+        grant.expires_at = expires_at;
+        grant.<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a> = badge_name;
+        grant.<a href="../social_contracts/platform.md#social_contracts_platform_description">description</a> = badge_description;
+        grant.media_url = badge_media_url;
+        grant.icon_url = badge_icon_url;
+        grant.badge_type = badge_type;
+        event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeAssignedEvent">SharedBadgeAssignedEvent</a> {
+            owner: recipient,
+            badge_id: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.badge_id),
+            <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>),
+            <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.<a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>),
+            media_url: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.media_url),
+            icon_url: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.icon_url),
+            platform_id,
+            issued_at: grant.issued_at,
+            issued_by: grant.issued_by,
+            badge_type: grant.badge_type,
+            expires_at: <a href="../social_contracts/platform.md#social_contracts_platform_expires_at_or_zero">expires_at_or_zero</a>(&grant.expires_at),
+            assigned_by: caller,
+            assigned_at: now,
+        });
+    } <b>else</b> {
+        <b>let</b> grant = <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadge">PlatformBadge</a> {
+            badge_id: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&badge_id),
+            <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: badge_name,
+            <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: badge_description,
+            media_url: badge_media_url,
+            icon_url: badge_icon_url,
+            platform_id,
+            issued_at: now,
+            issued_by: caller,
+            badge_type,
+            expires_at,
+            revoked: <b>false</b>,
+        };
+        event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeAssignedEvent">SharedBadgeAssignedEvent</a> {
+            owner: recipient,
+            badge_id: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.badge_id),
+            <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>),
+            <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.<a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>),
+            media_url: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.media_url),
+            icon_url: <a href="../social_contracts/platform.md#social_contracts_platform_copy_string">copy_string</a>(&grant.icon_url),
+            platform_id,
+            issued_at: grant.issued_at,
+            issued_by: grant.issued_by,
+            badge_type: grant.badge_type,
+            expires_at: <a href="../social_contracts/platform.md#social_contracts_platform_expires_at_or_zero">expires_at_or_zero</a>(&grant.expires_at),
+            assigned_by: caller,
+            assigned_at: now,
+        });
+        table::add(inner, badge_id, grant);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_revoke_shared_badge"></a>
+
+## Function `revoke_shared_badge`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_shared_badge">revoke_shared_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, recipient: <b>address</b>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_shared_badge">revoke_shared_badge</a>(
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    recipient: <b>address</b>,
+    badge_id: String,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(ledger.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_ledger_matches">assert_ledger_matches</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, ledger);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
+    <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> grant = <a href="../social_contracts/platform.md#social_contracts_platform_borrow_grant_mut">borrow_grant_mut</a>(ledger, recipient, &badge_id);
+    grant.revoked = <b>true</b>;
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeRevokedEvent">SharedBadgeRevokedEvent</a> {
+        owner: recipient,
+        badge_id,
+        platform_id,
+        revoked_by: caller,
+        revoked_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_extend_shared_badge"></a>
+
+## Function `extend_shared_badge`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_extend_shared_badge">extend_shared_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, recipient: <b>address</b>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, expires_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_extend_shared_badge">extend_shared_badge</a>(
+    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
+    ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    recipient: <b>address</b>,
+    badge_id: String,
+    expires_at: Option&lt;u64&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(ledger.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_ledger_matches">assert_ledger_matches</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, ledger);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
+    <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> grant = <a href="../social_contracts/platform.md#social_contracts_platform_borrow_grant_mut">borrow_grant_mut</a>(ledger, recipient, &badge_id);
+    grant.revoked = <b>false</b>;
+    grant.expires_at = expires_at;
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeExtendedEvent">SharedBadgeExtendedEvent</a> {
+        owner: recipient,
+        badge_id,
+        expires_at: <a href="../social_contracts/platform.md#social_contracts_platform_expires_at_or_zero">expires_at_or_zero</a>(&grant.expires_at),
+        extended_by: caller,
+        extended_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_select_shared_badge"></a>
+
+## Function `select_shared_badge`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_select_shared_badge">select_shared_badge</a>(ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_select_shared_badge">select_shared_badge</a>(
+    ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    badge_id: String,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(ledger.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> owner = tx_context::sender(ctx);
+    <b>let</b> grant = <a href="../social_contracts/platform.md#social_contracts_platform_borrow_grant">borrow_grant</a>(ledger, owner, &badge_id);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_grant_is_active">grant_is_active</a>(grant, clock::timestamp_ms(clock)), <a href="../social_contracts/platform.md#social_contracts_platform_EGrantInactive">EGrantInactive</a>);
+    <b>if</b> (table::contains(&ledger.selections, owner)) {
+        *table::borrow_mut(&<b>mut</b> ledger.selections, owner) = badge_id;
+    } <b>else</b> {
+        table::add(&<b>mut</b> ledger.selections, owner, badge_id);
+    };
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeSelectedEvent">SharedBadgeSelectedEvent</a> {
+        owner,
+        badge_id: *table::borrow(&ledger.selections, owner),
+        selected_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_clear_shared_badge_selection"></a>
+
+## Function `clear_shared_badge_selection`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_clear_shared_badge_selection">clear_shared_badge_selection</a>(ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_clear_shared_badge_selection">clear_shared_badge_selection</a>(
+    ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(ledger.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> owner = tx_context::sender(ctx);
+    <b>if</b> (table::contains(&ledger.selections, owner)) {
+        table::remove(&<b>mut</b> ledger.selections, owner);
+    };
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_SharedBadgeSelectedEvent">SharedBadgeSelectedEvent</a> {
+        owner,
+        badge_id: string::utf8(b""),
+        selected_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_select_ecosystem_badge"></a>
+
+## Function `select_ecosystem_badge`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_select_ecosystem_badge">select_ecosystem_badge</a>(ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_select_ecosystem_badge">select_ecosystem_badge</a>(
+    ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
+    badge_id: String,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(ledger.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> owner = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_get_owner">profile::get_owner</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>) == owner, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge_id">profile::is_ecosystem_badge_id</a>(&badge_id), <a href="../social_contracts/platform.md#social_contracts_platform_ENotEcosystemBadge">ENotEcosystemBadge</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_has_badge">profile::has_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, &badge_id), <a href="../social_contracts/platform.md#social_contracts_platform_EGrantNotFound">EGrantNotFound</a>);
+    <b>if</b> (table::contains(&ledger.ecosystem_selections, owner)) {
+        *table::borrow_mut(&<b>mut</b> ledger.ecosystem_selections, owner) = badge_id;
+    } <b>else</b> {
+        table::add(&<b>mut</b> ledger.ecosystem_selections, owner, badge_id);
+    };
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeLedgerSelectedEvent">EcosystemBadgeLedgerSelectedEvent</a> {
+        owner,
+        badge_id: *table::borrow(&ledger.ecosystem_selections, owner),
+        selected_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_clear_ecosystem_badge_selection"></a>
+
+## Function `clear_ecosystem_badge_selection`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_clear_ecosystem_badge_selection">clear_ecosystem_badge_selection</a>(ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_clear_ecosystem_badge_selection">clear_ecosystem_badge_selection</a>(
+    ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(ledger.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> owner = tx_context::sender(ctx);
+    <b>if</b> (table::contains(&ledger.ecosystem_selections, owner)) {
+        table::remove(&<b>mut</b> ledger.ecosystem_selections, owner);
+    };
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeLedgerSelectedEvent">EcosystemBadgeLedgerSelectedEvent</a> {
+        owner,
+        badge_id: string::utf8(b""),
+        selected_at: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 

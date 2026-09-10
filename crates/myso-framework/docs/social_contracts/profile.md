@@ -56,6 +56,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `validate_username_format`](#social_contracts_profile_validate_username_format)
 -  [Function `normalize_username`](#social_contracts_profile_normalize_username)
 -  [Function `ascii_to_string`](#social_contracts_profile_ascii_to_string)
+-  [Function `is_ecosystem_badge_id`](#social_contracts_profile_is_ecosystem_badge_id)
 -  [Function `is_ecosystem_badge`](#social_contracts_profile_is_ecosystem_badge)
 -  [Function `copy_string`](#social_contracts_profile_copy_string)
 -  [Function `canonical_registry_username_from_bytes`](#social_contracts_profile_canonical_registry_username_from_bytes)
@@ -3257,6 +3258,30 @@ Convert an ASCII String to a String
 
 <pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_ascii_to_string">ascii_to_string</a>(ascii_str: ascii::String): String {
     string::utf8(ascii::into_bytes(ascii_str))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_is_ecosystem_badge_id"></a>
+
+## Function `is_ecosystem_badge_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge_id">is_ecosystem_badge_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &<a href="../std/string.md#std_string_String">std::string::String</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge_id">is_ecosystem_badge_id</a>(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>: &String): bool {
+    <a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge">is_ecosystem_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile_badge_id">badge_id</a>)
 }
 </code></pre>
 

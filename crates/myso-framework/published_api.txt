@@ -9445,6 +9445,9 @@ normalize_username
 ascii_to_string
 	fun
 	0x50c1::profile
+is_ecosystem_badge_id
+	public fun
+	0x50c1::profile
 is_ecosystem_badge
 	fun
 	0x50c1::profile
@@ -10204,10 +10207,31 @@ PlatformTreasuryKey
 Platform
 	public struct
 	0x50c1::platform
+PlatformBadgeLedger
+	public struct
+	0x50c1::platform
+PlatformBadge
+	public struct
+	0x50c1::platform
 PlatformRegistry
 	public struct
 	0x50c1::platform
 PlatformCreatedEvent
+	public struct
+	0x50c1::platform
+SharedBadgeAssignedEvent
+	public struct
+	0x50c1::platform
+SharedBadgeRevokedEvent
+	public struct
+	0x50c1::platform
+SharedBadgeExtendedEvent
+	public struct
+	0x50c1::platform
+SharedBadgeSelectedEvent
+	public struct
+	0x50c1::platform
+EcosystemBadgeLedgerSelectedEvent
 	public struct
 	0x50c1::platform
 PlatformUpdatedEvent
@@ -10467,6 +10491,66 @@ update_platform_governance
 	0x50c1::platform
 withdraw_from_platform_treasury
 	public entry fun
+	0x50c1::platform
+share_badge_ledger
+	fun
+	0x50c1::platform
+copy_string
+	fun
+	0x50c1::platform
+compute_platform_badge_id
+	fun
+	0x50c1::platform
+expires_at_or_zero
+	fun
+	0x50c1::platform
+grant_is_active
+	fun
+	0x50c1::platform
+assert_ledger_matches
+	fun
+	0x50c1::platform
+borrow_grant_mut
+	fun
+	0x50c1::platform
+borrow_grant
+	fun
+	0x50c1::platform
+badge_ledger_id
+	public fun
+	0x50c1::platform
+ledger_platform_id
+	public fun
+	0x50c1::platform
+has_active_platform_badge
+	public fun
+	0x50c1::platform
+selected_platform_badge_id
+	public fun
+	0x50c1::platform
+selected_ecosystem_badge_id
+	public fun
+	0x50c1::platform
+assign_shared_badge
+	public fun
+	0x50c1::platform
+revoke_shared_badge
+	public fun
+	0x50c1::platform
+extend_shared_badge
+	public fun
+	0x50c1::platform
+select_shared_badge
+	public fun
+	0x50c1::platform
+clear_shared_badge_selection
+	public fun
+	0x50c1::platform
+select_ecosystem_badge
+	public fun
+	0x50c1::platform
+clear_ecosystem_badge_selection
+	public fun
 	0x50c1::platform
 assign_badge
 	public fun
