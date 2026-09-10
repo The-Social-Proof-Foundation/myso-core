@@ -223,6 +223,11 @@ impl Platform {
         self.inner.moderators_group_id.as_deref()
     }
 
+    /// Shared platform badge ledger object id.
+    async fn badge_ledger_id(&self) -> Option<&str> {
+        self.inner.badge_ledger_id.as_deref()
+    }
+
     /// Profile of the platform developer.
     async fn developer_profile(&self, ctx: &Context<'_>) -> Option<ProfileSummary> {
         resolve_profile_summary(ctx, &self.inner.developer_address).await

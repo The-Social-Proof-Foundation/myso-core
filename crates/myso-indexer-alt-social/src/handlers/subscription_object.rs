@@ -18,7 +18,6 @@ use super::common;
 /// Context resolved from a newly created `ProfileSubscription` object in the same tx as the create event.
 #[derive(Debug, Clone)]
 pub struct SubscriptionCreateContext {
-    pub subscription_id: String,
     pub renewal_balance: u64,
     pub created_at_ms: i64,
 }
@@ -98,7 +97,6 @@ pub(crate) fn find_created_profile_subscription(
             }
         };
         return Some(SubscriptionCreateContext {
-            subscription_id: oid.to_string(),
             renewal_balance: changed_renewal_balance(object_set, tx, &parsed).unwrap_or(0),
             created_at_ms: parsed.created_at as i64,
         });

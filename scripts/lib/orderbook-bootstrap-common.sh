@@ -47,14 +47,33 @@ MYUSD_STABLECOIN_REGISTERED="${MYUSD_STABLECOIN_REGISTERED:-}"
 
 # Move requires lot_size >= 1000, powers of ten, and min_size % lot_size == 0.
 # Catalog examples used min_size=100; that aborts on-chain, so min is 1000.
-# MYSO/MYUSD tick must be 1000 so a $0.0047 mid (internal 4700) can quote.
-readonly TICK_SIZE_MYSO="${TICK_SIZE_MYSO:-1000}"
+# Mid 4700 ($0.0047): tick 1000 collapses a 25 bps grid onto 0.003/0.004 and 0.005/0.006.
+# Tick 1 (min on-chain price) keeps each MYSO level on its own price, like BTC/ETH.
+readonly TICK_SIZE_MYSO="${TICK_SIZE_MYSO:-1}"
 TICK_SIZE_BTC="${TICK_SIZE_BTC:-100}"
 TICK_SIZE_ETH="${TICK_SIZE_ETH:-100}"
 LOT_SIZE="${LOT_SIZE:-1000}"
 MIN_SIZE="${MIN_SIZE:-1000}"
 
-MYUSD_MINT_AMOUNT="${MYUSD_MINT_AMOUNT:-1000000000}"
+# MYSO/MYUSD market-maker depth. BTC/ETH stay thin via global MM_LEVELS_PER_SIDE.
+readonly MM_MYSO_MYUSD_LEVELS_PER_SIDE_DEFAULT=30
+readonly MM_MYSO_MYUSD_SPREAD_BPS_DEFAULT=50
+readonly MM_MYSO_MYUSD_LEVEL_SPACING_BPS_DEFAULT=25
+readonly MM_MYSO_MYUSD_ORDER_SIZE_BASE_DEFAULT=2000000000
+readonly MM_MYSO_MYUSD_BASE_DEPOSIT_DEFAULT=100000000000
+readonly MM_MYSO_MYUSD_QUOTE_DEPOSIT_DEFAULT=1000000000
+readonly MM_LEVELS_PER_SIDE_DEFAULT=5
+readonly MM_SPREAD_BPS_DEFAULT=500
+readonly MM_LEVEL_SPACING_BPS_DEFAULT=100
+
+# MM quote deposits (6-decimal MYUSD raw units) — keep in sync with orderbook_fetch_mm_pools_json defaults.
+readonly MM_BTC_MYUSD_QUOTE_DEPOSIT_DEFAULT=500000000
+readonly MM_ETH_MYUSD_QUOTE_DEPOSIT_DEFAULT=500000000
+readonly MYUSD_MINT_BUFFER_DEFAULT=100000000
+readonly MYUSD_MINT_AMOUNT_DEFAULT="$(( \
+    MM_MYSO_MYUSD_QUOTE_DEPOSIT_DEFAULT + MM_BTC_MYUSD_QUOTE_DEPOSIT_DEFAULT \
+    + MM_ETH_MYUSD_QUOTE_DEPOSIT_DEFAULT + MYUSD_MINT_BUFFER_DEFAULT ))"
+MYUSD_MINT_AMOUNT="${MYUSD_MINT_AMOUNT:-$MYUSD_MINT_AMOUNT_DEFAULT}"
 # 8-decimal base units: 100 BTC, 100 ETH.
 BTC_MINT_AMOUNT="${BTC_MINT_AMOUNT:-10000000000}"
 ETH_MINT_AMOUNT="${ETH_MINT_AMOUNT:-10000000000}"
@@ -77,6 +96,8 @@ ORACLE_ADDRESS="${ORACLE_ADDRESS:-}"
 PRIVATE_KEY="${PRIVATE_KEY:-}"
 DEPLOYER_ADDRESS="${DEPLOYER_ADDRESS:-}"
 MM_POOLS="${MM_POOLS:-}"
+# Empty = all three pools. MYSO_MYUSD | BTC_MYUSD | ETH_MYUSD for a single-pool MM.
+MM_POOL_FILTER="${MM_POOL_FILTER:-}"
 
 ORDERBOOK_SANDBOX_DIR="${ORDERBOOK_SANDBOX_DIR:-$REPO_ROOT/../orderbook-sandbox-main/sandbox}"
 ORDERBOOK_DB_URL="${ORDERBOOK_DB_URL:-postgresql://postgres@localhost:5432/orderbook}"
@@ -517,6 +538,15 @@ orderbook_myso_call_capture() {
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
         local rc=0 out
         out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
+        if myso_output_is_executed_success "$out"; then
+            if echo "$out" | grep -q 'checkpoint wait timed out'; then
+                echo "Transaction executed (checkpoint wait timed out — treating as success)" >&2
+            else
+                echo "$out" >&2
+            fi
+            printf '%s' "$out"
+            return 0
+        fi
         if [[ "$rc" == 124 ]]; then
             echo "Timed out after ${MYSO_CMD_TIMEOUT_SEC:-180}s: ${cmd[*]}" >&2
         fi
@@ -794,11 +824,106 @@ orderbook_mint_token() {
     local coin_type="$1" treasury="$2" amount="$3" recipient="$4" out
     out="$(orderbook_myso_call_capture 0x2 coin mint_and_transfer \
         --type-args "$coin_type" \
-        --args "@$(normalize_hex_id "$treasury")" "$amount" "$(normalize_hex_id "$recipient")")" || return 1
+        --args "@$(normalize_hex_id "$treasury")" "$amount" "$(normalize_hex_id "$recipient")")" || true
     assert_tx_success "$out" || {
         echo "mint_and_transfer failed for $coin_type" >&2
         return 1
     }
+}
+
+orderbook_resolve_myusd_balance() {
+    local addr="$1" coin_type="$2" bal
+    addr="$(normalize_hex_id "$addr")" || return 1
+    bal="$(myso client balance "$addr" --coin-type "$coin_type" --json 2>/dev/null \
+        | jq '[.. | objects | select(has("balance")) | .balance | tonumber] | add // 0' 2>/dev/null)" || bal=''
+    printf '%s' "${bal:-0}"
+}
+
+orderbook_parse_u64_return() {
+    local json="${1:-}" val
+    val="$(echo "$json" | jq -r '
+        (.command_outputs[0].returnValues[0].json
+         // .commandResults[0].returnValues[0].json
+         // empty)
+        | if type == "array" then .[0] else . end
+        | if type == "number" or (type == "string" and test("^[0-9]+$")) then . else empty end
+    ' 2>/dev/null)" || val=''
+    printf '%s' "${val:-0}"
+}
+
+orderbook_read_bm_coin_balance() {
+    local bm_id="$1" coin_type="$2" out
+    bm_id="$(normalize_hex_id "$bm_id")" || { printf '0'; return 0; }
+    [[ -n "$coin_type" && -n "${ORDERBOOK_PACKAGE_ID:-}" ]] || { printf '0'; return 0; }
+    out="$(myso client call \
+        --package "$ORDERBOOK_PACKAGE_ID" --module balance_manager --function balance \
+        --type-args "$coin_type" \
+        --args "@${bm_id}" \
+        --dry-run --json 2>/dev/null)" || { printf '0'; return 0; }
+    orderbook_parse_u64_return "$out"
+}
+
+orderbook_owned_bm_coin_balance_total() {
+    local coin_type="$1" total=0 bal bm
+    [[ -n "$coin_type" ]] || { printf '0'; return 0; }
+    while IFS= read -r bm; do
+        [[ -n "$bm" ]] || continue
+        bal="$(orderbook_read_bm_coin_balance "$bm" "$coin_type")"
+        total=$((total + ${bal:-0}))
+    done < <(orderbook_owned_balance_manager_ids || true)
+    printf '%s' "$total"
+}
+
+orderbook_mm_myusd_have() {
+    local wallet="${1:-0}" bm="${2:-0}"
+    printf '%s' "$((wallet + bm))"
+}
+
+orderbook_should_mint_mm_myusd() {
+    local have="${1:-0}" required="${2:-0}"
+    [[ "$have" -lt "$required" ]]
+}
+
+orderbook_mm_myusd_quote_total_required() {
+    local total
+    if [[ -n "${MM_POOLS:-}" ]]; then
+        total="$(echo "$MM_POOLS" | jq '[.[].quoteDepositAmount | tonumber] | add // 0' 2>/dev/null)" || total=''
+    fi
+    if [[ -z "${total:-}" || "$total" == 0 ]]; then
+        total="$((MM_MYSO_MYUSD_QUOTE_DEPOSIT_DEFAULT + MM_BTC_MYUSD_QUOTE_DEPOSIT_DEFAULT + MM_ETH_MYUSD_QUOTE_DEPOSIT_DEFAULT))"
+    fi
+    printf '%s' "$total"
+}
+
+orderbook_ensure_deployer_myusd_for_mm() {
+    local required wallet bm have deficit buffer quote_only
+    require_session_fields MYUSD_COIN_TYPE MYUSD_TREASURY_CAP_ID DEPLOYER_ADDRESS || return 1
+    quote_only="$(orderbook_mm_myusd_quote_total_required)"
+    buffer="${MYUSD_MINT_BUFFER:-$MYUSD_MINT_BUFFER_DEFAULT}"
+    required=$((quote_only + buffer))
+    wallet="$(orderbook_resolve_myusd_balance "$DEPLOYER_ADDRESS" "$MYUSD_COIN_TYPE")"
+    bm="$(orderbook_owned_bm_coin_balance_total "$MYUSD_COIN_TYPE")"
+    have="$(orderbook_mm_myusd_have "$wallet" "$bm")"
+    if ! orderbook_should_mint_mm_myusd "$have" "$required"; then
+        log_step "MYUSD already covers MM quotes (wallet $wallet + BM $bm = $have, need $required)"
+        return 0
+    fi
+    if [[ "$bm" -ge "$quote_only" ]]; then
+        log_step "BalanceManager MYUSD ($bm) already covers quote deposits ($quote_only) — skipping mint"
+        return 0
+    fi
+    deficit=$((required - have))
+    log_step "Minting $deficit MYUSD for MM (wallet $wallet + BM $bm = $have, need $required)"
+    orderbook_mint_token "$MYUSD_COIN_TYPE" "$MYUSD_TREASURY_CAP_ID" "$deficit" "$DEPLOYER_ADDRESS" || return 1
+}
+
+orderbook_run_mm_stack() {
+    local skip_oracle="${1:-0}" run_test="${2:-0}"
+    orderbook_ensure_mysousd_tick || return 1
+    orderbook_fetch_mm_pools_json >/dev/null || return 1
+    orderbook_ensure_deployer_myusd_for_mm || return 1
+    orderbook_ensure_demo_trade_funds || return 1
+    orderbook_mm_supervisor_run "$skip_oracle" "$run_test" || return 1
 }
 
 orderbook_add_myusd_stablecoin() {
@@ -842,15 +967,60 @@ orderbook_extract_pool_id() {
     normalize_hex_id "$pool"
 }
 
+# MYSO/MYUSD is the fee-token reference (DeepBook DEEP/USDC). Create-only; no setter.
+orderbook_pool_whitelist_flag() {
+    case "$1" in
+        MYSO_MYUSD) printf 'true' ;;
+        *) printf 'false' ;;
+    esac
+}
+
+# stdin/args are MM /orders or catalog /summary JSON. True when MYSO has bid and ask.
+orderbook_json_has_two_sided_myso_book() {
+    local json="${1:-}"
+    [[ -n "$json" ]] || return 1
+    echo "$json" | jq -e '
+        if type == "object" and has("pools") then
+            any(
+                .pools[]?;
+                ((.pair // "") | test("MYSO"))
+                and (([.orders[]? | select(.isBid == true)] | length) > 0)
+                and (([.orders[]? | select(.isBid != true)] | length) > 0)
+            )
+        elif type == "array" then
+            any(
+                .[];
+                (.trading_pairs == "MYSO_MYUSD")
+                and ((.highest_bid // empty | tonumber? // 0) > 0)
+                and ((.lowest_ask // empty | tonumber? // 0) > 0)
+            )
+        else
+            false
+        end
+    ' >/dev/null 2>&1
+}
+
+# 0 = skip (no two-sided MYSO book in MM orders or catalog summary).
+orderbook_should_skip_myso_fee_prices() {
+    local mm_orders_json="${1:-}" catalog_json="${2:-}"
+    if orderbook_json_has_two_sided_myso_book "$mm_orders_json"; then
+        return 1
+    fi
+    if orderbook_json_has_two_sided_myso_book "$catalog_json"; then
+        return 1
+    fi
+    return 0
+}
+
 orderbook_create_pool() {
-    local base_type="$1" tick="$2" lot="$3" min="$4"
+    local base_type="$1" tick="$2" lot="$3" min="$4" whitelisted="${5:-false}"
     local out digest pool active
     out="$(orderbook_myso_call_capture "$ORDERBOOK_PACKAGE_ID" pool create_pool_admin \
         --type-args "$base_type" "$MYUSD_COIN_TYPE" \
         --args \
             "@$(normalize_hex_id "$ORDERBOOK_REGISTRY_ID")" \
             "$tick" "$lot" "$min" \
-            false false \
+            "$whitelisted" false \
             "@$(normalize_hex_id "$ORDERBOOK_ADMIN_CAP_ID")")" || true
     if ! assert_tx_success "$out"; then
         active="$(resolve_myso_active_address)" || return 1
@@ -858,7 +1028,7 @@ orderbook_create_pool() {
             --move-call "${ORDERBOOK_PACKAGE_ID}::pool::create_pool_admin<${base_type},${MYUSD_COIN_TYPE}>" \
             "$(ptb_shared_ref "$ORDERBOOK_REGISTRY_ID")" \
             "$tick" "$lot" "$min" \
-            false false \
+            "$whitelisted" false \
             "@$(normalize_hex_id "$ORDERBOOK_ADMIN_CAP_ID")")" || return 1
     fi
     assert_tx_success "$out" || {
@@ -871,6 +1041,75 @@ orderbook_create_pool() {
         return 1
     }
     printf '%s' "$pool"
+}
+
+orderbook_add_myso_price_point() {
+    local target_pool="$1" base_type="$2" out active
+    require_session_fields ORDERBOOK_PACKAGE_ID MYUSD_COIN_TYPE MYSO_MYUSD_POOL_ID CLOCK_ID \
+        || return 1
+    target_pool="$(normalize_hex_id "$target_pool")" || return 1
+    out="$(orderbook_myso_call_capture "$ORDERBOOK_PACKAGE_ID" pool add_myso_price_point \
+        --type-args "$base_type" "$MYUSD_COIN_TYPE" "$MYSO_COIN_TYPE" "$MYUSD_COIN_TYPE" \
+        --args \
+            "@${target_pool}" \
+            "@$(normalize_hex_id "$MYSO_MYUSD_POOL_ID")" \
+            "@$(normalize_hex_id "$CLOCK_ID")")" || true
+    if ! assert_tx_success "$out"; then
+        active="$(resolve_myso_active_address)" || return 1
+        out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$active" \
+            --move-call "${ORDERBOOK_PACKAGE_ID}::pool::add_myso_price_point<${base_type},${MYUSD_COIN_TYPE},${MYSO_COIN_TYPE},${MYUSD_COIN_TYPE}>" \
+            "$(ptb_shared_ref "$target_pool")" \
+            "$(ptb_shared_ref "$MYSO_MYUSD_POOL_ID")" \
+            "$(ptb_shared_ref "$CLOCK_ID")")" || true
+    fi
+    assert_tx_success "$out" || {
+        echo "add_myso_price_point failed for $base_type / $MYUSD_COIN_TYPE" >&2
+        return 1
+    }
+}
+
+orderbook_wait_myso_two_sided_book() {
+    local attempt max="${1:-15}" mm_json catalog_json
+    for ((attempt = 1; attempt <= max; attempt++)); do
+        mm_json="$(curl -sf --max-time 2 "http://127.0.0.1:${MM_HEALTH_PORT:-${MM_HEALTH_CHECK_PORT:-3012}}/orders" 2>/dev/null)" || mm_json=''
+        catalog_json="$(curl -sf --max-time 2 "${ORDERBOOK_API_URL}/summary" 2>/dev/null)" || catalog_json=''
+        if ! orderbook_should_skip_myso_fee_prices "$mm_json" "$catalog_json"; then
+            log_step "MYSO/MYUSD two-sided book ready for fee pricing"
+            return 0
+        fi
+        [[ "$attempt" == 1 || $((attempt % 5)) -eq 0 ]] \
+            && log_wait_progress "MYSO/MYUSD two-sided book" "$attempt" "$max"
+        sleep 1
+    done
+    return 1
+}
+
+orderbook_ensure_myso_fee_prices() {
+    local name id_var base_type
+    if [[ -z "${MYSO_MYUSD_POOL_ID:-}" || -z "${CLOCK_ID:-}" || -z "${MYUSD_COIN_TYPE:-}" ]]; then
+        log_step "Skipping MYSO fee price points — missing MYSO pool, clock, or MYUSD type"
+        return 0
+    fi
+    if ! orderbook_wait_myso_two_sided_book "${ORDERBOOK_MYSO_FEE_PRICE_WAIT:-15}"; then
+        log_step "Skipping MYSO fee price points — no two-sided MYSO/MYUSD book (run MYSO MM first)"
+        return 0
+    fi
+    for name in BTC_MYUSD ETH_MYUSD; do
+        id_var="${name}_POOL_ID"
+        [[ -n "${!id_var:-}" ]] || continue
+        case "$name" in
+            BTC_MYUSD) base_type="${BTC_COIN_TYPE:-}" ;;
+            ETH_MYUSD) base_type="${ETH_COIN_TYPE:-}" ;;
+        esac
+        [[ -n "$base_type" ]] || continue
+        log_step "Adding MYSO fee price point on $name"
+        if orderbook_add_myso_price_point "${!id_var}" "$base_type"; then
+            log_step "MYSO fee price point set on $name"
+        else
+            log_step "MYSO fee price point skipped on $name (reference must be a fresh whitelisted MYSO/MYUSD)"
+        fi
+    done
+    return 0
 }
 
 orderbook_read_pool_tick() {
@@ -956,8 +1195,36 @@ orderbook_sync_catalog_tick() {
         >/dev/null
 }
 
+orderbook_catalog_tick_for_pool() {
+    local pool_id="$1" json tick
+    pool_id="$(normalize_hex_id "$pool_id")" || return 1
+    json="$(curl -sf --max-time 10 "${ORDERBOOK_API_URL}/get_pools" 2>/dev/null)" || return 1
+    tick="$(echo "$json" | jq -r --arg id "$pool_id" '
+        (if type == "array" then . else [] end)
+        | map(select((.pool_id // "") == $id or (.pool_name // "") == "MYSO_MYUSD"))
+        | .[0].tick_size // empty
+        | if . == null then empty else tostring end
+    ')"
+    [[ -n "$tick" && "$tick" != "null" ]] || return 1
+    printf '%s' "$tick"
+}
+
+# Return 0 when adjust_tick_size_admin should run. Skip if on-chain or catalog
+# already has the wanted tick (avoids a 4-minute checkpoint-wait retry on MM restart).
+orderbook_should_adjust_tick() {
+    local on_chain="${1:-}" wanted="$2" catalog="${3:-}"
+    [[ -n "$wanted" ]] || return 1
+    if [[ -n "$on_chain" && "$on_chain" == "$wanted" ]]; then
+        return 1
+    fi
+    if [[ -z "$on_chain" && -n "$catalog" && "$catalog" == "$wanted" ]]; then
+        return 1
+    fi
+    return 0
+}
+
 orderbook_ensure_mysousd_tick() {
-    local pool_id="${MYSO_MYUSD_POOL_ID:-}" on_chain wanted="$TICK_SIZE_MYSO"
+    local pool_id="${MYSO_MYUSD_POOL_ID:-}" on_chain catalog wanted="$TICK_SIZE_MYSO"
     [[ -n "$pool_id" ]] || return 0
     if ! orderbook_pool_is_shared "$pool_id"; then
         log_step "Skipping MYSO tick adjust — pool $pool_id is not shared"
@@ -965,8 +1232,13 @@ orderbook_ensure_mysousd_tick() {
     fi
     require_session_fields MYUSD_COIN_TYPE ORDERBOOK_PACKAGE_ID ORDERBOOK_ADMIN_CAP_ID CLOCK_ID || return 1
     on_chain="$(orderbook_read_pool_tick "$pool_id" "$MYSO_COIN_TYPE" "$MYUSD_COIN_TYPE" 2>/dev/null)" || on_chain=''
-    if [[ -n "$on_chain" && "$on_chain" == "$wanted" ]]; then
-        log_step "MYSO_MYUSD on-chain tick already $wanted"
+    catalog="$(orderbook_catalog_tick_for_pool "$pool_id" 2>/dev/null)" || catalog=''
+    if ! orderbook_should_adjust_tick "$on_chain" "$wanted" "$catalog"; then
+        if [[ -n "$on_chain" ]]; then
+            log_step "MYSO_MYUSD on-chain tick already $wanted"
+        else
+            log_step "MYSO_MYUSD catalog tick already $wanted — skipping adjust"
+        fi
     else
         if [[ -n "$on_chain" ]]; then
             log_step "Adjusting MYSO_MYUSD tick $on_chain → $wanted"
@@ -983,30 +1255,22 @@ orderbook_ensure_mysousd_tick() {
 }
 
 orderbook_cancel_all_orders() {
-    local pool_id="$1" bm_id="$2" base_type="$3" quote_type="$4" active out attempt
+    local pool_id="$1" bm_id="$2" base_type="$3" quote_type="$4" active out
     pool_id="$(normalize_hex_id "$pool_id")" || return 1
     bm_id="$(normalize_hex_id "$bm_id")" || return 1
     active="$(resolve_myso_active_address)" || return 1
-    for attempt in 1 2 3; do
-        out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$active" \
-            --move-call "${ORDERBOOK_PACKAGE_ID}::balance_manager::generate_proof_as_owner" \
-            "@${bm_id}" \
-            --assign proof \
-            --move-call "${ORDERBOOK_PACKAGE_ID}::pool::cancel_all_orders<${base_type},${quote_type}>" \
-            "$(ptb_shared_ref "$pool_id")" \
-            "@${bm_id}" \
-            proof \
-            "$(ptb_shared_ref "$CLOCK_ID")")" || true
-        if assert_tx_success "$out"; then
-            return 0
-        fi
-        if [[ "$attempt" -lt 3 ]] \
-            && grep -qE 'not available for consumption|already locked' <<<"$out"; then
-            sleep 2
-            continue
-        fi
-        break
-    done
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$active" \
+        --move-call "${ORDERBOOK_PACKAGE_ID}::balance_manager::generate_proof_as_owner" \
+        "@${bm_id}" \
+        --assign proof \
+        --move-call "${ORDERBOOK_PACKAGE_ID}::pool::cancel_all_orders<${base_type},${quote_type}>" \
+        "$(ptb_shared_ref "$pool_id")" \
+        "@${bm_id}" \
+        proof \
+        "$(ptb_shared_ref "$CLOCK_ID")")" || true
+    if assert_tx_success "$out"; then
+        return 0
+    fi
     echo "cancel_all_orders failed for BM $bm_id on pool $pool_id" >&2
     return 1
 }
@@ -1052,28 +1316,65 @@ orderbook_clear_btc_book_orders() {
         "${BTC_MYUSD_POOL_ID:-}" "${BTC_COIN_TYPE:-}" "${MYUSD_COIN_TYPE:-}" "BTC/MYUSD"
 }
 
+orderbook_clear_eth_book_orders() {
+    orderbook_clear_pool_book_orders \
+        "${ETH_MYUSD_POOL_ID:-}" "${ETH_COIN_TYPE:-}" "${MYUSD_COIN_TYPE:-}" "ETH/MYUSD"
+}
+
 orderbook_clear_stale_mm_book_orders() {
-    [[ "${ORDERBOOK_MYSO_RESEED:-1}" == 1 ]] || return 0
+    [[ "${ORDERBOOK_MYSO_RESEED:-0}" == 1 ]] || {
+        log_step "Skipping leftover book cancel — starting oracle + MM (ORDERBOOK_MYSO_RESEED=0)"
+        return 0
+    }
     log_step "Clearing stale MM book orders before live oracle (ORDERBOOK_MYSO_RESEED=1)"
-    orderbook_clear_btc_book_orders || true
-    orderbook_clear_myso_book_orders || true
-    sleep 2
+    if orderbook_mm_pools_include BTC_MYUSD; then
+        orderbook_clear_btc_book_orders || true
+    else
+        log_step "Skipping BTC book cancel — BTC/MYUSD not in this MM run"
+    fi
+    if orderbook_mm_pools_include ETH_MYUSD; then
+        orderbook_clear_eth_book_orders || true
+    else
+        log_step "Skipping ETH book cancel — ETH/MYUSD not in this MM run"
+    fi
+    if orderbook_mm_pools_include MYSO_MYUSD; then
+        orderbook_clear_myso_book_orders || true
+    else
+        log_step "Skipping MYSO book cancel — MYSO/MYUSD not in this MM run"
+    fi
+    sleep 1
 }
 
 orderbook_ensure_demo_trade_funds() {
-    local trader_addr myusd_mint
+    local trader_addr myusd_mint btc_mint have_myusd have_btc
     [[ "${ORDERBOOK_SKIP_DEMO_TRADE:-0}" == 1 ]] && return 0
+    if ! orderbook_mm_pools_include BTC_MYUSD; then
+        log_step "Skipping demo trader mint — BTC/MYUSD not in this MM run"
+        return 0
+    fi
     trader_addr="${TEST_TRADER_ADDRESS:-${DEPLOYER_ADDRESS:-}}"
     [[ -n "$trader_addr" ]] || {
         echo "TEST_TRADER_ADDRESS or DEPLOYER_ADDRESS required for BTC spot demo" >&2
         return 1
     }
     myusd_mint="${ORDERBOOK_DEMO_MYUSD_MINT:-50000000}"
+    btc_mint="${ORDERBOOK_DEMO_BTC_MINT:-10000000}"
+    require_session_fields MYUSD_COIN_TYPE MYUSD_TREASURY_CAP_ID || return 1
+    have_myusd="$(orderbook_resolve_myusd_balance "$trader_addr" "$MYUSD_COIN_TYPE")"
+    have_btc="$(orderbook_resolve_myusd_balance "$trader_addr" "$BTC_COIN_TYPE")"
+    if [[ "${have_myusd:-0}" -ge "$myusd_mint" && "${have_btc:-0}" -ge "$btc_mint" ]]; then
+        log_step "Demo trader already funded (MYUSD ${have_myusd}, BTC ${have_btc})"
+        orderbook_fund_address "$trader_addr" 300000000 || return 1
+        return 0
+    fi
     log_step "Funding spot demo trader ($trader_addr): gas + ${myusd_mint} MYUSD base units"
     orderbook_fund_address "$trader_addr" 300000000 || return 1
-    require_session_fields MYUSD_COIN_TYPE MYUSD_TREASURY_CAP_ID || return 1
-    orderbook_mint_token "$MYUSD_COIN_TYPE" "$MYUSD_TREASURY_CAP_ID" "$myusd_mint" "$trader_addr" || return 1
-    orderbook_mint_token "$BTC_COIN_TYPE" "$BTC_TREASURY_CAP_ID" 10000000 "$trader_addr" || return 1
+    if [[ "${have_myusd:-0}" -lt "$myusd_mint" ]]; then
+        orderbook_mint_token "$MYUSD_COIN_TYPE" "$MYUSD_TREASURY_CAP_ID" "$myusd_mint" "$trader_addr" || return 1
+    fi
+    if [[ "${have_btc:-0}" -lt "$btc_mint" ]]; then
+        orderbook_mint_token "$BTC_COIN_TYPE" "$BTC_TREASURY_CAP_ID" "$btc_mint" "$trader_addr" || return 1
+    fi
 }
 
 orderbook_fund_address() {
@@ -1534,10 +1835,13 @@ orderbook_mm_tuning_for_symbol() {
     case "$symbol" in
         MYSO)
             printf '%s\n' \
-                "${MM_MYSO_MYUSD_ORDER_SIZE_BASE:-2000000000}" \
+                "${MM_MYSO_MYUSD_ORDER_SIZE_BASE:-$MM_MYSO_MYUSD_ORDER_SIZE_BASE_DEFAULT}" \
                 "$(orderbook_mm_fallback_mid "${MM_MYSO_MYUSD_FALLBACK_MID:-4700}")" \
-                "${MM_MYSO_MYUSD_BASE_DEPOSIT:-20000000000}" \
-                "${MM_MYSO_MYUSD_QUOTE_DEPOSIT:-85000000}"
+                "${MM_MYSO_MYUSD_BASE_DEPOSIT:-$MM_MYSO_MYUSD_BASE_DEPOSIT_DEFAULT}" \
+                "${MM_MYSO_MYUSD_QUOTE_DEPOSIT:-$MM_MYSO_MYUSD_QUOTE_DEPOSIT_DEFAULT}" \
+                "${MM_MYSO_MYUSD_LEVELS_PER_SIDE:-$MM_MYSO_MYUSD_LEVELS_PER_SIDE_DEFAULT}" \
+                "${MM_MYSO_MYUSD_SPREAD_BPS:-$MM_MYSO_MYUSD_SPREAD_BPS_DEFAULT}" \
+                "${MM_MYSO_MYUSD_LEVEL_SPACING_BPS:-$MM_MYSO_MYUSD_LEVEL_SPACING_BPS_DEFAULT}"
             ;;
         BTC)
             printf '%s\n' \
@@ -1581,34 +1885,45 @@ orderbook_fetch_mm_pools_json() {
         --arg btc_pio "$BTC_PRICE_INFO_OBJECT_ID" \
         --arg eth_pio "$ETH_PRICE_INFO_OBJECT_ID" \
         --arg seed_static "${ORDERBOOK_ORACLE_SEED_STATIC:-0}" \
-        --argjson myso_os "${MM_MYSO_MYUSD_ORDER_SIZE_BASE:-2000000000}" \
+        --argjson myso_os "${MM_MYSO_MYUSD_ORDER_SIZE_BASE:-$MM_MYSO_MYUSD_ORDER_SIZE_BASE_DEFAULT}" \
         --argjson myso_fb_off "${MM_MYSO_MYUSD_FALLBACK_MID:-4700}" \
-        --argjson myso_bd "${MM_MYSO_MYUSD_BASE_DEPOSIT:-20000000000}" \
-        --argjson myso_qd "${MM_MYSO_MYUSD_QUOTE_DEPOSIT:-85000000}" \
+        --argjson myso_bd "${MM_MYSO_MYUSD_BASE_DEPOSIT:-$MM_MYSO_MYUSD_BASE_DEPOSIT_DEFAULT}" \
+        --argjson myso_qd "${MM_MYSO_MYUSD_QUOTE_DEPOSIT:-$MM_MYSO_MYUSD_QUOTE_DEPOSIT_DEFAULT}" \
+        --argjson myso_levels "${MM_MYSO_MYUSD_LEVELS_PER_SIDE:-$MM_MYSO_MYUSD_LEVELS_PER_SIDE_DEFAULT}" \
+        --argjson myso_spread "${MM_MYSO_MYUSD_SPREAD_BPS:-$MM_MYSO_MYUSD_SPREAD_BPS_DEFAULT}" \
+        --argjson myso_spacing "${MM_MYSO_MYUSD_LEVEL_SPACING_BPS:-$MM_MYSO_MYUSD_LEVEL_SPACING_BPS_DEFAULT}" \
         --argjson btc_os "${MM_BTC_MYUSD_ORDER_SIZE_BASE:-100000}" \
         --argjson btc_fb_off "${MM_BTC_MYUSD_FALLBACK_MID:-9700000000000}" \
         --argjson btc_bd "${MM_BTC_MYUSD_BASE_DEPOSIT:-500000000}" \
-        --argjson btc_qd "${MM_BTC_MYUSD_QUOTE_DEPOSIT:-500000000}" \
+        --argjson btc_qd "${MM_BTC_MYUSD_QUOTE_DEPOSIT:-$MM_BTC_MYUSD_QUOTE_DEPOSIT_DEFAULT}" \
         --argjson eth_os "${MM_ETH_MYUSD_ORDER_SIZE_BASE:-10000000}" \
         --argjson eth_fb_off "${MM_ETH_MYUSD_FALLBACK_MID:-350000000000}" \
         --argjson eth_bd "${MM_ETH_MYUSD_BASE_DEPOSIT:-5000000000}" \
-        --argjson eth_qd "${MM_ETH_MYUSD_QUOTE_DEPOSIT:-500000000}" \
+        --argjson eth_qd "${MM_ETH_MYUSD_QUOTE_DEPOSIT:-$MM_ETH_MYUSD_QUOTE_DEPOSIT_DEFAULT}" \
         '
         def fallback($offline):
             if $seed_static == "1" then ($offline|tostring) else "0" end;
-        def base_pio($sym):
-            if $sym == "MYSO" then $myso_pio
-            elif $sym == "BTC" then $btc_pio
-            elif $sym == "ETH" then $eth_pio
+        def pair($row):
+            ($row.pool_name // "") as $name
+            | ($row.base_asset_symbol // "") as $sym
+            | if ($name == "MYSO_MYUSD" or $sym == "MYSO") then "MYSO"
+              elif ($name == "BTC_MYUSD" or $sym == "BTC") then "BTC"
+              elif ($name == "ETH_MYUSD" or $sym == "ETH") then "ETH"
+              else $sym end;
+        def base_pio($pair):
+            if $pair == "MYSO" then $myso_pio
+            elif $pair == "BTC" then $btc_pio
+            elif $pair == "ETH" then $eth_pio
             else null end;
-        def tuning($sym):
-            if $sym == "MYSO" then
+        def tuning($pair):
+            if $pair == "MYSO" then
                 {orderSizeBase: ($myso_os|tostring), fallbackMidPrice: fallback($myso_fb_off),
-                 baseDepositAmount: ($myso_bd|tostring), quoteDepositAmount: ($myso_qd|tostring)}
-            elif $sym == "BTC" then
+                 baseDepositAmount: ($myso_bd|tostring), quoteDepositAmount: ($myso_qd|tostring),
+                 levelsPerSide: $myso_levels, spreadBps: $myso_spread, levelSpacingBps: $myso_spacing}
+            elif $pair == "BTC" then
                 {orderSizeBase: ($btc_os|tostring), fallbackMidPrice: fallback($btc_fb_off),
                  baseDepositAmount: ($btc_bd|tostring), quoteDepositAmount: ($btc_qd|tostring)}
-            elif $sym == "ETH" then
+            elif $pair == "ETH" then
                 {orderSizeBase: ($eth_os|tostring), fallbackMidPrice: fallback($eth_fb_off),
                  baseDepositAmount: ($eth_bd|tostring), quoteDepositAmount: ($eth_qd|tostring)}
             else
@@ -1618,9 +1933,9 @@ orderbook_fetch_mm_pools_json() {
         (if type == "array" then . else [] end)
         | map(
             . as $row
-            | ($row.base_asset_symbol // "") as $sym
-            | (base_pio($sym)) as $bpio
-            | (tuning($sym)) as $t
+            | (pair($row)) as $pair
+            | (base_pio($pair)) as $bpio
+            | (tuning($pair)) as $t
             | {
                 poolId: $row.pool_id,
                 baseCoinType: $row.base_asset_id,
@@ -1635,7 +1950,10 @@ orderbook_fetch_mm_pools_json() {
                 orderSizeBase: $t.orderSizeBase,
                 fallbackMidPrice: $t.fallbackMidPrice,
                 baseDepositAmount: $t.baseDepositAmount,
-                quoteDepositAmount: $t.quoteDepositAmount
+                quoteDepositAmount: $t.quoteDepositAmount,
+                levelsPerSide: $t.levelsPerSide,
+                spreadBps: $t.spreadBps,
+                levelSpacingBps: $t.levelSpacingBps
               }
           )
         ')" || return 1
@@ -1646,25 +1964,135 @@ orderbook_fetch_mm_pools_json() {
     printf '%s' "$MM_POOLS"
 }
 
+orderbook_normalize_mm_pool_filter() {
+    local raw="${1:-}"
+    raw="$(printf '%s' "$raw" | tr '[:lower:]' '[:upper:]')"
+    raw="${raw//\//_}"
+    case "$raw" in
+        ''|ALL|'*')
+            printf ''
+            ;;
+        MYSO|MYSO_MYUSD)
+            printf 'MYSO_MYUSD'
+            ;;
+        BTC|BTC_MYUSD)
+            printf 'BTC_MYUSD'
+            ;;
+        ETH|ETH_MYUSD)
+            printf 'ETH_MYUSD'
+            ;;
+        *)
+            echo "Unknown MM pool filter: ${1} (use MYSO_MYUSD, BTC_MYUSD, ETH_MYUSD)" >&2
+            return 1
+            ;;
+    esac
+}
+
+orderbook_mm_pool_name_for_row() {
+    local row="$1" pool_id base name id_var sid
+    pool_id="$(echo "$row" | jq -r '.poolId // empty')"
+    if [[ -n "$pool_id" ]]; then
+        pool_id="$(normalize_hex_id "$pool_id" 2>/dev/null)" || pool_id=''
+        pool_id="$(printf '%s' "$pool_id" | tr '[:upper:]' '[:lower:]')"
+        for name in MYSO_MYUSD BTC_MYUSD ETH_MYUSD; do
+            id_var="${name}_POOL_ID"
+            sid="${!id_var:-}"
+            [[ -n "$sid" ]] || continue
+            sid="$(normalize_hex_id "$sid" 2>/dev/null)" || continue
+            sid="$(printf '%s' "$sid" | tr '[:upper:]' '[:lower:]')"
+            if [[ "$pool_id" == "$sid" ]]; then
+                printf '%s' "$name"
+                return 0
+            fi
+        done
+    fi
+    base="$(echo "$row" | jq -r '.baseCoinType // empty' | tr '[:upper:]' '[:lower:]')"
+    case "$base" in
+        *::myso::myso) printf 'MYSO_MYUSD' ; return 0 ;;
+        *::btc::btc) printf 'BTC_MYUSD' ; return 0 ;;
+        *::eth::eth) printf 'ETH_MYUSD' ; return 0 ;;
+    esac
+    return 1
+}
+
+orderbook_mm_required_pool_id_vars() {
+    local filter
+    filter="$(orderbook_normalize_mm_pool_filter "${MM_POOL_FILTER:-}")" || return 1
+    case "$filter" in
+        MYSO_MYUSD) printf '%s\n' MYSO_MYUSD_POOL_ID ;;
+        BTC_MYUSD) printf '%s\n' BTC_MYUSD_POOL_ID ;;
+        ETH_MYUSD) printf '%s\n' ETH_MYUSD_POOL_ID ;;
+        *) printf '%s\n' MYSO_MYUSD_POOL_ID BTC_MYUSD_POOL_ID ETH_MYUSD_POOL_ID ;;
+    esac
+}
+
+orderbook_mm_pools_include() {
+    local name="$1" id_var="${1}_POOL_ID" required_id
+    required_id="${!id_var:-}"
+    [[ -n "$required_id" ]] || return 1
+    required_id="$(normalize_hex_id "$required_id")" || return 1
+    required_id="$(printf '%s' "$required_id" | tr '[:upper:]' '[:lower:]')"
+    echo "$MM_POOLS" | jq -e --arg id "$required_id" '
+        any(.[]; ((.poolId // "") | ascii_downcase) == $id)
+    ' >/dev/null 2>&1
+}
+
+# True when :9010 status has a successful on-chain tick for the pools in this MM run.
+orderbook_oracle_status_is_live_for_mm() {
+    local status_json="${1:-}" updates btc_raw btc_num myso eth
+    [[ -n "$status_json" ]] || return 1
+    updates="$(echo "$status_json" | jq -r '.updates // 0' 2>/dev/null)" || return 1
+    [[ "${updates:-0}" -ge 1 ]] || return 1
+    if orderbook_mm_pools_include BTC_MYUSD; then
+        btc_raw="$(echo "$status_json" | jq -r '.prices.btc // empty' 2>/dev/null)" || btc_raw=''
+        [[ -n "$btc_raw" && "$btc_raw" != "null" ]] || return 1
+        btc_num="${btc_raw#\$}"
+        awk -v p="$btc_num" 'BEGIN { exit !(p+0 > 50000) }' || return 1
+    fi
+    if orderbook_mm_pools_include MYSO_MYUSD; then
+        myso="$(echo "$status_json" | jq -r '.prices.myso // empty' 2>/dev/null)" || myso=''
+        [[ -n "$myso" && "$myso" != "null" ]] || return 1
+    fi
+    if orderbook_mm_pools_include ETH_MYUSD; then
+        eth="$(echo "$status_json" | jq -r '.prices.eth // empty' 2>/dev/null)" || eth=''
+        [[ -n "$eth" && "$eth" != "null" ]] || return 1
+    fi
+    return 0
+}
+
 orderbook_filter_mm_pools_shared() {
-    local row pool_id filtered='[]' count id_var required_id required_name
+    local row pool_id name filtered='[]' count id_var required_id required_name filter
+    filter="$(orderbook_normalize_mm_pool_filter "${MM_POOL_FILTER:-}")" || return 1
+    MM_POOL_FILTER="$filter"
+
     while IFS= read -r row; do
         [[ -n "$row" ]] || continue
         pool_id="$(echo "$row" | jq -r '.poolId')"
-        if orderbook_pool_is_shared "$pool_id"; then
-            filtered="$(echo "$filtered" | jq --argjson r "$row" '. + [$r]')"
-        else
+        if ! orderbook_pool_is_shared "$pool_id"; then
             echo "Skipping non-shared pool for MM: ${pool_id}" >&2
+            continue
         fi
+        if [[ -n "$filter" ]]; then
+            name="$(orderbook_mm_pool_name_for_row "$row")" || name=''
+            if [[ "$name" != "$filter" ]]; then
+                continue
+            fi
+        fi
+        filtered="$(echo "$filtered" | jq --argjson r "$row" '. + [$r]')"
     done < <(echo "$MM_POOLS" | jq -c '.[]')
     count="$(echo "$filtered" | jq 'length')"
     if [[ "$count" -lt 1 ]]; then
-        echo "No shared pools available for market maker" >&2
+        if [[ -n "$filter" ]]; then
+            echo "No shared $filter pool available for market maker" >&2
+        else
+            echo "No shared pools available for market maker" >&2
+        fi
         return 1
     fi
     MM_POOLS="$filtered"
 
-    for id_var in MYSO_MYUSD_POOL_ID BTC_MYUSD_POOL_ID ETH_MYUSD_POOL_ID; do
+    while IFS= read -r id_var; do
+        [[ -n "$id_var" ]] || continue
         required_id="${!id_var:-}"
         required_name="${id_var%_POOL_ID}"
         [[ -n "$required_id" ]] || {
@@ -1679,5 +2107,5 @@ orderbook_filter_mm_pools_shared() {
             echo "Required shared pool $required_name ($required_id) is missing from MM_POOLS" >&2
             return 1
         fi
-    done
+    done < <(orderbook_mm_required_pool_id_vars)
 }

@@ -32,7 +32,10 @@ fn like_contains_pattern(q: &str) -> Option<String> {
     if trimmed.is_empty() {
         return None;
     }
-    let escaped = trimmed.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+    let escaped = trimmed
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_");
     Some(format!("%{escaped}%"))
 }
 
@@ -130,7 +133,8 @@ async fn search_profiles_with_conn(
         .bind::<BigInt, _>(limit)
         .load(conn)
         .await?;
-    let mut out = load_profiles_ordered(conn, exact_ids.into_iter().map(|r| r.id).collect()).await?;
+    let mut out =
+        load_profiles_ordered(conn, exact_ids.into_iter().map(|r| r.id).collect()).await?;
 
     let seen: std::collections::HashSet<i32> = out.iter().map(|p| p.id).collect();
     let remaining = limit - out.len() as i64;
@@ -184,10 +188,7 @@ async fn load_profiles_ordered(
         .await?;
     let mut by_id: std::collections::HashMap<i32, Profile> =
         rows.into_iter().map(|p| (p.id, p)).collect();
-    Ok(ids
-        .into_iter()
-        .filter_map(|id| by_id.remove(&id))
-        .collect())
+    Ok(ids.into_iter().filter_map(|id| by_id.remove(&id)).collect())
 }
 
 async fn load_platforms_ordered(
@@ -204,10 +205,7 @@ async fn load_platforms_ordered(
         .await?;
     let mut by_id: std::collections::HashMap<i32, Platform> =
         rows.into_iter().map(|p| (p.id, p)).collect();
-    Ok(ids
-        .into_iter()
-        .filter_map(|id| by_id.remove(&id))
-        .collect())
+    Ok(ids.into_iter().filter_map(|id| by_id.remove(&id)).collect())
 }
 
 pub(crate) async fn search_posts(

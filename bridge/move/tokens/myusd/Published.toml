@@ -3,10 +3,10 @@
 # This file SHOULD be committed to source control
 
 [published.localnet]
-chain-id = "f82be9d0"
-published-at = "0xe260efa975512a602d2c53d0d8d305f18fb3cf17206e769f9d98aa4c96484a56"
-original-id = "0xe260efa975512a602d2c53d0d8d305f18fb3cf17206e769f9d98aa4c96484a56"
+chain-id = "ed700cca"
+published-at = "0x471dc59565a6d282aa1502735c8fe401beae6bc22bfc702c50b87ecdf01bb297"
+original-id = "0x471dc59565a6d282aa1502735c8fe401beae6bc22bfc702c50b87ecdf01bb297"
 version = 1
 toolchain-version = "0.0.1"
 build-config = { flavor = "myso", edition = "2024" }
-upgrade-capability = "0x6f36c438daf095ac02762022cce539c94b7bb97488bdeb4265e24dcbd0cdf448"
+upgrade-capability = "0x6fddabcb343737871c35c062fa43e951c0b5891cc4b50da3918534d0dc9ebc57"

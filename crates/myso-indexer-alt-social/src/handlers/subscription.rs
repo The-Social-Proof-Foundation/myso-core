@@ -693,7 +693,6 @@ mod tests {
 
     fn sample_create_context() -> SubscriptionCreateContext {
         SubscriptionCreateContext {
-            subscription_id: "0xsub123".to_string(),
             renewal_balance: 1_000_000_000,
             created_at_ms: 1_700_000_000_000,
         }

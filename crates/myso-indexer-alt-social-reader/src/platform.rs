@@ -92,6 +92,8 @@ pub struct PlatformRow {
     pub developer_address: String,
     #[diesel(sql_type = Nullable<Text>)]
     pub moderators_group_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_ledger_id: Option<String>,
     #[diesel(sql_type = SmallInt)]
     pub status: i16,
     #[diesel(sql_type = Bool)]
@@ -147,7 +149,7 @@ pub(crate) async fn get_platform_by_id(
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
         "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.cover_photo, p.media_previews,
-                p.developer_address, p.moderators_group_id,
+                p.developer_address, p.moderators_group_id, p.badge_ledger_id,
                 p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                 p.terms_of_service, p.privacy_policy, p.redirect_uri, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
                 p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
@@ -282,7 +284,7 @@ pub(crate) async fn get_platform_by_registry_id(
     let _guard = metrics.latency.start_timer();
     let result = diesel::sql_query(
         "SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.cover_photo, p.media_previews,
-                p.developer_address, p.moderators_group_id,
+                p.developer_address, p.moderators_group_id, p.badge_ledger_id,
                 p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                 p.terms_of_service, p.privacy_policy, p.redirect_uri, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
                 p.wants_dao_governance, p.governance_registry_id, p.delegate_count,
@@ -311,7 +313,7 @@ pub(crate) async fn list_platforms(
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT p.platform_id, p.name, p.tagline, p.description, p.logo, p.cover_photo, p.media_previews,
-               p.developer_address, p.moderators_group_id,
+               p.developer_address, p.moderators_group_id, p.badge_ledger_id,
                p.status, p.is_approved, p.primary_category, p.secondary_category, p.created_at, p.updated_at,
                p.terms_of_service, p.privacy_policy, p.redirect_uri, p.links, p.platforms AS platform_names, p.release_date, p.shutdown_date,
                p.wants_dao_governance, p.governance_registry_id, p.delegate_count,

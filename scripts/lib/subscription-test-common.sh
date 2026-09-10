@@ -179,6 +179,42 @@ gql_subscription_service_for_profile() {
     printf '%s' "$resp"
 }
 
+gql_subscription_plans_for_service() {
+    local service_id="$1" resp vars
+    service_id="$(normalize_hex_id "$service_id")" || return 1
+    vars="$(jq -nc --arg sid "$service_id" '{sid: $sid}')"
+    resp="$(graphql_post \
+        'query Plans($sid: ID!) {
+            profileSubscriptionPlans(serviceId: $sid, activeOnly: true, limit: 50) {
+                planId
+                title
+            }
+        }' \
+        "$vars")" || return 1
+    printf '%s' "$resp"
+}
+
+gql_plan_id_for_title() {
+    local service_id="$1" title="$2" resp id
+    resp="$(gql_subscription_plans_for_service "$service_id" 2>/dev/null)" || return 1
+    id="$(echo "$resp" | jq -r --arg t "$title" '
+        .data.profileSubscriptionPlans[]? | select(.title == $t) | .planId
+    ' | head -n1)"
+    [[ -n "$id" && "$id" != "null" ]] || return 1
+    normalize_hex_id "$id"
+}
+
+gql_subscription_plan_exists() {
+    local plan_id="$1" resp found vars
+    plan_id="$(normalize_hex_id "$plan_id")" || return 1
+    vars="$(jq -nc --arg id "$plan_id" '{id: $id}')"
+    resp="$(graphql_post \
+        'query Plan($id: ID!) { profileSubscriptionPlan(planId: $id) { planId } }' \
+        "$vars")" || return 1
+    found="$(echo "$resp" | jq -r '.data.profileSubscriptionPlan.planId // empty')"
+    [[ -n "$found" ]]
+}
+
 gql_subscription_service_matches_profile() {
     local service_id="$1" profile_id="$2" resp match_pid
     service_id="$(normalize_hex_id "$service_id")" || return 1
@@ -325,6 +361,71 @@ subscription_unblock_wallet() {
         "@$(normalize_hex_id "$BLOCK_LIST_REGISTRY_ID")" \
         "$blocked")" || return 1
     assert_tx_success "$out"
+}
+
+myusd_package_id_from_coin_type() {
+    local type="${1:-}" pkg
+    [[ -n "$type" ]] || return 1
+    pkg="${type%%::*}"
+    [[ -n "$pkg" && "$pkg" != "$type" ]] || return 1
+    normalize_hex_id "$pkg"
+}
+
+myusd_coin_type_is_on_chain() {
+    local type="${1:-}" pkg
+    pkg="$(myusd_package_id_from_coin_type "$type")" || return 1
+    object_exists_on_fullnode "$pkg"
+}
+
+# Read MYUSD_COIN_TYPE / PKG_MYUSD from orderbook-session.env without sourcing
+# the whole file (that would clobber social/subscription IDs).
+subscription_import_live_myusd_from_orderbook() {
+    local session="${1:-${REPO_ROOT}/network.config/orderbook/orderbook-session.env}"
+    local coin pkg candidate
+    [[ -f "$session" ]] || return 1
+    coin="$(awk -F= '/^MYUSD_COIN_TYPE=/{print $2; exit}' "$session" | tr -d "\"'")"
+    pkg="$(awk -F= '/^PKG_MYUSD=/{print $2; exit}' "$session" | tr -d "\"'")"
+    if [[ -n "$coin" ]] && myusd_coin_type_is_on_chain "$coin"; then
+        MYUSD_COIN_TYPE="$coin"
+        return 0
+    fi
+    if [[ -n "$pkg" ]]; then
+        candidate="$(normalize_hex_id "$pkg")::myusd::MYUSD"
+        if myusd_coin_type_is_on_chain "$candidate"; then
+            MYUSD_COIN_TYPE="$candidate"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Prefer a live on-chain MYUSD package. Stale dripdrop-session types after a
+# republish fail create_subscription_plan with "Dependent package not found".
+subscription_resolve_live_myusd_coin_type() {
+    local candidate
+    if [[ -n "${MYUSD_COIN_TYPE:-}" ]] && myusd_coin_type_is_on_chain "$MYUSD_COIN_TYPE"; then
+        printf '%s' "$MYUSD_COIN_TYPE"
+        return 0
+    fi
+    if [[ -n "${MYUSD_COIN_TYPE:-}" ]]; then
+        log_step "Session MYUSD_COIN_TYPE package is not on-chain; resolving from orderbook session"
+    fi
+    if subscription_import_live_myusd_from_orderbook; then
+        log_session_use "MYUSD_COIN_TYPE" "$MYUSD_COIN_TYPE"
+        printf '%s' "$MYUSD_COIN_TYPE"
+        return 0
+    fi
+    if [[ -n "${PKG_MYUSD:-}" ]]; then
+        candidate="$(normalize_hex_id "$PKG_MYUSD")::myusd::MYUSD"
+        if myusd_coin_type_is_on_chain "$candidate"; then
+            MYUSD_COIN_TYPE="$candidate"
+            log_session_use "MYUSD_COIN_TYPE" "$MYUSD_COIN_TYPE"
+            printf '%s' "$MYUSD_COIN_TYPE"
+            return 0
+        fi
+    fi
+    echo "MYUSD package is not on-chain. Publish MYUSD (orderbook bootstrap) or set MYUSD_COIN_TYPE to a live 0xPACKAGE::myusd::MYUSD" >&2
+    return 1
 }
 
 subscription_call_create_subscription_plan() {

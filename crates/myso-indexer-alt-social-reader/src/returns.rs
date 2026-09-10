@@ -277,7 +277,10 @@ pub fn position_window_from_snaps(
     (window_pl, capital, pct)
 }
 
-fn portfolio_from_positions(holder: &str, positions: Vec<SptPositionMetrics>) -> SptPortfolioMetrics {
+fn portfolio_from_positions(
+    holder: &str,
+    positions: Vec<SptPositionMetrics>,
+) -> SptPortfolioMetrics {
     let current_value_myso: i64 = positions.iter().map(|p| p.current_value_myso).sum();
     let total_invested_myso: i64 = positions.iter().map(|p| p.total_invested_myso).sum();
     let total_returned_myso: i64 = positions.iter().map(|p| p.total_returned_myso).sum();
@@ -316,15 +319,10 @@ const POSITION_SQL: &str = r#"
         s.total_invested_myso, s.total_returned_myso, s.realized_myso,
         s.disposed_cost_basis_myso, s.sold_token_qty, s.exit_proceeds_myso,
         s.cost_basis_unknown,
-        COALESCE((
-            SELECT ph.price FROM spt_price_history ph
-            WHERE ph.pool_id = s.pool_id ORDER BY ph.time DESC LIMIT 1
-        ), 0)::bigint AS latest_price,
-        COALESCE((
-            SELECT p.circulating_supply FROM spt_pools p
-            WHERE p.pool_id = s.pool_id ORDER BY p.time DESC LIMIT 1
-        ), 0)::bigint AS circulating_supply
+        COALESCE(m.price, 0)::bigint AS latest_price,
+        COALESCE(m.circulating_supply, 0)::bigint AS circulating_supply
     FROM user_spt_position_state s
+    LEFT JOIN spt_pool_mark m ON m.pool_id = s.pool_id
 "#;
 
 pub async fn get_user_spt_positions(
@@ -400,8 +398,7 @@ async fn attach_window_metrics(
             ORDER BY pool_id, time DESC
         ),
         prices AS (
-            SELECT DISTINCT ON (pool_id) pool_id, price
-            FROM spt_price_history ORDER BY pool_id, time DESC
+            SELECT pool_id, price FROM spt_pool_mark
         ),
         start_prices AS (
             SELECT DISTINCT ON (pool_id) pool_id, price
@@ -562,11 +559,10 @@ pub async fn get_trader_return_leaderboard(
             WITH priced AS (
                 SELECT s.holder_address,
                        SUM(s.total_invested_myso)::bigint AS invested,
-                       SUM(s.realized_myso + (s.token_balance * COALESCE((
-                           SELECT ph.price FROM spt_price_history ph
-                           WHERE ph.pool_id = s.pool_id ORDER BY ph.time DESC LIMIT 1
-                       ), 0) - s.cost_basis_myso))::bigint AS net
+                       SUM(s.realized_myso + (s.token_balance * COALESCE(m.price, 0)
+                           - s.cost_basis_myso))::bigint AS net
                 FROM user_spt_position_state s
+                LEFT JOIN spt_pool_mark m ON m.pool_id = s.pool_id
                 GROUP BY s.holder_address
                 HAVING SUM(s.total_invested_myso) >= $3
             )
@@ -580,14 +576,12 @@ pub async fn get_trader_return_leaderboard(
             r#"
             SELECT s.holder_address,
                    SUM(CASE WHEN $4 = 1
-                       THEN s.token_balance * COALESCE((
-                           SELECT ph.price FROM spt_price_history ph
-                           WHERE ph.pool_id = s.pool_id ORDER BY ph.time DESC LIMIT 1), 0)
-                       ELSE s.realized_myso + (s.token_balance * COALESCE((
-                           SELECT ph.price FROM spt_price_history ph
-                           WHERE ph.pool_id = s.pool_id ORDER BY ph.time DESC LIMIT 1), 0) - s.cost_basis_myso)
+                       THEN s.token_balance * COALESCE(m.price, 0)
+                       ELSE s.realized_myso + (s.token_balance * COALESCE(m.price, 0)
+                           - s.cost_basis_myso)
                    END)::float8 AS sort_value
             FROM user_spt_position_state s
+            LEFT JOIN spt_pool_mark m ON m.pool_id = s.pool_id
             GROUP BY s.holder_address
             HAVING SUM(s.total_invested_myso) >= $3
             ORDER BY sort_value DESC NULLS LAST
@@ -612,8 +606,7 @@ pub async fn get_trader_return_leaderboard(
                 ORDER BY holder_address, pool_id, time DESC
             ),
             prices AS (
-                SELECT DISTINCT ON (pool_id) pool_id, price
-                FROM spt_price_history ORDER BY pool_id, time DESC
+                SELECT pool_id, price FROM spt_pool_mark
             ),
             start_prices AS (
                 SELECT DISTINCT ON (pool_id) pool_id, price
@@ -704,9 +697,8 @@ mod window_math_tests {
         // Open 100 cost, mark 150 (lifetime 50%). Then add 900, mark +10 on the new capital.
         // Window: start mark 150 / cost 100; now mark 1060 / cost 1000; realized unchanged.
         // window_mtm = 1060 - 150 - 900 = 10; capital = 100 + 900 = 1000; pct = 1%.
-        let (pl, capital, pct) = super::position_window_from_snaps(
-            1060, 1000, 0, 1, 150, 100, 0, 1,
-        );
+        let (pl, capital, pct) =
+            super::position_window_from_snaps(1060, 1000, 0, 1, 150, 100, 0, 1);
         assert_eq!(pl, 10);
         assert_eq!(capital, 1000);
         let pct = pct.expect("capital");

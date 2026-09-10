@@ -9,7 +9,7 @@
 #   - Multi-coin subscription Move changes deployed (generic create_subscription_plan<T>)
 #   - DripDrop platform + profile exist on chain (bootstrap or prior session)
 #   - MYUSD coin type published (bridge token package)
-#   - Set MYUSD_COIN_TYPE (e.g. 0xPACKAGE::myusd::MYUSD) or PKG_MYUSD
+#   - Live MYUSD from orderbook-session.env (stale dripdrop-session types are ignored)
 #
 # Session: network.config/dripdrop/dripdrop-subscription-plans-session.env
 # Reuses network.config/subscription/subscription-session.env SERVICE_ID when present.
@@ -80,16 +80,7 @@ load_plans_session() {
 }
 
 resolve_myusd_coin_type() {
-    if [[ -n "${MYUSD_COIN_TYPE:-}" ]]; then
-        printf '%s' "$MYUSD_COIN_TYPE"
-        return 0
-    fi
-    if [[ -n "${PKG_MYUSD:-}" ]]; then
-        printf '%s::myusd::MYUSD' "$(normalize_hex_id "$PKG_MYUSD")"
-        return 0
-    fi
-    echo "Set MYUSD_COIN_TYPE (published MYUSD type, e.g. 0xPACKAGE::myusd::MYUSD) or PKG_MYUSD" >&2
-    return 1
+    subscription_resolve_live_myusd_coin_type
 }
 
 ensure_dripdrop_platform() {
@@ -126,10 +117,16 @@ ensure_creator() {
 }
 
 ensure_service() {
-    local out digest existing
+    local out digest existing candidate
     existing="$(subscription_resolve_existing_service_for_profile "$CREATOR_PROFILE_ID" 2>/dev/null)" || existing=''
-    if [[ -z "$existing" && -n "${SERVICE_ID:-}" ]] && object_exists_on_fullnode "$SERVICE_ID"; then
-        existing="$(normalize_hex_id "$SERVICE_ID")"
+    if [[ -z "$existing" ]]; then
+        for candidate in "${SERVICE_ID:-}" "${DRIPDROP_PREMIUM_SERVICE_ID:-}"; do
+            [[ -n "$candidate" ]] || continue
+            if object_exists_on_fullnode "$candidate"; then
+                existing="$(normalize_hex_id "$candidate")"
+                break
+            fi
+        done
     fi
     if [[ -n "$existing" ]]; then
         SERVICE_ID="$(normalize_hex_id "$existing")"
@@ -143,8 +140,13 @@ ensure_service() {
     out="$(run_myso_call_as_capture "$CREATOR_ADDRESS" subscription create_profile_service_entry \
         "@$(normalize_hex_id "$CREATOR_PROFILE_ID")" "@$(normalize_hex_id "$CLOCK_ID")")" || return 1
     assert_tx_success "$out" || { echo "create_profile_service_entry failed" >&2; return 1; }
-    digest="$(extract_tx_digest "$out")"
-    SERVICE_ID="$(extract_created_object_by_type "$digest" "subscription::ProfileSubscriptionService")" || return 1
+    digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
+    if [[ -n "$digest" ]]; then
+        SERVICE_ID="$(extract_created_object_by_type "$digest" "subscription::ProfileSubscriptionService" 2>/dev/null || true)"
+    fi
+    if [[ -z "${SERVICE_ID:-}" ]]; then
+        SERVICE_ID="$(extract_created_object_from_call_output "$out" "ProfileSubscriptionService")" || return 1
+    fi
     DRIPDROP_PREMIUM_SERVICE_ID="$SERVICE_ID"
     log_session_use "SERVICE_ID" "$SERVICE_ID"
     log_session_use "DRIPDROP_PREMIUM_SERVICE_ID" "$DRIPDROP_PREMIUM_SERVICE_ID"
@@ -155,9 +157,14 @@ create_myusd_plan() {
     out="$(subscription_call_create_subscription_plan_myusd \
         "$CREATOR_ADDRESS" "$title" "$price" "$duration_ms" "$MYUSD_COIN_TYPE" "$PREMIUM_TIER_LEVEL")" || return 1
     assert_tx_success "$out" || { echo "create_subscription_plan<MYUSD> failed for $title" >&2; return 1; }
-    digest="$(extract_tx_digest "$out")"
-    tx_has_event_named "$digest" "SubscriptionPlanCreatedEvent" || return 1
-    plan_id="$(tx_event_field "$digest" "SubscriptionPlanCreatedEvent" "plan_id")" || return 1
+    digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
+    if [[ -n "$digest" ]]; then
+        tx_has_event_named "$digest" "SubscriptionPlanCreatedEvent" || true
+        plan_id="$(tx_event_field "$digest" "SubscriptionPlanCreatedEvent" "plan_id" 2>/dev/null || true)"
+    fi
+    if [[ -z "${plan_id:-}" ]]; then
+        plan_id="$(extract_created_object_from_call_output "$out" "SubscriptionPlan")" || return 1
+    fi
     printf '%s' "$(normalize_hex_id "$plan_id")"
 }
 
@@ -182,21 +189,36 @@ run_create_plans() {
     MYUSD_COIN_TYPE="$(resolve_myusd_coin_type)" || return 1
     ensure_dripdrop_platform || return 1
     ensure_creator || return 1
+    ensure_script_gas_coin_for_address "$CREATOR_ADDRESS" || return 1
     ensure_service || return 1
     DRIPDROP_PREMIUM_SERVICE_ID="$SERVICE_ID"
-    if [[ -n "${MONTHLY_PLAN_ID:-}" && -n "${ANNUAL_PLAN_ID:-}" ]]; then
-        log_step "Updating existing Premium+ plans to ${MONTHLY_DURATION_MS}ms (2h test duration)"
-        update_myusd_plan "$MONTHLY_PLAN_ID" "$MONTHLY_TITLE" "$MONTHLY_PRICE" "$MONTHLY_DURATION_MS" || return 1
-        update_myusd_plan "$ANNUAL_PLAN_ID" "$ANNUAL_TITLE" "$ANNUAL_PRICE" "$ANNUAL_DURATION_MS" || return 1
-        log_session_use "MONTHLY_PLAN_ID" "$MONTHLY_PLAN_ID"
-        log_session_use "ANNUAL_PLAN_ID" "$ANNUAL_PLAN_ID"
-    else
+    if [[ -n "${MONTHLY_PLAN_ID:-}" ]] && ! gql_subscription_plan_exists "$MONTHLY_PLAN_ID"; then
+        MONTHLY_PLAN_ID=''
+    fi
+    if [[ -n "${ANNUAL_PLAN_ID:-}" ]] && ! gql_subscription_plan_exists "$ANNUAL_PLAN_ID"; then
+        ANNUAL_PLAN_ID=''
+    fi
+    if [[ -z "${MONTHLY_PLAN_ID:-}" ]]; then
+        MONTHLY_PLAN_ID="$(gql_plan_id_for_title "$SERVICE_ID" "$MONTHLY_TITLE" 2>/dev/null || true)"
+    fi
+    if [[ -z "${ANNUAL_PLAN_ID:-}" ]]; then
+        ANNUAL_PLAN_ID="$(gql_plan_id_for_title "$SERVICE_ID" "$ANNUAL_TITLE" 2>/dev/null || true)"
+    fi
+    if [[ -z "${MONTHLY_PLAN_ID:-}" ]]; then
         log_step "Creating MYUSD monthly plan ($MONTHLY_PRICE / $MONTHLY_DURATION_MS ms)"
         MONTHLY_PLAN_ID="$(create_myusd_plan "$MONTHLY_TITLE" "$MONTHLY_PRICE" "$MONTHLY_DURATION_MS")" || return 1
         log_session_use "MONTHLY_PLAN_ID" "$MONTHLY_PLAN_ID"
+        save_plans_session
+    else
+        log_step "Reusing monthly plan $MONTHLY_PLAN_ID"
+    fi
+    if [[ -z "${ANNUAL_PLAN_ID:-}" ]]; then
         log_step "Creating MYUSD annual plan ($ANNUAL_PRICE / $ANNUAL_DURATION_MS ms)"
         ANNUAL_PLAN_ID="$(create_myusd_plan "$ANNUAL_TITLE" "$ANNUAL_PRICE" "$ANNUAL_DURATION_MS")" || return 1
         log_session_use "ANNUAL_PLAN_ID" "$ANNUAL_PLAN_ID"
+        save_plans_session
+    else
+        log_step "Reusing annual plan $ANNUAL_PLAN_ID"
     fi
     log_session_use "DRIPDROP_PREMIUM_SERVICE_ID" "$DRIPDROP_PREMIUM_SERVICE_ID"
     save_plans_session

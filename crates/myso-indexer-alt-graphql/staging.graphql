@@ -6705,15 +6705,14 @@ type Profile implements Node {
 	sptHoldings(limit: Int, offset: Int): [SptHolding!]
 	"""
 	Personal SPT investment metrics (WAC). Not token price performance.
-	Returns null unless `SPT_RETURN_METRICS_ENABLED=1`.
 	"""
 	sptPortfolioMetrics: SptPortfolioMetrics
 	"""
-	Per-pool personal SPT positions. Returns empty unless `SPT_RETURN_METRICS_ENABLED=1`.
+	Per-pool personal SPT positions.
 	"""
 	sptPositionMetrics(limit: Int, offset: Int): [SptPositionMetrics!]
 	"""
-	Mark-to-market series for one personal position. Null unless `SPT_RETURN_METRICS_ENABLED=1`.
+	Mark-to-market series for one personal position.
 	"""
 	sptPositionTimeseries(poolId: String!, window: SptReturnWindow): [SptPositionTimeSeriesPoint!]
 	subAgent(derivedAddress: MySoAddress!): SubAgent
@@ -8001,7 +8000,6 @@ type Query {
 	topPerformingPromotions(limit: Int): [Promotion!]
 	"""
 	Personal SPT trader leaderboard. Window sorts use P/L / capital-at-risk, not delta lifetime ROI.
-	Returns empty unless `SPT_RETURN_METRICS_ENABLED=1`.
 	"""
 	traderReturnLeaderboard(window: SptReturnWindow, sort: TraderReturnSort, limit: Int, offset: Int): [TraderReturnLeaderboardEntry!]
 	"""
@@ -9090,7 +9088,7 @@ type SptHolding {
 	"""
 	blockedByViewer: Boolean
 	"""
-	Personal investment metrics for this holding. Null unless `SPT_RETURN_METRICS_ENABLED=1`.
+	Personal investment metrics for this holding.
 	"""
 	metrics: SptPositionMetrics
 	"""

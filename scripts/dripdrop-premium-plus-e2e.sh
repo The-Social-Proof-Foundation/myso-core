@@ -71,12 +71,10 @@ import_plans_session() {
 }
 
 import_myusd_from_orderbook() {
-    if [[ -n "${MYUSD_COIN_TYPE:-}" && -n "${MYUSD_TREASURY_CAP_ID:-}" ]]; then
-        return 0
+    if [[ -z "${MYUSD_TREASURY_CAP_ID:-}" && -f "$ORDERBOOK_SESSION" ]]; then
+        MYUSD_TREASURY_CAP_ID="$(awk -F= '/^MYUSD_TREASURY_CAP_ID=/{print $2; exit}' "$ORDERBOOK_SESSION" | tr -d "\"'")"
     fi
-    [[ -f "$ORDERBOOK_SESSION" ]] || return 0
-    # shellcheck disable=SC1090
-    source "$ORDERBOOK_SESSION"
+    MYUSD_COIN_TYPE="$(subscription_resolve_live_myusd_coin_type)" || return 1
 }
 
 pick_myusd_coin() {

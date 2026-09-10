@@ -9,6 +9,7 @@ pub mod config;
 pub mod crypto;
 pub mod deposit_addresses;
 pub mod deposit_bridge;
+pub mod deposit_callback;
 pub mod deposit_gas_manager;
 pub mod deposit_handler;
 pub mod deposit_monitor;

@@ -39,13 +39,6 @@ use myso_indexer_alt_social_schema::schema::{
 use myso_pg_db::{Db, DbArgs};
 use url::Url;
 
-fn spt_return_metrics_enabled() -> bool {
-    matches!(
-        std::env::var("SPT_RETURN_METRICS_ENABLED").as_deref(),
-        Ok("1") | Ok("true") | Ok("TRUE")
-    )
-}
-
 // All type definitions are in the types module and re-exported via pub use types::*
 
 #[derive(Clone)]
@@ -798,11 +791,6 @@ impl Reader {
         &self,
         address: &str,
     ) -> Result<serde_json::Value, crate::error::SocialError> {
-        if !spt_return_metrics_enabled() {
-            return Err(crate::error::SocialError::not_found(
-                "SPT return metrics disabled".to_string(),
-            ));
-        }
         let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
         let mut conn = self.db.connect().await?;
         let portfolio = myso_indexer_alt_social_reader::returns::get_user_spt_portfolio(
@@ -820,11 +808,6 @@ impl Reader {
         limit: i64,
         offset: i64,
     ) -> Result<serde_json::Value, crate::error::SocialError> {
-        if !spt_return_metrics_enabled() {
-            return Err(crate::error::SocialError::not_found(
-                "SPT return metrics disabled".to_string(),
-            ));
-        }
         let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
         let mut conn = self.db.connect().await?;
         let rows = myso_indexer_alt_social_reader::returns::get_user_spt_positions(
@@ -841,11 +824,6 @@ impl Reader {
         pool_id: &str,
         window: &str,
     ) -> Result<serde_json::Value, crate::error::SocialError> {
-        if !spt_return_metrics_enabled() {
-            return Err(crate::error::SocialError::not_found(
-                "SPT return metrics disabled".to_string(),
-            ));
-        }
         let w = myso_indexer_alt_social_reader::SptReturnWindow::parse(window)
             .unwrap_or(myso_indexer_alt_social_reader::SptReturnWindow::Days7);
         let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
@@ -865,16 +843,10 @@ impl Reader {
         limit: i64,
         offset: i64,
     ) -> Result<serde_json::Value, crate::error::SocialError> {
-        if !spt_return_metrics_enabled() {
-            return Err(crate::error::SocialError::not_found(
-                "SPT return metrics disabled".to_string(),
-            ));
-        }
         let w = myso_indexer_alt_social_reader::SptReturnWindow::parse(window)
             .unwrap_or(myso_indexer_alt_social_reader::SptReturnWindow::Days7);
-        let s = myso_indexer_alt_social_reader::TraderReturnSort::parse(sort).unwrap_or(
-            myso_indexer_alt_social_reader::TraderReturnSort::HighestWindowReturnPct,
-        );
+        let s = myso_indexer_alt_social_reader::TraderReturnSort::parse(sort)
+            .unwrap_or(myso_indexer_alt_social_reader::TraderReturnSort::HighestWindowReturnPct);
         let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
         let mut conn = self.db.connect().await?;
         let rows = myso_indexer_alt_social_reader::returns::get_trader_return_leaderboard(

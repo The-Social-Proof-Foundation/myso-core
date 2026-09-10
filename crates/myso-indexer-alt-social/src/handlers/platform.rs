@@ -8,7 +8,7 @@ use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformConfig, NewPlatformEvent,
     NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
-    NewPlatformTreasuryWithdrawal,
+    NewPlatformTreasuryWithdrawal, NewProfileBadge, NewWalletBadgeSelection,
 };
 use myso_indexer_alt_social_schema::platform_permissions::ALL_MODERATOR_EXTENSION_PERMISSIONS;
 
@@ -146,6 +146,8 @@ struct PlatformCreatedEvent {
     quorum_votes: Option<u64>,
     #[serde(default)]
     moderators_group_id: Option<String>,
+    #[serde(default)]
+    badge_ledger_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -336,6 +338,15 @@ pub fn handle_platform_event(
         "PlatformConfigUpdatedEvent" => {
             process_platform_config_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
+        "SharedBadgeAssignedEvent" => {
+            process_shared_badge_assigned_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "SharedBadgeRevokedEvent" => {
+            process_shared_badge_revoked_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "SharedBadgeExtendedEvent" => process_shared_badge_extended_event(data, event_id),
+        "SharedBadgeSelectedEvent" => process_shared_badge_selected_event(data),
+        "EcosystemBadgeLedgerSelectedEvent" => process_ecosystem_badge_ledger_selected_event(data),
         _ => None,
     }
 }
@@ -371,6 +382,131 @@ fn process_platform_config_updated_event(
         transaction_id: event_id.to_string(),
     };
     Some(vec![SocialEventRow::PlatformConfig(row)])
+}
+
+fn process_shared_badge_assigned_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let owner = data.get("owner")?.as_str()?.to_string();
+    let badge_id = data.get("badge_id")?.as_str()?.to_string();
+    let assigned_at = common::json_field_as_i64(data.get("assigned_at")).unwrap_or(0);
+    let expires_at = common::json_field_as_i64(data.get("expires_at")).unwrap_or(0);
+    let ms = common::chain_timestamp_ms(Some(assigned_at), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
+    let badge = NewProfileBadge {
+        profile_id: None,
+        wallet_address: Some(owner),
+        badge_kind: "platform".to_string(),
+        expires_at: if expires_at == 0 {
+            None
+        } else {
+            Some(expires_at)
+        },
+        badge_id,
+        badge_name: data
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        badge_description: data
+            .get("description")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        badge_media_url: data
+            .get("media_url")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        badge_icon_url: data
+            .get("icon_url")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        platform_id: data
+            .get("platform_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        assigned_by: data
+            .get("assigned_by")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        assigned_at,
+        revoked: false,
+        revoked_at: None,
+        revoked_by: None,
+        badge_type: common::json_field_as_i64(data.get("badge_type")).unwrap_or(0) as i16,
+        transaction_id: event_id.to_string(),
+        time: now,
+    };
+    Some(vec![SocialEventRow::ProfileBadge(badge)])
+}
+
+fn process_shared_badge_revoked_event(
+    data: &serde_json::Value,
+    _event_id: &str,
+    _checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    Some(vec![SocialEventRow::ProfileBadgeWalletRevoke {
+        wallet_address: data.get("owner")?.as_str()?.to_string(),
+        badge_id: data.get("badge_id")?.as_str()?.to_string(),
+        revoked_at: common::json_field_as_i64(data.get("revoked_at")).unwrap_or(0),
+        revoked_by: data
+            .get("revoked_by")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string(),
+    }])
+}
+
+fn process_shared_badge_extended_event(
+    data: &serde_json::Value,
+    _event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let expires_at = common::json_field_as_i64(data.get("expires_at")).unwrap_or(0);
+    Some(vec![SocialEventRow::PlatformBadgeExtend {
+        wallet_address: data.get("owner")?.as_str()?.to_string(),
+        badge_id: data.get("badge_id")?.as_str()?.to_string(),
+        expires_at: if expires_at == 0 {
+            None
+        } else {
+            Some(expires_at)
+        },
+    }])
+}
+
+fn process_shared_badge_selected_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
+    let badge_id = data.get("badge_id")?.as_str()?.to_string();
+    let selected_at = common::json_field_as_i64(data.get("selected_at")).unwrap_or(0);
+    Some(vec![SocialEventRow::WalletBadgeSelection(
+        NewWalletBadgeSelection {
+            wallet_address: data.get("owner")?.as_str()?.to_string(),
+            badge_id: if badge_id.is_empty() {
+                None
+            } else {
+                Some(badge_id)
+            },
+            ecosystem_badge_id: None,
+            selected_at,
+            ecosystem_selected_at: None,
+        },
+    )])
+}
+
+fn process_ecosystem_badge_ledger_selected_event(
+    data: &serde_json::Value,
+) -> Option<Vec<SocialEventRow>> {
+    let badge_id = data.get("badge_id")?.as_str()?.to_string();
+    Some(vec![SocialEventRow::WalletEcosystemBadgeSelection {
+        wallet_address: data.get("owner")?.as_str()?.to_string(),
+        ecosystem_badge_id: if badge_id.is_empty() {
+            None
+        } else {
+            Some(badge_id)
+        },
+        ecosystem_selected_at: common::json_field_as_i64(data.get("selected_at")).unwrap_or(0),
+    }])
 }
 
 fn normalize_dao_fields(
@@ -462,6 +598,7 @@ fn process_platform_created_event(
         redirect_uri: ev.redirect_uri.filter(|s| !s.is_empty()),
         developer_address: developer.clone(),
         moderators_group_id: ev.moderators_group_id.clone(),
+        badge_ledger_id: ev.badge_ledger_id.clone(),
         terms_of_service: Some(ev.terms_of_service),
         privacy_policy: Some(ev.privacy_policy),
         platform_names: Some(serde_json::to_value(&ev.platforms).unwrap_or_default()),

@@ -6,7 +6,7 @@
 use move_core_types::account_address::AccountAddress;
 use move_core_types::ident_str;
 use myso_indexer_alt_framework::types::full_checkpoint_content::{
-    Checkpoint, ExecutedTransaction, ObjectSet,
+    ExecutedTransaction, ObjectSet,
 };
 use myso_indexer_alt_social_schema::models::NewMyDataData;
 use myso_types::id::UID;
@@ -183,14 +183,6 @@ pub(crate) fn subscription_expiries_from_tx(
         }
     }
     expiries
-}
-
-pub(crate) fn process_mydata_objects_from_checkpoint(checkpoint: &Checkpoint) -> Vec<MyDataRow> {
-    let mut rows = Vec::new();
-    for tx in &checkpoint.transactions {
-        rows.extend(process_mydata_objects_from_tx(&checkpoint.object_set, tx));
-    }
-    rows
 }
 
 #[cfg(test)]

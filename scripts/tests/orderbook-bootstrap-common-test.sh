@@ -111,4 +111,135 @@ if orderbook_filter_mm_pools_shared 2>/dev/null; then
     exit 1
 fi
 
+assert_eq "MYSO_MYUSD" "$(orderbook_normalize_mm_pool_filter MYSO)" "MYSO alias should normalize"
+assert_eq "BTC_MYUSD" "$(orderbook_normalize_mm_pool_filter btc_myusd)" "btc_myusd should normalize"
+assert_eq "" "$(orderbook_normalize_mm_pool_filter '')" "empty filter stays empty"
+if orderbook_normalize_mm_pool_filter NOPE >/dev/null 2>&1; then
+    echo "unknown pool filter must fail" >&2
+    exit 1
+fi
+
+MM_POOL_FILTER=MYSO_MYUSD
+MM_POOLS="$(jq -nc \
+    --arg myso "$MYSO_MYUSD_POOL_ID" \
+    --arg btc "$BTC_MYUSD_POOL_ID" \
+    --arg eth "$ETH_MYUSD_POOL_ID" \
+    '[{poolId: $myso}, {poolId: $btc}, {poolId: $eth}]')"
+orderbook_filter_mm_pools_shared
+assert_eq 1 "$(echo "$MM_POOLS" | jq -r length)" "MYSO filter should keep one pool"
+assert_eq "$MYSO_MYUSD_POOL_ID" "$(echo "$MM_POOLS" | jq -r '.[0].poolId')" \
+    "MYSO filter should keep the MYSO pool id"
+
+MM_POOL_FILTER=MYSO_MYUSD
+MM_POOLS="$(jq -nc --arg myso "$MYSO_MYUSD_POOL_ID" '[{poolId: $myso}]')"
+orderbook_filter_mm_pools_shared
+assert_eq 1 "$(echo "$MM_POOLS" | jq -r length)" \
+    "MYSO-only MM_POOLS should pass when filter is MYSO_MYUSD"
+
+MM_POOL_FILTER=
+
+if orderbook_should_adjust_tick 1 1 1; then
+    echo "should not adjust when on-chain tick already matches" >&2
+    exit 1
+fi
+if orderbook_should_adjust_tick '' 1 1; then
+    echo "should not adjust when catalog tick already matches and on-chain is unknown" >&2
+    exit 1
+fi
+if ! orderbook_should_adjust_tick 1000 1 ''; then
+    echo "should adjust when on-chain tick differs" >&2
+    exit 1
+fi
+if ! orderbook_should_adjust_tick '' 1 ''; then
+    echo "should adjust when neither on-chain nor catalog tick is known" >&2
+    exit 1
+fi
+
+MM_POOLS="$(jq -nc --arg myso "$MYSO_MYUSD_POOL_ID" '[{poolId: $myso}]')"
+if orderbook_mm_pools_include BTC_MYUSD; then
+    echo "MYSO-only MM_POOLS must not include BTC_MYUSD" >&2
+    exit 1
+fi
+if ! orderbook_mm_pools_include MYSO_MYUSD; then
+    echo "MYSO-only MM_POOLS must include MYSO_MYUSD" >&2
+    exit 1
+fi
+
+myso_only_status='{"updates":1,"prices":{"myso":"$0.0047","btc":null,"eth":null}}'
+if ! orderbook_oracle_status_is_live_for_mm "$myso_only_status"; then
+    echo "MYSO-only live check should pass without a BTC tick" >&2
+    exit 1
+fi
+if orderbook_oracle_status_is_live_for_mm '{"updates":0,"prices":{"myso":"$0.0047"}}'; then
+    echo "live check must require updates>=1" >&2
+    exit 1
+fi
+MM_POOLS="$(jq -nc --arg btc "$BTC_MYUSD_POOL_ID" '[{poolId: $btc}]')"
+if orderbook_oracle_status_is_live_for_mm "$myso_only_status"; then
+    echo "BTC MM run must not pass on a MYSO-only status" >&2
+    exit 1
+fi
+if ! orderbook_oracle_status_is_live_for_mm '{"updates":1,"prices":{"btc":"$97000.00"}}'; then
+    echo "BTC live check should pass when BTC > 50000" >&2
+    exit 1
+fi
+
+assert_eq 2100000000 "$(orderbook_mm_myusd_have 104486616 1995513384)" \
+    "have must include BalanceManager MYUSD"
+if orderbook_should_mint_mm_myusd 2100000000 2100000000; then
+    echo "should not mint when wallet+BM already covers required" >&2
+    exit 1
+fi
+if ! orderbook_should_mint_mm_myusd 104486616 2100000000; then
+    echo "should mint when only wallet is counted and it is short" >&2
+    exit 1
+fi
+assert_eq 42 "$(orderbook_parse_u64_return '{"commandResults":[{"returnValues":[{"json":42}]}]}')" \
+    "dry-run u64 return should parse"
+
+assert_eq true "$(orderbook_pool_whitelist_flag MYSO_MYUSD)" \
+    "MYSO/MYUSD must be created whitelisted"
+assert_eq false "$(orderbook_pool_whitelist_flag BTC_MYUSD)" \
+    "BTC/MYUSD must not be whitelisted"
+assert_eq false "$(orderbook_pool_whitelist_flag ETH_MYUSD)" \
+    "ETH/MYUSD must not be whitelisted"
+
+empty_mm='{"pools":[]}'
+empty_catalog='[]'
+if ! orderbook_should_skip_myso_fee_prices "$empty_mm" "$empty_catalog"; then
+    echo "empty MYSO book must skip fee price points" >&2
+    exit 1
+fi
+
+two_sided_mm="$(jq -nc '{
+    pools: [{
+        pair: "MYSO/MYUSD",
+        orders: [
+            {isBid: true, price: 0.0046, quantity: 1},
+            {isBid: false, price: 0.0048, quantity: 1}
+        ]
+    }]
+}')"
+if orderbook_should_skip_myso_fee_prices "$two_sided_mm" "$empty_catalog"; then
+    echo "two-sided MM MYSO book must not skip fee price points" >&2
+    exit 1
+fi
+
+one_sided_mm="$(jq -nc '{
+    pools: [{
+        pair: "MYSO/MYUSD",
+        orders: [{isBid: true, price: 0.0046, quantity: 1}]
+    }]
+}')"
+if ! orderbook_should_skip_myso_fee_prices "$one_sided_mm" "$empty_catalog"; then
+    echo "one-sided MYSO book must skip fee price points" >&2
+    exit 1
+fi
+
+two_sided_catalog="$(jq -nc '[{trading_pairs:"MYSO_MYUSD",highest_bid:"0.0046",lowest_ask:"0.0048"}]')"
+if orderbook_should_skip_myso_fee_prices "$empty_mm" "$two_sided_catalog"; then
+    echo "catalog two-sided MYSO book must not skip fee price points" >&2
+    exit 1
+fi
+
 echo "orderbook bootstrap helper tests passed"

@@ -23,16 +23,16 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     default_spt_config, merge_spt_config, InsertSptConfig, NewSocialProofTokensEvent,
     NewSptConfigEvent, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
-    NewSptReservationPool, NewSptRevenue, NewSptSwap, NewSptTransfer, NewSptTransaction,
-    NewUnifiedRevenue, NewUserSptPositionEvent, NewUserSptPositionSnapshot, UserSptPositionState,
-    ProfileUpdateSet, RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
+    NewSptReservationPool, NewSptRevenue, NewSptSwap, NewSptTransaction, NewSptTransfer,
+    NewUnifiedRevenue, NewUserSptPositionEvent, NewUserSptPositionSnapshot, ProfileUpdateSet,
+    UserSptPositionState, RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET,
     REVENUE_TYPE_SPT_CREATOR_FEE, REVENUE_TYPE_SPT_PLATFORM_FEE, REVENUE_TYPE_SPT_TREASURY_FEE,
     TOKEN_TYPE_POST, TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
 };
 use myso_indexer_alt_social_schema::schema::{
     ecosystem_treasury, posts, profiles, spt_config, spt_events, spt_holdings, spt_pools,
-    spt_reservation_pools, spt_reservations, spt_revenue, spt_swaps, spt_transfers,
-    spt_transactions, unified_revenue, user_spt_position_events, user_spt_position_snapshots,
+    spt_reservation_pools, spt_reservations, spt_revenue, spt_swaps, spt_transactions,
+    spt_transfers, unified_revenue, user_spt_position_events, user_spt_position_snapshots,
     user_spt_position_state,
 };
 
@@ -45,9 +45,7 @@ use super::spt;
 use super::ProfileUpdate;
 
 use crate::metrics::SocialMetrics;
-use crate::position_accounting::{
-    apply_spt_position_event, PositionEvent, PositionEventKind,
-};
+use crate::position_accounting::{apply_spt_position_event, PositionEvent, PositionEventKind};
 
 const SPT_MODULES: &[&str] = &["social_proof_tokens", "spt"];
 
@@ -65,6 +63,26 @@ VALUES (
     $4,
     $5
 )
+"#;
+
+const SPT_POOL_MARK_UPSERT_SQL: &str = r#"
+INSERT INTO spt_pool_mark (pool_id, price, circulating_supply, time, transaction_id)
+VALUES (
+    $1,
+    $2,
+    COALESCE(
+        (SELECT circulating_supply FROM spt_pools WHERE pool_id = $1 ORDER BY time DESC LIMIT 1),
+        $3
+    ),
+    $4,
+    $5
+)
+ON CONFLICT (pool_id) DO UPDATE SET
+    price = EXCLUDED.price,
+    circulating_supply = EXCLUDED.circulating_supply,
+    time = EXCLUDED.time,
+    transaction_id = EXCLUDED.transaction_id
+WHERE EXCLUDED.time >= spt_pool_mark.time
 "#;
 
 /// Platform object id for revenue attribution (treasury container), plus optional linked platform id.
@@ -739,9 +757,8 @@ async fn apply_and_persist_position(
         .first(conn)
         .await
         .optional()?;
-    let mut state = existing.unwrap_or_else(|| {
-        UserSptPositionState::empty(holder.to_string(), pool_id.to_string())
-    });
+    let mut state = existing
+        .unwrap_or_else(|| UserSptPositionState::empty(holder.to_string(), pool_id.to_string()));
     apply_spt_position_event(&mut state, &event);
     state.last_event_time = Some(event_time);
     state.last_tx_id = Some(transaction_id.to_string());
@@ -905,11 +922,9 @@ impl Handler for SptHandler {
                 SptRow::SptTransfer(t) => {
                     let mut xfer = t.clone();
                     if xfer.organization_id.is_none() {
-                        xfer.organization_id = resolve_organization_id_for_derived_address(
-                            conn,
-                            &xfer.from_address,
-                        )
-                        .await?;
+                        xfer.organization_id =
+                            resolve_organization_id_for_derived_address(conn, &xfer.from_address)
+                                .await?;
                     }
                     total += diesel::insert_into(spt_transfers::table)
                         .values(&xfer)
@@ -974,6 +989,14 @@ impl Handler for SptHandler {
                 }
                 SptRow::SptPriceHistory(ph) => {
                     total += diesel::sql_query(SPT_PRICE_HISTORY_INSERT_SQL)
+                        .bind::<Text, _>(&ph.pool_id)
+                        .bind::<BigInt, _>(ph.price)
+                        .bind::<BigInt, _>(ph.circulating_supply)
+                        .bind::<Timestamptz, _>(ph.time)
+                        .bind::<Text, _>(&ph.transaction_id)
+                        .execute(conn)
+                        .await?;
+                    total += diesel::sql_query(SPT_POOL_MARK_UPSERT_SQL)
                         .bind::<Text, _>(&ph.pool_id)
                         .bind::<BigInt, _>(ph.price)
                         .bind::<BigInt, _>(ph.circulating_supply)
@@ -1101,13 +1124,16 @@ impl Handler for SptHandler {
                                     .set(&reserved)
                                     .execute(conn)
                                     .await?;
-                                diesel::delete(user_spt_position_state::table.find((
-                                    holder_address.clone(),
-                                    reservation_pool_key.clone(),
-                                )))
+                                diesel::delete(
+                                    user_spt_position_state::table.find((
+                                        holder_address.clone(),
+                                        reservation_pool_key.clone(),
+                                    )),
+                                )
                                 .execute(conn)
                                 .await?;
-                                let circulating_supply = latest_circulating_supply(conn, pool_id).await?;
+                                let circulating_supply =
+                                    latest_circulating_supply(conn, pool_id).await?;
                                 diesel::insert_into(user_spt_position_snapshots::table)
                                     .values(NewUserSptPositionSnapshot {
                                         time: *time,
@@ -1844,7 +1870,7 @@ mod spt_platform_resolution_tests {
 
 #[cfg(test)]
 mod spt_price_history_insert_sql_tests {
-    use super::SPT_PRICE_HISTORY_INSERT_SQL;
+    use super::{SPT_POOL_MARK_UPSERT_SQL, SPT_PRICE_HISTORY_INSERT_SQL};
 
     #[test]
     fn insert_uses_coalesce_from_latest_spt_pools_row() {
@@ -1853,6 +1879,13 @@ mod spt_price_history_insert_sql_tests {
         assert!(
             SPT_PRICE_HISTORY_INSERT_SQL.contains("WHERE pool_id = $1 ORDER BY time DESC LIMIT 1")
         );
+    }
+
+    #[test]
+    fn mark_upserts_on_pool_id_when_tick_is_newer() {
+        assert!(SPT_POOL_MARK_UPSERT_SQL.contains("INSERT INTO spt_pool_mark"));
+        assert!(SPT_POOL_MARK_UPSERT_SQL.contains("ON CONFLICT (pool_id) DO UPDATE"));
+        assert!(SPT_POOL_MARK_UPSERT_SQL.contains("EXCLUDED.time >= spt_pool_mark.time"));
     }
 }
 

@@ -57,6 +57,8 @@ pub struct DepositBridgeHandler {
     myso_client: Arc<MySoBridgeClient>,
     /// MySo bridge chain ID for DepositTxKey (MySo chain)
     myso_bridge_chain_id: u8,
+    deposit_callback_url: Option<String>,
+    deposit_callback_api_key: Option<String>,
 }
 
 impl DepositBridgeHandler {
@@ -71,6 +73,8 @@ impl DepositBridgeHandler {
         eth_bridge_chain_id: u8,
         myso_client: Arc<MySoBridgeClient>,
         myso_bridge_chain_id: u8,
+        deposit_callback_url: Option<String>,
+        deposit_callback_api_key: Option<String>,
     ) -> Self {
         Self {
             storage,
@@ -84,6 +88,8 @@ impl DepositBridgeHandler {
             token_address_to_id: Arc::new(RwLock::new(HashMap::new())),
             myso_client,
             myso_bridge_chain_id,
+            deposit_callback_url,
+            deposit_callback_api_key,
         }
     }
 
@@ -429,12 +435,65 @@ impl DepositBridgeHandler {
                     event.amount.to_string(),
                 )?;
                 info!(?tx_digest, "MySo→EVM deposit bridged successfully");
+                self.notify_deposit_bridge_complete(&event, tx_digest, target_address);
                 Ok(tx_digest)
             }
             myso_json_rpc_types::MySoExecutionStatus::Failure { error } => Err(
                 BridgeError::Generic(format!("Bridge transaction failed: {}", error)),
             ),
         }
+    }
+
+    fn notify_deposit_bridge_complete(
+        &self,
+        event: &MySoDepositEvent,
+        bridge_tx_digest: TransactionDigest,
+        target_address: [u8; 20],
+    ) {
+        let deposit_key = DepositAddressKey::from_myso(event.recipient);
+        let stored = self
+            .storage
+            .get_recipient_for_deposit(&deposit_key)
+            .ok()
+            .flatten();
+        let url = stored
+            .as_ref()
+            .and_then(|r| r.deposit_callback_url.clone())
+            .or_else(|| self.deposit_callback_url.clone());
+        let Some(url) = url else {
+            return;
+        };
+        let api_key = stored
+            .and_then(|r| r.deposit_callback_api_key)
+            .or_else(|| self.deposit_callback_api_key.clone());
+        let payload = serde_json::json!({
+            "mysoSendAddress": format!("{}", event.recipient),
+            "mysoDepositTxDigest": event.tx_digest.to_string(),
+            "bridgeTxDigest": bridge_tx_digest.to_string(),
+            "evmDestinationAddress": format!("{:?}", EthAddress::from_slice(&target_address)),
+            "amount": event.amount.to_string(),
+            "finality": "confirmed",
+        });
+        tokio::spawn(async move {
+            let mut request = reqwest::Client::new().post(url).json(&payload);
+            if let Some(key) = api_key {
+                request = request.header("x-internal-api-key", key);
+            }
+            match request.send().await {
+                Ok(response) if response.status().is_success() => {
+                    info!("Deposit bridge-complete callback succeeded");
+                }
+                Ok(response) => {
+                    warn!(
+                        status = %response.status(),
+                        "Deposit bridge-complete callback rejected"
+                    );
+                }
+                Err(err) => {
+                    warn!(?err, "Deposit bridge-complete callback failed");
+                }
+            }
+        });
     }
 
     /// Find a gas coin for the address with balance >= amount

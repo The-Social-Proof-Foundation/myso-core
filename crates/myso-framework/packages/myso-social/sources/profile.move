@@ -756,6 +756,10 @@ module social_contracts::profile {
         string::utf8(ascii::into_bytes(ascii_str))
     }
 
+    public fun is_ecosystem_badge_id(badge_id: &String): bool {
+        is_ecosystem_badge(badge_id)
+    }
+
     fun is_ecosystem_badge(badge_id: &String): bool {
         let bytes = string::as_bytes(badge_id);
         let prefix = ECOSYSTEM_BADGE_PREFIX;

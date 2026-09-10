@@ -48,6 +48,12 @@ pub struct DepositRegistration {
     pub created_at: u64,
     /// Last time this deposit address was used
     pub last_used: Option<u64>,
+    /// Platform completion webhook (HTTPS). Optional for older RocksDB rows.
+    #[serde(default)]
+    pub deposit_callback_url: Option<String>,
+    /// Optional shared secret sent as `x-internal-api-key`.
+    #[serde(default)]
+    pub deposit_callback_api_key: Option<String>,
 }
 
 /// Key for deposit address lookups (can be EVM or MySo address)
@@ -85,6 +91,10 @@ pub struct RecipientInfo {
     pub source_address: Vec<u8>,
     /// Registration type
     pub registration_type: RegistrationType,
+    #[serde(default)]
+    pub deposit_callback_url: Option<String>,
+    #[serde(default)]
+    pub deposit_callback_api_key: Option<String>,
 }
 
 /// Key for tracking processed deposits
@@ -411,6 +421,8 @@ impl BridgeOrchestratorTables {
             hd_index: registration.hd_index,
             source_address: source_key.address,
             registration_type: registration.registration_type,
+            deposit_callback_url: registration.deposit_callback_url.clone(),
+            deposit_callback_api_key: registration.deposit_callback_api_key.clone(),
         };
 
         self.deposit_to_recipient
@@ -418,6 +430,56 @@ impl BridgeOrchestratorTables {
             .map_err(|e| {
                 BridgeError::StorageError(format!("Failed to store recipient info: {:?}", e))
             })?;
+
+        Ok(())
+    }
+
+    /// Update the completion callback on an existing registration + recipient row.
+    pub(crate) fn update_deposit_callback(
+        &self,
+        source_key: &DepositAddressKey,
+        deposit_address: &[u8],
+        callback_url: Option<String>,
+        callback_api_key: Option<String>,
+    ) -> BridgeResult<()> {
+        let mut registrations = self
+            .deposit_registrations
+            .get(source_key)
+            .map_err(|e| {
+                BridgeError::StorageError(format!("Failed to get registrations: {:?}", e))
+            })?
+            .unwrap_or_default();
+
+        let Some(existing) = registrations
+            .iter_mut()
+            .find(|reg| reg.deposit_address == deposit_address)
+        else {
+            return Ok(());
+        };
+
+        existing.deposit_callback_url = callback_url.clone();
+        existing.deposit_callback_api_key = callback_api_key.clone();
+
+        self.deposit_registrations
+            .insert(source_key, &registrations)
+            .map_err(|e| {
+                BridgeError::StorageError(format!("Failed to store registration: {:?}", e))
+            })?;
+
+        let deposit_key = DepositAddressKey {
+            address: deposit_address.to_vec(),
+        };
+        if let Some(mut recipient) = self.deposit_to_recipient.get(&deposit_key).map_err(|e| {
+            BridgeError::StorageError(format!("Failed to get recipient info: {:?}", e))
+        })? {
+            recipient.deposit_callback_url = callback_url;
+            recipient.deposit_callback_api_key = callback_api_key;
+            self.deposit_to_recipient
+                .insert(&deposit_key, &recipient)
+                .map_err(|e| {
+                    BridgeError::StorageError(format!("Failed to store recipient info: {:?}", e))
+                })?;
+        }
 
         Ok(())
     }

@@ -1395,8 +1395,7 @@ pub(crate) async fn get_spt_user_reservations(
     Ok(rows
         .into_iter()
         .map(|r| {
-            let (filled, remaining) =
-                reservation_progress(r.total_reserved, r.required_threshold);
+            let (filled, remaining) = reservation_progress(r.total_reserved, r.required_threshold);
             crate::reader::SptUserHoldingItem {
                 pool_id: r.pool_id,
                 amount: r.amount,

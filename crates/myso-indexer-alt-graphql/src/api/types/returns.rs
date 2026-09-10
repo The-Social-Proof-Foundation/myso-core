@@ -12,13 +12,6 @@ use myso_indexer_alt_social_reader::{
     TraderReturnLeaderboardEntry as DbLeader, TraderReturnSort as DbSort,
 };
 
-pub fn spt_return_metrics_enabled() -> bool {
-    matches!(
-        std::env::var("SPT_RETURN_METRICS_ENABLED").as_deref(),
-        Ok("1") | Ok("true") | Ok("TRUE")
-    )
-}
-
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 #[graphql(rename_items = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum SptReturnWindow {

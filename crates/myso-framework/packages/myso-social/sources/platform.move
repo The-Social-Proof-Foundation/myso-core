@@ -52,6 +52,10 @@ module social_contracts::platform {
     const EInvalidCoverPhotoUrl: u64 = 17;
     const ETooManyMediaPreviews: u64 = 18;
     const EInvalidMediaPreviewUrl: u64 = 19;
+    const ELedgerPlatformMismatch: u64 = 20;
+    const EGrantNotFound: u64 = 21;
+    const EGrantInactive: u64 = 22;
+    const ENotEcosystemBadge: u64 = 23;
 
     /// Maximum lengths for badge fields
     const MAX_BADGE_NAME_LENGTH: u64 = 100;
@@ -221,8 +225,35 @@ module social_contracts::platform {
         governance_registry_id: Option<ID>,
         /// Optional OAuth redirect URI for the platform
         redirect_uri: Option<String>,
+        /// Shared wallet-keyed platform badge ledger created with this platform
+        badge_ledger_id: ID,
         /// Version for upgrades
         version: u64,
+    }
+
+    /// Shared ledger of admin-managed platform badges, keyed by wallet then badge_id.
+    public struct PlatformBadgeLedger has key {
+        id: UID,
+        platform_id: address,
+        version: u64,
+        grants: Table<address, Table<String, PlatformBadge>>,
+        selections: Table<address, String>,
+        ecosystem_selections: Table<address, String>,
+    }
+
+    /// Admin-managed status badge (Premium+, Verified, Moderator, etc.).
+    public struct PlatformBadge has store, drop {
+        badge_id: String,
+        name: String,
+        description: String,
+        media_url: String,
+        icon_url: String,
+        platform_id: address,
+        issued_at: u64,
+        issued_by: address,
+        badge_type: u8,
+        expires_at: Option<u64>,
+        revoked: bool,
     }
 
     /// Platform registry that keeps track of all platforms
@@ -267,6 +298,56 @@ module social_contracts::platform {
         quorum_votes: Option<u64>,
         moderators_group_id: ID,
         redirect_uri: Option<String>,
+        badge_ledger_id: ID,
+    }
+
+    /// Emitted when a wallet-keyed platform badge is assigned or re-assigned
+    public struct SharedBadgeAssignedEvent has copy, drop {
+        owner: address,
+        badge_id: String,
+        name: String,
+        description: String,
+        media_url: String,
+        icon_url: String,
+        platform_id: address,
+        issued_at: u64,
+        issued_by: address,
+        badge_type: u8,
+        expires_at: u64,
+        assigned_by: address,
+        assigned_at: u64,
+    }
+
+    /// Emitted when a wallet-keyed platform badge is revoked
+    public struct SharedBadgeRevokedEvent has copy, drop {
+        owner: address,
+        badge_id: String,
+        platform_id: address,
+        revoked_by: address,
+        revoked_at: u64,
+    }
+
+    /// Emitted when only expiry is updated on a wallet-keyed platform badge
+    public struct SharedBadgeExtendedEvent has copy, drop {
+        owner: address,
+        badge_id: String,
+        expires_at: u64,
+        extended_by: address,
+        extended_at: u64,
+    }
+
+    /// Emitted when the wallet owner selects or clears a platform badge
+    public struct SharedBadgeSelectedEvent has copy, drop {
+        owner: address,
+        badge_id: String,
+        selected_at: u64,
+    }
+
+    /// Emitted when the wallet owner selects or clears an ecosystem badge display pick
+    public struct EcosystemBadgeLedgerSelectedEvent has copy, drop {
+        owner: address,
+        badge_id: String,
+        selected_at: u64,
     }
 
     /// Platform updated event
@@ -440,6 +521,8 @@ module social_contracts::platform {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
         let platform_id = object::new(ctx);
+        let platform_addr = object::uid_to_address(&platform_id);
+        let badge_ledger_id = share_badge_ledger(platform_addr, ctx);
         let developer = tx_context::sender(ctx);
         let now = clock::timestamp_ms(clock);
 
@@ -511,6 +594,7 @@ module social_contracts::platform {
             quorum_votes: actual_quorum_votes,
             governance_registry_id: option::none(),
             redirect_uri,
+            badge_ledger_id,
             version: upgrade::current_version(),
         };
 
@@ -641,6 +725,7 @@ module social_contracts::platform {
             quorum_votes: platform.quorum_votes,
             moderators_group_id,
             redirect_uri: platform.redirect_uri,
+            badge_ledger_id: platform.badge_ledger_id,
         });
         
         // Share platform as a shared object (publicly accessible)
@@ -1877,6 +1962,364 @@ module social_contracts::platform {
             
             i = i + 1;
         };
+    }
+
+    fun share_badge_ledger(platform_id: address, ctx: &mut TxContext): ID {
+        let ledger = PlatformBadgeLedger {
+            id: object::new(ctx),
+            platform_id,
+            version: upgrade::current_version(),
+            grants: table::new(ctx),
+            selections: table::new(ctx),
+            ecosystem_selections: table::new(ctx),
+        };
+        let ledger_id = object::id(&ledger);
+        transfer::share_object(ledger);
+        ledger_id
+    }
+
+    fun copy_string(s: &String): String {
+        string::utf8(*string::as_bytes(s))
+    }
+
+    fun compute_platform_badge_id(platform_id: address, badge_name: &String): String {
+        let mut badge_id = string::utf8(b"badge_");
+        string::append(&mut badge_id, myso::address::to_string(platform_id));
+        string::append(&mut badge_id, string::utf8(b"_"));
+        string::append(&mut badge_id, copy_string(badge_name));
+        badge_id
+    }
+
+    fun expires_at_or_zero(expires_at: &Option<u64>): u64 {
+        if (option::is_some(expires_at)) {
+            *option::borrow(expires_at)
+        } else {
+            0
+        }
+    }
+
+    fun grant_is_active(grant: &PlatformBadge, now: u64): bool {
+        if (grant.revoked) {
+            return false
+        };
+        if (option::is_some(&grant.expires_at)) {
+            return *option::borrow(&grant.expires_at) > now
+        };
+        true
+    }
+
+    fun assert_ledger_matches(platform: &Platform, ledger: &PlatformBadgeLedger) {
+        assert!(ledger.platform_id == object::uid_to_address(&platform.id), ELedgerPlatformMismatch);
+        assert!(object::id(ledger) == platform.badge_ledger_id, ELedgerPlatformMismatch);
+    }
+
+    fun borrow_grant_mut(
+        ledger: &mut PlatformBadgeLedger,
+        owner: address,
+        badge_id: &String,
+    ): &mut PlatformBadge {
+        assert!(table::contains(&ledger.grants, owner), EGrantNotFound);
+        let inner = table::borrow_mut(&mut ledger.grants, owner);
+        assert!(table::contains(inner, *badge_id), EGrantNotFound);
+        table::borrow_mut(inner, *badge_id)
+    }
+
+    fun borrow_grant(
+        ledger: &PlatformBadgeLedger,
+        owner: address,
+        badge_id: &String,
+    ): &PlatformBadge {
+        assert!(table::contains(&ledger.grants, owner), EGrantNotFound);
+        let inner = table::borrow(&ledger.grants, owner);
+        assert!(table::contains(inner, *badge_id), EGrantNotFound);
+        table::borrow(inner, *badge_id)
+    }
+
+    public fun badge_ledger_id(platform: &Platform): ID {
+        platform.badge_ledger_id
+    }
+
+    public fun ledger_platform_id(ledger: &PlatformBadgeLedger): address {
+        ledger.platform_id
+    }
+
+    public fun has_active_platform_badge(
+        ledger: &PlatformBadgeLedger,
+        owner: address,
+        badge_id: &String,
+        clock: &Clock,
+    ): bool {
+        if (!table::contains(&ledger.grants, owner)) {
+            return false
+        };
+        let inner = table::borrow(&ledger.grants, owner);
+        if (!table::contains(inner, *badge_id)) {
+            return false
+        };
+        grant_is_active(table::borrow(inner, *badge_id), clock::timestamp_ms(clock))
+    }
+
+    public fun selected_platform_badge_id(ledger: &PlatformBadgeLedger, owner: address): Option<String> {
+        if (table::contains(&ledger.selections, owner)) {
+            option::some(*table::borrow(&ledger.selections, owner))
+        } else {
+            option::none()
+        }
+    }
+
+    public fun selected_ecosystem_badge_id(ledger: &PlatformBadgeLedger, owner: address): Option<String> {
+        if (table::contains(&ledger.ecosystem_selections, owner)) {
+            option::some(*table::borrow(&ledger.ecosystem_selections, owner))
+        } else {
+            option::none()
+        }
+    }
+
+    /// Assign a wallet-keyed platform badge. No Profile required.
+    public fun assign_shared_badge(
+        platform_registry: &PlatformRegistry,
+        config: &PlatformConfig,
+        platform: &Platform,
+        group: &PermissionedGroup<PlatformPackage>,
+        ledger: &mut PlatformBadgeLedger,
+        recipient: address,
+        badge_name: String,
+        badge_description: String,
+        badge_media_url: String,
+        badge_icon_url: String,
+        badge_type: u8,
+        expires_at: Option<u64>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        assert!(ledger.version == upgrade::current_version(), EWrongVersion);
+        assert_ledger_matches(platform, ledger);
+
+        let caller = tx_context::sender(ctx);
+        assert_moderator_permission<PlatformBadgeAdmin>(platform, group, caller);
+
+        let platform_id = object::uid_to_address(&platform.id);
+        assert!(is_approved(platform_registry, platform_id), EUnauthorized);
+
+        assert!(badge_type >= 1 && badge_type <= 100, EInvalidBadgeType);
+        assert!(string::length(&badge_name) > 0 && string::length(&badge_name) <= config.max_badge_name_length, EBadgeNameTooLong);
+        assert!(string::length(&badge_description) <= config.max_badge_description_length, EBadgeDescriptionTooLong);
+        validate_badge_urls(&badge_media_url, &badge_icon_url);
+
+        let now = clock::timestamp_ms(clock);
+        let badge_id = compute_platform_badge_id(platform_id, &badge_name);
+
+        if (!table::contains(&ledger.grants, recipient)) {
+            table::add(&mut ledger.grants, recipient, table::new(ctx));
+        };
+        let inner = table::borrow_mut(&mut ledger.grants, recipient);
+
+        if (table::contains(inner, badge_id)) {
+            let grant = table::borrow_mut(inner, badge_id);
+            grant.revoked = false;
+            grant.expires_at = expires_at;
+            grant.name = badge_name;
+            grant.description = badge_description;
+            grant.media_url = badge_media_url;
+            grant.icon_url = badge_icon_url;
+            grant.badge_type = badge_type;
+            event::emit(SharedBadgeAssignedEvent {
+                owner: recipient,
+                badge_id: copy_string(&grant.badge_id),
+                name: copy_string(&grant.name),
+                description: copy_string(&grant.description),
+                media_url: copy_string(&grant.media_url),
+                icon_url: copy_string(&grant.icon_url),
+                platform_id,
+                issued_at: grant.issued_at,
+                issued_by: grant.issued_by,
+                badge_type: grant.badge_type,
+                expires_at: expires_at_or_zero(&grant.expires_at),
+                assigned_by: caller,
+                assigned_at: now,
+            });
+        } else {
+            let grant = PlatformBadge {
+                badge_id: copy_string(&badge_id),
+                name: badge_name,
+                description: badge_description,
+                media_url: badge_media_url,
+                icon_url: badge_icon_url,
+                platform_id,
+                issued_at: now,
+                issued_by: caller,
+                badge_type,
+                expires_at,
+                revoked: false,
+            };
+            event::emit(SharedBadgeAssignedEvent {
+                owner: recipient,
+                badge_id: copy_string(&grant.badge_id),
+                name: copy_string(&grant.name),
+                description: copy_string(&grant.description),
+                media_url: copy_string(&grant.media_url),
+                icon_url: copy_string(&grant.icon_url),
+                platform_id,
+                issued_at: grant.issued_at,
+                issued_by: grant.issued_by,
+                badge_type: grant.badge_type,
+                expires_at: expires_at_or_zero(&grant.expires_at),
+                assigned_by: caller,
+                assigned_at: now,
+            });
+            table::add(inner, badge_id, grant);
+        };
+    }
+
+    public fun revoke_shared_badge(
+        platform_registry: &PlatformRegistry,
+        platform: &Platform,
+        group: &PermissionedGroup<PlatformPackage>,
+        ledger: &mut PlatformBadgeLedger,
+        recipient: address,
+        badge_id: String,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        assert!(ledger.version == upgrade::current_version(), EWrongVersion);
+        assert_ledger_matches(platform, ledger);
+
+        let caller = tx_context::sender(ctx);
+        assert_moderator_permission<PlatformBadgeAdmin>(platform, group, caller);
+
+        let platform_id = object::uid_to_address(&platform.id);
+        assert!(is_approved(platform_registry, platform_id), EUnauthorized);
+
+        let grant = borrow_grant_mut(ledger, recipient, &badge_id);
+        grant.revoked = true;
+
+        event::emit(SharedBadgeRevokedEvent {
+            owner: recipient,
+            badge_id,
+            platform_id,
+            revoked_by: caller,
+            revoked_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    public fun extend_shared_badge(
+        platform_registry: &PlatformRegistry,
+        platform: &Platform,
+        group: &PermissionedGroup<PlatformPackage>,
+        ledger: &mut PlatformBadgeLedger,
+        recipient: address,
+        badge_id: String,
+        expires_at: Option<u64>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        assert!(ledger.version == upgrade::current_version(), EWrongVersion);
+        assert_ledger_matches(platform, ledger);
+
+        let caller = tx_context::sender(ctx);
+        assert_moderator_permission<PlatformBadgeAdmin>(platform, group, caller);
+
+        let platform_id = object::uid_to_address(&platform.id);
+        assert!(is_approved(platform_registry, platform_id), EUnauthorized);
+
+        let grant = borrow_grant_mut(ledger, recipient, &badge_id);
+        grant.revoked = false;
+        grant.expires_at = expires_at;
+
+        event::emit(SharedBadgeExtendedEvent {
+            owner: recipient,
+            badge_id,
+            expires_at: expires_at_or_zero(&grant.expires_at),
+            extended_by: caller,
+            extended_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    public fun select_shared_badge(
+        ledger: &mut PlatformBadgeLedger,
+        badge_id: String,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(ledger.version == upgrade::current_version(), EWrongVersion);
+        let owner = tx_context::sender(ctx);
+        let grant = borrow_grant(ledger, owner, &badge_id);
+        assert!(grant_is_active(grant, clock::timestamp_ms(clock)), EGrantInactive);
+
+        if (table::contains(&ledger.selections, owner)) {
+            *table::borrow_mut(&mut ledger.selections, owner) = badge_id;
+        } else {
+            table::add(&mut ledger.selections, owner, badge_id);
+        };
+
+        event::emit(SharedBadgeSelectedEvent {
+            owner,
+            badge_id: *table::borrow(&ledger.selections, owner),
+            selected_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    public fun clear_shared_badge_selection(
+        ledger: &mut PlatformBadgeLedger,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(ledger.version == upgrade::current_version(), EWrongVersion);
+        let owner = tx_context::sender(ctx);
+        if (table::contains(&ledger.selections, owner)) {
+            table::remove(&mut ledger.selections, owner);
+        };
+        event::emit(SharedBadgeSelectedEvent {
+            owner,
+            badge_id: string::utf8(b""),
+            selected_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    public fun select_ecosystem_badge(
+        ledger: &mut PlatformBadgeLedger,
+        profile: &profile::Profile,
+        badge_id: String,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(ledger.version == upgrade::current_version(), EWrongVersion);
+        let owner = tx_context::sender(ctx);
+        assert!(profile::get_owner(profile) == owner, EUnauthorized);
+        assert!(profile::is_ecosystem_badge_id(&badge_id), ENotEcosystemBadge);
+        assert!(profile::has_badge(profile, &badge_id), EGrantNotFound);
+
+        if (table::contains(&ledger.ecosystem_selections, owner)) {
+            *table::borrow_mut(&mut ledger.ecosystem_selections, owner) = badge_id;
+        } else {
+            table::add(&mut ledger.ecosystem_selections, owner, badge_id);
+        };
+
+        event::emit(EcosystemBadgeLedgerSelectedEvent {
+            owner,
+            badge_id: *table::borrow(&ledger.ecosystem_selections, owner),
+            selected_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    public fun clear_ecosystem_badge_selection(
+        ledger: &mut PlatformBadgeLedger,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(ledger.version == upgrade::current_version(), EWrongVersion);
+        let owner = tx_context::sender(ctx);
+        if (table::contains(&ledger.ecosystem_selections, owner)) {
+            table::remove(&mut ledger.ecosystem_selections, owner);
+        };
+        event::emit(EcosystemBadgeLedgerSelectedEvent {
+            owner,
+            badge_id: string::utf8(b""),
+            selected_at: clock::timestamp_ms(clock),
+        });
     }
 
     /// Assign a badge to a profile - can only be called by platform admin/moderator

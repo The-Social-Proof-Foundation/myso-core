@@ -698,7 +698,10 @@ fn process_badge_assigned_event(
     let assigned_by = ev.assigned_by.clone();
     let assigned_at = ev.assigned_at;
     let badge = myso_indexer_alt_social_schema::models::NewProfileBadge {
-        profile_id: profile_id.clone(),
+        profile_id: Some(profile_id.clone()),
+        wallet_address: None,
+        badge_kind: "owned".to_string(),
+        expires_at: None,
         badge_id: badge_id.clone(),
         badge_name: name.clone(),
         badge_description: ev.description,

@@ -825,7 +825,10 @@ pub(crate) async fn get_following(
         .map(|t| t.trim().to_string())
         .filter(|t| !t.is_empty());
     let search_pattern = search_q.as_ref().map(|t| {
-        let escaped = t.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        let escaped = t
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
         format!("%{escaped}%")
     });
     // Address + profile text via ILIKE substring.
@@ -1133,7 +1136,10 @@ pub(crate) async fn get_followers(
         .map(|t| t.trim().to_string())
         .filter(|t| !t.is_empty());
     let search_pattern = search_q.as_ref().map(|t| {
-        let escaped = t.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        let escaped = t
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
         format!("%{escaped}%")
     });
     // Address + profile text via ILIKE substring.

@@ -6,6 +6,7 @@
 //! Provides endpoints for generating custodial deposit addresses
 
 use crate::deposit_addresses::{DepositAddressManager, HD_COUNTER_EVM, HD_COUNTER_MYSO};
+use crate::deposit_callback::validate_deposit_callback_url;
 use crate::deposit_sig_verification::{
     verify_eth_signature, verify_myso_signature, verify_timestamp_recent,
 };
@@ -30,16 +31,22 @@ pub struct DepositApiState {
     pub myso_chain_id: u8,
     /// EVM chain ID from bridge config
     pub eth_chain_id: u8,
+    /// Optional host allowlist for per-address completion callbacks
+    pub callback_host_allowlist: Vec<String>,
 }
 
 /// Request to generate a deposit address (Option A)
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateDepositRequest {
     pub auth_type: AuthType,
     pub source_address: Option<String>,
     pub signature: Option<String>,
     pub message: MessagePayload,
+    #[serde(default)]
+    pub callback_url: Option<String>,
+    #[serde(default)]
+    pub callback_api_key: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -209,6 +216,20 @@ async fn generate_for_myso_user(
                 "Returning existing MySocial deposit address for MySocial user"
             );
 
+            let (callback_url, callback_api_key) =
+                parse_request_callback(&req, &state.callback_host_allowlist)?;
+            if callback_url.is_some() {
+                state
+                    .storage
+                    .update_deposit_callback(
+                        &DepositAddressKey::from_myso(myso_address),
+                        &existing_reg.deposit_address,
+                        callback_url,
+                        callback_api_key,
+                    )
+                    .map_err(to_status_error_json)?;
+            }
+
             return Ok(Json(GenerateDepositResponse {
                 deposit_chain: chain_id_to_name(state.myso_chain_id),
                 deposit_address: existing_deposit_addr.clone(),
@@ -232,6 +253,9 @@ async fn generate_for_myso_user(
         .derive_myso_deposit_address(hd_index)
         .map_err(to_status_error_json)?;
 
+    let (callback_url, callback_api_key) =
+        parse_request_callback(&req, &state.callback_host_allowlist)?;
+
     let registration = DepositRegistration {
         deposit_chain: state.myso_chain_id,
         deposit_address: deposit_myso_address.to_vec(),
@@ -244,6 +268,8 @@ async fn generate_for_myso_user(
             .unwrap()
             .as_millis() as u64,
         last_used: None,
+        deposit_callback_url: callback_url,
+        deposit_callback_api_key: callback_api_key,
     };
 
     state
@@ -339,6 +365,20 @@ async fn generate_for_eth_user(
                 "Returning existing EVM deposit address for MySocial user"
             );
 
+            let (callback_url, callback_api_key) =
+                parse_request_callback(&req, &state.callback_host_allowlist)?;
+            if callback_url.is_some() {
+                state
+                    .storage
+                    .update_deposit_callback(
+                        &DepositAddressKey::from_myso(dest_myso_address),
+                        &existing_reg.deposit_address,
+                        callback_url,
+                        callback_api_key,
+                    )
+                    .map_err(to_status_error_json)?;
+            }
+
             return Ok(Json(GenerateDepositResponse {
                 deposit_chain: chain_id_to_name(state.eth_chain_id),
                 deposit_address: format!("{:?}", existing_deposit_addr),
@@ -364,6 +404,9 @@ async fn generate_for_eth_user(
         .derive_evm_deposit_address(hd_index)
         .map_err(to_status_error_json)?;
 
+    let (callback_url, callback_api_key) =
+        parse_request_callback(&req, &state.callback_host_allowlist)?;
+
     let registration = DepositRegistration {
         deposit_chain: source_chain_id,
         deposit_address: deposit_evm_address.as_slice().to_vec(),
@@ -376,6 +419,8 @@ async fn generate_for_eth_user(
             .unwrap()
             .as_millis() as u64,
         last_used: None,
+        deposit_callback_url: callback_url,
+        deposit_callback_api_key: callback_api_key,
     };
 
     state
@@ -482,6 +527,8 @@ pub async fn link_addresses(
         registration_type: RegistrationType::Linked,
         created_at: now,
         last_used: None,
+        deposit_callback_url: None,
+        deposit_callback_api_key: None,
     };
 
     state
@@ -501,6 +548,8 @@ pub async fn link_addresses(
         registration_type: RegistrationType::Linked,
         created_at: now,
         last_used: None,
+        deposit_callback_url: None,
+        deposit_callback_api_key: None,
     };
 
     state
@@ -646,6 +695,33 @@ fn format_address(address_bytes: &[u8], _chain_id: u8) -> String {
         return format!("{:?}", EthAddress::from_slice(address_bytes));
     }
     format!("0x{}", fastcrypto::encoding::Hex::encode(address_bytes))
+}
+
+fn parse_request_callback(
+    req: &GenerateDepositRequest,
+    allowlist: &[String],
+) -> Result<(Option<String>, Option<String>), (StatusCode, Json<ErrorResponse>)> {
+    let raw = req
+        .callback_url
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let Some(raw) = raw else {
+        return Ok((None, None));
+    };
+    let url = validate_deposit_callback_url(raw, allowlist).map_err(|error| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse { error }),
+        )
+    })?;
+    let api_key = req
+        .callback_api_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+    Ok((Some(url), api_key))
 }
 
 fn to_status_error_json(err: BridgeError) -> (StatusCode, Json<ErrorResponse>) {

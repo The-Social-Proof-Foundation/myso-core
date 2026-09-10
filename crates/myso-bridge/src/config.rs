@@ -267,6 +267,9 @@ pub struct DepositConfigFile {
     /// Number of confirmations to wait for EVM deposits (reorg safety)
     #[serde(default = "default_evm_confirmation_blocks")]
     pub evm_confirmation_blocks: u64,
+    /// Optional node-level fallback when a deposit address has no per-address callback.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deposit_callback_url: Option<String>,
 }
 
 fn default_deposit_poll_interval() -> u64 {
@@ -289,6 +292,9 @@ pub struct DepositConfig {
     pub auto_fund_gas: bool,
     pub supported_tokens: Vec<EthAddress>,
     pub evm_confirmation_blocks: u64,
+    pub deposit_callback_url: Option<String>,
+    pub deposit_callback_api_key: Option<String>,
+    pub deposit_callback_host_allowlist: Vec<String>,
 }
 
 impl Config for BridgeNodeConfig {}
@@ -429,6 +435,19 @@ impl BridgeNodeConfig {
                 auto_fund_gas: deposit_cfg.auto_fund_gas,
                 supported_tokens,
                 evm_confirmation_blocks: deposit_cfg.evm_confirmation_blocks,
+                deposit_callback_url: std::env::var("DEPOSIT_CALLBACK_URL")
+                    .ok()
+                    .filter(|s| !s.is_empty())
+                    .or_else(|| deposit_cfg.deposit_callback_url.clone()),
+                deposit_callback_api_key: std::env::var("DEPOSIT_CALLBACK_API_KEY")
+                    .ok()
+                    .or_else(|| std::env::var("INTERNAL_API_KEY").ok())
+                    .filter(|s| !s.is_empty()),
+                deposit_callback_host_allowlist: crate::deposit_callback::parse_callback_host_allowlist(
+                    std::env::var("DEPOSIT_CALLBACK_HOST_ALLOWLIST")
+                        .ok()
+                        .as_deref(),
+                ),
             }
         });
 

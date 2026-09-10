@@ -647,6 +647,8 @@ social_refresh_session_from_graphql() {
         SELLER_ADDRESS BUYER_ADDRESS SELLER_PROFILE_ID BUYER_PROFILE_ID
         LISTING_USERNAME REPLACEMENT_USERNAME SELLER_MEMORY_ACCOUNT_ID PAY_COIN_ID
         ADMIN_PROFILE_ID DRIPDROP_PLATFORM_ID SOFISWAP_PLATFORM_ID CHATR_PLATFORM_ID
+        CREATOR_ADDRESS CREATOR_PROFILE_ID SERVICE_ID DRIPDROP_PREMIUM_SERVICE_ID
+        MYUSD_COIN_TYPE MONTHLY_PLAN_ID ANNUAL_PLAN_ID
     )
     local key old_session_file=""
     if [[ -f "$SOCIAL_SESSION_SAVE_PATH" ]]; then
@@ -805,6 +807,15 @@ invoke_ptb_as_capture() {
     if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
         local rc=0
         out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
+        if myso_output_is_executed_success "$out"; then
+            if echo "$out" | grep -q 'checkpoint wait timed out'; then
+                echo "Transaction executed (checkpoint wait timed out — treating as success)" >&2
+            else
+                echo "$out" >&2
+            fi
+            printf '%s' "$out"
+            return 0
+        fi
         if [[ "$rc" == 124 ]]; then
             echo "Timed out after ${MYSO_CMD_TIMEOUT_SEC:-180}s: ${cmd[*]}" >&2
         fi
@@ -814,68 +825,162 @@ invoke_ptb_as_capture() {
     else
         return 0
     fi
+}
+
+myso_output_is_stale_gas() {
+    printf '%s' "${1:-}" | grep -qE 'is not available for consumption|Could not find the referenced object'
+}
+
+myso_output_is_executed_success() {
+    printf '%s' "${1:-}" | grep -qE \
+        'status: Some\(ExecutionStatus \{ success: Some\(true\)|success: Some\(true\)|Transaction executed but checkpoint wait timed out|TransactionEffectsV2 \{ status: Success'
+}
+
+ensure_script_gas_coin_for_address() {
+    local addr="$1"
+    local min="${2:-${GAS_BUDGET:-$SOCIAL_DEFAULT_GAS_BUDGET}}"
+    local json count script_coin
+    addr="$(normalize_hex_id "$addr")" || return 1
+    if [[ -n "${SCRIPT_GAS_COIN_ID:-}" ]] && ! object_exists_on_fullnode "$SCRIPT_GAS_COIN_ID"; then
+        SCRIPT_GAS_COIN_ID=''
+    fi
+    ensure_two_gas_coins_for_address "$addr" || {
+        log_step "Faucet did not add a second gas coin; splitting ${min} MIST"
+        SKIP_CONFIRM_RUN=1 invoke_ptb_as "$addr" --split-coins gas "[${min}]" >/dev/null || return 1
+        sleep 1
+    }
+    json="$(resolve_gas_coins_json_for_address "$addr")" || return 1
+    count="$(echo "$json" | jq 'length')"
+    if [[ "${count:-0}" -lt 2 ]]; then
+        SKIP_CONFIRM_RUN=1 invoke_ptb_as "$addr" --split-coins gas "[${min}]" >/dev/null || return 1
+        sleep 1
+        json="$(resolve_gas_coins_json_for_address "$addr")" || return 1
+    fi
+    # Smallest coin that covers the budget — leave the large MM/oracle coin alone.
+    script_coin="$(echo "$json" | jq -r --argjson min "$min" '
+        def oid: (.gasCoinId // .coinObjectId);
+        [ .[] | select((.mistBalance | tonumber) >= $min) ]
+        | sort_by(.mistBalance | tonumber)
+        | .[0] | oid // empty
+    ')"
+    [[ -n "$script_coin" ]] || {
+        echo "Could not pick a dedicated script gas coin for $addr" >&2
+        return 1
+    }
+    SCRIPT_GAS_COIN_ID="$(normalize_hex_id "$script_coin")"
+    log_step "Using dedicated script gas coin $SCRIPT_GAS_COIN_ID"
+}
+
+extra_script_gas() {
+    if [[ -n "${SCRIPT_GAS_COIN_ID:-}" ]]; then
+        printf '%s\n' '--gas' "$(normalize_hex_id "$SCRIPT_GAS_COIN_ID")"
+    fi
+}
+
+run_myso_cmd_with_stale_gas_retry() {
+    local attempt max="${MYSO_STALE_GAS_RETRIES:-5}" rc=0 out
+    for ((attempt = 1; attempt <= max; attempt++)); do
+        rc=0
+        out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "$@" 2>&1)" || rc=$?
+        if [[ "$rc" == 124 ]]; then
+            echo "Timed out after ${MYSO_CMD_TIMEOUT_SEC:-180}s: $*" >&2
+        fi
+        echo "$out" >&2
+        if myso_output_is_executed_success "$out"; then
+            printf '%s' "$out"
+            return 0
+        fi
+        if [[ "$rc" == 0 ]] || ! myso_output_is_stale_gas "$out"; then
+            printf '%s' "$out"
+            return "$rc"
+        fi
+        echo "Stale gas coin (attempt ${attempt}/${max}); retrying in 2s" >&2
+        sleep 2
+    done
+    printf '%s' "$out"
+    return "$rc"
 }
 
 run_myso_call_as_capture() {
     local sender="$1" module="$2" func="$3"
     shift 3
-    local -a cmd call_args=() out
-    local arg
+    local -a cmd call_args=()
+    local arg attempt max="${MYSO_STALE_GAS_RETRIES:-5}" rc=0 out g
     while IFS= read -r -d '' arg; do call_args+=("$arg"); done < <(normalize_client_call_args "$@")
     sender="$(normalize_hex_id "$sender")" || return 1
-    cmd=(myso client call --package "$PKG_SOCIAL" --sender "$sender" \
-        --module "$module" --function "$func")
-    local g
-    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
-    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
-    cmd+=(--args)
-    cmd+=("${call_args[@]}")
-    echo "---" >&2
-    printf ' %q\n' "${cmd[@]}" >&2
-    echo "---" >&2
-    if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
-        local rc=0
-        out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
-        if [[ "$rc" == 124 ]]; then
-            echo "Timed out after ${MYSO_CMD_TIMEOUT_SEC:-180}s: ${cmd[*]}" >&2
-        fi
-        echo "$out" >&2
-        printf '%s' "$out"
-        return "$rc"
-    else
+    if [[ "${SKIP_CONFIRM_RUN:-0}" != 1 ]] && ! confirm_run; then
         return 0
     fi
+    for ((attempt = 1; attempt <= max; attempt++)); do
+        SCRIPT_GAS_COIN_ID=''
+        ensure_script_gas_coin_for_address "$sender" || return 1
+        cmd=(myso client call --package "$PKG_SOCIAL" --sender "$sender" \
+            --module "$module" --function "$func")
+        while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
+        while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_script_gas)
+        while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
+        cmd+=(--args)
+        cmd+=("${call_args[@]}")
+        echo "---" >&2
+        printf ' %q\n' "${cmd[@]}" >&2
+        echo "---" >&2
+        rc=0
+        out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
+        echo "$out" >&2
+        if myso_output_is_executed_success "$out" || [[ "$rc" == 0 ]]; then
+            printf '%s' "$out"
+            return 0
+        fi
+        if ! myso_output_is_stale_gas "$out"; then
+            printf '%s' "$out"
+            return "$rc"
+        fi
+        echo "Stale/missing gas coin (attempt ${attempt}/${max}); picking a new coin" >&2
+        sleep 2
+    done
+    printf '%s' "$out"
+    return "$rc"
 }
 
 run_myso_call_as_capture_typed() {
     local sender="$1" module="$2" func="$3" type_args="$4"
     shift 4
-    local -a cmd call_args=() out
-    local arg
+    local -a cmd call_args=()
+    local arg attempt max="${MYSO_STALE_GAS_RETRIES:-5}" rc=0 out g
     while IFS= read -r -d '' arg; do call_args+=("$arg"); done < <(normalize_client_call_args "$@")
     sender="$(normalize_hex_id "$sender")" || return 1
-    cmd=(myso client call --package "$PKG_SOCIAL" --sender "$sender" \
-        --module "$module" --function "$func" --type-args "$type_args")
-    local g
-    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
-    while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
-    cmd+=(--args)
-    cmd+=("${call_args[@]}")
-    echo "---" >&2
-    printf ' %q\n' "${cmd[@]}" >&2
-    echo "---" >&2
-    if [[ "${SKIP_CONFIRM_RUN:-0}" == 1 ]] || confirm_run; then
-        local rc=0
-        out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
-        if [[ "$rc" == 124 ]]; then
-            echo "Timed out after ${MYSO_CMD_TIMEOUT_SEC:-180}s: ${cmd[*]}" >&2
-        fi
-        echo "$out" >&2
-        printf '%s' "$out"
-        return "$rc"
-    else
+    if [[ "${SKIP_CONFIRM_RUN:-0}" != 1 ]] && ! confirm_run; then
         return 0
     fi
+    for ((attempt = 1; attempt <= max; attempt++)); do
+        SCRIPT_GAS_COIN_ID=''
+        ensure_script_gas_coin_for_address "$sender" || return 1
+        cmd=(myso client call --package "$PKG_SOCIAL" --sender "$sender" \
+            --module "$module" --function "$func" --type-args "$type_args")
+        while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
+        while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_script_gas)
+        while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
+        cmd+=(--args)
+        cmd+=("${call_args[@]}")
+        echo "---" >&2
+        printf ' %q\n' "${cmd[@]}" >&2
+        echo "---" >&2
+        rc=0
+        out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-180}" "${cmd[@]}" 2>&1)" || rc=$?
+        echo "$out" >&2
+        if myso_output_is_executed_success "$out" || [[ "$rc" == 0 ]]; then
+            printf '%s' "$out"
+            return 0
+        fi
+        if ! myso_output_is_stale_gas "$out"; then
+            printf '%s' "$out"
+            return "$rc"
+        fi
+        echo "Stale/missing gas coin (attempt ${attempt}/${max}); picking a new coin" >&2
+        sleep 2
+    done
+    printf '%s' "$out"
+    return "$rc"
 }
 
 extract_tx_digest() {
@@ -905,6 +1010,22 @@ extract_tx_digest() {
     echo "$out" | grep -Eo '[A-Za-z0-9+/]{43,44}=' | tail -n1
 }
 
+extract_created_object_from_call_output() {
+    local out="$1" type_substring="$2" id
+    [[ -n "$out" && -n "$type_substring" ]] || return 1
+    id="$(printf '%s' "$out" | python3 -c '
+import re, sys
+blob = sys.stdin.read()
+want = sys.argv[1]
+pat = re.compile(r"object_id: Some\(\"(0x[0-9a-fA-F]+)\"\).*?" + re.escape(want), re.S)
+m = pat.search(blob)
+if m:
+    print(m.group(1))
+' "$type_substring" 2>/dev/null)" || id=''
+    [[ -n "$id" ]] || return 1
+    normalize_hex_id "$id"
+}
+
 assert_tx_success() {
     local out="$1" digest="${2:-}" json tx_status
     [[ -n "$out" || -n "$digest" ]] || return 1
@@ -913,6 +1034,9 @@ assert_tx_success() {
             return 0
         fi
         if echo "$out" | grep -qE 'TransactionEffectsV2 \{ status: Success|effects\.V2\.status.*Success'; then
+            return 0
+        fi
+        if myso_output_is_executed_success "$out"; then
             return 0
         fi
     fi
@@ -927,7 +1051,7 @@ assert_tx_success() {
     fi
     echo "$out" | jq -e '
         (.effects.V2.status // .effects.status // empty | tostring) == "Success"
-    ' >/dev/null
+    ' >/dev/null 2>&1
 }
 
 tx_has_event_named() {

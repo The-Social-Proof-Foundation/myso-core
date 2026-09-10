@@ -14,7 +14,7 @@ ORDERBOOK_SANDBOX_DIR="${ORDERBOOK_SANDBOX_DIR:-$REPO_ROOT/../orderbook-sandbox-
 ORACLE_STATUS_PORT="${ORACLE_STATUS_PORT:-9010}"
 MM_HEALTH_PORT="${MM_HEALTH_CHECK_PORT:-3012}"
 ORDERBOOK_MM_BACKGROUND="${ORDERBOOK_MM_BACKGROUND:-0}"
-ORDERBOOK_MYSO_RESEED="${ORDERBOOK_MYSO_RESEED:-1}"
+ORDERBOOK_MYSO_RESEED="${ORDERBOOK_MYSO_RESEED:-0}"
 
 ORACLE_PID=''
 MM_PID=''
@@ -63,23 +63,22 @@ orderbook_wait_oracle_ready() {
 }
 
 orderbook_wait_oracle_live() {
-    local attempt max="${1:-25}" btc_raw btc_num status_json updates
+    local attempt max="${1:-45}" status_json
     for ((attempt = 1; attempt <= max; attempt++)); do
         status_json="$(curl -sf --max-time 2 "http://127.0.0.1:${ORACLE_STATUS_PORT}/" 2>/dev/null)" || status_json=''
-        btc_raw="$(jq -r '.prices.btc // empty' <<<"$status_json" 2>/dev/null)" || btc_raw=''
-        updates="$(jq -r '.updates // 0' <<<"$status_json" 2>/dev/null)" || updates='0'
-        if [[ -n "$btc_raw" && "$updates" -ge 1 ]]; then
-            btc_num="${btc_raw#\$}"
-            if awk -v p="$btc_num" 'BEGIN { exit !(p+0 > 50000) }'; then
-                log_step "Live oracle BTC price: ${btc_raw} (updates=${updates})"
-                return 0
-            fi
+        if orderbook_oracle_status_is_live_for_mm "$status_json"; then
+            log_step "Live oracle update on :${ORACLE_STATUS_PORT} (updates=$(jq -r '.updates // 0' <<<"$status_json"))"
+            return 0
         fi
         [[ "$attempt" == 1 || $((attempt % 5)) -eq 0 ]] \
-            && log_wait_progress "live oracle BTC price" "$attempt" "$max"
+            && log_wait_progress "live oracle update" "$attempt" "$max"
         sleep 1
     done
-    echo "Timed out waiting for live oracle update on :${ORACLE_STATUS_PORT} (need updates>=1 and BTC > \$50,000)" >&2
+    if [[ -n "${ORACLE_PID:-}" ]] && kill -0 "$ORACLE_PID" 2>/dev/null; then
+        log_step "Oracle on-chain update still pending — starting MM (fallback mid until the next successful tick)"
+        return 0
+    fi
+    echo "Timed out waiting for live oracle update on :${ORACLE_STATUS_PORT} (oracle process exited)" >&2
     return 1
 }
 
@@ -216,6 +215,10 @@ orderbook_maybe_run_btc_spot_demo() {
     local liq_wait="${ORDERBOOK_DEMO_LIQ_WAIT:-}"
     [[ -z "$liq_wait" ]] && liq_wait="$([[ "$strict" == 1 ]] && echo 30 || echo 15)"
     [[ "${ORDERBOOK_SKIP_DEMO_TRADE:-0}" == 1 ]] && return 0
+    if ! orderbook_mm_pools_include BTC_MYUSD; then
+        log_step "Skipping spot demo — BTC/MYUSD not in this MM run"
+        return 0
+    fi
     orderbook_wait_mm_liquidity "$liq_wait" || {
         [[ "$strict" == 1 ]] && return 1
         log_step "Skipping spot demo — no BTC ask liquidity (${liq_wait}s)"
@@ -230,9 +233,30 @@ orderbook_maybe_run_btc_spot_demo() {
     return 0
 }
 
+orderbook_print_runtime_endpoints() {
+    local rpc="${RPC_URL:-http://127.0.0.1:9000}"
+    echo "" >&2
+    echo "══════════════════════════════════════════════════════════════" >&2
+    echo "  Orderbook services (logs in this terminal)" >&2
+    echo "══════════════════════════════════════════════════════════════" >&2
+    printf '  %-28s %s\n' "Fullnode RPC:" "$rpc" >&2
+    printf '  %-28s %s\n' "Catalog / indexer:" "${ORDERBOOK_API_URL:-http://127.0.0.1:9008}" >&2
+    printf '  %-28s %s\n' "Oracle status:" "http://127.0.0.1:${ORACLE_STATUS_PORT:-9010}/" >&2
+    printf '  %-28s %s\n' "MM health:" "http://127.0.0.1:${MM_HEALTH_PORT:-3012}/health" >&2
+    printf '  %-28s %s\n' "MM ready:" "http://127.0.0.1:${MM_HEALTH_PORT:-3012}/ready" >&2
+    [[ -n "${ORACLE_PID:-}" ]] && printf '  %-28s %s\n' "Oracle PID:" "$ORACLE_PID" >&2
+    [[ -n "${MM_PID:-}" ]] && printf '  %-28s %s\n' "Market maker PID:" "$MM_PID" >&2
+    echo "══════════════════════════════════════════════════════════════" >&2
+    echo "  Ctrl+C stops oracle + MM and returns to the menu." >&2
+    echo "══════════════════════════════════════════════════════════════" >&2
+    echo "" >&2
+}
+
 orderbook_mm_supervisor_run() {
     local skip_oracle="${1:-0}" run_test="${2:-0}" background="${ORDERBOOK_MM_BACKGROUND:-0}"
+    SUPERVISOR_SHUTDOWN=0
 
+    orderbook_print_runtime_endpoints
     orderbook_sandbox_has_pnpm || return 1
     require_session_fields ORDERBOOK_PACKAGE_ID PYTH_PACKAGE_ID \
         MYUSD_PRICE_INFO_OBJECT_ID MYSO_PRICE_INFO_OBJECT_ID \
@@ -246,8 +270,9 @@ orderbook_mm_supervisor_run() {
             orderbook_seed_oracle_prices || return 1
         else
             orderbook_load_pyth_api_key || return 1
-            # Cancel stale ~9700 BTC / ~1 MYSO grids before oracle+MM share the deployer gas coin.
+            # Cancel leftover grids before oracle+MM share the deployer gas coin.
             orderbook_clear_stale_mm_book_orders || true
+            sleep 1
         fi
         log_step "Starting oracle-service (background, live HTTP updates)"
         (
@@ -268,23 +293,30 @@ orderbook_mm_supervisor_run() {
             return 1
         }
         if [[ "${ORDERBOOK_ORACLE_HTTP_UPDATES:-1}" != 0 ]]; then
-            orderbook_wait_oracle_live 25 || {
+            orderbook_wait_oracle_live 45 || {
                 orderbook_mm_supervisor_cleanup TERM
                 return 1
             }
         fi
     fi
 
-    sleep 5
+    sleep 1
 
     log_step "Starting market-maker"
     (
         cd "$ORDERBOOK_SANDBOX_DIR"
         export ORDERBOOK_PACKAGE_ID PYTH_PACKAGE_ID PRIVATE_KEY MM_POOLS DEPLOYER_ADDRESS \
-            MM_LEVELS_PER_SIDE="${MM_LEVELS_PER_SIDE:-3}" \
+            MM_LEVELS_PER_SIDE="${MM_LEVELS_PER_SIDE:-$MM_LEVELS_PER_SIDE_DEFAULT}" \
+            MM_SPREAD_BPS="${MM_SPREAD_BPS:-$MM_SPREAD_BPS_DEFAULT}" \
+            MM_LEVEL_SPACING_BPS="${MM_LEVEL_SPACING_BPS:-$MM_LEVEL_SPACING_BPS_DEFAULT}" \
             MM_REBALANCE_INTERVAL_MS="${MM_REBALANCE_INTERVAL_MS:-10000}" \
+            MM_FORCE_CANCEL_ALL="${MM_FORCE_CANCEL_ALL:-}" \
+            MM_INCREMENTAL="${MM_INCREMENTAL:-}" \
+            MM_FULL_REBUILD_INTERVAL_MS="${MM_FULL_REBUILD_INTERVAL_MS:-0}" \
+            MM_REPLENISH_QTY_BPS="${MM_REPLENISH_QTY_BPS:-5000}" \
             MM_HEALTH_CHECK_PORT="$MM_HEALTH_PORT" \
             MM_FORCE_NEW_BALANCE_MANAGERS="${MM_FORCE_NEW_BALANCE_MANAGERS:-}" \
+            MM_ALLOW_FALLBACK="${MM_ALLOW_FALLBACK:-1}" \
             RPC_URL="${RPC_URL:-http://127.0.0.1:9000}"
         if [[ "$background" == 1 ]]; then
             exec pnpm market-maker
@@ -298,6 +330,8 @@ orderbook_mm_supervisor_run() {
         orderbook_mm_supervisor_cleanup TERM
         return 1
     }
+    orderbook_print_runtime_endpoints
+    orderbook_ensure_myso_fee_prices
 
     orderbook_maybe_run_btc_spot_demo "$run_test" || {
         orderbook_mm_supervisor_cleanup TERM

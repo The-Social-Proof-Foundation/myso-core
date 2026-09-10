@@ -435,6 +435,8 @@ async fn start_client_components(
             client_config.eth_bridge_chain_id,
             myso_client.clone(),
             client_config.myso_bridge_chain_id,
+            deposit_config.deposit_callback_url.clone(),
+            deposit_config.deposit_callback_api_key.clone(),
         ));
 
         let (evm_deposit_tx, evm_deposit_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -477,6 +479,7 @@ async fn start_client_components(
             storage: store,
             myso_chain_id: client_config.myso_bridge_chain_id,
             eth_chain_id: client_config.eth_bridge_chain_id,
+            callback_host_allowlist: deposit_config.deposit_callback_host_allowlist.clone(),
         });
         Some(deposit_state)
     } else {

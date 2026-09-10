@@ -74,4 +74,5 @@ pub(crate) mod validator;
 pub(crate) mod validator_aggregated_signature;
 pub(crate) mod validator_set;
 pub(crate) mod vesting;
+pub(crate) mod wallet;
 pub(crate) mod zklogin;

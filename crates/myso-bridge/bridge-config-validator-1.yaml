@@ -76,6 +76,8 @@ deposits:
   enabled: true
   poll-interval-secs: 45 # Can be overridden via DEPOSIT_POLL_INTERVAL_SECS env var
   auto-fund-gas: true
+  # Node-level fallback only. Platforms should pass callbackUrl on POST /deposit/generate.
+  # deposit-callback-url: "https://api.example.com/offramp/internal/bridge-complete"
 
 relay:
   enabled: true

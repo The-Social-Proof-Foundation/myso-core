@@ -25,11 +25,10 @@ use crate::api::types::organization::AgenticOrganization;
 use crate::api::types::platform::{PlatformMembershipPage, PlatformMembershipSummary};
 use crate::api::types::pnl::{ProfilePnLWindow, ProfilePnLWindowStats};
 use crate::api::types::post::{Post, PostPage};
-use crate::api::types::returns::{
-    spt_return_metrics_enabled, SptPortfolioMetrics, SptPositionMetrics,
-    SptPositionTimeSeriesPoint, SptReturnWindow,
-};
 use crate::api::types::profile_summary::ProfileSummary;
+use crate::api::types::returns::{
+    SptPortfolioMetrics, SptPositionMetrics, SptPositionTimeSeriesPoint, SptReturnWindow,
+};
 use crate::api::types::spt::{SptHolding, SptReservationHolding};
 use crate::api::types::vesting::VestingWallet;
 
@@ -227,18 +226,83 @@ impl Profile {
     }
 
     /// Selected badge info.
-    async fn selected_badge(&self) -> Option<SelectedBadge> {
+    async fn selected_badge(&self, ctx: &Context<'_>) -> Option<SelectedBadge> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        if let Ok(Some(row)) = reader
+            .get_resolved_selected_badge(&self.inner.owner_address)
+            .await
+        {
+            return Some(SelectedBadge::from(
+                &myso_indexer_alt_social_reader::SelectedBadgeInfo {
+                    badge_id: row.badge_id,
+                    badge_name: row.badge_name,
+                    badge_icon_url: row.badge_icon_url,
+                    badge_media_url: row.badge_media_url,
+                    platform_id: row.platform_id,
+                    badge_type: row.badge_type,
+                },
+            ));
+        }
         self.inner.selected_badge.as_ref().map(SelectedBadge::from)
     }
 
     /// Selected badge ID.
-    async fn selected_badge_id(&self) -> Option<&str> {
-        self.inner.selected_badge_id.as_deref()
+    async fn selected_badge_id(&self, ctx: &Context<'_>) -> Option<String> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        if let Ok(Some(row)) = reader
+            .get_resolved_selected_badge(&self.inner.owner_address)
+            .await
+        {
+            return Some(row.badge_id);
+        }
+        self.inner.selected_badge_id.clone()
     }
 
     /// Selected ecosystem badge ID.
-    async fn selected_ecosystem_badge_id(&self) -> Option<&str> {
-        self.inner.selected_ecosystem_badge_id.as_deref()
+    async fn selected_ecosystem_badge_id(&self, ctx: &Context<'_>) -> Option<String> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        if let Ok(id) = reader
+            .get_resolved_selected_ecosystem_badge_id(&self.inner.owner_address)
+            .await
+        {
+            return id;
+        }
+        self.inner.selected_ecosystem_badge_id.clone()
+    }
+
+    /// Selected ecosystem badge.
+    async fn selected_ecosystem_badge(&self, ctx: &Context<'_>) -> Option<SelectedBadge> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let id = if let Ok(id) = reader
+            .get_resolved_selected_ecosystem_badge_id(&self.inner.owner_address)
+            .await
+        {
+            id
+        } else {
+            self.inner.selected_ecosystem_badge_id.clone()
+        }?;
+        let rows = reader
+            .get_profile_badges(&self.inner.owner_address, 50, 0)
+            .await
+            .ok()?;
+        rows.into_iter().find(|b| b.badge_id == id).map(|row| {
+            SelectedBadge::from(&myso_indexer_alt_social_reader::SelectedBadgeInfo {
+                badge_id: row.badge_id,
+                badge_name: row.badge_name,
+                badge_icon_url: row.badge_icon_url,
+                badge_media_url: row.badge_media_url,
+                platform_id: row.platform_id,
+                badge_type: row.badge_type,
+            })
+        })
     }
 
     /// Profile badges (paginated).
@@ -917,11 +981,7 @@ impl Profile {
     }
 
     /// Personal SPT investment metrics (WAC). Not token price performance.
-    /// Returns null unless `SPT_RETURN_METRICS_ENABLED=1`.
     async fn spt_portfolio_metrics(&self, ctx: &Context<'_>) -> Option<SptPortfolioMetrics> {
-        if !spt_return_metrics_enabled() {
-            return None;
-        }
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -932,16 +992,13 @@ impl Profile {
             .map(Into::into)
     }
 
-    /// Per-pool personal SPT positions. Returns empty unless `SPT_RETURN_METRICS_ENABLED=1`.
+    /// Per-pool personal SPT positions.
     async fn spt_position_metrics(
         &self,
         ctx: &Context<'_>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<SptPositionMetrics>> {
-        if !spt_return_metrics_enabled() {
-            return None;
-        }
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -954,16 +1011,13 @@ impl Profile {
             .map(|rows| rows.into_iter().map(Into::into).collect())
     }
 
-    /// Mark-to-market series for one personal position. Null unless `SPT_RETURN_METRICS_ENABLED=1`.
+    /// Mark-to-market series for one personal position.
     async fn spt_position_timeseries(
         &self,
         ctx: &Context<'_>,
         pool_id: String,
         window: Option<SptReturnWindow>,
     ) -> Option<Vec<SptPositionTimeSeriesPoint>> {
-        if !spt_return_metrics_enabled() {
-            return None;
-        }
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
@@ -1271,5 +1325,15 @@ impl ProfileBadge {
     /// Badge type.
     async fn badge_type(&self) -> i16 {
         self.inner.badge_type
+    }
+
+    /// owned | platform
+    async fn badge_kind(&self) -> &str {
+        &self.inner.badge_kind
+    }
+
+    /// Expiry (epoch ms). Null means no expiry.
+    async fn expires_at(&self) -> Option<BigInt> {
+        self.inner.expires_at.map(BigInt::from)
     }
 }

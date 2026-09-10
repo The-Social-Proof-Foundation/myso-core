@@ -7,7 +7,8 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::ExpressionMethods;
+use diesel::sql_types::{BigInt, Nullable, Text};
+use diesel::{sql_query, ExpressionMethods};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -17,12 +18,13 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewPlatform, NewPlatformBlockedProfile, NewPlatformConfig, NewPlatformEvent,
     NewPlatformMembership, NewPlatformModerator, NewPlatformModeratorPermission,
-    NewPlatformTreasuryCoinBalance, NewPlatformTreasuryWithdrawal,
+    NewPlatformTreasuryCoinBalance, NewPlatformTreasuryWithdrawal, NewProfileBadge,
+    NewWalletBadgeSelection,
 };
 use myso_indexer_alt_social_schema::schema::{
     platform_blocked_profiles, platform_config, platform_events, platform_memberships,
     platform_moderator_permissions, platform_moderators, platform_treasury_coin_balances,
-    platform_treasury_withdrawals, platforms,
+    platform_treasury_withdrawals, platforms, profile_badges,
 };
 
 use super::common;
@@ -108,6 +110,24 @@ pub enum PlatformRow {
     PlatformDeleted {
         platform_id: String,
         deleted_at: chrono::NaiveDateTime,
+    },
+    ProfileBadge(NewProfileBadge),
+    ProfileBadgeWalletRevoke {
+        wallet_address: String,
+        badge_id: String,
+        revoked_at: i64,
+        revoked_by: String,
+    },
+    PlatformBadgeExtend {
+        wallet_address: String,
+        badge_id: String,
+        expires_at: Option<i64>,
+    },
+    WalletBadgeSelection(NewWalletBadgeSelection),
+    WalletEcosystemBadgeSelection {
+        wallet_address: String,
+        ecosystem_badge_id: Option<String>,
+        ecosystem_selected_at: i64,
     },
 }
 
@@ -261,6 +281,39 @@ impl PlatformRow {
             } => Some(PlatformRow::PlatformDeleted {
                 platform_id,
                 deleted_at,
+            }),
+            crate::handlers::SocialEventRow::ProfileBadge(b) => Some(PlatformRow::ProfileBadge(b)),
+            crate::handlers::SocialEventRow::ProfileBadgeWalletRevoke {
+                wallet_address,
+                badge_id,
+                revoked_at,
+                revoked_by,
+            } => Some(PlatformRow::ProfileBadgeWalletRevoke {
+                wallet_address,
+                badge_id,
+                revoked_at,
+                revoked_by,
+            }),
+            crate::handlers::SocialEventRow::PlatformBadgeExtend {
+                wallet_address,
+                badge_id,
+                expires_at,
+            } => Some(PlatformRow::PlatformBadgeExtend {
+                wallet_address,
+                badge_id,
+                expires_at,
+            }),
+            crate::handlers::SocialEventRow::WalletBadgeSelection(s) => {
+                Some(PlatformRow::WalletBadgeSelection(s))
+            }
+            crate::handlers::SocialEventRow::WalletEcosystemBadgeSelection {
+                wallet_address,
+                ecosystem_badge_id,
+                ecosystem_selected_at,
+            } => Some(PlatformRow::WalletEcosystemBadgeSelection {
+                wallet_address,
+                ecosystem_badge_id,
+                ecosystem_selected_at,
             }),
             _ => None,
         }
@@ -666,6 +719,90 @@ impl Handler for PlatformHandler {
                         );
                     }
                     total += affected;
+                }
+                PlatformRow::ProfileBadge(badge) => {
+                    let _ = sql_query(
+                        "UPDATE profile_badges SET revoked = true \
+                         WHERE wallet_address = $1 AND badge_id = $2 \
+                           AND badge_kind = 'platform' AND revoked = false",
+                    )
+                    .bind::<Nullable<Text>, _>(badge.wallet_address.as_deref())
+                    .bind::<Text, _>(&badge.badge_id)
+                    .execute(conn)
+                    .await?;
+                    total += diesel::insert_into(profile_badges::table)
+                        .values(badge)
+                        .execute(conn)
+                        .await?;
+                }
+                PlatformRow::ProfileBadgeWalletRevoke {
+                    wallet_address,
+                    badge_id,
+                    revoked_at,
+                    revoked_by,
+                } => {
+                    total += diesel::update(profile_badges::table)
+                        .filter(profile_badges::wallet_address.eq(wallet_address))
+                        .filter(profile_badges::badge_id.eq(badge_id))
+                        .filter(profile_badges::badge_kind.eq("platform"))
+                        .filter(profile_badges::revoked.eq(false))
+                        .set((
+                            profile_badges::revoked.eq(true),
+                            profile_badges::revoked_at.eq(Some(*revoked_at)),
+                            profile_badges::revoked_by.eq(Some(revoked_by.clone())),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                PlatformRow::PlatformBadgeExtend {
+                    wallet_address,
+                    badge_id,
+                    expires_at,
+                } => {
+                    total += diesel::update(profile_badges::table)
+                        .filter(profile_badges::wallet_address.eq(wallet_address))
+                        .filter(profile_badges::badge_id.eq(badge_id))
+                        .filter(profile_badges::badge_kind.eq("platform"))
+                        .set((
+                            profile_badges::revoked.eq(false),
+                            profile_badges::expires_at.eq(*expires_at),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                PlatformRow::WalletBadgeSelection(sel) => {
+                    total += sql_query(
+                        "INSERT INTO wallet_badge_selections \
+                         (wallet_address, badge_id, selected_at) \
+                         VALUES ($1, $2, $3) \
+                         ON CONFLICT (wallet_address) DO UPDATE SET \
+                           badge_id = EXCLUDED.badge_id, \
+                           selected_at = EXCLUDED.selected_at",
+                    )
+                    .bind::<Text, _>(&sel.wallet_address)
+                    .bind::<Nullable<Text>, _>(sel.badge_id.as_deref())
+                    .bind::<BigInt, _>(sel.selected_at)
+                    .execute(conn)
+                    .await?;
+                }
+                PlatformRow::WalletEcosystemBadgeSelection {
+                    wallet_address,
+                    ecosystem_badge_id,
+                    ecosystem_selected_at,
+                } => {
+                    total += sql_query(
+                        "INSERT INTO wallet_badge_selections \
+                         (wallet_address, ecosystem_badge_id, selected_at, ecosystem_selected_at) \
+                         VALUES ($1, $2, $3, $3) \
+                         ON CONFLICT (wallet_address) DO UPDATE SET \
+                           ecosystem_badge_id = EXCLUDED.ecosystem_badge_id, \
+                           ecosystem_selected_at = EXCLUDED.ecosystem_selected_at",
+                    )
+                    .bind::<Text, _>(wallet_address)
+                    .bind::<Nullable<Text>, _>(ecosystem_badge_id.as_deref())
+                    .bind::<BigInt, _>(*ecosystem_selected_at)
+                    .execute(conn)
+                    .await?;
                 }
             }
         }

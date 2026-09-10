@@ -188,7 +188,8 @@ pub use post::{
     REPORT_REASON_OTHER, REPORT_REASON_SPAM, REPOST_TIP_PERCENTAGE,
 };
 pub use profile::{
-    default_profile_config, merge_profile_config, NewProfile, NewProfileBadge, NewProfileConfig,
+    default_profile_config, merge_profile_config, NewProfile, NewProfileBadge,
+    NewWalletBadgeSelection, NewProfileConfig,
     NewProfileEvent, NewUsernameListing, NewUsernameOffer, NewUsernameSaleFee, Profile,
     ProfileUpdateSet, UsernameListing, UsernameOffer, UsernameSaleFee, CURVE_PRECISION,
     MAX_BADGE_DESCRIPTION_LENGTH, MAX_BADGE_ICON_URL_LENGTH, MAX_BADGE_MEDIA_URL_LENGTH,

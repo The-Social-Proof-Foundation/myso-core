@@ -7,11 +7,11 @@ use async_graphql::Context;
 use async_graphql::Enum;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    SptCreatorFeeSettlement as SptCreatorFeeSettlementRow,
+    pct_change, pct_change_i128, SptCreatorFeeSettlement as SptCreatorFeeSettlementRow,
     SptHoldingRow, SptPoolRow, SptPriceHistory as SptPriceHistoryRow,
     SptReservationVolumeBucket as SptReservationVolumeBucketRow, SptSortBy as SptSortByReader,
     SptSwap as SptSwapRow, SptTransaction as SptTransactionRow, SptTransfer as SptTransferRow,
-    ViewerSocialContext, pct_change, pct_change_i128,
+    ViewerSocialContext,
 };
 use myso_indexer_alt_social_schema::models::{SptReservationHoldingRow, TOKEN_TYPE_POST};
 
@@ -176,11 +176,11 @@ impl SptHolding {
         self.inner.blocked_by_subject
     }
 
-    /// Personal investment metrics for this holding. Null unless `SPT_RETURN_METRICS_ENABLED=1`.
-    async fn metrics(&self, ctx: &Context<'_>) -> Option<crate::api::types::returns::SptPositionMetrics> {
-        if !crate::api::types::returns::spt_return_metrics_enabled() {
-            return None;
-        }
+    /// Personal investment metrics for this holding.
+    async fn metrics(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<crate::api::types::returns::SptPositionMetrics> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;

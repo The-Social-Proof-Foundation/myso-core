@@ -793,6 +793,7 @@ diesel::table! {
         media_previews -> Nullable<Jsonb>,
         developer_address -> Text,
         moderators_group_id -> Nullable<Text>,
+        badge_ledger_id -> Nullable<Text>,
         terms_of_service -> Nullable<Text>,
         privacy_policy -> Nullable<Text>,
         redirect_uri -> Nullable<Text>,
@@ -1413,7 +1414,7 @@ diesel::table! {
 diesel::table! {
     profile_badges (id, time) {
         id -> Int4,
-        profile_id -> Text,
+        profile_id -> Nullable<Text>,
         badge_id -> Text,
         badge_name -> Text,
         badge_description -> Nullable<Text>,
@@ -1428,6 +1429,19 @@ diesel::table! {
         transaction_id -> Text,
         time -> Timestamptz,
         badge_icon_url -> Nullable<Text>,
+        wallet_address -> Nullable<Text>,
+        badge_kind -> Text,
+        expires_at -> Nullable<Int8>,
+    }
+}
+
+diesel::table! {
+    wallet_badge_selections (wallet_address) {
+        wallet_address -> Text,
+        badge_id -> Nullable<Text>,
+        ecosystem_badge_id -> Nullable<Text>,
+        selected_at -> Int8,
+        ecosystem_selected_at -> Nullable<Int8>,
     }
 }
 
@@ -2623,6 +2637,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    spt_pool_mark (pool_id) {
+        pool_id -> Text,
+        price -> Int8,
+        circulating_supply -> Int8,
+        time -> Timestamptz,
+        transaction_id -> Text,
+    }
+}
+
+diesel::table! {
     spt_price_history (id, time) {
         id -> Int4,
         pool_id -> Text,
@@ -3224,6 +3248,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     posts_reports,
     posts_transfers,
     profile_badges,
+    wallet_badge_selections,
     profile_events,
     username_listings,
     username_offers,
@@ -3265,6 +3290,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     spt_config,
     spt_events,
     spt_holdings,
+    spt_pool_mark,
     spt_pools,
     spt_price_history,
     spt_reservation_pools,

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::{
     profile_badges, profile_config, profile_events, profiles, username_listings, username_offers,
+    wallet_badge_selections,
     username_sale_fees,
 };
 
@@ -84,7 +85,10 @@ pub struct NewProfile {
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = profile_badges)]
 pub struct NewProfileBadge {
-    pub profile_id: String,
+    pub profile_id: Option<String>,
+    pub wallet_address: Option<String>,
+    pub badge_kind: String,
+    pub expires_at: Option<i64>,
     pub badge_id: String,
     pub badge_name: String,
     pub badge_description: Option<String>,
@@ -99,6 +103,16 @@ pub struct NewProfileBadge {
     pub badge_type: i16,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = wallet_badge_selections)]
+pub struct NewWalletBadgeSelection {
+    pub wallet_address: String,
+    pub badge_id: Option<String>,
+    pub ecosystem_badge_id: Option<String>,
+    pub selected_at: i64,
+    pub ecosystem_selected_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

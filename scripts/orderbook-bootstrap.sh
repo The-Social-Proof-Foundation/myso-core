@@ -25,12 +25,17 @@
 #   ./scripts/orderbook-bootstrap.sh --refresh-session
 #   ./scripts/orderbook-bootstrap.sh --skip-mint
 #   ./scripts/orderbook-bootstrap.sh --skip-mm
+#   ./scripts/orderbook-bootstrap.sh --mm-only
+#   ./scripts/orderbook-bootstrap.sh --pool MYSO_MYUSD
 #   ./scripts/orderbook-bootstrap.sh --skip-oracle
 #   ./scripts/orderbook-bootstrap.sh --e2e-test
 #   ASSUME_YES=1 ./scripts/orderbook-bootstrap.sh
 #   ./scripts/orderbook-bootstrap.sh -y
 #
+# No flags opens an arrow-key start menu (↑/↓, numbers, q). Flags skip the menu.
+#
 # MYSO/MYUSD localnet mid is live from MYSO HTTP oracle + Pyth (no static seed by default).
+# MYSO/MYUSD MM defaults: tick 1, 30 levels/side, 100 MYSO + 1000 MYUSD deposits (override via MM_MYSO_MYUSD_* / TICK_SIZE_MYSO).
 # ORDERBOOK_ORACLE_SEED_STATIC=1 + MM_ALLOW_FALLBACK=1 = offline fake prices only.
 # ORDERBOOK_MYSO_RESEED=1 (default) cancels leftover MYSO/MYUSD book orders before MM start.
 # After MM is ready, bootstrap runs a BTC/MYUSD market buy demo via orderbook-demo-btc-trades.ts.
@@ -49,17 +54,21 @@ source "${SCRIPT_DIR}/lib/orderbook-bootstrap-common.sh"
 source "${SCRIPT_DIR}/lib/orderbook-mm-supervisor.sh"
 # shellcheck source=lib/runnable-summary-common.sh
 source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
+# shellcheck source=lib/interactive-select.sh
+source "${SCRIPT_DIR}/lib/interactive-select.sh"
 
 SKIP_CONFIRM_RUN=1
 ASSUME_YES="${ASSUME_YES:-1}"
 DO_REFRESH=0
 SKIP_MINT=0
 SKIP_MM=0
+MM_ONLY=0
 SKIP_ORACLE=0
 E2E_TEST=0
+SHOW_MENU=1
 
 usage() {
-    sed -n '2,24p' "$0" | sed 's/^# \?//'
+    sed -n '2,35p' "$0" | sed 's/^# \?//'
 }
 
 ensure_token_published() {
@@ -110,7 +119,7 @@ ensure_pool() {
     local id_var="$2"
     local base_type="$3"
     local tick="$4"
-    local pool catalog_pool recovered stale_pool
+    local pool catalog_pool recovered stale_pool whitelist
     if [[ -n "${!id_var:-}" ]] && object_exists_on_fullnode "${!id_var}"; then
         stale_pool="$(normalize_hex_id "${!id_var}")" || return 1
         if recovered="$(orderbook_resolve_shared_pool_id "$stale_pool" 2>/dev/null)"; then
@@ -148,8 +157,9 @@ ensure_pool() {
         echo "Catalog pool $name $stale_pool is not a shared Pool and could not be recovered" >&2
         orderbook_remove_invalid_catalog_pool "$stale_pool" "$name" || return 1
     fi
-    log_step "Creating pool $name ($base_type / $MYUSD_COIN_TYPE)"
-    pool="$(orderbook_create_pool "$base_type" "$tick" "$LOT_SIZE" "$MIN_SIZE")" || {
+    whitelist="$(orderbook_pool_whitelist_flag "$name")"
+    log_step "Creating pool $name ($base_type / $MYUSD_COIN_TYPE) whitelist=${whitelist}"
+    pool="$(orderbook_create_pool "$base_type" "$tick" "$LOT_SIZE" "$MIN_SIZE" "$whitelist")" || {
         if catalog_pool="$(orderbook_catalog_pool_id_for_base "$base_type" 2>/dev/null)" \
             && [[ -n "$catalog_pool" ]] \
             && recovered="$(orderbook_resolve_shared_pool_id "$catalog_pool" 2>/dev/null)"; then
@@ -249,8 +259,6 @@ run_bootstrap() {
         log_step "Funding oracle wallet gas ($ORACLE_ADDRESS)"
         orderbook_fund_address "$ORACLE_ADDRESS" 300000000 || return 1
     fi
-    orderbook_ensure_demo_trade_funds || return 1
-    orderbook_fetch_mm_pools_json >/dev/null || return 1
 
     print_run_summary_header "Orderbook bootstrap complete"
     print_run_summary_line "Active address" "$active"
@@ -274,12 +282,126 @@ run_bootstrap() {
 
     if [[ "$E2E_TEST" == 1 ]]; then
         ORDERBOOK_MM_BACKGROUND=1
-        orderbook_mm_supervisor_run "$SKIP_ORACLE" 1 || return 1
+        orderbook_run_mm_stack "$SKIP_ORACLE" 1 || return 1
         log_step "E2E test passed — oracle PID=${ORACLE_PID:-} MM PID=${MM_PID:-} still running"
         return 0
     fi
 
-    orderbook_mm_supervisor_run "$SKIP_ORACLE" 0 || return 1
+    orderbook_run_mm_stack "$SKIP_ORACLE" 0 || return 1
+}
+
+run_mm_only() {
+    local active required_pools=() id_var
+    active="$(resolve_myso_active_address)" || {
+        echo "Could not resolve active address" >&2
+        return 1
+    }
+    active="$(normalize_hex_id "$active")" || return 1
+
+    MM_POOL_FILTER="$(orderbook_normalize_mm_pool_filter "${MM_POOL_FILTER:-}")" || return 1
+    while IFS= read -r id_var; do
+        [[ -n "$id_var" ]] && required_pools+=("$id_var")
+    done < <(orderbook_mm_required_pool_id_vars)
+
+    orderbook_load_session
+    orderbook_refresh_session_from_graphql || return 1
+    orderbook_validate_session_ids
+    require_session_fields ORDERBOOK_REGISTRY_ID MYUSD_COIN_TYPE MYUSD_TREASURY_CAP_ID \
+        DEPLOYER_ADDRESS PRIVATE_KEY "${required_pools[@]}" || return 1
+
+    if ! orderbook_admin_health; then
+        echo "Orderbook admin API not reachable at ${ORDERBOOK_API_URL}/admin/health" >&2
+        return 1
+    fi
+
+    if [[ -z "${PYTH_PACKAGE_ID:-}" ]] || ! object_exists_on_fullnode "$PYTH_PACKAGE_ID"; then
+        orderbook_run_pyth_setup || return 1
+        orderbook_save_session
+    fi
+    if [[ -n "${ORACLE_ADDRESS:-}" ]]; then
+        orderbook_fund_address "$ORACLE_ADDRESS" 300000000 || return 1
+    fi
+
+    log_step "MM-only restart (top-up MYUSD if needed, then oracle + market-maker)"
+    if [[ "$E2E_TEST" == 1 ]]; then
+        ORDERBOOK_MM_BACKGROUND=1
+        orderbook_run_mm_stack "$SKIP_ORACLE" 1 || return 1
+        return 0
+    fi
+    orderbook_run_mm_stack "$SKIP_ORACLE" 0 || return 1
+}
+
+run_menu_action() {
+    local action="$1"
+    case "$action" in
+        bootstrap_pools)
+            SKIP_MM=1
+            MM_ONLY=0
+            MM_POOL_FILTER=
+            run_bootstrap
+            ;;
+        mm_all)
+            MM_ONLY=1
+            SKIP_MM=0
+            MM_POOL_FILTER=
+            run_mm_only
+            ;;
+        mm_myso)
+            MM_ONLY=1
+            SKIP_MM=0
+            MM_POOL_FILTER=MYSO_MYUSD
+            run_mm_only
+            ;;
+        mm_btc)
+            MM_ONLY=1
+            SKIP_MM=0
+            MM_POOL_FILTER=BTC_MYUSD
+            run_mm_only
+            ;;
+        mm_eth)
+            MM_ONLY=1
+            SKIP_MM=0
+            MM_POOL_FILTER=ETH_MYUSD
+            run_mm_only
+            ;;
+        bootstrap_all)
+            SKIP_MM=0
+            MM_ONLY=0
+            MM_POOL_FILTER=
+            run_bootstrap
+            ;;
+        *)
+            echo "Unknown menu action: $action" >&2
+            return 1
+            ;;
+    esac
+}
+
+show_start_menu() {
+    local choice
+    while true; do
+        INTERACTIVE_SELECT_RESULT=
+        if ! interactive_select INTERACTIVE_SELECT_RESULT "Orderbook localnet" \
+            'bootstrap_pools|1) Bootstrap + create pools (no MM)' \
+            'mm_all|2) Start all market makers' \
+            'mm_myso|3) Start MYSO/MYUSD market maker' \
+            'mm_btc|4) Start BTC/MYUSD market maker' \
+            'mm_eth|5) Start ETH/MYUSD market maker' \
+            'bootstrap_all|6) Bootstrap + pools + all MMs' \
+            'quit|q) Quit'; then
+            return 0
+        fi
+        choice="$INTERACTIVE_SELECT_RESULT"
+        case "$choice" in
+            quit|'')
+                return 0
+                ;;
+        esac
+        echo "" >&2
+        log_step "Menu: $choice — logs stay in this terminal (Ctrl+C returns to the menu)"
+        run_menu_action "$choice" || true
+        echo "" >&2
+    done
 }
 
 while [[ $# -gt 0 ]]; do
@@ -294,7 +416,23 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-mm)
             SKIP_MM=1
+            SHOW_MENU=0
             shift
+            ;;
+        --mm-only)
+            MM_ONLY=1
+            SHOW_MENU=0
+            shift
+            ;;
+        --pool)
+            [[ -n "${2:-}" ]] || {
+                echo "--pool requires MYSO_MYUSD, BTC_MYUSD, or ETH_MYUSD" >&2
+                exit 1
+            }
+            MM_POOL_FILTER="$2"
+            MM_ONLY=1
+            SHOW_MENU=0
+            shift 2
             ;;
         --skip-oracle)
             SKIP_ORACLE=1
@@ -303,6 +441,7 @@ while [[ $# -gt 0 ]]; do
         --e2e-test)
             E2E_TEST=1
             ORDERBOOK_MM_BACKGROUND=1
+            SHOW_MENU=0
             shift
             ;;
         -y|--yes)
@@ -328,4 +467,10 @@ if [[ "$DO_REFRESH" == 1 && -f "$SOCIAL_SESSION_SAVE_PATH" ]]; then
     log_step "Forced session re-validation (--refresh-session)"
 fi
 
-run_bootstrap
+if [[ "$SHOW_MENU" == 1 ]]; then
+    show_start_menu
+elif [[ "$MM_ONLY" == 1 ]]; then
+    run_mm_only
+else
+    run_bootstrap
+fi

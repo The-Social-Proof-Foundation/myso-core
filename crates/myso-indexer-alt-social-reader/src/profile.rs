@@ -626,6 +626,10 @@ pub struct ProfileBadgeRow {
     pub assigned_at: i64,
     #[diesel(sql_type = SmallInt)]
     pub badge_type: i16,
+    #[diesel(sql_type = Text)]
+    pub badge_kind: String,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub expires_at: Option<i64>,
 }
 
 pub(crate) async fn get_profile_badges(
@@ -647,14 +651,22 @@ pub(crate) async fn get_profile_badges(
     let id2 = profile_id_opt.as_deref().unwrap_or(address).to_string();
     let query = "
         SELECT pb.badge_id, pb.badge_name, pb.badge_description, pb.badge_media_url,
-               pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at, pb.badge_type
+               pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at, pb.badge_type,
+               COALESCE(pb.badge_kind, 'owned') AS badge_kind, pb.expires_at
         FROM (
             SELECT DISTINCT ON (badge_id) *
             FROM profile_badges
-            WHERE profile_id = $1 OR profile_id = $2
+            WHERE revoked = false
+              AND (
+                (COALESCE(badge_kind, 'owned') = 'owned' AND (profile_id = $1 OR profile_id = $2))
+                OR (
+                  badge_kind = 'platform'
+                  AND LOWER(wallet_address) = LOWER($1)
+                  AND (expires_at IS NULL OR expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+                )
+              )
             ORDER BY badge_id, time DESC
         ) pb
-        WHERE pb.revoked = false
         ORDER BY pb.assigned_at DESC
         LIMIT $3 OFFSET $4
     ";
@@ -667,6 +679,206 @@ pub(crate) async fn get_profile_badges(
         .await?;
     metrics.requests_succeeded.inc();
     Ok(results)
+}
+
+pub(crate) async fn get_wallet_platform_badges(
+    conn: &mut Connection<'_>,
+    address: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<ProfileBadgeRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT pb.badge_id, pb.badge_name, pb.badge_description, pb.badge_media_url,
+               pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at, pb.badge_type,
+               COALESCE(pb.badge_kind, 'platform') AS badge_kind, pb.expires_at
+        FROM (
+            SELECT DISTINCT ON (badge_id) *
+            FROM profile_badges
+            WHERE revoked = false
+              AND badge_kind = 'platform'
+              AND LOWER(wallet_address) = LOWER($1)
+              AND (expires_at IS NULL OR expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+            ORDER BY badge_id, time DESC
+        ) pb
+        ORDER BY pb.assigned_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(address)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<ProfileBadgeRow>(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(results)
+}
+
+pub(crate) async fn get_wallet_selected_platform_badge(
+    conn: &mut Connection<'_>,
+    address: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<ProfileBadgeRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        SELECT pb.badge_id, pb.badge_name, pb.badge_description, pb.badge_media_url,
+               pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at, pb.badge_type,
+               COALESCE(pb.badge_kind, 'platform') AS badge_kind, pb.expires_at
+        FROM profile_badges pb
+        JOIN wallet_badge_selections sel
+          ON LOWER(sel.wallet_address) = LOWER($1)
+         AND sel.badge_id IS NOT NULL
+         AND pb.badge_id = sel.badge_id
+        WHERE pb.revoked = false
+          AND pb.badge_kind = 'platform'
+          AND LOWER(pb.wallet_address) = LOWER($1)
+          AND (pb.expires_at IS NULL OR pb.expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+        ORDER BY pb.time DESC
+        LIMIT 1
+    ";
+    let row = diesel::sql_query(query)
+        .bind::<Text, _>(address)
+        .get_result::<ProfileBadgeRow>(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(row)
+}
+
+#[derive(Debug, Clone, QueryableByName)]
+pub struct WalletBadgeSelectionRow {
+    #[diesel(sql_type = Nullable<Text>)]
+    pub badge_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub ecosystem_badge_id: Option<String>,
+}
+
+pub(crate) async fn get_wallet_badge_selection(
+    conn: &mut Connection<'_>,
+    address: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<WalletBadgeSelectionRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let row = diesel::sql_query(
+        "SELECT badge_id, ecosystem_badge_id FROM wallet_badge_selections \
+         WHERE LOWER(wallet_address) = LOWER($1) LIMIT 1",
+    )
+    .bind::<Text, _>(address)
+    .get_result::<WalletBadgeSelectionRow>(conn)
+    .await
+    .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(row)
+}
+
+pub(crate) async fn get_resolved_selected_badge(
+    conn: &mut Connection<'_>,
+    address: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<ProfileBadgeRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let query = "
+        WITH sel AS (
+            SELECT badge_id, ecosystem_badge_id
+            FROM wallet_badge_selections
+            WHERE LOWER(wallet_address) = LOWER($1)
+            LIMIT 1
+        ),
+        prof AS (
+            SELECT profile_id, selected_badge_id
+            FROM profiles
+            WHERE LOWER(owner_address) = LOWER($1)
+            LIMIT 1
+        )
+        SELECT pb.badge_id, pb.badge_name, pb.badge_description, pb.badge_media_url,
+               pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at, pb.badge_type,
+               COALESCE(pb.badge_kind, 'owned') AS badge_kind, pb.expires_at
+        FROM profile_badges pb
+        LEFT JOIN sel ON true
+        LEFT JOIN prof ON true
+        WHERE pb.revoked = false
+          AND (
+            (sel.badge_id IS NOT NULL
+             AND pb.badge_id = sel.badge_id
+             AND pb.badge_kind = 'platform'
+             AND LOWER(pb.wallet_address) = LOWER($1)
+             AND (pb.expires_at IS NULL OR pb.expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint))
+            OR
+            (prof.selected_badge_id IS NOT NULL
+             AND pb.badge_id = prof.selected_badge_id
+             AND COALESCE(pb.badge_kind, 'owned') = 'owned'
+             AND (pb.profile_id = prof.profile_id OR pb.profile_id = $1))
+          )
+        ORDER BY CASE WHEN pb.badge_kind = 'platform' THEN 0 ELSE 1 END, pb.time DESC
+        LIMIT 1
+    ";
+    let row = diesel::sql_query(query)
+        .bind::<Text, _>(address)
+        .get_result::<ProfileBadgeRow>(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(row)
+}
+
+pub(crate) async fn get_resolved_selected_ecosystem_badge_id(
+    conn: &mut Connection<'_>,
+    address: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<String>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    #[derive(QueryableByName)]
+    struct IdRow {
+        #[diesel(sql_type = Nullable<Text>)]
+        badge_id: Option<String>,
+    }
+    let query = "
+        WITH sel AS (
+            SELECT ecosystem_badge_id
+            FROM wallet_badge_selections
+            WHERE LOWER(wallet_address) = LOWER($1)
+            LIMIT 1
+        ),
+        prof AS (
+            SELECT profile_id, selected_ecosystem_badge_id
+            FROM profiles
+            WHERE LOWER(owner_address) = LOWER($1)
+            LIMIT 1
+        )
+        SELECT COALESCE(
+            (
+                SELECT pb.badge_id FROM profile_badges pb, sel, prof
+                WHERE sel.ecosystem_badge_id IS NOT NULL
+                  AND pb.badge_id = sel.ecosystem_badge_id
+                  AND pb.revoked = false
+                  AND COALESCE(pb.badge_kind, 'owned') = 'owned'
+                  AND (pb.profile_id = prof.profile_id OR pb.profile_id = $1)
+                LIMIT 1
+            ),
+            (
+                SELECT pb.badge_id FROM profile_badges pb, prof
+                WHERE prof.selected_ecosystem_badge_id IS NOT NULL
+                  AND pb.badge_id = prof.selected_ecosystem_badge_id
+                  AND pb.revoked = false
+                  AND COALESCE(pb.badge_kind, 'owned') = 'owned'
+                  AND (pb.profile_id = prof.profile_id OR pb.profile_id = $1)
+                LIMIT 1
+            )
+        ) AS badge_id
+    ";
+    let row = diesel::sql_query(query)
+        .bind::<Text, _>(address)
+        .get_result::<IdRow>(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(row.and_then(|r| r.badge_id))
 }
 
 #[derive(Debug, Clone, QueryableByName)]

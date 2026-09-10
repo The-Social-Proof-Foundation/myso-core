@@ -860,6 +860,50 @@ impl SocialPgReader {
         get_profile_badges(&mut conn, address, limit, offset, &self.metrics).await
     }
 
+    pub async fn get_wallet_platform_badges(
+        &self,
+        address: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::profile::ProfileBadgeRow>> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_wallet_platform_badges(&mut conn, address, limit, offset, &self.metrics)
+            .await
+    }
+
+    pub async fn get_wallet_selected_platform_badge(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<Option<crate::profile::ProfileBadgeRow>> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_wallet_selected_platform_badge(&mut conn, address, &self.metrics).await
+    }
+
+    pub async fn get_wallet_badge_selection(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<Option<crate::profile::WalletBadgeSelectionRow>> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_wallet_badge_selection(&mut conn, address, &self.metrics).await
+    }
+
+    pub async fn get_resolved_selected_badge(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<Option<crate::profile::ProfileBadgeRow>> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_resolved_selected_badge(&mut conn, address, &self.metrics).await
+    }
+
+    pub async fn get_resolved_selected_ecosystem_badge_id(
+        &self,
+        address: &str,
+    ) -> anyhow::Result<Option<String>> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_resolved_selected_ecosystem_badge_id(&mut conn, address, &self.metrics)
+            .await
+    }
+
     /// Get followers of a profile (by owner address).
     pub async fn get_followers(
         &self,

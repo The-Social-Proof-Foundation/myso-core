@@ -2986,6 +2986,56 @@ pub struct BcsPlatformCreatedEvent {
     quorum_votes: Option<u64>,
     moderators_group_id: BcsMoveObjectId,
     redirect_uri: Option<String>,
+    badge_ledger_id: BcsMoveObjectId,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSharedBadgeAssignedEvent {
+    owner: AccountAddress,
+    badge_id: String,
+    name: String,
+    description: String,
+    media_url: String,
+    icon_url: String,
+    platform_id: AccountAddress,
+    issued_at: u64,
+    issued_by: AccountAddress,
+    badge_type: u8,
+    expires_at: u64,
+    assigned_by: AccountAddress,
+    assigned_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSharedBadgeRevokedEvent {
+    owner: AccountAddress,
+    badge_id: String,
+    platform_id: AccountAddress,
+    revoked_by: AccountAddress,
+    revoked_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSharedBadgeExtendedEvent {
+    owner: AccountAddress,
+    badge_id: String,
+    expires_at: u64,
+    extended_by: AccountAddress,
+    extended_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsSharedBadgeSelectedEvent {
+    owner: AccountAddress,
+    badge_id: String,
+    selected_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsEcosystemBadgeLedgerSelectedEvent {
+    owner: AccountAddress,
+    badge_id: String,
+    selected_at: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -4821,6 +4871,7 @@ fn parse_platform_event(
                 "voting_period_epochs": ev.voting_period_epochs,
                 "quorum_votes": ev.quorum_votes,
                 "moderators_group_id": move_object_id_to_string(&ev.moderators_group_id),
+                "badge_ledger_id": move_object_id_to_string(&ev.badge_ledger_id),
             })))
         }
         "PlatformUpdatedEvent" => {
@@ -4955,6 +5006,65 @@ fn parse_platform_event(
                 "max_badge_name_length": ev.max_badge_name_length,
                 "max_badge_description_length": ev.max_badge_description_length,
                 "timestamp": ev.timestamp,
+            })))
+        }
+        "SharedBadgeAssignedEvent" => {
+            let ev = bcs::from_bytes::<BcsSharedBadgeAssignedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "owner": addr_to_string(&ev.owner),
+                "badge_id": ev.badge_id,
+                "name": ev.name,
+                "description": ev.description,
+                "media_url": ev.media_url,
+                "icon_url": ev.icon_url,
+                "platform_id": addr_to_string(&ev.platform_id),
+                "issued_at": ev.issued_at,
+                "issued_by": addr_to_string(&ev.issued_by),
+                "badge_type": ev.badge_type,
+                "expires_at": ev.expires_at,
+                "assigned_by": addr_to_string(&ev.assigned_by),
+                "assigned_at": ev.assigned_at,
+            })))
+        }
+        "SharedBadgeRevokedEvent" => {
+            let ev = bcs::from_bytes::<BcsSharedBadgeRevokedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "owner": addr_to_string(&ev.owner),
+                "badge_id": ev.badge_id,
+                "platform_id": addr_to_string(&ev.platform_id),
+                "revoked_by": addr_to_string(&ev.revoked_by),
+                "revoked_at": ev.revoked_at,
+            })))
+        }
+        "SharedBadgeExtendedEvent" => {
+            let ev = bcs::from_bytes::<BcsSharedBadgeExtendedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "owner": addr_to_string(&ev.owner),
+                "badge_id": ev.badge_id,
+                "expires_at": ev.expires_at,
+                "extended_by": addr_to_string(&ev.extended_by),
+                "extended_at": ev.extended_at,
+            })))
+        }
+        "SharedBadgeSelectedEvent" => {
+            let ev = bcs::from_bytes::<BcsSharedBadgeSelectedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "owner": addr_to_string(&ev.owner),
+                "badge_id": ev.badge_id,
+                "selected_at": ev.selected_at,
+            })))
+        }
+        "EcosystemBadgeLedgerSelectedEvent" => {
+            let ev = bcs::from_bytes::<BcsEcosystemBadgeLedgerSelectedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "owner": addr_to_string(&ev.owner),
+                "badge_id": ev.badge_id,
+                "selected_at": ev.selected_at,
             })))
         }
         _ => Ok(None),
@@ -6904,6 +7014,7 @@ mod tests {
             quorum_votes: None,
             moderators_group_id: BcsMoveObjectId { bytes: mods_gid },
             redirect_uri: Some("https://example.com/oauth/callback".into()),
+            badge_ledger_id: BcsMoveObjectId { bytes: mods_gid },
         };
         let bytes = bcs::to_bytes(&ev).expect("serialize PlatformCreatedEvent BCS fixture");
         let json = parse_event_contents("platform", "PlatformCreatedEvent", &bytes)

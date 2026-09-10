@@ -111,6 +111,7 @@ pub use post::{
 };
 pub use profile::{
     ProfileBadgeRow, ProfileByAddressResponse, ProfileConfigRow, ReservationStatus,
+    WalletBadgeSelectionRow,
     SelectedBadgeInfo, SocialProofTokenInfo, UniversalUserResult,
 };
 pub use social_graph::{
