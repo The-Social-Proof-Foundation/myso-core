@@ -34,12 +34,7 @@ pub type BridgeRecordDyanmicField = Field<
     LinkedTableNode<MoveTypeBridgeMessageKey, MoveTypeBridgeRecord>,
 >;
 
-pub const BRIDGE_MYUSD_PEG_MODULE_NAME: &IdentStr = ident_str!("myusd_peg");
-pub const BRIDGE_CLAIM_STABLE_INTO_MYUSD_FUNCTION_NAME: &IdentStr =
-    ident_str!("claim_stable_into_myusd");
-
 pub const CLAIM_POLICY_DIRECT: u8 = 0;
-pub const CLAIM_POLICY_CONVERT_TO_MYUSD: u8 = 1;
 pub const CLAIM_POLICY_DISABLED: u8 = 2;
 
 pub const BRIDGE_MODULE_NAME: &IdentStr = ident_str!("bridge");
@@ -204,18 +199,12 @@ pub struct TokenClaimPolicySummary {
 pub fn effective_claim_policy(
     policies: &[(u8, TokenClaimPolicySummary)],
     token_id: u8,
-    source_chain: u8,
-    bridge_seq_num: u64,
+    _source_chain: u8,
+    _bridge_seq_num: u64,
 ) -> u8 {
     let Some((_, stored)) = policies.iter().find(|(id, _)| *id == token_id) else {
         return CLAIM_POLICY_DIRECT;
     };
-    if stored.policy == CLAIM_POLICY_CONVERT_TO_MYUSD
-        && source_chain == stored.boundary_source_chain
-        && bridge_seq_num < stored.boundary_seq
-    {
-        return CLAIM_POLICY_DIRECT;
-    }
     stored.policy
 }
 
@@ -459,6 +448,8 @@ pub struct MoveTypeBridgeTreasury {
     pub waiting_room: Bag,
     pub native_myso_escrow: Balance,
     pub native_bridge_initialized: bool,
+    pub type_to_ids: VecMap<String, Vec<u8>>,
+    pub rail_reserve: VecMap<u8, u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, Default, PartialEq, Eq)]
@@ -639,22 +630,18 @@ mod tests {
     }
 
     #[test]
-    fn effective_claim_policy_keeps_pre_boundary_direct() {
+    fn effective_claim_policy_honors_disabled() {
         let policies = [(
             TOKEN_ID_USDC,
             TokenClaimPolicySummary {
-                policy: CLAIM_POLICY_CONVERT_TO_MYUSD,
+                policy: CLAIM_POLICY_DISABLED,
                 boundary_source_chain: 1,
-                boundary_seq: 20,
+                boundary_seq: 0,
             },
         )];
         assert_eq!(
-            effective_claim_policy(&policies, TOKEN_ID_USDC, 1, 19),
-            CLAIM_POLICY_DIRECT
-        );
-        assert_eq!(
             effective_claim_policy(&policies, TOKEN_ID_USDC, 1, 20),
-            CLAIM_POLICY_CONVERT_TO_MYUSD
+            CLAIM_POLICY_DISABLED
         );
         assert_eq!(
             effective_claim_policy(&policies, TOKEN_ID_USDT, 1, 20),

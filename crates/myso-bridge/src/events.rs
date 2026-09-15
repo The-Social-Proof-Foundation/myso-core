@@ -22,7 +22,7 @@ use move_core_types::language_storage::StructTag;
 use myso_json_rpc_types::MySoEvent;
 use myso_types::BRIDGE_PACKAGE_ID;
 use myso_types::TypeTag;
-use myso_types::base_types::{MySoAddress, ObjectID};
+use myso_types::base_types::MySoAddress;
 use myso_types::bridge::BridgeChainId;
 use myso_types::bridge::MoveTypeBridgeMessageKey;
 use myso_types::bridge::MoveTypeCommitteeMember;
@@ -105,48 +105,6 @@ new_move_event!(
 );
 new_move_event!(TokenTransferAlreadyClaimed, MoveTokenTransferAlreadyClaimed);
 new_move_event!(TokenTransferLimitExceed, MoveTokenTransferLimitExceed);
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub struct MoveStableClaimConvertedToMyUsd {
-    pub message_key_source_chain: u8,
-    pub message_key_seq: u64,
-    pub source_chain: u8,
-    pub bridge_seq_num: u64,
-    pub rail_token_id: u8,
-    pub input_amount: u64,
-    pub myusd_amount: u64,
-    pub recipient: MySoAddress,
-    pub peg_id: ObjectID,
-    pub usdc_reserve: u64,
-    pub usdt_reserve: u64,
-    pub usdc_issued: u64,
-    pub usdt_issued: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Hash)]
-pub struct StableClaimConvertedToMyUsd {
-    pub nonce: u64,
-    pub source_chain: BridgeChainId,
-    pub recipient: MySoAddress,
-}
-
-impl TryFrom<MoveStableClaimConvertedToMyUsd> for StableClaimConvertedToMyUsd {
-    type Error = BridgeError;
-
-    fn try_from(event: MoveStableClaimConvertedToMyUsd) -> BridgeResult<Self> {
-        let source_chain = BridgeChainId::try_from(event.source_chain).map_err(|_e| {
-            BridgeError::Generic(format!(
-                "Failed to convert MoveStableClaimConvertedToMyUsd. Invalid source chain {}",
-                event.source_chain
-            ))
-        })?;
-        Ok(Self {
-            nonce: event.bridge_seq_num,
-            source_chain,
-            recipient: event.recipient,
-        })
-    }
-}
 
 // `EmergencyOpEvent` emitted in bridge.move
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -487,7 +445,6 @@ crate::declare_events!(
     UpdateTokenPriceEvent(UpdateTokenPriceEvent) => ("treasury::UpdateTokenPriceEvent", UpdateTokenPriceEvent),
     UpdateRouteLimitEvent(UpdateRouteLimitEvent) => ("limiter::UpdateRouteLimitEvent", UpdateRouteLimitEvent),
     MySoToEthTokenBridgeV2(EmittedMySoToEthTokenBridgeV2) => ("bridge::TokenDepositedEventV2", MoveTokenDepositedEventV2),
-    StableClaimConvertedToMyUsd(StableClaimConvertedToMyUsd) => ("myusd_peg::StableClaimConvertedToMyUsd", MoveStableClaimConvertedToMyUsd),
 
     // Add new event types here. Format:
     // EnumVariantName(Struct) => ("{module}::{event_struct}", CorrespondingMoveStruct)
@@ -597,7 +554,6 @@ impl MySoBridgeEvent {
             MySoBridgeEvent::NewTokenEvent(_event) => None,
             MySoBridgeEvent::UpdateTokenPriceEvent(_event) => None,
             MySoBridgeEvent::UpdateRouteLimitEvent(_event) => None,
-            MySoBridgeEvent::StableClaimConvertedToMyUsd(_event) => None,
         }
     }
 }

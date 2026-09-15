@@ -127,10 +127,6 @@ pub struct MySoConfig {
     /// If the sequence number is not found in storage or override, the query will first fallback to the sequence number corresponding to the last processed EventID from the bridge module `bridge` (which in turn can be overridden via `myso_bridge_module_last_processed_event_id_override`) if available, otherwise fallback to 0.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub myso_bridge_next_sequence_number_override: Option<u64>,
-    /// Shared `MyUsdPeg` object. When set, USDC/USDT inbound claims whose on-chain
-    /// policy is `CONVERT_TO_MYUSD` call `claim_stable_into_myusd` instead of a direct claim.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub myusd_peg_object_id: Option<ObjectID>,
 }
 
 #[serde_as]
@@ -480,7 +476,6 @@ impl BridgeNodeConfig {
             relay_config,
             deposit_config,
             eth_bridge_chain_id: self.eth.eth_bridge_chain_id,
-            myusd_peg_object_id: self.myso.myusd_peg_object_id,
         };
 
         info!("Config validation complete");
@@ -677,7 +672,6 @@ pub struct BridgeClientConfig {
     pub relay_config: Option<crate::relay::RelayConfig>,
     pub deposit_config: Option<DepositConfig>,
     pub eth_bridge_chain_id: u8,
-    pub myusd_peg_object_id: Option<ObjectID>,
 }
 
 #[serde_as]

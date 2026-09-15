@@ -55,6 +55,9 @@ pub struct DepositRegistration {
     /// Optional shared secret sent as `x-internal-api-key`.
     #[serde(default)]
     pub deposit_callback_api_key: Option<String>,
+    /// Outbound rail id when the Move type is shared (USDC=3, USDT=4). Older rows default to USDC.
+    #[serde(default)]
+    pub destination_token_id: Option<u8>,
 }
 
 /// Key for deposit address lookups (can be EVM or MySo address)
@@ -106,6 +109,8 @@ pub struct RecipientInfo {
     pub deposit_callback_url: Option<String>,
     #[serde(default)]
     pub deposit_callback_api_key: Option<String>,
+    #[serde(default)]
+    pub destination_token_id: Option<u8>,
 }
 
 /// Key for tracking processed deposits
@@ -500,6 +505,7 @@ impl BridgeOrchestratorTables {
             registration_type: registration.registration_type,
             deposit_callback_url: registration.deposit_callback_url.clone(),
             deposit_callback_api_key: registration.deposit_callback_api_key.clone(),
+            destination_token_id: registration.destination_token_id,
         };
 
         self.deposit_to_recipient

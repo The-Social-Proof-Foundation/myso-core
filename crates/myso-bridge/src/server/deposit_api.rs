@@ -49,6 +49,8 @@ pub struct GenerateDepositRequest {
     pub callback_url: Option<String>,
     #[serde(default)]
     pub callback_api_key: Option<String>,
+    #[serde(default)]
+    pub destination_token_id: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -285,6 +287,7 @@ async fn generate_for_myso_user(
         last_used: None,
         deposit_callback_url: callback_url.clone(),
         deposit_callback_api_key: callback_api_key.clone(),
+        destination_token_id: req.destination_token_id,
     };
 
     state
@@ -460,6 +463,7 @@ async fn generate_for_eth_user(
         last_used: None,
         deposit_callback_url: callback_url.clone(),
         deposit_callback_api_key: callback_api_key.clone(),
+        destination_token_id: req.destination_token_id,
     };
 
     state
@@ -580,6 +584,7 @@ pub async fn link_addresses(
         last_used: None,
         deposit_callback_url: None,
         deposit_callback_api_key: None,
+        destination_token_id: None,
     };
 
     state
@@ -601,6 +606,7 @@ pub async fn link_addresses(
         last_used: None,
         deposit_callback_url: None,
         deposit_callback_api_key: None,
+        destination_token_id: None,
     };
 
     state

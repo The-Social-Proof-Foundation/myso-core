@@ -25,6 +25,9 @@ const ENativeBridgeAlreadyInitialized: u64 = 5;
 const EInvalidBootstrapAmount: u64 = 6;
 const ENativeBridgeNotInitialized: u64 = 7;
 const EInsufficientNativeEscrow: u64 = 8;
+const EInsufficientRailReserve: u64 = 9;
+const ETokenRequiresRailId: u64 = 10;
+const ETokenIdAlreadyExists: u64 = 11;
 
 const MIST_PER_WHOLE_MYSO: u64 = 1_000_000_000;
 const BOOTSTRAP_NATIVE_MYSO_MIST: u64 = 50_000_000_000_000_000;
@@ -42,13 +45,17 @@ public struct BridgeTreasury has store {
     // token treasuries, values are TreasuryCaps for native bridge V1.
     treasuries: ObjectBag,
     supported_tokens: VecMap<TypeName, BridgeTokenMetadata>,
-    // Mapping token id to type name
+    // Mapping token id to type name (many ids may share one type)
     id_token_type_map: VecMap<u8, TypeName>,
     // Bag for storing potential new token waiting to be approved
     waiting_room: Bag,
     /// Escrow for native MYSO (bootstrap + send_myso_token locks); claims release from here.
     native_myso_escrow: Balance<MYSO>,
     native_bridge_initialized: bool,
+    /// Type -> rail ids. Length 1 for 1:1 wrappers; length > 1 for shared rails (myUSD).
+    type_to_ids: VecMap<TypeName, vector<u8>>,
+    /// Outstanding minted amount per rail id (EVM vault backing).
+    rail_reserve: VecMap<u8, u64>,
 }
 
 public struct BridgeTokenMetadata has copy, drop, store {
@@ -84,8 +91,29 @@ public struct TokenRegistrationEvent has copy, drop {
 }
 
 public fun token_id<T>(self: &BridgeTreasury): u8 {
-    let metadata = self.get_token_metadata<T>();
-    metadata.id
+    let ids = self.type_ids<T>();
+    assert!(ids.length() == 1, ETokenRequiresRailId);
+    ids[0]
+}
+
+public fun type_ids<T>(self: &BridgeTreasury): vector<u8> {
+    let coin_type = type_name::with_defining_ids<T>();
+    assert!(self.type_to_ids.contains(&coin_type), EUnsupportedTokenType);
+    *self.type_to_ids.get(&coin_type)
+}
+
+public fun type_matches_token_id<T>(self: &BridgeTreasury, token_id: u8): bool {
+    if (!self.id_token_type_map.contains(&token_id)) {
+        return false
+    };
+    self.id_token_type_map[&token_id] == type_name::with_defining_ids<T>()
+}
+
+public fun rail_reserve(self: &BridgeTreasury, token_id: u8): u64 {
+    if (!self.rail_reserve.contains(&token_id)) {
+        return 0
+    };
+    self.rail_reserve[&token_id]
 }
 
 public fun decimal_multiplier<T>(self: &BridgeTreasury): u64 {
@@ -96,6 +124,24 @@ public fun decimal_multiplier<T>(self: &BridgeTreasury): u64 {
 public fun notional_value<T>(self: &BridgeTreasury): u64 {
     let metadata = self.get_token_metadata<T>();
     metadata.notional_value
+}
+
+public fun decimal_multiplier_by_id(self: &BridgeTreasury, token_id: u8): u64 {
+    let type_name = self.id_token_type_map.try_get(&token_id);
+    assert!(type_name.is_some(), EUnsupportedTokenType);
+    let type_name = type_name.destroy_some();
+    let metadata = self.supported_tokens.try_get(&type_name);
+    assert!(metadata.is_some(), EUnsupportedTokenType);
+    metadata.destroy_some().decimal_multiplier
+}
+
+public fun notional_value_by_id(self: &BridgeTreasury, token_id: u8): u64 {
+    let type_name = self.id_token_type_map.try_get(&token_id);
+    assert!(type_name.is_some(), EUnsupportedTokenType);
+    let type_name = type_name.destroy_some();
+    let metadata = self.supported_tokens.try_get(&type_name);
+    assert!(metadata.is_some(), EUnsupportedTokenType);
+    metadata.destroy_some().notional_value
 }
 
 //////////////////////////////////////////////////////
@@ -141,38 +187,65 @@ public(package) fun add_new_token(
     native_token: bool,
     notional_value: u64,
 ) {
-    if (!native_token) {
-        assert!(notional_value > 0, EInvalidNotionalValue);
+    if (native_token) {
+        return
+    };
+    assert!(notional_value > 0, EInvalidNotionalValue);
+    assert!(!self.id_token_type_map.contains(&token_id), ETokenIdAlreadyExists);
+
+    if (self.waiting_room.contains(token_name)) {
         let ForeignTokenRegistration {
             type_name,
             uc,
             decimal,
         } = self.waiting_room.remove<String, ForeignTokenRegistration>(token_name);
         let decimal_multiplier = 10u64.pow(decimal);
-        self
-            .supported_tokens
-            .insert(
-                type_name,
-                BridgeTokenMetadata {
-                    id: token_id,
-                    decimal_multiplier,
-                    notional_value,
-                    native_token,
-                },
-            );
+        if (!self.supported_tokens.contains(&type_name)) {
+            self
+                .supported_tokens
+                .insert(
+                    type_name,
+                    BridgeTokenMetadata {
+                        id: token_id,
+                        decimal_multiplier,
+                        notional_value,
+                        native_token,
+                    },
+                );
+            self.type_to_ids.insert(type_name, vector[token_id]);
+        } else {
+            self.type_to_ids.get_mut(&type_name).push_back(token_id);
+            let meta = self.supported_tokens.get_mut(&type_name);
+            meta.notional_value = notional_value;
+        };
         self.id_token_type_map.insert(token_id, type_name);
-
-        // Freeze upgrade cap to prevent changes to the coin
+        self.rail_reserve.insert(token_id, 0);
         transfer::public_freeze_object(uc);
-
         event::emit(NewTokenEvent {
             token_id,
             type_name,
             native_token,
             decimal_multiplier,
             notional_value,
-        })
-    } // else not implemented in V1
+        });
+        return
+    };
+
+    let type_name = self.find_supported_type(token_name);
+    assert!(type_name.is_some(), EUnsupportedTokenType);
+    let type_name = type_name.destroy_some();
+    self.type_to_ids.get_mut(&type_name).push_back(token_id);
+    self.id_token_type_map.insert(token_id, type_name);
+    self.rail_reserve.insert(token_id, 0);
+    let meta = self.supported_tokens.get_mut(&type_name);
+    meta.notional_value = notional_value;
+    event::emit(NewTokenEvent {
+        token_id,
+        type_name,
+        native_token,
+        decimal_multiplier: meta.decimal_multiplier,
+        notional_value,
+    });
 }
 
 public(package) fun create(ctx: &mut TxContext): BridgeTreasury {
@@ -183,6 +256,8 @@ public(package) fun create(ctx: &mut TxContext): BridgeTreasury {
         waiting_room: bag::new(ctx),
         native_myso_escrow: balance::zero(),
         native_bridge_initialized: false,
+        type_to_ids: vec_map::empty(),
+        rail_reserve: vec_map::empty(),
     }
 }
 
@@ -210,6 +285,7 @@ public(package) fun bootstrap_native_myso_once(self: &mut BridgeTreasury, coin: 
             },
         );
     self.id_token_type_map.insert(0, type_m);
+    self.type_to_ids.insert(type_m, vector[0]);
 
     event::emit(NewTokenEvent {
         token_id: 0,
@@ -256,6 +332,21 @@ public(package) fun mint<T>(self: &mut BridgeTreasury, amount: u64, ctx: &mut Tx
     coin::mint(treasury, amount, ctx)
 }
 
+public(package) fun credit_rail(self: &mut BridgeTreasury, token_id: u8, amount: u64) {
+    if (!self.rail_reserve.contains(&token_id)) {
+        self.rail_reserve.insert(token_id, 0);
+    };
+    let reserved = self.rail_reserve.get_mut(&token_id);
+    *reserved = *reserved + amount;
+}
+
+public(package) fun debit_rail(self: &mut BridgeTreasury, token_id: u8, amount: u64) {
+    assert!(self.rail_reserve.contains(&token_id), EInsufficientRailReserve);
+    let reserved = self.rail_reserve.get_mut(&token_id);
+    assert!(*reserved >= amount, EInsufficientRailReserve);
+    *reserved = *reserved - amount;
+}
+
 public(package) fun update_asset_notional_price(
     self: &mut BridgeTreasury,
     token_id: u8,
@@ -279,6 +370,19 @@ fun get_token_metadata<T>(self: &BridgeTreasury): BridgeTokenMetadata {
     let metadata = self.supported_tokens.try_get(&coin_type);
     assert!(metadata.is_some(), EUnsupportedTokenType);
     metadata.destroy_some()
+}
+
+fun find_supported_type(self: &BridgeTreasury, token_name: String): Option<TypeName> {
+    let keys = self.supported_tokens.keys();
+    let mut i = 0;
+    while (i < keys.length()) {
+        let tn = keys[i];
+        if (type_name::into_string(tn) == token_name) {
+            return option::some(tn)
+        };
+        i = i + 1;
+    };
+    option::none()
 }
 
 //////////////////////////////////////////////////////
@@ -353,10 +457,22 @@ public fun setup_for_testing(treasury: &mut BridgeTreasury) {
             },
         );
 
-    treasury.id_token_type_map.insert(1, type_name::with_defining_ids<BTC>());
-    treasury.id_token_type_map.insert(2, type_name::with_defining_ids<ETH>());
-    treasury.id_token_type_map.insert(3, type_name::with_defining_ids<USDC>());
-    treasury.id_token_type_map.insert(4, type_name::with_defining_ids<USDT>());
+    let btc_t = type_name::with_defining_ids<BTC>();
+    let eth_t = type_name::with_defining_ids<ETH>();
+    let usdc_t = type_name::with_defining_ids<USDC>();
+    let usdt_t = type_name::with_defining_ids<USDT>();
+    treasury.id_token_type_map.insert(1, btc_t);
+    treasury.id_token_type_map.insert(2, eth_t);
+    treasury.id_token_type_map.insert(3, usdc_t);
+    treasury.id_token_type_map.insert(4, usdt_t);
+    treasury.type_to_ids.insert(btc_t, vector[1]);
+    treasury.type_to_ids.insert(eth_t, vector[2]);
+    treasury.type_to_ids.insert(usdc_t, vector[3]);
+    treasury.type_to_ids.insert(usdt_t, vector[4]);
+    treasury.rail_reserve.insert(1, 0);
+    treasury.rail_reserve.insert(2, 0);
+    treasury.rail_reserve.insert(3, 0);
+    treasury.rail_reserve.insert(4, 0);
 }
 
 #[test_only]

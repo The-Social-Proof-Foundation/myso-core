@@ -353,6 +353,11 @@ orderbook_mm_supervisor_run() {
             MM_HEALTH_CHECK_PORT="$MM_HEALTH_PORT" \
             MM_FORCE_NEW_BALANCE_MANAGERS="${MM_FORCE_NEW_BALANCE_MANAGERS:-}" \
             MM_ALLOW_FALLBACK="${MM_ALLOW_FALLBACK:-1}" \
+            MM_MYSO_DISCOVERY="${MM_MYSO_DISCOVERY:-}" \
+            MM_MYSO_ORACLE_WEIGHT_BPS="${MM_MYSO_ORACLE_WEIGHT_BPS:-}" \
+            MM_MYSO_ORACLE_PULL_MS="${MM_MYSO_ORACLE_PULL_MS:-}" \
+            MM_MYSO_INVENTORY_SKEW_BPS="${MM_MYSO_INVENTORY_SKEW_BPS:-}" \
+            MM_MYSO_MAX_ORACLE_DEV_BPS="${MM_MYSO_MAX_ORACLE_DEV_BPS:-}" \
             RPC_URL="${RPC_URL:-http://127.0.0.1:9000}"
         if [[ "$background" == 1 ]]; then
             exec pnpm market-maker

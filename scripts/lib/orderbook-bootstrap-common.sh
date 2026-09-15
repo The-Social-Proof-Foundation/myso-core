@@ -6,7 +6,7 @@
 # Source after scripts/lib/social-runtime-common.sh.
 # All on-chain IDs are GraphQL/wallet discovered — none are required as user input.
 # Env overrides (PKG_MYUSD, ORDERBOOK_REGISTRY_ID, …) are debug-only.
-# BTC/ETH coin types come from bridge-session.env (BRIDGE_BTC_TYPE / BRIDGE_ETH_TYPE).
+# BTC/ETH/MYUSD coin types come from bridge-session.env (BRIDGE_*_TYPE).
 
 if [[ -n "${_ORDERBOOK_BOOTSTRAP_COMMON_SOURCED:-}" ]]; then
     return 0 2>/dev/null || exit 0
@@ -154,11 +154,63 @@ orderbook_apply_defaults() {
 
 orderbook_save_session() {
     social_save_session "${ORDERBOOK_SESSION_KEYS[@]}"
+    orderbook_sync_sandbox_env || true
 }
 
 orderbook_load_session() {
     social_load_session
     orderbook_apply_defaults
+}
+
+orderbook_upsert_env_kv() {
+    local file="$1" key="$2" value="$3"
+    [[ -f "$file" && -n "$key" ]] || return 1
+    python3 -c '
+import json, pathlib, re, sys
+path = pathlib.Path(sys.argv[1])
+key = sys.argv[2]
+value = sys.argv[3]
+text = path.read_text()
+line = f"{key}={json.dumps(value)}"
+pat = re.compile(rf"^{re.escape(key)}=.*$", re.M)
+if pat.search(text):
+    text = pat.sub(line, text, count=1)
+else:
+    if text and not text.endswith("\n"):
+        text += "\n"
+    text += line + "\n"
+if not text.endswith("\n"):
+    text += "\n"
+path.write_text(text)
+' "$file" "$key" "$value"
+}
+
+orderbook_sync_sandbox_env() {
+    local env_file="${ORDERBOOK_SANDBOX_DIR:-}/.env" compact
+    [[ -n "${ORDERBOOK_SANDBOX_DIR:-}" && -f "$env_file" ]] || return 0
+    orderbook_upsert_env_kv "$env_file" ETH_COIN_TYPE "${ETH_COIN_TYPE:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" BTC_COIN_TYPE "${BTC_COIN_TYPE:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" MYUSD_COIN_TYPE "${MYUSD_COIN_TYPE:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" MYUSD_TOKEN_PACKAGE_ID "${PKG_MYUSD:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" MYUSD_TREASURY_ID "${MYUSD_TREASURY_CAP_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" ORDERBOOK_PACKAGE_ID "${ORDERBOOK_PACKAGE_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" ORDERBOOK_REGISTRY_ID "${ORDERBOOK_REGISTRY_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" ORDERBOOK_ADMIN_CAP_ID "${ORDERBOOK_ADMIN_CAP_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" MYSO_MYUSD_POOL_ID "${MYSO_MYUSD_POOL_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" BTC_MYUSD_POOL_ID "${BTC_MYUSD_POOL_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" ETH_MYUSD_POOL_ID "${ETH_MYUSD_POOL_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" POOL_MYSO_MYUSD_ID "${MYSO_MYUSD_POOL_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" POOL_MYUSD_MYSO_ID "${MYSO_MYUSD_POOL_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" PYTH_PACKAGE_ID "${PYTH_PACKAGE_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" MYUSD_PRICE_INFO_OBJECT_ID "${MYUSD_PRICE_INFO_OBJECT_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" MYSO_PRICE_INFO_OBJECT_ID "${MYSO_PRICE_INFO_OBJECT_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" BTC_PRICE_INFO_OBJECT_ID "${BTC_PRICE_INFO_OBJECT_ID:-}" || return 1
+    orderbook_upsert_env_kv "$env_file" ETH_PRICE_INFO_OBJECT_ID "${ETH_PRICE_INFO_OBJECT_ID:-}" || return 1
+    compact=''
+    if [[ -n "${MM_POOLS:-}" ]]; then
+        compact="$(printf '%s' "$MM_POOLS" | jq -c . 2>/dev/null || printf '%s' "$MM_POOLS")"
+    fi
+    orderbook_upsert_env_kv "$env_file" MM_POOLS "$compact" || return 1
 }
 
 orderbook_clear_stale_id() {
@@ -222,6 +274,76 @@ orderbook_coin_pkg() {
     printf '%s' "${type_name%%::*}"
 }
 
+orderbook_normalize_coin_type() {
+    local raw="${1-}" addr rest
+    raw="${raw//$'\n'/}"
+    raw="${raw#"${raw%%[![:space:]]*}"}"
+    raw="${raw%"${raw##*[![:space:]]}"}"
+    [[ -n "$raw" ]] || return 1
+    addr="${raw%%::*}"
+    rest="${raw#*::}"
+    if [[ "$addr" == "$raw" ]]; then
+        printf '%s' "$raw"
+        return 0
+    fi
+    addr="$(normalize_hex_id "$addr")" || return 1
+    printf '%s::%s' "$(printf '%s' "$addr" | tr '[:upper:]' '[:lower:]')" "$rest"
+}
+
+orderbook_coin_types_equal() {
+    local left right
+    left="$(orderbook_normalize_coin_type "${1-}" 2>/dev/null)" || left=''
+    right="$(orderbook_normalize_coin_type "${2-}" 2>/dev/null)" || right=''
+    [[ -n "$left" && -n "$right" && "$(printf '%s' "$left" | tr '[:upper:]' '[:lower:]')" == "$(printf '%s' "$right" | tr '[:upper:]' '[:lower:]')" ]]
+}
+
+orderbook_parse_pool_type_args() {
+    local typ="$1" inner base quote
+    [[ "$typ" == *"::pool::Pool<"* ]] || return 1
+    inner="${typ#*::pool::Pool<}"
+    inner="${inner%>}"
+    inner="${inner%%'>'*}"
+    base="${inner%%,*}"
+    quote="${inner#*,}"
+    base="${base#"${base%%[![:space:]]*}"}"
+    base="${base%"${base##*[![:space:]]}"}"
+    quote="${quote#"${quote%%[![:space:]]*}"}"
+    quote="${quote%"${quote##*[![:space:]]}"}"
+    [[ -n "$base" && -n "$quote" && "$base" != "$inner" ]] || return 1
+    printf '%s\t%s' "$base" "$quote"
+}
+
+orderbook_pool_move_type_string() {
+    local pool_id="$1" json
+    [[ -n "$pool_id" ]] || return 1
+    json="$(myso client object "$pool_id" --json 2>/dev/null)" || return 1
+    echo "$json" | jq -r '
+        def as_str:
+            if type == "string" and (contains("::pool::Pool<")) then . else empty end;
+        first(
+            (.data.Move.type_? | as_str),
+            (.data.move.type_? | as_str),
+            (.data.type? | as_str),
+            (.data.objectType? | as_str),
+            (.objectType? | as_str),
+            (.object_type? | as_str),
+            (.type? | as_str)
+        ) // empty
+    ' 2>/dev/null
+}
+
+orderbook_pool_matches_types() {
+    local pool_id="$1" base="$2" quote="${3:-}" typ parsed got_base got_quote
+    [[ -n "$pool_id" && -n "$base" ]] || return 1
+    typ="$(orderbook_pool_move_type_string "$pool_id")" || return 0
+    [[ -n "$typ" ]] || return 0
+    parsed="$(orderbook_parse_pool_type_args "$typ")" || return 0
+    got_base="${parsed%%$'\t'*}"
+    got_quote="${parsed#*$'\t'}"
+    orderbook_coin_types_equal "$got_base" "$base" || return 1
+    [[ -z "$quote" ]] || orderbook_coin_types_equal "$got_quote" "$quote"
+}
+
 orderbook_apply_bridge_coin_type() {
     local kind="$1" type_name="$2" pkg old_type type_var pkg_var pool_var cap_var
     type_var="${kind}_COIN_TYPE"
@@ -230,7 +352,7 @@ orderbook_apply_bridge_coin_type() {
     cap_var="${kind}_TREASURY_CAP_ID"
     old_type="${!type_var:-}"
     type_name="${type_name//$'\n'/}"
-    [[ -n "$type_name" ]] || return 1
+    type_name="$(orderbook_normalize_coin_type "$type_name")" || return 1
     pkg="$(orderbook_coin_pkg "$type_name")"
     pkg="$(normalize_hex_id "$pkg")" || return 1
     object_exists_on_fullnode "$pkg" || {
@@ -240,37 +362,64 @@ orderbook_apply_bridge_coin_type() {
     printf -v "$pkg_var" '%s' "$pkg"
     printf -v "$type_var" '%s' "$type_name"
     printf -v "$cap_var" '%s' ''
-    if [[ -n "$old_type" && "$old_type" != "$type_name" ]]; then
+    if ! orderbook_coin_types_equal "$old_type" "$type_name"; then
+        if [[ -n "${!pool_var:-}" ]]; then
+            printf -v "$pool_var" '%s' ''
+            log_step "Cleared $pool_var — coin type changed from ${old_type:-<unset>} to $type_name"
+        fi
+    elif [[ -n "${!pool_var:-}" ]] && ! orderbook_pool_matches_types "${!pool_var}" "$type_name" "${MYUSD_COIN_TYPE:-}"; then
         printf -v "$pool_var" '%s' ''
-        log_step "Cleared $pool_var — coin type changed from $old_type to $type_name"
+        log_step "Cleared $pool_var — saved pool type args do not match $type_name"
     fi
     log_session_use "$pkg_var" "$pkg"
     log_session_use "$type_var" "$type_name"
 }
 
+orderbook_bridge_myusd_type() {
+    local t="${BRIDGE_MYUSD_TYPE:-${BRIDGE_USDC_TYPE:-${BRIDGE_USDT_TYPE:-}}}"
+    [[ "$t" == *::myusd::MYUSD ]] || return 1
+    printf '%s' "$t"
+}
+
 orderbook_import_bridge_btc_eth() {
-    local file line btc eth
+    local file line btc eth myusd
     file="$(orderbook_bridge_session_file)"
     btc="${BRIDGE_BTC_TYPE:-}"
     eth="${BRIDGE_ETH_TYPE:-}"
+    myusd="$(orderbook_bridge_myusd_type 2>/dev/null || true)"
     if [[ -f "$file" ]]; then
         while IFS= read -r line || [[ -n "$line" ]]; do
             case "$line" in
-                BRIDGE_BTC_TYPE=*|BRIDGE_ETH_TYPE=*|PKG_BRIDGE_BTC=*|PKG_BRIDGE_ETH=*)
+                BRIDGE_BTC_TYPE=*|BRIDGE_ETH_TYPE=*|BRIDGE_MYUSD_TYPE=*|BRIDGE_USDC_TYPE=*|BRIDGE_USDT_TYPE=*|PKG_BRIDGE_BTC=*|PKG_BRIDGE_ETH=*|PKG_BRIDGE_MYUSD=*)
                     eval "$line"
                     ;;
             esac
         done < "$file"
         btc="${BRIDGE_BTC_TYPE:-$btc}"
         eth="${BRIDGE_ETH_TYPE:-$eth}"
+        myusd="$(orderbook_bridge_myusd_type 2>/dev/null || true)"
     fi
     if [[ -z "$btc" || -z "$eth" ]]; then
         echo "Bridge BTC/ETH types not found. Run ./scripts/bridge-bootstrap.sh first (${file})." >&2
         return 1
     fi
+    if [[ -z "$myusd" || "$myusd" != *::myusd::MYUSD ]]; then
+        echo "Bridge MYUSD type not found. Re-run ./scripts/bridge-bootstrap.sh so ids 3 and 4 share published myusd::MYUSD (${file})." >&2
+        return 1
+    fi
     orderbook_apply_bridge_coin_type BTC "$btc" || return 1
     orderbook_apply_bridge_coin_type ETH "$eth" || return 1
-    log_step "Using bridge-registered BTC $BTC_COIN_TYPE and ETH $ETH_COIN_TYPE"
+    MYUSD_COIN_TYPE="$(orderbook_normalize_coin_type "$myusd")" || return 1
+    PKG_MYUSD="$(orderbook_coin_pkg "$MYUSD_COIN_TYPE")"
+    PKG_MYUSD="$(normalize_hex_id "$PKG_MYUSD")" || return 1
+    object_exists_on_fullnode "$PKG_MYUSD" || {
+        echo "Bridge MYUSD package $PKG_MYUSD is not on fullnode — re-run ./scripts/bridge-bootstrap.sh" >&2
+        return 1
+    }
+    MYUSD_TREASURY_CAP_ID=''
+    log_session_use "PKG_MYUSD" "$PKG_MYUSD"
+    log_session_use "MYUSD_COIN_TYPE" "$MYUSD_COIN_TYPE"
+    log_step "Using bridge-registered BTC $BTC_COIN_TYPE, ETH $ETH_COIN_TYPE, MYUSD $MYUSD_COIN_TYPE"
 }
 
 orderbook_cap_owned_by() {
@@ -972,7 +1121,7 @@ orderbook_mm_myusd_quote_total_required() {
 
 orderbook_ensure_deployer_myusd_for_mm() {
     local required wallet bm have deficit buffer quote_only
-    require_session_fields MYUSD_COIN_TYPE MYUSD_TREASURY_CAP_ID DEPLOYER_ADDRESS || return 1
+    require_session_fields MYUSD_COIN_TYPE DEPLOYER_ADDRESS || return 1
     quote_only="$(orderbook_mm_myusd_quote_total_required)"
     buffer="${MYUSD_MINT_BUFFER:-$MYUSD_MINT_BUFFER_DEFAULT}"
     required=$((quote_only + buffer))
@@ -986,6 +1135,10 @@ orderbook_ensure_deployer_myusd_for_mm() {
     if [[ "$bm" -ge "$quote_only" ]]; then
         log_step "BalanceManager MYUSD ($bm) already covers quote deposits ($quote_only) — skipping mint"
         return 0
+    fi
+    if [[ -z "${MYUSD_TREASURY_CAP_ID:-}" ]]; then
+        echo "Not enough MYUSD for MM (wallet $wallet + BM $bm = $have, need $required). Claim inbound USDC/USDT as published myUSD — the bridge holds TreasuryCap." >&2
+        return 1
     fi
     deficit=$((required - have))
     log_step "Minting $deficit MYUSD for MM (wallet $wallet + BM $bm = $have, need $required)"
@@ -1458,7 +1611,7 @@ orderbook_ensure_demo_trade_funds() {
     }
     myusd_mint="${ORDERBOOK_DEMO_MYUSD_MINT:-50000000}"
     btc_mint="${ORDERBOOK_DEMO_BTC_MINT:-10000000}"
-    require_session_fields MYUSD_COIN_TYPE MYUSD_TREASURY_CAP_ID || return 1
+    require_session_fields MYUSD_COIN_TYPE || return 1
     have_myusd="$(orderbook_resolve_myusd_balance "$trader_addr" "$MYUSD_COIN_TYPE")"
     have_btc="$(orderbook_resolve_myusd_balance "$trader_addr" "$BTC_COIN_TYPE")"
     if [[ "${have_myusd:-0}" -ge "$myusd_mint" && "${have_btc:-0}" -ge "$btc_mint" ]]; then
@@ -1469,7 +1622,12 @@ orderbook_ensure_demo_trade_funds() {
     log_step "Funding spot demo trader ($trader_addr): gas + ${myusd_mint} MYUSD base units"
     orderbook_fund_address "$trader_addr" 300000000 || return 1
     if [[ "${have_myusd:-0}" -lt "$myusd_mint" ]]; then
-        orderbook_mint_token "$MYUSD_COIN_TYPE" "$MYUSD_TREASURY_CAP_ID" "$myusd_mint" "$trader_addr" || return 1
+        if [[ -n "${MYUSD_TREASURY_CAP_ID:-}" ]]; then
+            orderbook_mint_token "$MYUSD_COIN_TYPE" "$MYUSD_TREASURY_CAP_ID" "$myusd_mint" "$trader_addr" || return 1
+        else
+            echo "Demo trader needs ${myusd_mint} MYUSD (has ${have_myusd:-0}); claim inbound USDC/USDT — the bridge holds TreasuryCap." >&2
+            return 1
+        fi
     fi
     if [[ "${have_btc:-0}" -lt "$btc_mint" ]]; then
         if [[ -n "${BTC_TREASURY_CAP_ID:-}" ]]; then
@@ -1656,25 +1814,91 @@ orderbook_ensure_pool_shared() {
 }
 
 orderbook_pool_registered() {
-    local pool_id="$1" json
+    local pool_id="$1" json want got
     json="$(curl -sf --max-time 10 "${ORDERBOOK_API_URL}/get_pools" 2>/dev/null)" || return 1
-    echo "$json" | jq -e --arg id "$pool_id" '
-        (if type == "array" then . else [] end)
-        | map(.pool_id // "")
-        | index($id) != null
-    ' >/dev/null 2>&1
+    want="$(normalize_hex_id "$pool_id")" || return 1
+    want="$(printf '%s' "$want" | tr '[:upper:]' '[:lower:]')"
+    while IFS= read -r got; do
+        [[ -n "$got" ]] || continue
+        got="$(normalize_hex_id "$got" 2>/dev/null)" || continue
+        got="$(printf '%s' "$got" | tr '[:upper:]' '[:lower:]')"
+        [[ "$got" == "$want" ]] && return 0
+    done < <(echo "$json" | jq -r '(if type == "array" then . else [] end)[] | .pool_id // empty')
+    return 1
+}
+
+orderbook_catalog_pool_id_from_json() {
+    local json="$1" base_type="$2" pool_id row_base
+    [[ -n "$json" && -n "$base_type" ]] || return 1
+    while IFS=$'\t' read -r pool_id row_base; do
+        [[ -n "$pool_id" ]] || continue
+        if orderbook_coin_types_equal "$row_base" "$base_type"; then
+            normalize_hex_id "$pool_id"
+            return 0
+        fi
+    done < <(echo "$json" | jq -r '
+        (if type == "array" then . else [] end)[]
+        | [(.pool_id // ""), (.base_asset_id // "")]
+        | @tsv
+    ')
+    return 1
+}
+
+orderbook_catalog_stale_pool_id_from_json() {
+    local json="$1" pool_name="$2" expected_base="$3" pool_id row_name row_base
+    [[ -n "$json" && -n "$pool_name" && -n "$expected_base" ]] || return 1
+    while IFS=$'\t' read -r pool_id row_name row_base; do
+        [[ -n "$pool_id" && "$row_name" == "$pool_name" ]] || continue
+        if ! orderbook_coin_types_equal "$row_base" "$expected_base"; then
+            normalize_hex_id "$pool_id"
+            return 0
+        fi
+    done < <(echo "$json" | jq -r '
+        (if type == "array" then . else [] end)[]
+        | [(.pool_id // ""), (.pool_name // ""), (.base_asset_id // "")]
+        | @tsv
+    ')
+    return 1
+}
+
+orderbook_catalog_asset_type_for_symbol_from_json() {
+    local json="$1" symbol="$2"
+    [[ -n "$json" && -n "$symbol" ]] || return 1
+    echo "$json" | jq -r --arg s "$symbol" '
+        [.. | objects | select((.symbol // "") == $s)]
+        | .[0].asset_type // empty
+    '
 }
 
 orderbook_catalog_pool_id_for_base() {
-    local base_type="$1" json pool_id
+    local base_type="$1" json
     json="$(curl -sf --max-time 10 "${ORDERBOOK_API_URL}/get_pools" 2>/dev/null)" || return 1
-    pool_id="$(echo "$json" | jq -r --arg base "$base_type" '
-        (if type == "array" then . else [] end)
-        | map(select((.base_asset_id // "") == $base))
-        | .[0].pool_id // empty
-    ')"
-    [[ -n "$pool_id" && "$pool_id" != null ]] || return 1
-    normalize_hex_id "$pool_id"
+    orderbook_catalog_pool_id_from_json "$json" "$base_type"
+}
+
+orderbook_remove_stale_catalog_pool_for_name() {
+    local pool_name="$1" expected_base="$2" json stale
+    [[ -n "$pool_name" && -n "$expected_base" ]] || return 0
+    json="$(curl -sf --max-time 10 "${ORDERBOOK_API_URL}/get_pools" 2>/dev/null)" || return 0
+    stale="$(orderbook_catalog_stale_pool_id_from_json "$json" "$pool_name" "$expected_base")" || return 0
+    [[ -n "$stale" ]] || return 0
+    log_step "Replacing stale catalog $pool_name ($stale) — base type is not $expected_base"
+    orderbook_remove_invalid_catalog_pool "$stale" "$pool_name"
+}
+
+orderbook_remove_stale_catalog_asset() {
+    local symbol="$1" expected_type="$2" json stale encoded
+    [[ -n "$symbol" && -n "$expected_type" ]] || return 0
+    json="$(curl -sf --max-time 10 "${ORDERBOOK_API_URL}/assets" 2>/dev/null)" || return 0
+    stale="$(orderbook_catalog_asset_type_for_symbol_from_json "$json" "$symbol")" || stale=''
+    [[ -n "$stale" ]] || return 0
+    orderbook_coin_types_equal "$stale" "$expected_type" && return 0
+    encoded="$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$stale")" || return 1
+    log_step "Replacing catalog asset $symbol ($stale → $expected_type)"
+    orderbook_admin_delete "/admin/assets/${encoded}" >/dev/null || {
+        echo "Could not remove stale catalog asset $symbol ($stale)" >&2
+        return 1
+    }
 }
 
 orderbook_register_asset() {
@@ -1684,6 +1908,7 @@ orderbook_register_asset() {
         log_step "Asset $symbol already in catalog"
         return 0
     fi
+    orderbook_remove_stale_catalog_asset "$symbol" "$asset_type" || return 1
     if [[ -n "$package_id" ]]; then
         body="$(jq -nc \
             --arg asset_type "$asset_type" \
@@ -1730,6 +1955,7 @@ orderbook_register_pool_row() {
     local quote_id="$7" quote_decimals="$8" quote_symbol="$9" quote_name="${10}"
     local min="${11}" lot="${12}" tick="${13}"
     local body
+    orderbook_remove_stale_catalog_pool_for_name "$pool_name" "$base_id" || return 1
     body="$(jq -nc \
         --arg pool_id "$pool_id" \
         --arg pool_name "$pool_name" \
@@ -2003,18 +2229,36 @@ orderbook_mm_tuning_for_symbol() {
     esac
 }
 
+orderbook_mm_required_catalog_pool_names() {
+    local id_var
+    while IFS= read -r id_var; do
+        [[ -n "$id_var" ]] || continue
+        printf '%s\n' "${id_var%_POOL_ID}"
+    done < <(orderbook_mm_required_pool_id_vars)
+}
+
+orderbook_catalog_has_required_mm_pools() {
+    local json="$1" name
+    [[ -n "$json" ]] || return 1
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        echo "$json" | jq -e --arg n "$name" '
+            (if type == "array" then . else [] end)
+            | map(.pool_name // "")
+            | index($n) != null
+        ' >/dev/null 2>&1 || return 1
+    done < <(orderbook_mm_required_catalog_pool_names)
+}
+
 orderbook_fetch_mm_pools_json() {
     local pools_json required
     pools_json="$(curl -sf --max-time 15 "${ORDERBOOK_API_URL}/get_pools")" || {
         echo "GET ${ORDERBOOK_API_URL}/get_pools failed" >&2
         return 1
     }
-    if ! echo "$pools_json" | jq -e '
-        (if type == "array" then . else [] end) as $p
-        | ["MYSO_MYUSD", "BTC_MYUSD", "ETH_MYUSD"] as $need
-        | ($need | map(. as $n | ($p | map(.pool_name) | index($n)) != null) | all)
-    ' >/dev/null 2>&1; then
-        echo "Catalog missing one or more required pools: MYSO_MYUSD, BTC_MYUSD, ETH_MYUSD" >&2
+    if ! orderbook_catalog_has_required_mm_pools "$pools_json"; then
+        required="$(orderbook_mm_required_catalog_pool_names | paste -sd ', ' -)"
+        echo "Catalog missing required pool(s): ${required:-MYSO_MYUSD}" >&2
         return 1
     fi
     require_session_fields MYUSD_PRICE_INFO_OBJECT_ID MYSO_PRICE_INFO_OBJECT_ID \

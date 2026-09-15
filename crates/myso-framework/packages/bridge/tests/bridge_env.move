@@ -36,9 +36,8 @@ module bridge::bridge_env {
     };
     use bridge::message_types;
     use bridge::test_token::{Self, TEST_TOKEN};
+    use bridge::myusd::{Self, MYUSD};
     use bridge::treasury::{TokenRegistrationEvent, NewTokenEvent, UpdateTokenPriceEvent};
-    use bridge::usdc::{Self, USDC};
-    use bridge::usdt::{Self, USDT};
     use std::ascii::String;
     use std::type_name;
     use std::unit_test::destroy;
@@ -162,8 +161,7 @@ module bridge::bridge_env {
     public struct Vault {
         btc_coins: Coin<BTC>,
         eth_coins: Coin<ETH>,
-        usdc_coins: Coin<USDC>,
-        usdt_coins: Coin<USDT>,
+        myusd_coins: Coin<MYUSD>,
         test_coins: Coin<TEST_TOKEN>,
     }
 
@@ -208,14 +206,12 @@ module bridge::bridge_env {
         clock.set_for_testing(1_000_000_000);
         let btc_coins = coin::zero<BTC>(ctx);
         let eth_coins = coin::zero<ETH>(ctx);
-        let usdc_coins = coin::zero<USDC>(ctx);
-        let usdt_coins = coin::zero<USDT>(ctx);
+        let myusd_coins = coin::zero<MYUSD>(ctx);
         let test_coins = coin::zero<TEST_TOKEN>(ctx);
         let vault = Vault {
             btc_coins,
             eth_coins,
-            usdc_coins,
-            usdt_coins,
+            myusd_coins,
             test_coins,
         };
         BridgeEnv {
@@ -403,17 +399,9 @@ module bridge::bridge_env {
             &metadata,
         );
         destroy(metadata);
-        // USDC
-        let (upgrade_cap, treasury_cap, metadata) = usdc::create_bridge_token(env.scenario.ctx());
-        bridge.register_foreign_token<USDC>(
-            treasury_cap,
-            upgrade_cap,
-            &metadata,
-        );
-        destroy(metadata);
-        // USDT
-        let (upgrade_cap, treasury_cap, metadata) = usdt::create_bridge_token(env.scenario.ctx());
-        bridge.register_foreign_token<USDT>(
+        // MYUSD once (ids 3 and 4 share this type)
+        let (upgrade_cap, treasury_cap, metadata) = myusd::create_bridge_token(env.scenario.ctx());
+        bridge.register_foreign_token<MYUSD>(
             treasury_cap,
             upgrade_cap,
             &metadata,
@@ -437,8 +425,8 @@ module bridge::bridge_env {
             vector[
                 type_name::with_defining_ids<BTC>().into_string(),
                 type_name::with_defining_ids<ETH>().into_string(),
-                type_name::with_defining_ids<USDC>().into_string(),
-                type_name::with_defining_ids<USDT>().into_string(),
+                type_name::with_defining_ids<MYUSD>().into_string(),
+                type_name::with_defining_ids<MYUSD>().into_string(),
             ],
             vector[1000, 100, 1, 1],
         );
@@ -456,7 +444,9 @@ module bridge::bridge_env {
         env.scenario.next_tx(@0x0);
         let bridge = env.scenario.take_shared<Bridge>();
         let inner = bridge.test_load_inner();
-        let token_id = inner.inner_treasury().token_id<T>();
+        let ids = inner.inner_treasury().type_ids<T>();
+        assert!(ids.length() == 1);
+        let token_id = ids[0];
         test_scenario::return_shared(bridge);
         token_id
     }
@@ -762,104 +752,74 @@ module bridge::bridge_env {
         token
     }
 
-    public fun setup_myusd_peg(env: &mut BridgeEnv, sender: address): bridge::myusd_peg::ConversionAdminCap {
-        use bridge::myusd;
-        use bridge::myusd_peg;
-        env.scenario.next_tx(sender);
-        let cap = myusd::create_treasury_cap_for_testing(env.scenario.ctx());
-        myusd_peg::create(cap, env.scenario.ctx())
-    }
-
-    public fun enable_stable_conversion(
-        env: &mut BridgeEnv,
-        admin: &bridge::myusd_peg::ConversionAdminCap,
-        token_id: u8,
-        boundary_seq: u64,
-    ) {
-        use bridge::myusd_peg::{Self, MyUsdPeg};
-        env.scenario.next_tx(@0x0);
-        let mut peg = env.scenario.take_shared<MyUsdPeg>();
-        let mut bridge = env.scenario.take_shared<Bridge>();
-        myusd_peg::set_rail_enabled(&mut peg, admin, token_id, true, env.scenario.ctx());
-        myusd_peg::enable_conversion_policy(
-            &mut bridge,
-            &peg,
-            admin,
-            token_id,
-            chain_ids::eth_custom(),
-            boundary_seq,
-            env.scenario.ctx(),
-        );
-        test_scenario::return_shared(peg);
-        test_scenario::return_shared(bridge);
-    }
-
-    public fun enable_conversion_policy_only(
-        env: &mut BridgeEnv,
-        admin: &bridge::myusd_peg::ConversionAdminCap,
-        token_id: u8,
-        boundary_seq: u64,
-    ) {
-        use bridge::myusd_peg::{Self, MyUsdPeg};
-        env.scenario.next_tx(@0x0);
-        let peg = env.scenario.take_shared<MyUsdPeg>();
-        let mut bridge = env.scenario.take_shared<Bridge>();
-        myusd_peg::enable_conversion_policy(
-            &mut bridge,
-            &peg,
-            admin,
-            token_id,
-            chain_ids::eth_custom(),
-            boundary_seq,
-            env.scenario.ctx(),
-        );
-        test_scenario::return_shared(peg);
-        test_scenario::return_shared(bridge);
-    }
-
-    public fun claim_stable_into_myusd<T>(
-        env: &mut BridgeEnv,
-        source_chain: u8,
-        bridge_seq_num: u64,
-    ) {
-        use bridge::myusd_peg::{Self, MyUsdPeg};
-        env.scenario.next_tx(@0xBEEF);
-        let clock = &env.clock;
-        let mut peg = env.scenario.take_shared<MyUsdPeg>();
-        let mut bridge = env.scenario.take_shared<Bridge>();
-        myusd_peg::claim_stable_into_myusd<T>(
-            &mut bridge,
-            &mut peg,
-            clock,
-            source_chain,
-            bridge_seq_num,
-            env.scenario.ctx(),
-        );
-        test_scenario::return_shared(peg);
-        test_scenario::return_shared(bridge);
-    }
-
-    public fun redeem_myusd_and_send_to_evm<T>(
+    public fun send_token_with_rail<T>(
         env: &mut BridgeEnv,
         sender: address,
-        myusd: myso::coin::Coin<bridge::myusd::MYUSD>,
-        target_chain: u8,
-        target_address: vector<u8>,
-    ) {
-        use bridge::myusd_peg::{Self, MyUsdPeg};
-        env.scenario.next_tx(sender);
-        let mut peg = env.scenario.take_shared<MyUsdPeg>();
-        let mut bridge = env.scenario.take_shared<Bridge>();
-        myusd_peg::redeem_myusd_and_send_to_evm<T>(
-            &mut bridge,
-            &mut peg,
-            myusd,
-            target_chain,
-            target_address,
-            env.scenario.ctx(),
+        target_chain_id: u8,
+        eth_address: vector<u8>,
+        coin: Coin<T>,
+        rail_id: u8,
+    ): u64 {
+        let chain_id = env.chain_id;
+        let scenario = env.scenario();
+        scenario.next_tx(sender);
+        let mut bridge = scenario.take_shared<Bridge>();
+        let coin_value = coin.value();
+        let total_supply_before = get_total_supply<T>(&bridge);
+        let seq_num = bridge.get_seq_num_for(message_types::token());
+        bridge.send_token_with_rail(
+            target_chain_id,
+            eth_address,
+            coin,
+            rail_id,
+            scenario.ctx(),
         );
-        test_scenario::return_shared(peg);
+        assert!(total_supply_before - coin_value == get_total_supply<T>(&bridge));
+        let deposited_events = event::events_by_type<TokenDepositedEvent>();
+        assert!(deposited_events.length() == 1);
+        let (event_seq_num, _, _, _, _, _, event_amount) =
+            deposited_events[0].unwrap_deposited_event();
+        assert!(event_seq_num == seq_num);
+        assert!(event_amount == coin_value);
+        assert_key(chain_id, &bridge);
         test_scenario::return_shared(bridge);
+        seq_num
+    }
+
+    public fun rail_reserve(env: &mut BridgeEnv, token_id: u8): u64 {
+        env.scenario.next_tx(@0x0);
+        let bridge = env.scenario.take_shared<Bridge>();
+        let reserved = bridge.test_load_inner().inner_treasury().rail_reserve(token_id);
+        test_scenario::return_shared(bridge);
+        reserved
+    }
+
+    public fun bridge_to_myso_rail<T>(
+        env: &mut BridgeEnv,
+        source_chain: u8,
+        source_address: vector<u8>,
+        target_address: address,
+        amount: u64,
+        rail_id: u8,
+    ): u64 {
+        let scenario = &mut env.scenario;
+        scenario.next_tx(@0x0);
+        let mut bridge = scenario.take_shared<Bridge>();
+        assert!(bridge.test_load_inner().inner_treasury().type_matches_token_id<T>(rail_id));
+        let seq_num = bridge.get_seq_num_inc_for(message_types::token());
+        let message = message::create_token_bridge_message(
+            source_chain,
+            seq_num,
+            source_address,
+            env.chain_id,
+            address::to_bytes(target_address),
+            rail_id,
+            amount,
+        );
+        let signatures = env.sign_message(message);
+        bridge.approve_token_transfer(message, signatures);
+        test_scenario::return_shared(bridge);
+        seq_num
     }
 
     // Claim a token and transfer to the receiver in the bridge message
@@ -1263,16 +1223,10 @@ module bridge::bridge_env {
         env.vault.eth_coins.split(amount, ctx)
     }
 
-    public fun get_usdc(env: &mut BridgeEnv, amount: u64): Coin<USDC> {
+    public fun get_myusd(env: &mut BridgeEnv, amount: u64): Coin<MYUSD> {
         let scenario = &mut env.scenario;
         let ctx = scenario.ctx();
-        env.vault.usdc_coins.split(amount, ctx)
-    }
-
-    public fun get_usdt(env: &mut BridgeEnv, amount: u64): Coin<USDT> {
-        let scenario = &mut env.scenario;
-        let ctx = scenario.ctx();
-        env.vault.usdt_coins.split(amount, ctx)
+        env.vault.myusd_coins.split(amount, ctx)
     }
 
     public fun limits(env: &mut BridgeEnv, dest: u8): u64 {
@@ -1306,14 +1260,12 @@ module bridge::bridge_env {
         let Vault {
             btc_coins,
             eth_coins,
-            usdc_coins,
-            usdt_coins,
+            myusd_coins,
             test_coins,
         } = vault;
         btc_coins.burn_for_testing();
         eth_coins.burn_for_testing();
-        usdc_coins.burn_for_testing();
-        usdt_coins.burn_for_testing();
+        myusd_coins.burn_for_testing();
         test_coins.burn_for_testing();
     }
 
@@ -1325,15 +1277,25 @@ module bridge::bridge_env {
         let vault = &mut env.vault;
         vault.btc_coins.join(mint_some(&mut bridge, scenario.ctx()));
         vault.eth_coins.join(mint_some(&mut bridge, scenario.ctx()));
-        vault.usdc_coins.join(mint_some(&mut bridge, scenario.ctx()));
-        vault.usdt_coins.join(mint_some(&mut bridge, scenario.ctx()));
+        vault.myusd_coins.join(mint_some_rail(&mut bridge, USDC_ID, scenario.ctx()));
         test_scenario::return_shared(bridge);
     }
 
     // Mint some coins
     fun mint_some<T>(bridge: &mut Bridge, ctx: &mut TxContext): Coin<T> {
         let treasury = bridge.test_load_inner_mut().inner_treasury_mut();
-        let coin = treasury.mint<T>(1_000_000, ctx);
+        let amount = 1_000_000;
+        let token_id = treasury.token_id<T>();
+        let coin = treasury.mint<T>(amount, ctx);
+        treasury.credit_rail(token_id, amount);
+        coin
+    }
+
+    fun mint_some_rail(bridge: &mut Bridge, rail_id: u8, ctx: &mut TxContext): Coin<MYUSD> {
+        let treasury = bridge.test_load_inner_mut().inner_treasury_mut();
+        let amount = 1_000_000;
+        let coin = treasury.mint<MYUSD>(amount, ctx);
+        treasury.credit_rail(rail_id, amount);
         coin
     }
 
@@ -1451,6 +1413,43 @@ module bridge::eth {
         myso::test_utils::destroy(admin);
 
         let type_name = type_name::with_defining_ids<ETH>();
+        let address_bytes = hex::decode(
+            ascii::into_bytes(type_name::address_string(&type_name)),
+        );
+        let coin_id = address::from_bytes(address_bytes).to_id();
+        let upgrade_cap = test_publish(coin_id, ctx);
+
+        (upgrade_cap, treasury_cap, metadata)
+    }
+}
+
+#[test_only, allow(deprecated_usage)]
+module bridge::myusd {
+    use std::ascii;
+    use std::type_name;
+    use myso::address;
+    use myso::coin::{CoinMetadata, TreasuryCap};
+    use myso::hex;
+    use myso::package::{UpgradeCap, test_publish};
+
+    public struct MYUSD has drop {}
+
+    public fun create_bridge_token(
+        ctx: &mut TxContext,
+    ): (UpgradeCap, TreasuryCap<MYUSD>, CoinMetadata<MYUSD>) {
+        let admin = myso::coin::create_coin_creation_admin_cap_for_testing(ctx);
+        let (treasury_cap, metadata) = myso::coin::create_currency_with_admin<MYUSD>(
+            6,
+            b"myusd",
+            b"myUSD",
+            b"canonical myUSD",
+            option::none(),
+            &admin,
+            ctx,
+        );
+        myso::test_utils::destroy(admin);
+
+        let type_name = type_name::with_defining_ids<MYUSD>();
         let address_bytes = hex::decode(
             ascii::into_bytes(type_name::address_string(&type_name)),
         );

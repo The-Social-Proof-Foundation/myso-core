@@ -5,7 +5,8 @@
 # Attach-only localnet bootstrap for the native MySo bridge.
 #
 # Default: never start, stop, or kill running services. Submits txs, writes
-# configs under network.config/bridge/, and prints how to start the bridge node.
+# configs under network.config/bridge/, waits for committee voting power >= 7500,
+# then starts myso-bridge-node (or prints the cargo command if it cannot).
 #
 # Prerequisites (you already run these):
 #   - myso fullnode RPC (MYSO_RPC_URL, default http://127.0.0.1:9000)
@@ -13,7 +14,7 @@
 #   - optional anvil (ETH_RPC_URL, default http://127.0.0.1:8545)
 #   - optional bridge node for governance / --demo-transfer
 #   - tools: myso, myso-bridge, jq, curl, python3 (+ forge/cast/anvil for EVM)
-#   - active wallet with >= 50M MYSO for one-time bootstrap_native_myso
+#   - --bootstrap-native locks exactly 50M MYSO (opt-in; skipped by default)
 #
 # Session: network.config/bridge/bridge-session.env
 # Foreign BTC/ETH types here are canonical — orderbook-bootstrap.sh reuses them.
@@ -25,6 +26,7 @@
 #   ./scripts/bridge-bootstrap.sh --configs-only
 #   ./scripts/bridge-bootstrap.sh --start-anvil
 #   ./scripts/bridge-bootstrap.sh --start-bridge-node
+#   ./scripts/bridge-bootstrap.sh --bootstrap-native
 #   ./scripts/bridge-bootstrap.sh --refresh-session
 #   ./scripts/bridge-bootstrap.sh --fresh-chain
 #   ./scripts/bridge-bootstrap.sh --demo-transfer
@@ -51,10 +53,11 @@ SKIP_GOVERNANCE=0
 CONFIGS_ONLY=0
 START_ANVIL=0
 START_BRIDGE_NODE=0
+DO_BOOTSTRAP_NATIVE=0
 DEMO_TRANSFER=0
 
 usage() {
-    sed -n '2,35p' "$0" | sed 's/^# \?//'
+    sed -n '2,36p' "$0" | sed 's/^# \?//'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -90,6 +93,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --start-bridge-node)
             START_BRIDGE_NODE=1
+            shift
+            ;;
+        --bootstrap-native)
+            DO_BOOTSTRAP_NATIVE=1
             shift
             ;;
         --demo-transfer)
@@ -146,10 +153,14 @@ if [[ "$CONFIGS_ONLY" == 1 ]]; then
     exit 0
 fi
 
-if ! bridge_bootstrap_native_myso; then
-    echo "Native MYSO bootstrap failed; continuing with committee and tokens." >&2
+if [[ "$DO_BOOTSTRAP_NATIVE" == 1 ]]; then
+    if ! bridge_bootstrap_native_myso; then
+        echo "Native MYSO bootstrap failed; continuing with committee and tokens." >&2
+    fi
+    bridge_save_session
+else
+    log_step "Skipping native MYSO lock (pass --bootstrap-native to lock 50M)"
 fi
-bridge_save_session
 
 if [[ "$START_ANVIL" == 1 ]]; then
     bridge_start_anvil_opt_in
@@ -168,18 +179,14 @@ bridge_save_session
 
 bridge_register_committee
 bridge_save_session
-bridge_wait_committee_finalized || true
-bridge_write_configs
-bridge_save_session
-
-if [[ "$START_BRIDGE_NODE" == 1 ]]; then
-    if bridge_committee_node_ready; then
-        bridge_start_node_opt_in
-    else
-        log_step "Committee seat pending — not starting the node yet"
-        bridge_print_node_start
-    fi
+if bridge_wait_committee_finalized; then
+    bridge_write_configs
+    bridge_save_session
+    bridge_start_node_opt_in || bridge_print_node_start
 else
+    bridge_write_configs
+    bridge_save_session
+    log_step "Committee seat pending — not starting the node (it would crash with voting power < 7500)"
     bridge_print_node_start
 fi
 
@@ -187,9 +194,14 @@ if [[ "$SKIP_GOVERNANCE" == 1 ]]; then
     log_step "Skipping token publish / governance (--skip-governance)"
 else
     # Token publish does not need a seated committee or a running node.
+    # The node must be restarted after this write: an earlier start only
+    # approved the pre-publish MYSO placeholder action.
     bridge_register_myso_tokens
     bridge_write_configs
     bridge_save_session
+    if bridge_committee_node_ready; then
+        bridge_reload_node_for_token_governance || bridge_print_node_start
+    fi
     if bridge_committee_node_ready && bridge_node_reachable "$BRIDGE_AUTHORITY_URL"; then
         bridge_governance_add_tokens_myso || true
         bridge_governance_add_tokens_evm || true

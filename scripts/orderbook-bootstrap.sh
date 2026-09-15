@@ -2,7 +2,7 @@
 # Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Publish MyUSD, reuse bridge-registered BTC/ETH, create three MyUSD-quoted
+# Reuse bridge-published MyUSD + BTC/ETH, create three MyUSD-quoted
 # pools, and register the assets + pools in the local orderbook catalog (localhost:9008).
 #
 # All object IDs, package IDs, cap IDs, coin types, and pool IDs are discovered
@@ -16,7 +16,7 @@
 # Prerequisites:
 #   - myso start --with-indexer --with-orderbook
 #   - ./scripts/bootstrap.sh completed (caps owned by the active address)
-#   - ./scripts/bridge-bootstrap.sh completed (writes BRIDGE_BTC_TYPE / BRIDGE_ETH_TYPE)
+#   - ./scripts/bridge-bootstrap.sh completed (writes BRIDGE_BTC_TYPE / BRIDGE_ETH_TYPE / BRIDGE_MYUSD_TYPE)
 #   - myso, curl, jq, python3 on PATH
 #
 # Session (write-only output): network.config/orderbook/orderbook-session.env
@@ -120,10 +120,11 @@ ensure_pool() {
     local id_var="$2"
     local base_type="$3"
     local tick="$4"
-    local pool catalog_pool recovered stale_pool whitelist
+    local pool catalog_pool recovered stale_pool whitelist quote="${MYUSD_COIN_TYPE:-}"
     if [[ -n "${!id_var:-}" ]] && object_exists_on_fullnode "${!id_var}"; then
         stale_pool="$(normalize_hex_id "${!id_var}")" || return 1
-        if recovered="$(orderbook_resolve_shared_pool_id "$stale_pool" 2>/dev/null)"; then
+        if recovered="$(orderbook_resolve_shared_pool_id "$stale_pool" 2>/dev/null)" \
+            && orderbook_pool_matches_types "$recovered" "$base_type" "$quote"; then
             printf -v "$id_var" '%s' "$recovered"
             if [[ "$recovered" != "$stale_pool" ]]; then
                 log_step "Recovered shared pool $name $recovered from invalid saved id $stale_pool"
@@ -135,7 +136,7 @@ ensure_pool() {
             fi
             return 0
         fi
-        echo "Saved pool $name id $stale_pool is not a shared Pool and could not be recovered" >&2
+        echo "Saved pool $name id $stale_pool is not a shared Pool for $base_type" >&2
         orderbook_remove_invalid_catalog_pool "$stale_pool" "$name" || return 1
         printf -v "$id_var" '%s' ''
     fi
@@ -143,7 +144,8 @@ ensure_pool() {
         && [[ -n "$catalog_pool" ]] \
         && object_exists_on_fullnode "$catalog_pool"; then
         stale_pool="$(normalize_hex_id "$catalog_pool")" || return 1
-        if recovered="$(orderbook_resolve_shared_pool_id "$stale_pool" 2>/dev/null)"; then
+        if recovered="$(orderbook_resolve_shared_pool_id "$stale_pool" 2>/dev/null)" \
+            && orderbook_pool_matches_types "$recovered" "$base_type" "$quote"; then
             printf -v "$id_var" '%s' "$recovered"
             if [[ "$recovered" != "$stale_pool" ]]; then
                 log_step "Recovered shared catalog pool $name $recovered from invalid id $stale_pool"
@@ -155,7 +157,7 @@ ensure_pool() {
             orderbook_save_session
             return 0
         fi
-        echo "Catalog pool $name $stale_pool is not a shared Pool and could not be recovered" >&2
+        echo "Catalog pool $name $stale_pool is not a shared Pool for $base_type" >&2
         orderbook_remove_invalid_catalog_pool "$stale_pool" "$name" || return 1
     fi
     whitelist="$(orderbook_pool_whitelist_flag "$name")"
@@ -163,7 +165,8 @@ ensure_pool() {
     pool="$(orderbook_create_pool "$base_type" "$tick" "$LOT_SIZE" "$MIN_SIZE" "$whitelist")" || {
         if catalog_pool="$(orderbook_catalog_pool_id_for_base "$base_type" 2>/dev/null)" \
             && [[ -n "$catalog_pool" ]] \
-            && recovered="$(orderbook_resolve_shared_pool_id "$catalog_pool" 2>/dev/null)"; then
+            && recovered="$(orderbook_resolve_shared_pool_id "$catalog_pool" 2>/dev/null)" \
+            && orderbook_pool_matches_types "$recovered" "$base_type" "$quote"; then
             printf -v "$id_var" '%s' "$recovered"
             log_session_use "$id_var" "$recovered"
             orderbook_save_session
@@ -209,20 +212,10 @@ run_bootstrap() {
         return 1
     fi
 
-    ensure_token_published MYUSD PKG_MYUSD MYUSD_COIN_TYPE "myusd::MYUSD" \
-        "$REPO_ROOT/bridge/move/tokens/myusd" || return 1
     orderbook_import_bridge_btc_eth || return 1
     orderbook_save_session
-
-    ensure_token_initialized MYUSD MYUSD_TREASURY_CAP_ID \
-        orderbook_init_myusd "$PKG_MYUSD" "$active" || return 1
-
     if [[ "$SKIP_MINT" != 1 ]]; then
-        log_step "Minting test MyUSD (BTC/ETH come from inbound bridge claims)"
-        orderbook_mint_token "$MYUSD_COIN_TYPE" "$MYUSD_TREASURY_CAP_ID" "$MYUSD_MINT_AMOUNT" "$active" || return 1
-        orderbook_save_session
-    else
-        log_step "Skipping mint (--skip-mint)"
+        log_step "Skipping MYUSD mint — TreasuryCap is on the bridge; fund via inbound USDC/USDT claims"
     fi
 
     log_step "Initializing orderbook BalanceManager map"
@@ -306,7 +299,7 @@ run_mm_only() {
     orderbook_validate_session_ids
     orderbook_import_bridge_btc_eth || return 1
     orderbook_ensure_deployer_identity || return 1
-    require_session_fields ORDERBOOK_REGISTRY_ID MYUSD_COIN_TYPE MYUSD_TREASURY_CAP_ID \
+    require_session_fields ORDERBOOK_REGISTRY_ID MYUSD_COIN_TYPE \
         BTC_COIN_TYPE ETH_COIN_TYPE \
         DEPLOYER_ADDRESS PRIVATE_KEY "${required_pools[@]}" || return 1
 

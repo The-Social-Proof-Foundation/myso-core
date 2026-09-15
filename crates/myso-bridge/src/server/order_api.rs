@@ -26,6 +26,8 @@ pub struct CreateBridgeOrderRequest {
     pub callback_url: Option<String>,
     #[serde(default)]
     pub callback_api_key: Option<String>,
+    #[serde(default)]
+    pub destination_token_id: Option<u8>,
 }
 
 #[derive(Debug, Serialize)]
@@ -98,6 +100,7 @@ pub async fn create_bridge_order(
             },
             callback_url: req.callback_url,
             callback_api_key: req.callback_api_key,
+            destination_token_id: req.destination_token_id,
         }),
     )
     .await?;

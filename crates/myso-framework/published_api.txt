@@ -5725,10 +5725,25 @@ TokenRegistrationEvent
 token_id
 	public fun
 	0xb::treasury
+type_ids
+	public fun
+	0xb::treasury
+type_matches_token_id
+	public fun
+	0xb::treasury
+rail_reserve
+	public fun
+	0xb::treasury
 decimal_multiplier
 	public fun
 	0xb::treasury
 notional_value
+	public fun
+	0xb::treasury
+decimal_multiplier_by_id
+	public fun
+	0xb::treasury
+notional_value_by_id
 	public fun
 	0xb::treasury
 register_foreign_token
@@ -5761,10 +5776,19 @@ burn
 mint
 	public(package) fun
 	0xb::treasury
+credit_rail
+	public(package) fun
+	0xb::treasury
+debit_rail
+	public(package) fun
+	0xb::treasury
 update_asset_notional_price
 	public(package) fun
 	0xb::treasury
 get_token_metadata
+	fun
+	0xb::treasury
+find_supported_type
 	fun
 	0xb::treasury
 token
@@ -6013,6 +6037,9 @@ new
 check_and_record_sending_transfer
 	public(package) fun
 	0xb::limiter
+check_and_record_sending_transfer_by_id
+	public(package) fun
+	0xb::limiter
 update_route_limit
 	public(package) fun
 	0xb::limiter
@@ -6127,8 +6154,20 @@ bootstrap_native_myso
 send_token
 	public fun
 	0xb::bridge
+send_token_with_rail
+	public fun
+	0xb::bridge
 send_token_v2
 	public fun
+	0xb::bridge
+send_token_with_rail_v2
+	public fun
+	0xb::bridge
+send_token_with_rail_inner
+	fun
+	0xb::bridge
+send_token_with_rail_v2_inner
+	fun
 	0xb::bridge
 send_myso_token
 	public fun
@@ -6140,9 +6179,6 @@ approve_token_transfer
 	public fun
 	0xb::bridge
 claim_policy_direct
-	public fun
-	0xb::bridge
-claim_policy_convert_to_myusd
 	public fun
 	0xb::bridge
 claim_policy_disabled
@@ -6181,9 +6217,6 @@ load_inner
 load_inner_mut
 	fun
 	0xb::bridge
-assert_direct_claim_allowed
-	fun
-	0xb::bridge
 effective_claim_policy_inner
 	fun
 	0xb::bridge
@@ -6220,135 +6253,6 @@ get_parsed_token_transfer_message
 inner_paused
 	public fun
 	0xb::bridge
-USDT
-	public struct
-	0xb::usdt
-decimals
-	public fun
-	0xb::usdt
-USDC
-	public struct
-	0xb::usdc
-decimals
-	public fun
-	0xb::usdc
-MYUSD
-	public struct
-	0xb::myusd
-decimals
-	public fun
-	0xb::myusd
-MyUsdPeg
-	public struct
-	0xb::myusd_peg
-ConversionAdminCap
-	public struct
-	0xb::myusd_peg
-StableClaimConvertedToMyUsd
-	public struct
-	0xb::myusd_peg
-StableRedeemedToRail
-	public struct
-	0xb::myusd_peg
-create
-	public fun
-	0xb::myusd_peg
-set_paused
-	public fun
-	0xb::myusd_peg
-set_rail_enabled
-	public fun
-	0xb::myusd_peg
-enable_conversion_policy
-	public fun
-	0xb::myusd_peg
-usdc_reserve
-	public fun
-	0xb::myusd_peg
-usdt_reserve
-	public fun
-	0xb::myusd_peg
-usdc_issued
-	public fun
-	0xb::myusd_peg
-usdt_issued
-	public fun
-	0xb::myusd_peg
-usdc_redeemed
-	public fun
-	0xb::myusd_peg
-usdt_redeemed
-	public fun
-	0xb::myusd_peg
-usdc_enabled
-	public fun
-	0xb::myusd_peg
-usdt_enabled
-	public fun
-	0xb::myusd_peg
-is_paused
-	public fun
-	0xb::myusd_peg
-converted_recipient
-	public fun
-	0xb::myusd_peg
-converted_input_amount
-	public fun
-	0xb::myusd_peg
-converted_myusd_amount
-	public fun
-	0xb::myusd_peg
-myusd_total_supply
-	public fun
-	0xb::myusd_peg
-claim_stable_into_myusd
-	public fun
-	0xb::myusd_peg
-redeem_myusd_and_send_to_evm
-	public fun
-	0xb::myusd_peg
-claim_usdc_into_myusd
-	fun
-	0xb::myusd_peg
-claim_usdt_into_myusd
-	fun
-	0xb::myusd_peg
-finish_usdc_deposit
-	fun
-	0xb::myusd_peg
-finish_usdt_deposit
-	fun
-	0xb::myusd_peg
-pay_myusd
-	fun
-	0xb::myusd_peg
-redeem_myusd_to_rail_usdc
-	public(package) fun
-	0xb::myusd_peg
-redeem_myusd_to_rail_usdt
-	public(package) fun
-	0xb::myusd_peg
-prepare_redeem
-	fun
-	0xb::myusd_peg
-emit_redeem
-	fun
-	0xb::myusd_peg
-assert_can_convert
-	fun
-	0xb::myusd_peg
-rail_enabled
-	fun
-	0xb::myusd_peg
-is_usdc
-	fun
-	0xb::myusd_peg
-is_usdt
-	fun
-	0xb::myusd_peg
-assert_admin
-	fun
-	0xb::myusd_peg
 to_bytes
 	public fun
 	0x1::bcs

@@ -211,15 +211,11 @@ literal_move_vector_from_csv() {
         literal_move_vector_empty
         return 0
     fi
-    local acc="" s2="" p
-    IFS=',' read -r -a _VA <<<"$csv"
-    for p in "${_VA[@]}"; do
-        p="${p## }"
-        p="${p%% }"
-        acc="${acc}${s2}\"${p}\""
-        s2=", "
-    done
-    printf 'vector[%s]' "$acc"
+    python3 - "$csv" <<'PY'
+import sys
+parts = [p.strip() for p in sys.argv[1].split(",") if p.strip()]
+print("vector[" + ", ".join(f'"{p}"' for p in parts) + "]")
+PY
 }
 
 # PTB move-call expects vector<u8> as vector[Nu8,...], not a bare 0x hex literal.

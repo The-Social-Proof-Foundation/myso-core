@@ -222,10 +222,6 @@ where
             MySoBridgeEvent::UpdateRouteLimitEvent(_event) => {
                 bump_myso_counter!("limit_updated");
             }
-
-            MySoBridgeEvent::StableClaimConvertedToMyUsd(_) => {
-                bump_myso_counter!("stable_claim_converted_to_myusd");
-            }
         }
     }
 

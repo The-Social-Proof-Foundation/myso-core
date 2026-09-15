@@ -11,6 +11,7 @@ title: Module `bridge::limiter`
 -  [Function `get_route_limit`](#bridge_limiter_get_route_limit)
 -  [Function `new`](#bridge_limiter_new)
 -  [Function `check_and_record_sending_transfer`](#bridge_limiter_check_and_record_sending_transfer)
+-  [Function `check_and_record_sending_transfer_by_id`](#bridge_limiter_check_and_record_sending_transfer_by_id)
 -  [Function `update_route_limit`](#bridge_limiter_update_route_limit)
 -  [Function `current_hour_since_epoch`](#bridge_limiter_current_hour_since_epoch)
 -  [Function `adjust_transfer_records`](#bridge_limiter_adjust_transfer_records)
@@ -298,7 +299,8 @@ title: Module `bridge::limiter`
     <b>let</b> route_limit = self.transfer_limits.try_get(&route);
     <b>assert</b>!(route_limit.is_some(), <a href="../bridge/limiter.md#bridge_limiter_ELimitNotFoundForRoute">ELimitNotFoundForRoute</a>);
     <b>let</b> route_limit = route_limit.destroy_some();
-    <b>let</b> route_limit_adjusted = (route_limit <b>as</b> u128) * (<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.decimal_multiplier&lt;T&gt;() <b>as</b> u128);
+    <b>let</b> route_limit_adjusted =
+        (route_limit <b>as</b> u128) * (<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.decimal_multiplier&lt;T&gt;() <b>as</b> u128);
     // Compute notional amount
     // Upcast to u128 to prevent overflow, to not miss out on small amounts.
     <b>let</b> value = (<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.notional_value&lt;T&gt;() <b>as</b> u128);
@@ -318,6 +320,71 @@ title: Module `bridge::limiter`
     // Should be safe to downcast to u64 after dividing by the decimals
     <b>let</b> notional_amount = (notional_amount <b>as</b> u64);
     // Record transfer value
+    <b>let</b> new_amount = record.per_hour_amounts.pop_back() + notional_amount;
+    record.per_hour_amounts.push_back(new_amount);
+    record.total_amount = record.total_amount + notional_amount;
+    <b>true</b>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_limiter_check_and_record_sending_transfer_by_id"></a>
+
+## Function `check_and_record_sending_transfer_by_id`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/limiter.md#bridge_limiter_check_and_record_sending_transfer_by_id">check_and_record_sending_transfer_by_id</a>(self: &<b>mut</b> <a href="../bridge/limiter.md#bridge_limiter_TransferLimiter">bridge::limiter::TransferLimiter</a>, <a href="../bridge/treasury.md#bridge_treasury">treasury</a>: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, route: <a href="../bridge/chain_ids.md#bridge_chain_ids_BridgeRoute">bridge::chain_ids::BridgeRoute</a>, token_id: u8, amount: u64): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/limiter.md#bridge_limiter_check_and_record_sending_transfer_by_id">check_and_record_sending_transfer_by_id</a>(
+    self: &<b>mut</b> <a href="../bridge/limiter.md#bridge_limiter_TransferLimiter">TransferLimiter</a>,
+    <a href="../bridge/treasury.md#bridge_treasury">treasury</a>: &BridgeTreasury,
+    clock: &Clock,
+    route: BridgeRoute,
+    token_id: u8,
+    amount: u64,
+): bool {
+    <b>if</b> (!self.transfer_records.contains(&route)) {
+        self
+            .transfer_records
+            .insert(
+                route,
+                <a href="../bridge/limiter.md#bridge_limiter_TransferRecord">TransferRecord</a> {
+                    hour_head: 0,
+                    hour_tail: 0,
+                    per_hour_amounts: vector[],
+                    total_amount: 0,
+                },
+            )
+    };
+    <b>let</b> record = self.transfer_records.get_mut(&route);
+    <b>let</b> <a href="../bridge/limiter.md#bridge_limiter_current_hour_since_epoch">current_hour_since_epoch</a> = <a href="../bridge/limiter.md#bridge_limiter_current_hour_since_epoch">current_hour_since_epoch</a>(clock);
+    record.<a href="../bridge/limiter.md#bridge_limiter_adjust_transfer_records">adjust_transfer_records</a>(<a href="../bridge/limiter.md#bridge_limiter_current_hour_since_epoch">current_hour_since_epoch</a>);
+    <b>let</b> route_limit = self.transfer_limits.try_get(&route);
+    <b>assert</b>!(route_limit.is_some(), <a href="../bridge/limiter.md#bridge_limiter_ELimitNotFoundForRoute">ELimitNotFoundForRoute</a>);
+    <b>let</b> route_limit = route_limit.destroy_some();
+    <b>let</b> decimals = <a href="../bridge/treasury.md#bridge_treasury">treasury</a>.decimal_multiplier_by_id(token_id);
+    <b>let</b> route_limit_adjusted = (route_limit <b>as</b> u128) * (decimals <b>as</b> u128);
+    <b>let</b> value = (<a href="../bridge/treasury.md#bridge_treasury">treasury</a>.notional_value_by_id(token_id) <b>as</b> u128);
+    <b>let</b> notional_amount_with_token_multiplier = value * (amount <b>as</b> u128);
+    <b>if</b> (
+        (record.total_amount <b>as</b> u128) * (decimals <b>as</b> u128) + notional_amount_with_token_multiplier
+            &gt; route_limit_adjusted
+    ) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> notional_amount = notional_amount_with_token_multiplier / (decimals <b>as</b> u128);
+    <b>let</b> notional_amount = (notional_amount <b>as</b> u64);
     <b>let</b> new_amount = record.per_hour_amounts.pop_back() + notional_amount;
     record.per_hour_amounts.push_back(new_amount);
     record.total_amount = record.total_amount + notional_amount;

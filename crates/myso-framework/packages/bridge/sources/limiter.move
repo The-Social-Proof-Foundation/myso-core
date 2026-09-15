@@ -92,7 +92,8 @@ public(package) fun check_and_record_sending_transfer<T>(
     let route_limit = self.transfer_limits.try_get(&route);
     assert!(route_limit.is_some(), ELimitNotFoundForRoute);
     let route_limit = route_limit.destroy_some();
-    let route_limit_adjusted = (route_limit as u128) * (treasury.decimal_multiplier<T>() as u128);
+    let route_limit_adjusted =
+        (route_limit as u128) * (treasury.decimal_multiplier<T>() as u128);
 
     // Compute notional amount
     // Upcast to u128 to prevent overflow, to not miss out on small amounts.
@@ -116,6 +117,52 @@ public(package) fun check_and_record_sending_transfer<T>(
     let notional_amount = (notional_amount as u64);
 
     // Record transfer value
+    let new_amount = record.per_hour_amounts.pop_back() + notional_amount;
+    record.per_hour_amounts.push_back(new_amount);
+    record.total_amount = record.total_amount + notional_amount;
+    true
+}
+
+public(package) fun check_and_record_sending_transfer_by_id(
+    self: &mut TransferLimiter,
+    treasury: &BridgeTreasury,
+    clock: &Clock,
+    route: BridgeRoute,
+    token_id: u8,
+    amount: u64,
+): bool {
+    if (!self.transfer_records.contains(&route)) {
+        self
+            .transfer_records
+            .insert(
+                route,
+                TransferRecord {
+                    hour_head: 0,
+                    hour_tail: 0,
+                    per_hour_amounts: vector[],
+                    total_amount: 0,
+                },
+            )
+    };
+    let record = self.transfer_records.get_mut(&route);
+    let current_hour_since_epoch = current_hour_since_epoch(clock);
+    record.adjust_transfer_records(current_hour_since_epoch);
+
+    let route_limit = self.transfer_limits.try_get(&route);
+    assert!(route_limit.is_some(), ELimitNotFoundForRoute);
+    let route_limit = route_limit.destroy_some();
+    let decimals = treasury.decimal_multiplier_by_id(token_id);
+    let route_limit_adjusted = (route_limit as u128) * (decimals as u128);
+    let value = (treasury.notional_value_by_id(token_id) as u128);
+    let notional_amount_with_token_multiplier = value * (amount as u128);
+    if (
+        (record.total_amount as u128) * (decimals as u128) + notional_amount_with_token_multiplier
+            > route_limit_adjusted
+    ) {
+        return false
+    };
+    let notional_amount = notional_amount_with_token_multiplier / (decimals as u128);
+    let notional_amount = (notional_amount as u64);
     let new_amount = record.per_hour_amounts.pop_back() + notional_amount;
     record.per_hour_amounts.push_back(new_amount);
     record.total_amount = record.total_amount + notional_amount;

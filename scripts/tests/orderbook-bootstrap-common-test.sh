@@ -267,4 +267,88 @@ extracted="$(orderbook_package_id_from_publish_output "$timeout_dump")"
 assert_eq "$(normalize_hex_id 131643887b867ca4b970ee7029432769f8eb96db5f245b51b8be1e2d3f7982ad)" \
     "$extracted" "checkpoint-timeout dump should yield the published package id"
 
+object_exists_on_fullnode() { return 0; }
+
+parsed="$(orderbook_parse_pool_type_args \
+    '0xb0c::pool::Pool<0x0e8ba9f351924f9f053dbecb740f6aebed0f4dd38b42914636212a038886f450::eth::ETH, 0xcafba0::myusd::MYUSD>')"
+assert_eq "0x0e8ba9f351924f9f053dbecb740f6aebed0f4dd38b42914636212a038886f450::eth::ETH	0xcafba0::myusd::MYUSD" \
+    "$parsed" "pool type args should split base and quote"
+
+if ! orderbook_coin_types_equal \
+    '0x2::myso::MYSO' \
+    '0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO'; then
+    echo "padded and unpadded MYSO types must compare equal" >&2
+    exit 1
+fi
+
+ETH_COIN_TYPE=''
+ETH_MYUSD_POOL_ID="$(normalize_hex_id 99)"
+orderbook_apply_bridge_coin_type ETH \
+    '0x0e8ba9f351924f9f053dbecb740f6aebed0f4dd38b42914636212a038886f450::eth::ETH'
+assert_eq '' "$ETH_MYUSD_POOL_ID" \
+    "empty old ETH type should clear leftover pool id"
+
+ETH_COIN_TYPE='0x296ab26f70f617a11157b71de7d2930300b116a779571b6360bb79ded3fb9365::eth::ETH'
+ETH_MYUSD_POOL_ID="$(normalize_hex_id 99)"
+orderbook_apply_bridge_coin_type ETH \
+    '0x0e8ba9f351924f9f053dbecb740f6aebed0f4dd38b42914636212a038886f450::eth::ETH'
+assert_eq '' "$ETH_MYUSD_POOL_ID" \
+    "ETH type change should clear leftover pool id"
+
+bridge_eth='0x0e8ba9f351924f9f053dbecb740f6aebed0f4dd38b42914636212a038886f450::eth::ETH'
+stale_catalog="$(jq -nc --arg old '0x296ab26f70f617a11157b71de7d2930300b116a779571b6360bb79ded3fb9365::eth::ETH' \
+    '[{pool_name:"ETH_MYUSD",pool_id:"0x11",base_asset_id:$old}]')"
+stale_id="$(orderbook_catalog_stale_pool_id_from_json "$stale_catalog" ETH_MYUSD "$bridge_eth")"
+assert_eq "$(normalize_hex_id 11)" "$stale_id" \
+    "catalog ETH_MYUSD with a different base_asset_id is stale"
+
+fresh_catalog="$(jq -nc --arg t "$bridge_eth" \
+    '[{pool_name:"ETH_MYUSD",pool_id:"0x22",base_asset_id:$t}]')"
+if orderbook_catalog_stale_pool_id_from_json "$fresh_catalog" ETH_MYUSD "$bridge_eth" >/dev/null; then
+    echo "matching catalog ETH type must not be stale" >&2
+    exit 1
+fi
+
+found="$(orderbook_catalog_pool_id_from_json "$fresh_catalog" \
+    '0x0e8ba9f351924f9f053dbecb740f6aebed0f4dd38b42914636212a038886f450::eth::ETH')"
+assert_eq "$(normalize_hex_id 22)" "$found" \
+    "catalog lookup should match hex-normalized ETH type"
+
+assert_eq "MYSO_MYUSD" "$(orderbook_mm_required_catalog_pool_names)" \
+    "default required catalog pool is MYSO only"
+if ! orderbook_catalog_has_required_mm_pools '[{"pool_name":"MYSO_MYUSD"}]'; then
+    echo "MYSO-only catalog should satisfy default MM required pools" >&2
+    exit 1
+fi
+if orderbook_catalog_has_required_mm_pools '[{"pool_name":"ETH_MYUSD"}]'; then
+    echo "ETH-only catalog must not satisfy default MYSO required pool" >&2
+    exit 1
+fi
+
+sandbox_dir="$(mktemp -d)"
+printf '%s\n' 'PYTH_API_KEY=keepme' 'ETH_COIN_TYPE=old-eth' > "$sandbox_dir/.env"
+ORDERBOOK_SANDBOX_DIR="$sandbox_dir"
+ETH_COIN_TYPE="$bridge_eth"
+BTC_COIN_TYPE='0xa4523ab352b50d73a156ba0f6754de5e7c8ef2de0355314fbfa9689d112659c5::btc::BTC'
+MYUSD_COIN_TYPE='0xcafba0d41504b7850a39768c32f6112765208bb82e6a368930c5815d80376205::myusd::MYUSD'
+MM_POOLS='[{"poolId":"0x1"}]'
+orderbook_sync_sandbox_env
+grep -q '^PYTH_API_KEY=keepme$' "$sandbox_dir/.env" || {
+    echo "sandbox env upsert must leave PYTH_API_KEY alone" >&2
+    exit 1
+}
+grep -q "$bridge_eth" "$sandbox_dir/.env" || {
+    echo "sandbox env upsert must write bridge ETH type" >&2
+    exit 1
+}
+rm -rf "$sandbox_dir"
+
+shared_myusd='0x3f964cdf3eaf8f9322c51f319ec9869021a5cdcf4c95d548675c0046de3e48d7::myusd::MYUSD'
+BRIDGE_MYUSD_TYPE=''
+BRIDGE_USDC_TYPE="$shared_myusd"
+BRIDGE_USDT_TYPE="$shared_myusd"
+got="$(orderbook_bridge_myusd_type)"
+assert_eq "$shared_myusd" "$got" "orderbook reuses published MYUSD from aliased USDC/USDT rail types"
+assert_eq "$BRIDGE_USDC_TYPE" "$BRIDGE_USDT_TYPE" "ids 3 and 4 must share one MYUSD type"
+
 echo "orderbook bootstrap helper tests passed"

@@ -91,8 +91,8 @@ BRIDGE_SESSION_KEYS=(
     BRIDGE_COMMITTEE_CONFIG_PATH BRIDGE_DB_PATH
     BRIDGE_PROXY BRIDGE_COMMITTEE BRIDGE_CONFIG BRIDGE_LIMITER BRIDGE_VAULT
     BRIDGE_WETH BRIDGE_BTC BRIDGE_USDC BRIDGE_USDT BRIDGE_KA
-    PKG_BRIDGE_BTC PKG_BRIDGE_ETH PKG_BRIDGE_USDC PKG_BRIDGE_USDT
-    BRIDGE_BTC_TYPE BRIDGE_ETH_TYPE BRIDGE_USDC_TYPE BRIDGE_USDT_TYPE
+    PKG_BRIDGE_BTC PKG_BRIDGE_ETH PKG_BRIDGE_MYUSD PKG_BRIDGE_USDC PKG_BRIDGE_USDT
+    BRIDGE_BTC_TYPE BRIDGE_ETH_TYPE BRIDGE_MYUSD_TYPE BRIDGE_USDC_TYPE BRIDGE_USDT_TYPE
     MYSO_CHAIN_IDENTIFIER NATIVE_MYSO_BOOTSTRAPPED COMMITTEE_REGISTERED COMMITTEE_FINALIZED
     TOKENS_REGISTERED_MYSO TOKENS_REGISTERED_EVM
     COIN_CREATION_ADMIN_CAP_ID PACKAGE_PUBLISH_ADMIN_CAP_ID
@@ -337,6 +337,65 @@ bridge_rpc_json() {
         -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"${method}\",\"params\":[]}"
 }
 
+bridge_live_chain_id() {
+    local raw
+    raw="$(bridge_rpc_json myso_getChainIdentifier 2>/dev/null || true)"
+    printf '%s' "$raw" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+r = d.get("result")
+if isinstance(r, str) and r:
+    print(r)
+    sys.exit(0)
+sys.exit(1)
+'
+}
+
+bridge_client_yaml_chain_id() {
+    local yaml="$1"
+    [[ -f "$yaml" ]] || return 1
+    python3 - "$yaml" <<'PY'
+import sys
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read().splitlines()
+chain = ""
+for line in text:
+    s = line.strip()
+    if s.startswith("chain_id:"):
+        chain = s.split(":", 1)[1].strip().strip('"').strip("'")
+print(chain)
+PY
+}
+
+# Prefer a repo network.yaml whose validator count matches the live chain.
+# ~/.myso/myso_config/network.yaml is often a leftover 3-validator file.
+bridge_repo_matching_network_yaml() {
+    local live_n="$1" live_chain="${2:-}" yaml n sibling_client sibling_chain fallback=""
+    [[ -n "${REPO_ROOT:-}" && -n "$live_n" ]] || return 1
+    shopt -s nullglob
+    for yaml in "$REPO_ROOT"/network.config/*/network.yaml "$REPO_ROOT"/network.config/network.yaml; do
+        [[ -f "$yaml" ]] || continue
+        n="$(bridge_network_yaml_validator_count "$yaml")"
+        [[ "$n" == "$live_n" ]] || continue
+        sibling_client="$(dirname "$yaml")/client.yaml"
+        if [[ -n "$live_chain" && -f "$sibling_client" ]]; then
+            sibling_chain="$(bridge_client_yaml_chain_id "$sibling_client" || true)"
+            if [[ "$sibling_chain" == "$live_chain" ]]; then
+                printf '%s' "$yaml"
+                return 0
+            fi
+        fi
+        fallback="$yaml"
+    done
+    if [[ -n "$fallback" ]]; then
+        printf '%s' "$fallback"
+        return 0
+    fi
+    return 1
+}
+
 bridge_live_validators() {
     bridge_rpc_json mysox_getLatestMySoSystemState | python3 -c '
 import json, sys
@@ -364,9 +423,10 @@ PY
 # matches the live committee. ~/.myso/myso_config/network.yaml is often a
 # leftover 3-validator file and must not be used against 1-validator localnet.
 bridge_matching_network_yaml() {
-    local live_n yaml n
+    local live_n yaml n live_chain
     live_n="$(bridge_live_validators | wc -l | tr -d ' ')"
     [[ "${live_n:-0}" -gt 0 ]] || return 1
+    live_chain="$(bridge_live_chain_id || true)"
     if [[ -n "${BRIDGE_NETWORK_YAML:-}" && -f "${BRIDGE_NETWORK_YAML}" ]]; then
         n="$(bridge_network_yaml_validator_count "$BRIDGE_NETWORK_YAML")"
         if [[ "$n" == "$live_n" ]]; then
@@ -384,6 +444,12 @@ bridge_matching_network_yaml() {
             return 0
         fi
         echo "Ignoring $yaml ($n validators) — live localnet has $live_n. File is read-only and left untouched." >&2
+    fi
+    yaml="$(bridge_repo_matching_network_yaml "$live_n" "$live_chain" || true)"
+    if [[ -n "$yaml" ]]; then
+        echo "Using $yaml (validator count $live_n matches live chain)." >&2
+        printf '%s' "$yaml"
+        return 0
     fi
     return 1
 }
@@ -465,6 +531,245 @@ bridge_committee_node_ready() {
     bridge_committee_finalized || return 1
     total="$(bridge_committee_total_voting_power 2>/dev/null || echo 0)"
     [[ "${total:-0}" -ge "$min" ]]
+}
+
+bridge_normalize_type_name() {
+    python3 - "$1" <<'PY'
+import sys
+raw = sys.argv[1].strip()
+if not raw:
+    sys.exit(1)
+body = raw[2:] if raw.startswith("0x") else raw
+parts = body.split("::")
+if len(parts) < 3:
+    print(raw)
+    raise SystemExit(0)
+print("0x" + parts[0].lower().zfill(64) + "::" + "::".join(parts[1:]))
+PY
+}
+
+bridge_supported_token_types_from_rpc() {
+    local raw
+    raw="$(bridge_rpc_json mysox_getLatestBridge 2>/dev/null || true)"
+    printf '%s' "$raw" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+t = (d.get("result") or {}).get("treasury") or {}
+rows = t.get("supportedTokens") or t.get("supported_tokens") or []
+for row in rows:
+    if isinstance(row, (list, tuple)) and row:
+        print(row[0])
+    elif isinstance(row, dict):
+        typ = row.get("type") or row.get("tokenType") or row.get("token_type") or ""
+        if typ:
+            print(typ)
+'
+}
+
+bridge_supported_token_ids_from_rpc() {
+    local raw
+    raw="$(bridge_rpc_json mysox_getLatestBridge 2>/dev/null || true)"
+    printf '%s' "$raw" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+t = (d.get("result") or {}).get("treasury") or {}
+rows = t.get("idTokenTypeMap") or t.get("id_token_type_map") or []
+for row in rows:
+    if isinstance(row, (list, tuple)) and row:
+        print(row[0])
+    elif isinstance(row, dict):
+        token_id = row.get("id") or row.get("tokenId") or row.get("token_id")
+        if token_id is not None:
+            print(token_id)
+'
+}
+
+# True when every non-empty argument type is already in supported_tokens.
+bridge_types_supported_on_chain() {
+    local have want n have_n
+    [[ $# -gt 0 ]] || return 1
+    have="$(bridge_supported_token_types_from_rpc)"
+    have_n="$(printf '%s\n' "$have" | python3 -c '
+import sys
+def norm(raw):
+    raw = raw.strip()
+    if not raw:
+        return ""
+    body = raw[2:] if raw.startswith("0x") else raw
+    parts = body.split("::")
+    if len(parts) < 3:
+        return raw.lower()
+    return "0x" + parts[0].lower().zfill(64) + "::" + "::".join(parts[1:])
+print("\n".join(norm(line) for line in sys.stdin if line.strip()))
+')"
+    for want in "$@"; do
+        [[ -n "$want" ]] || return 1
+        n="$(bridge_normalize_type_name "$want")" || return 1
+        printf '%s\n' "$have_n" | grep -Fxq "$n" || return 1
+    done
+    return 0
+}
+
+bridge_foreign_tokens_supported_on_chain() {
+    local rail_type="${BRIDGE_MYUSD_TYPE:-${BRIDGE_USDC_TYPE:-}}"
+    local have_ids
+    [[ -n "${BRIDGE_BTC_TYPE:-}" && -n "${BRIDGE_ETH_TYPE:-}" && -n "$rail_type" ]] || return 1
+    BRIDGE_USDC_TYPE="$rail_type"
+    BRIDGE_USDT_TYPE="$rail_type"
+    bridge_types_supported_on_chain \
+        "$BRIDGE_BTC_TYPE" "$BRIDGE_ETH_TYPE" "$rail_type" || return 1
+    have_ids="$(bridge_supported_token_ids_from_rpc)"
+    for want in 1 2 3 4; do
+        printf '%s\n' "$have_ids" | grep -Fxq "$want" || return 1
+    done
+    return 0
+}
+
+bridge_find_object_by_type() {
+    local move_type="$1" owner="${2:-}" query vars json addr
+    graphql_is_reachable "$GRAPHQL_URL" || return 1
+    if [[ -n "$owner" ]]; then
+        owner="$(normalize_hex_id "$owner")" || return 1
+        query='query Obj($owner: MySoAddress!, $typ: String!) {
+          objects(filter: { type: $typ, ownerKind: ADDRESS, owner: $owner }, last: 5) {
+            nodes { address }
+          }
+        }'
+        vars="$(jq -nc --arg owner "$owner" --arg typ "$move_type" '{owner: $owner, typ: $typ}')"
+    else
+        query='query Obj($typ: String!) {
+          objects(filter: { type: $typ }, last: 5) {
+            nodes { address }
+          }
+        }'
+        vars="$(jq -nc --arg typ "$move_type" '{typ: $typ}')"
+    fi
+    json="$(graphql_post "$query" "$vars" 2>/dev/null)" || return 1
+    addr="$(printf '%s' "$json" | jq -r '.data.objects.nodes[0].address // empty')"
+    [[ -n "$addr" ]] || return 1
+    normalize_hex_id "$addr"
+}
+
+bridge_register_existing_foreign_token() {
+    local type_name="$1" pkg active tc md uc out rc=0
+    [[ -n "$type_name" ]] || return 1
+    pkg="${type_name%%::*}"
+    active="$(resolve_myso_active_address)" || return 1
+    tc="$(bridge_find_object_by_type "0x2::coin::TreasuryCap<${type_name}>" "$active" || true)"
+    [[ -n "$tc" ]] || tc="$(bridge_find_object_by_type "0x2::coin::TreasuryCap<${type_name}>" || true)"
+    md="$(bridge_find_object_by_type "0x2::coin::CoinMetadata<${type_name}>" || true)"
+    uc="$(bridge_resolve_upgrade_cap_for_package "$pkg" "$active" 2>/dev/null || true)"
+    [[ -n "$tc" && -n "$md" && -n "$uc" ]] || {
+        echo "Cannot re-register $type_name (treasury=$tc metadata=$md upgrade=$uc)" >&2
+        return 1
+    }
+    log_step "register_foreign_token $type_name (existing caps)"
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$active" \
+        --move-call "${BRIDGE_PACKAGE_ID}::bridge::register_foreign_token" "<${type_name}>" \
+        "@${BRIDGE_OBJECT_ID}" \
+        "@$(normalize_hex_id "$tc")" \
+        "@$(normalize_hex_id "$uc")" \
+        "@$(normalize_hex_id "$md")")" || rc=$?
+    if assert_tx_success "$out"; then
+        return 0
+    fi
+    if echo "$out" | grep -qiE 'already|EUnsupportedTokenType|waiting|ETokenSupplyNonZero'; then
+        log_step "register_foreign_token $type_name already applied or waiting"
+        return 0
+    fi
+    return "${rc:-1}"
+}
+
+bridge_ensure_waiting_room_tokens() {
+    local kind type_name
+    for kind in btc eth myusd; do
+        case "$kind" in
+            btc) type_name="${BRIDGE_BTC_TYPE:-}" ;;
+            eth) type_name="${BRIDGE_ETH_TYPE:-}" ;;
+            myusd) type_name="${BRIDGE_MYUSD_TYPE:-${BRIDGE_USDC_TYPE:-}}" ;;
+        esac
+        [[ -n "$type_name" ]] || continue
+        if bridge_types_supported_on_chain "$type_name"; then
+            continue
+        fi
+        bridge_register_existing_foreign_token "$type_name" || true
+    done
+}
+
+bridge_canonical_type_no_0x() {
+    python3 - "$1" <<'PY'
+import sys
+raw = sys.argv[1].strip()
+body = raw[2:] if raw.startswith("0x") else raw
+parts = body.split("::")
+if len(parts) < 3:
+    print(body)
+    raise SystemExit(0)
+print(parts[0].lower().zfill(64) + "::" + "::".join(parts[1:]))
+PY
+}
+
+bridge_node_sign_add_tokens_on_myso() {
+    local types prices url
+    types="$(printf '%s,%s,%s,%s' \
+        "$(bridge_normalize_type_name "$BRIDGE_BTC_TYPE")" \
+        "$(bridge_normalize_type_name "$BRIDGE_ETH_TYPE")" \
+        "$(bridge_normalize_type_name "$BRIDGE_USDC_TYPE")" \
+        "$(bridge_normalize_type_name "$BRIDGE_USDT_TYPE")")"
+    prices="${BRIDGE_TOKEN_PRICE_BTC},${BRIDGE_TOKEN_PRICE_ETH},${BRIDGE_TOKEN_PRICE_USDC},${BRIDGE_TOKEN_PRICE_USDT}"
+    url="${BRIDGE_AUTHORITY_URL%/}/sign/add_tokens_on_myso/${BRIDGE_MYSO_CHAIN_ID}/0/0/1,2,3,4/${types}/${prices}"
+    curl -sf --connect-timeout 3 --max-time 15 "$url"
+}
+
+bridge_add_tokens_on_myso_via_node() {
+    local signed sig_vec names_csv active out
+    [[ -n "${BRIDGE_BTC_TYPE:-}" ]] || return 1
+    if ! bridge_node_reachable "$BRIDGE_AUTHORITY_URL"; then
+        return 1
+    fi
+    signed="$(bridge_node_sign_add_tokens_on_myso)" || {
+        echo "Node did not sign add_tokens_on_myso" >&2
+        return 1
+    }
+    sig_vec="$(printf '%s' "$signed" | python3 -c '
+import json, sys, base64
+d = json.load(sys.stdin)
+sig = ((d.get("auth_signature") or {}).get("signature") or "")
+raw = base64.b64decode(sig)
+print("vector[vector[" + ",".join(f"{b}u8" for b in raw) + "]]")
+')"
+    [[ -n "$sig_vec" && "$sig_vec" != "vector[vector[]]" ]] || {
+        echo "Could not decode add_tokens_on_myso signature" >&2
+        return 1
+    }
+    names_csv="$(python3 - "$BRIDGE_BTC_TYPE" "$BRIDGE_ETH_TYPE" "$BRIDGE_USDC_TYPE" "$BRIDGE_USDT_TYPE" <<'PY'
+import sys
+out = []
+for raw in sys.argv[1:]:
+    body = raw[2:] if raw.startswith("0x") else raw
+    parts = body.split("::")
+    out.append(parts[0].lower().zfill(64) + "::" + "::".join(parts[1:]))
+print(",".join(out))
+PY
+)"
+    active="$(resolve_myso_active_address)" || return 1
+    log_step "execute_system_message add_tokens_on_myso via node signature"
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$active" \
+        --move-call "${BRIDGE_PACKAGE_ID}::message::create_add_tokens_on_myso_message" \
+        "${BRIDGE_MYSO_CHAIN_ID}u8" "0u64" false \
+        "vector[1u8,2u8,3u8,4u8]" \
+        "$(literal_move_vector_from_csv "$names_csv")" \
+        "vector[${BRIDGE_TOKEN_PRICE_BTC}u64,${BRIDGE_TOKEN_PRICE_ETH}u64,${BRIDGE_TOKEN_PRICE_USDC}u64,${BRIDGE_TOKEN_PRICE_USDT}u64]" \
+        --assign add_tokens_msg \
+        --move-call "${BRIDGE_PACKAGE_ID}::bridge::execute_system_message" \
+        "@${BRIDGE_OBJECT_ID}" add_tokens_msg "$sig_vec")" || true
+    assert_tx_success "$out"
 }
 
 bridge_clear_on_chain_session_flags() {
@@ -903,7 +1208,8 @@ bridge_write_configs() {
     mkdir -p "$BRIDGE_DIR" "$BRIDGE_DB_PATH"
 
     local myso_types=""
-    if [[ -n "${BRIDGE_BTC_TYPE:-}" && -n "${BRIDGE_ETH_TYPE:-}" && -n "${BRIDGE_USDC_TYPE:-}" && -n "${BRIDGE_USDT_TYPE:-}" ]]; then
+    local rail_type="${BRIDGE_MYUSD_TYPE:-${BRIDGE_USDC_TYPE:-}}"
+    if [[ -n "${BRIDGE_BTC_TYPE:-}" && -n "${BRIDGE_ETH_TYPE:-}" && -n "$rail_type" ]]; then
         myso_types="$(cat <<EOF
   - AddTokensOnMySoAction:
       nonce: 0
@@ -913,8 +1219,8 @@ bridge_write_configs() {
       token_type_names:
 $(bridge_yaml_token_struct "$BRIDGE_BTC_TYPE")
 $(bridge_yaml_token_struct "$BRIDGE_ETH_TYPE")
-$(bridge_yaml_token_struct "$BRIDGE_USDC_TYPE")
-$(bridge_yaml_token_struct "$BRIDGE_USDT_TYPE")
+$(bridge_yaml_token_struct "$rail_type")
+$(bridge_yaml_token_struct "$rail_type")
       token_prices: [${BRIDGE_TOKEN_PRICE_BTC}, ${BRIDGE_TOKEN_PRICE_ETH}, ${BRIDGE_TOKEN_PRICE_USDC}, ${BRIDGE_TOKEN_PRICE_USDT}]
 EOF
 )"
@@ -1420,7 +1726,7 @@ bridge_register_committee() {
 }
 
 bridge_wait_committee_finalized() {
-    local total
+    local waited=0 max="${BRIDGE_COMMITTEE_WAIT_SECS}" step=5 total
     if bridge_committee_node_ready; then
         COMMITTEE_REGISTERED=1
         COMMITTEE_FINALIZED=1
@@ -1428,26 +1734,72 @@ bridge_wait_committee_finalized() {
         log_step "Bridge committee has a seated node (voting power ${total}/10000)"
         return 0
     fi
-    if bridge_committee_pending || [[ "${COMMITTEE_REGISTERED:-}" == 1 ]] || bridge_committee_registered; then
-        COMMITTEE_REGISTERED=1
-        log_step "Bridge committee has a pending registration — continuing bootstrap (epoch will seat it)"
-        return 0
+    if ! bridge_committee_pending && [[ "${COMMITTEE_REGISTERED:-}" != 1 ]] && ! bridge_committee_registered; then
+        echo "No committee seat or pending registration on-chain yet." >&2
+        return 1
     fi
-    echo "No committee seat or pending registration on-chain yet." >&2
+    COMMITTEE_REGISTERED=1
+    log_step "Waiting up to ${max}s for the epoch to seat the committee (voting power >= 7500)"
+    while (( waited < max )); do
+        if bridge_committee_node_ready; then
+            COMMITTEE_FINALIZED=1
+            total="$(bridge_committee_total_voting_power 2>/dev/null || echo 0)"
+            log_step "Bridge committee seated (voting power ${total}/10000)"
+            return 0
+        fi
+        waited=$((waited + step))
+        log_wait_progress "bridge committee epoch seat" "$((waited / step))" "$((max / step))" \
+            "need voting power >= 7500"
+        sleep "$step"
+    done
+    echo "Committee still pending after ${max}s — do not start the node until voting power >= 7500 (re-run after the next epoch)." >&2
     return 1
 }
 
 bridge_print_node_start() {
-    local bin
-    bin="$(bridge_node_bin || true)"
     echo "" >&2
-    echo "Start the bridge node yourself (this script will not):" >&2
-    if [[ -n "$bin" ]]; then
-        echo "  myso-bridge-node --config-path ${BRIDGE_NODE_CONFIG_PATH}" >&2
-    else
-        echo "  cargo run -p myso-bridge --bin myso-bridge-node -- --config-path ${BRIDGE_NODE_CONFIG_PATH}" >&2
-    fi
+    echo "Start the bridge node only after the committee is seated (voting power >= 7500):" >&2
+    echo "  cargo run -p myso-bridge --bin myso-bridge-node -- --config-path ${BRIDGE_NODE_CONFIG_PATH}" >&2
     echo "Authority URL: ${BRIDGE_AUTHORITY_URL}" >&2
+}
+
+bridge_stop_stale_node() {
+    if bridge_node_reachable "$BRIDGE_AUTHORITY_URL"; then
+        return 0
+    fi
+    bridge_stop_running_node
+}
+
+bridge_stop_running_node() {
+    local port pid cmd
+    for port in "$BRIDGE_NODE_PORT" "$BRIDGE_METRICS_PORT"; do
+        [[ -n "$port" ]] || continue
+        while IFS= read -r pid; do
+            [[ -n "$pid" ]] || continue
+            cmd="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+            if printf '%s' "$cmd" | grep -q 'myso-bridge-node'; then
+                log_step "Stopping myso-bridge-node pid $pid on :$port"
+                kill "$pid" 2>/dev/null || true
+            fi
+        done < <(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)
+    done
+    local i
+    for i in $(seq 1 15); do
+        bridge_node_reachable "$BRIDGE_AUTHORITY_URL" || return 0
+        sleep 1
+    done
+}
+
+bridge_reload_node_for_token_governance() {
+    if ! bridge_committee_node_ready; then
+        echo "Not starting the node: committee voting power is still below 7500." >&2
+        return 1
+    fi
+    if bridge_node_reachable "$BRIDGE_AUTHORITY_URL"; then
+        log_step "Restarting node so approved-governance-actions match published token types"
+        bridge_stop_running_node
+    fi
+    bridge_start_node_opt_in
 }
 
 bridge_node_reachable() {
@@ -1458,13 +1810,18 @@ bridge_node_reachable() {
 
 bridge_start_node_opt_in() {
     local bin logf node_bin wait_secs="${BRIDGE_NODE_START_WAIT_SECS:-300}"
+    if ! bridge_committee_node_ready; then
+        echo "Not starting the node: committee voting power is still below 7500." >&2
+        return 1
+    fi
+    bridge_stop_stale_node
     if bridge_node_reachable "$BRIDGE_AUTHORITY_URL"; then
         log_step "Bridge node already reachable at $BRIDGE_AUTHORITY_URL"
         return 0
     fi
-    if bridge_port_in_use "$BRIDGE_NODE_PORT"; then
-        echo "Port $BRIDGE_NODE_PORT is already in use; not starting another bridge node." >&2
-        return 0
+    if bridge_port_in_use "$BRIDGE_NODE_PORT" || bridge_port_in_use "$BRIDGE_METRICS_PORT"; then
+        echo "Port ${BRIDGE_NODE_PORT}/${BRIDGE_METRICS_PORT} still in use after stale cleanup; not starting another node." >&2
+        return 1
     fi
     bin="$(bridge_node_bin || true)"
     node_bin="${REPO_ROOT}/target/debug/myso-bridge-node"
@@ -1478,16 +1835,36 @@ bridge_start_node_opt_in() {
     fi
     mkdir -p "$BRIDGE_DIR" "$BRIDGE_DB_PATH"
     logf="$BRIDGE_DIR/bridge-node.log"
-    log_step "Starting bridge node on $BRIDGE_NODE_PORT (opt-in; no cleanup trap)"
+    log_step "Starting bridge node on $BRIDGE_NODE_PORT (log $BRIDGE_DIR/bridge-node.log)"
+    local launch_bin launch_args
     if [[ -n "$bin" ]]; then
-        nohup myso-bridge-node --config-path "$BRIDGE_NODE_CONFIG_PATH" >"$logf" 2>&1 &
+        launch_bin="$(command -v myso-bridge-node)"
+        launch_args=("--config-path" "$BRIDGE_NODE_CONFIG_PATH")
     elif [[ -x "$node_bin" ]]; then
-        nohup "$node_bin" --config-path "$BRIDGE_NODE_CONFIG_PATH" >"$logf" 2>&1 &
+        launch_bin="$node_bin"
+        launch_args=("--config-path" "$BRIDGE_NODE_CONFIG_PATH")
     else
-        nohup cargo run -p myso-bridge --bin myso-bridge-node -- \
-            --config-path "$BRIDGE_NODE_CONFIG_PATH" >"$logf" 2>&1 &
+        launch_bin="$(command -v cargo)"
+        launch_args=("run" "-p" "myso-bridge" "--bin" "myso-bridge-node" "--" "--config-path" "$BRIDGE_NODE_CONFIG_PATH")
     fi
-    echo "bridge-node pid $!  log $logf" >&2
+    local node_pid
+    node_pid="$(python3 - "$launch_bin" "$logf" "${launch_args[@]}" <<'PY'
+import os, subprocess, sys
+bin_path, logf, *args = sys.argv[1:]
+log = open(logf, "w")
+proc = subprocess.Popen(
+    [bin_path, *args],
+    stdin=subprocess.DEVNULL,
+    stdout=log,
+    stderr=subprocess.STDOUT,
+    start_new_session=True,
+    close_fds=True,
+)
+print(proc.pid)
+PY
+)"
+    echo "$node_pid" >"$BRIDGE_DIR/bridge-node.pid"
+    echo "bridge-node pid $node_pid  log $logf" >&2
     local i
     for i in $(seq 1 "$wait_secs"); do
         bridge_node_reachable "$BRIDGE_AUTHORITY_URL" && return 0
@@ -1750,8 +2127,10 @@ bridge_resolve_upgrade_cap_for_package() {
           }
         }' "$(jq -nc --arg owner "$owner" '{owner: $owner}')" 2>/dev/null)" || json=''
         cap="$(echo "$json" | jq -r --arg pkg "$pkg" '
+            def norm:
+                (tostring | ltrimstr("0x") | ascii_downcase);
             .data.objects.nodes[]?
-            | select((.asMoveObject.contents.json.package // "") == $pkg)
+            | select((.asMoveObject.contents.json.package // "" | norm) == ($pkg | norm))
             | .address
         ' | head -n1)"
         if [[ -n "$cap" ]]; then
@@ -1927,6 +2306,7 @@ bridge_init_and_register_token() {
         eth) type_name="${pkg}::eth::ETH" ;;
         usdc) type_name="${pkg}::usdc::USDC" ;;
         usdt) type_name="${pkg}::usdt::USDT" ;;
+        myusd) type_name="${pkg}::myusd::MYUSD" ;;
     esac
     log_step "register_foreign_token $type_name"
     for ((attempt = 1; attempt <= max; attempt++)); do
@@ -1967,11 +2347,14 @@ bridge_init_and_register_token() {
 
 bridge_register_myso_tokens() {
     local dest pkg kind type_name saved_config="${MYSO_CONFIG_DIR:-}"
-    if [[ "${TOKENS_REGISTERED_MYSO:-}" == 1 ]]; then
-        log_step "MySo foreign tokens already recorded in session"
+    if bridge_foreign_tokens_supported_on_chain; then
+        log_step "Foreign tokens already in supported_tokens"
+        TOKENS_REGISTERED_MYSO=1
         return 0
     fi
-    if [[ -n "${BRIDGE_BTC_TYPE:-}" && -n "${BRIDGE_ETH_TYPE:-}" && -n "${BRIDGE_USDC_TYPE:-}" && -n "${BRIDGE_USDT_TYPE:-}" ]]; then
+    if [[ -n "${BRIDGE_BTC_TYPE:-}" && -n "${BRIDGE_ETH_TYPE:-}" && -n "${BRIDGE_MYUSD_TYPE:-}" ]]; then
+        BRIDGE_USDC_TYPE="${BRIDGE_MYUSD_TYPE}"
+        BRIDGE_USDT_TYPE="${BRIDGE_MYUSD_TYPE}"
         log_step "Reusing published bridge token types from session"
         return 0
     fi
@@ -1987,13 +2370,12 @@ bridge_register_myso_tokens() {
         export MYSO_CONFIG_DIR="$BRIDGE_PUBLISH_MYSO_CONFIG_DIR"
         switch_wallet "${BRIDGE_PUBLISH_CAP_OWNER}"
     fi
-    for kind in btc eth usdc usdt; do
+    for kind in btc eth myusd; do
         type_name=''
         case "$kind" in
             btc) type_name="${BRIDGE_BTC_TYPE:-}" ;;
             eth) type_name="${BRIDGE_ETH_TYPE:-}" ;;
-            usdc) type_name="${BRIDGE_USDC_TYPE:-}" ;;
-            usdt) type_name="${BRIDGE_USDT_TYPE:-}" ;;
+            myusd) type_name="${BRIDGE_MYUSD_TYPE:-}" ;;
         esac
         if [[ -n "$type_name" ]]; then
             pkg="${type_name%%::*}"
@@ -2013,8 +2395,12 @@ bridge_register_myso_tokens() {
         case "$kind" in
             btc) PKG_BRIDGE_BTC="$pkg"; BRIDGE_BTC_TYPE="$type_name" ;;
             eth) PKG_BRIDGE_ETH="$pkg"; BRIDGE_ETH_TYPE="$type_name" ;;
-            usdc) PKG_BRIDGE_USDC="$pkg"; BRIDGE_USDC_TYPE="$type_name" ;;
-            usdt) PKG_BRIDGE_USDT="$pkg"; BRIDGE_USDT_TYPE="$type_name" ;;
+            myusd)
+                PKG_BRIDGE_MYUSD="$pkg"
+                BRIDGE_MYUSD_TYPE="$type_name"
+                BRIDGE_USDC_TYPE="$type_name"
+                BRIDGE_USDT_TYPE="$type_name"
+                ;;
         esac
         log_session_use "PKG_BRIDGE_${kind}" "$pkg"
         bridge_save_session
@@ -2031,29 +2417,48 @@ bridge_register_myso_tokens() {
 }
 
 bridge_governance_add_tokens_myso() {
+    local attempt
     [[ -n "${BRIDGE_BTC_TYPE:-}" ]] || {
         echo "No foreign token types; skipping add-tokens-on-myso" >&2
         return 0
     }
-    if [[ "${TOKENS_REGISTERED_MYSO:-}" == 1 ]]; then
+    if bridge_foreign_tokens_supported_on_chain; then
+        log_step "add-tokens-on-myso already applied on-chain"
+        TOKENS_REGISTERED_MYSO=1
         return 0
     fi
+    TOKENS_REGISTERED_MYSO=''
     if ! bridge_node_reachable "$BRIDGE_AUTHORITY_URL"; then
         echo "Bridge node not reachable at $BRIDGE_AUTHORITY_URL — skip MySo governance (start the node, then re-run)." >&2
         return 0
     fi
-    log_step "Governance add-tokens-on-myso (foreign BTC/ETH/USDC/USDT)"
-    if bridge_cli governance --config-path "$BRIDGE_CLIENT_CONFIG_PATH" --chain-id "$BRIDGE_MYSO_CHAIN_ID" \
-        add-tokens-on-myso \
-        --nonce 0 \
-        --token-ids 1,2,3,4 \
-        --token-type-names "${BRIDGE_BTC_TYPE},${BRIDGE_ETH_TYPE},${BRIDGE_USDC_TYPE},${BRIDGE_USDT_TYPE}" \
-        --token-prices "${BRIDGE_TOKEN_PRICE_BTC},${BRIDGE_TOKEN_PRICE_ETH},${BRIDGE_TOKEN_PRICE_USDC},${BRIDGE_TOKEN_PRICE_USDT}"; then
+    for attempt in 1 2; do
+        log_step "Governance add-tokens-on-myso (foreign BTC/ETH/USDC/USDT) attempt ${attempt}"
+        if bridge_cli governance --config-path "$BRIDGE_CLIENT_CONFIG_PATH" --chain-id "$BRIDGE_MYSO_CHAIN_ID" \
+            add-tokens-on-myso \
+            --nonce 0 \
+            --token-ids 1,2,3,4 \
+            --token-type-names "${BRIDGE_BTC_TYPE},${BRIDGE_ETH_TYPE},${BRIDGE_MYUSD_TYPE:-$BRIDGE_USDC_TYPE},${BRIDGE_MYUSD_TYPE:-$BRIDGE_USDT_TYPE}" \
+            --token-prices "${BRIDGE_TOKEN_PRICE_BTC},${BRIDGE_TOKEN_PRICE_ETH},${BRIDGE_TOKEN_PRICE_USDC},${BRIDGE_TOKEN_PRICE_USDT}"; then
+            if bridge_foreign_tokens_supported_on_chain; then
+                TOKENS_REGISTERED_MYSO=1
+                return 0
+            fi
+        fi
+        echo "CLI add-tokens-on-myso did not land; trying node signature + execute_system_message" >&2
+        if bridge_add_tokens_on_myso_via_node && bridge_foreign_tokens_supported_on_chain; then
+            TOKENS_REGISTERED_MYSO=1
+            return 0
+        fi
+        echo "add-tokens-on-myso did not land supported_tokens; ensuring waiting_room then retrying" >&2
+        bridge_ensure_waiting_room_tokens
+    done
+    if bridge_foreign_tokens_supported_on_chain; then
         TOKENS_REGISTERED_MYSO=1
-    else
-        echo "add-tokens-on-myso failed (node must have matching approved-governance-actions). Re-write configs and restart the node, then retry." >&2
-        return 1
+        return 0
     fi
+    echo "add-tokens-on-myso failed (node must have matching approved-governance-actions). Re-write configs and restart the node, then retry." >&2
+    return 1
 }
 
 bridge_governance_add_tokens_evm() {
@@ -2129,4 +2534,5 @@ bridge_print_summary() {
     echo "  evm proxy:      ${BRIDGE_PROXY:-<not deployed>}" >&2
     echo "  native myso:    ${NATIVE_MYSO_BOOTSTRAPPED:-0}" >&2
     echo "  committee:      registered=${COMMITTEE_REGISTERED:-0} finalized=${COMMITTEE_FINALIZED:-0}" >&2
+    echo "  myso tokens:    registered=${TOKENS_REGISTERED_MYSO:-0}" >&2
 }

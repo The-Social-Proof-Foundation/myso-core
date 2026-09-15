@@ -12,8 +12,13 @@ title: Module `bridge::treasury`
 -  [Struct `TokenRegistrationEvent`](#bridge_treasury_TokenRegistrationEvent)
 -  [Constants](#@Constants_0)
 -  [Function `token_id`](#bridge_treasury_token_id)
+-  [Function `type_ids`](#bridge_treasury_type_ids)
+-  [Function `type_matches_token_id`](#bridge_treasury_type_matches_token_id)
+-  [Function `rail_reserve`](#bridge_treasury_rail_reserve)
 -  [Function `decimal_multiplier`](#bridge_treasury_decimal_multiplier)
 -  [Function `notional_value`](#bridge_treasury_notional_value)
+-  [Function `decimal_multiplier_by_id`](#bridge_treasury_decimal_multiplier_by_id)
+-  [Function `notional_value_by_id`](#bridge_treasury_notional_value_by_id)
 -  [Function `register_foreign_token`](#bridge_treasury_register_foreign_token)
 -  [Function `add_new_token`](#bridge_treasury_add_new_token)
 -  [Function `create`](#bridge_treasury_create)
@@ -24,8 +29,11 @@ title: Module `bridge::treasury`
 -  [Function `native_bridge_ready`](#bridge_treasury_native_bridge_ready)
 -  [Function `burn`](#bridge_treasury_burn)
 -  [Function `mint`](#bridge_treasury_mint)
+-  [Function `credit_rail`](#bridge_treasury_credit_rail)
+-  [Function `debit_rail`](#bridge_treasury_debit_rail)
 -  [Function `update_asset_notional_price`](#bridge_treasury_update_asset_notional_price)
 -  [Function `get_token_metadata`](#bridge_treasury_get_token_metadata)
+-  [Function `find_supported_type`](#bridge_treasury_find_supported_type)
 
 
 <pre><code><b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
@@ -117,6 +125,18 @@ title: Module `bridge::treasury`
 <code>native_bridge_initialized: bool</code>
 </dt>
 <dd>
+</dd>
+<dt>
+<code>type_to_ids: <a href="../myso/vec_map.md#myso_vec_map_VecMap">myso::vec_map::VecMap</a>&lt;<a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a>, vector&lt;u8&gt;&gt;</code>
+</dt>
+<dd>
+ Type -> rail ids. Length 1 for 1:1 wrappers; length > 1 for shared rails (myUSD).
+</dd>
+<dt>
+<code><a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>: <a href="../myso/vec_map.md#myso_vec_map_VecMap">myso::vec_map::VecMap</a>&lt;u8, u64&gt;</code>
+</dt>
+<dd>
+ Outstanding minted amount per rail id (EVM vault backing).
 </dd>
 </dl>
 
@@ -390,6 +410,33 @@ title: Module `bridge::treasury`
 
 
 
+<a name="bridge_treasury_EInsufficientRailReserve"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_EInsufficientRailReserve">EInsufficientRailReserve</a>: u64 = 9;
+</code></pre>
+
+
+
+<a name="bridge_treasury_ETokenRequiresRailId"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ETokenRequiresRailId">ETokenRequiresRailId</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="bridge_treasury_ETokenIdAlreadyExists"></a>
+
+
+
+<pre><code><b>const</b> <a href="../bridge/treasury.md#bridge_treasury_ETokenIdAlreadyExists">ETokenIdAlreadyExists</a>: u64 = 11;
+</code></pre>
+
+
+
 <a name="bridge_treasury_MIST_PER_WHOLE_MYSO"></a>
 
 
@@ -434,8 +481,89 @@ Initial USD notional for limiter ($1.00 at 8 decimal places), same scale as brid
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>&lt;T&gt;(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>): u8 {
-    <b>let</b> metadata = self.<a href="../bridge/treasury.md#bridge_treasury_get_token_metadata">get_token_metadata</a>&lt;T&gt;();
-    metadata.id
+    <b>let</b> ids = self.<a href="../bridge/treasury.md#bridge_treasury_type_ids">type_ids</a>&lt;T&gt;();
+    <b>assert</b>!(ids.length() == 1, <a href="../bridge/treasury.md#bridge_treasury_ETokenRequiresRailId">ETokenRequiresRailId</a>);
+    ids[0]
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_type_ids"></a>
+
+## Function `type_ids`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_type_ids">type_ids</a>&lt;T&gt;(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>): vector&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_type_ids">type_ids</a>&lt;T&gt;(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>): vector&lt;u8&gt; {
+    <b>let</b> coin_type = type_name::with_defining_ids&lt;T&gt;();
+    <b>assert</b>!(self.type_to_ids.contains(&coin_type), <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
+    *self.type_to_ids.get(&coin_type)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_type_matches_token_id"></a>
+
+## Function `type_matches_token_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_type_matches_token_id">type_matches_token_id</a>&lt;T&gt;(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_type_matches_token_id">type_matches_token_id</a>&lt;T&gt;(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8): bool {
+    <b>if</b> (!self.id_token_type_map.contains(&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>)) {
+        <b>return</b> <b>false</b>
+    };
+    self.id_token_type_map[&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>] == type_name::with_defining_ids&lt;T&gt;()
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_rail_reserve"></a>
+
+## Function `rail_reserve`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8): u64 {
+    <b>if</b> (!self.<a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>.contains(&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>)) {
+        <b>return</b> 0
+    };
+    self.<a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>[&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>]
 }
 </code></pre>
 
@@ -486,6 +614,64 @@ Initial USD notional for limiter ($1.00 at 8 decimal places), same scale as brid
 <pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>&lt;T&gt;(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>): u64 {
     <b>let</b> metadata = self.<a href="../bridge/treasury.md#bridge_treasury_get_token_metadata">get_token_metadata</a>&lt;T&gt;();
     metadata.<a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_decimal_multiplier_by_id"></a>
+
+## Function `decimal_multiplier_by_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier_by_id">decimal_multiplier_by_id</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier_by_id">decimal_multiplier_by_id</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8): u64 {
+    <b>let</b> type_name = self.id_token_type_map.try_get(&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>);
+    <b>assert</b>!(type_name.is_some(), <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
+    <b>let</b> type_name = type_name.destroy_some();
+    <b>let</b> metadata = self.supported_tokens.try_get(&type_name);
+    <b>assert</b>!(metadata.is_some(), <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
+    metadata.destroy_some().<a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_notional_value_by_id"></a>
+
+## Function `notional_value_by_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_notional_value_by_id">notional_value_by_id</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_notional_value_by_id">notional_value_by_id</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8): u64 {
+    <b>let</b> type_name = self.id_token_type_map.try_get(&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>);
+    <b>assert</b>!(type_name.is_some(), <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
+    <b>let</b> type_name = type_name.destroy_some();
+    <b>let</b> metadata = self.supported_tokens.try_get(&type_name);
+    <b>assert</b>!(metadata.is_some(), <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
+    metadata.destroy_some().<a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>
 }
 </code></pre>
 
@@ -566,27 +752,38 @@ Initial USD notional for limiter ($1.00 at 8 decimal places), same scale as brid
     native_token: bool,
     <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>: u64,
 ) {
-    <b>if</b> (!native_token) {
-        <b>assert</b>!(<a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a> &gt; 0, <a href="../bridge/treasury.md#bridge_treasury_EInvalidNotionalValue">EInvalidNotionalValue</a>);
+    <b>if</b> (native_token) {
+        <b>return</b>
+    };
+    <b>assert</b>!(<a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a> &gt; 0, <a href="../bridge/treasury.md#bridge_treasury_EInvalidNotionalValue">EInvalidNotionalValue</a>);
+    <b>assert</b>!(!self.id_token_type_map.contains(&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>), <a href="../bridge/treasury.md#bridge_treasury_ETokenIdAlreadyExists">ETokenIdAlreadyExists</a>);
+    <b>if</b> (self.waiting_room.contains(token_name)) {
         <b>let</b> <a href="../bridge/treasury.md#bridge_treasury_ForeignTokenRegistration">ForeignTokenRegistration</a> {
             type_name,
             uc,
             decimal,
         } = self.waiting_room.remove&lt;String, <a href="../bridge/treasury.md#bridge_treasury_ForeignTokenRegistration">ForeignTokenRegistration</a>&gt;(token_name);
         <b>let</b> <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a> = 10u64.pow(decimal);
-        self
-            .supported_tokens
-            .insert(
-                type_name,
-                <a href="../bridge/treasury.md#bridge_treasury_BridgeTokenMetadata">BridgeTokenMetadata</a> {
-                    id: <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>,
-                    <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>,
-                    <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>,
-                    native_token,
-                },
-            );
+        <b>if</b> (!self.supported_tokens.contains(&type_name)) {
+            self
+                .supported_tokens
+                .insert(
+                    type_name,
+                    <a href="../bridge/treasury.md#bridge_treasury_BridgeTokenMetadata">BridgeTokenMetadata</a> {
+                        id: <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>,
+                        <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>,
+                        <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>,
+                        native_token,
+                    },
+                );
+            self.type_to_ids.insert(type_name, vector[<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>]);
+        } <b>else</b> {
+            self.type_to_ids.get_mut(&type_name).push_back(<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>);
+            <b>let</b> meta = self.supported_tokens.get_mut(&type_name);
+            meta.<a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a> = <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>;
+        };
         self.id_token_type_map.insert(<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>, type_name);
-        // Freeze upgrade cap to prevent changes to the coin
+        self.<a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>.insert(<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>, 0);
         transfer::public_freeze_object(uc);
         event::emit(<a href="../bridge/treasury.md#bridge_treasury_NewTokenEvent">NewTokenEvent</a> {
             <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>,
@@ -594,8 +791,24 @@ Initial USD notional for limiter ($1.00 at 8 decimal places), same scale as brid
             native_token,
             <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>,
             <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>,
-        })
-    } // <b>else</b> not implemented in V1
+        });
+        <b>return</b>
+    };
+    <b>let</b> type_name = self.<a href="../bridge/treasury.md#bridge_treasury_find_supported_type">find_supported_type</a>(token_name);
+    <b>assert</b>!(type_name.is_some(), <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
+    <b>let</b> type_name = type_name.destroy_some();
+    self.type_to_ids.get_mut(&type_name).push_back(<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>);
+    self.id_token_type_map.insert(<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>, type_name);
+    self.<a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>.insert(<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>, 0);
+    <b>let</b> meta = self.supported_tokens.get_mut(&type_name);
+    meta.<a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a> = <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>;
+    event::emit(<a href="../bridge/treasury.md#bridge_treasury_NewTokenEvent">NewTokenEvent</a> {
+        <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>,
+        type_name,
+        native_token,
+        <a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>: meta.<a href="../bridge/treasury.md#bridge_treasury_decimal_multiplier">decimal_multiplier</a>,
+        <a href="../bridge/treasury.md#bridge_treasury_notional_value">notional_value</a>,
+    });
 }
 </code></pre>
 
@@ -626,6 +839,8 @@ Initial USD notional for limiter ($1.00 at 8 decimal places), same scale as brid
         waiting_room: bag::new(ctx),
         native_myso_escrow: balance::zero(),
         native_bridge_initialized: <b>false</b>,
+        type_to_ids: vec_map::empty(),
+        <a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>: vec_map::empty(),
     }
 }
 </code></pre>
@@ -671,6 +886,7 @@ One-time bootstrap: lock exactly <code><a href="../bridge/treasury.md#bridge_tre
             },
         );
     self.id_token_type_map.insert(0, type_m);
+    self.type_to_ids.insert(type_m, vector[0]);
     event::emit(<a href="../bridge/treasury.md#bridge_treasury_NewTokenEvent">NewTokenEvent</a> {
         <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: 0,
         type_name: type_m,
@@ -841,6 +1057,61 @@ Release MYSO from escrow for a completed inbound transfer claim.
 
 </details>
 
+<a name="bridge_treasury_credit_rail"></a>
+
+## Function `credit_rail`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_credit_rail">credit_rail</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8, amount: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_credit_rail">credit_rail</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8, amount: u64) {
+    <b>if</b> (!self.<a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>.contains(&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>)) {
+        self.<a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>.insert(<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>, 0);
+    };
+    <b>let</b> reserved = self.<a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>.get_mut(&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>);
+    *reserved = *reserved + amount;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_debit_rail"></a>
+
+## Function `debit_rail`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_debit_rail">debit_rail</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8, amount: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_debit_rail">debit_rail</a>(self: &<b>mut</b> <a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, <a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>: u8, amount: u64) {
+    <b>assert</b>!(self.<a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>.contains(&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>), <a href="../bridge/treasury.md#bridge_treasury_EInsufficientRailReserve">EInsufficientRailReserve</a>);
+    <b>let</b> reserved = self.<a href="../bridge/treasury.md#bridge_treasury_rail_reserve">rail_reserve</a>.get_mut(&<a href="../bridge/treasury.md#bridge_treasury_token_id">token_id</a>);
+    <b>assert</b>!(*reserved &gt;= amount, <a href="../bridge/treasury.md#bridge_treasury_EInsufficientRailReserve">EInsufficientRailReserve</a>);
+    *reserved = *reserved - amount;
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="bridge_treasury_update_asset_notional_price"></a>
 
 ## Function `update_asset_notional_price`
@@ -898,6 +1169,39 @@ Release MYSO from escrow for a completed inbound transfer claim.
     <b>let</b> metadata = self.supported_tokens.try_get(&coin_type);
     <b>assert</b>!(metadata.is_some(), <a href="../bridge/treasury.md#bridge_treasury_EUnsupportedTokenType">EUnsupportedTokenType</a>);
     metadata.destroy_some()
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="bridge_treasury_find_supported_type"></a>
+
+## Function `find_supported_type`
+
+
+
+<pre><code><b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_find_supported_type">find_supported_type</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">bridge::treasury::BridgeTreasury</a>, token_name: <a href="../std/ascii.md#std_ascii_String">std::ascii::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../bridge/treasury.md#bridge_treasury_find_supported_type">find_supported_type</a>(self: &<a href="../bridge/treasury.md#bridge_treasury_BridgeTreasury">BridgeTreasury</a>, token_name: String): Option&lt;TypeName&gt; {
+    <b>let</b> keys = self.supported_tokens.keys();
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; keys.length()) {
+        <b>let</b> tn = keys[i];
+        <b>if</b> (type_name::into_string(tn) == token_name) {
+            <b>return</b> option::some(tn)
+        };
+        i = i + 1;
+    };
+    option::none()
 }
 </code></pre>
 

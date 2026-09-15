@@ -51,7 +51,6 @@ use bridge::eth::ETH;
 use bridge::message::{Self, to_parsed_token_transfer_message};
 use bridge::message_types;
 use bridge::test_token::{TEST_TOKEN, create_bridge_token as create_test_token};
-use bridge::usdc::USDC;
 use std::type_name;
 use std::unit_test::destroy;
 use myso::address;
@@ -308,9 +307,9 @@ fun test_execute_send_token_frozen() {
 fun test_execute_send_token_invalid_route() {
     let mut env = create_env(chain_ids::myso_testnet());
     env.create_bridge_default();
-    let usdc: Coin<USDC> = env.get_usdc(100);
+    let btc = env.get_btc(100);
     let eth_address = x"0000000000000000000000000000000000000000";
-    env.send_token(@0xABCDEF, chain_ids::eth_mainnet(), eth_address, usdc);
+    env.send_token(@0xABCDEF, chain_ids::eth_mainnet(), eth_address, btc);
 
     abort TEST_DONE
 }

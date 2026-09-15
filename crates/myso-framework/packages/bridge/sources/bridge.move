@@ -129,11 +129,9 @@ const EInvalidEvmAddress: u64 = 18;
 const ETokenValueIsZero: u64 = 19;
 const EMustUseSendMySoToken: u64 = 20;
 const EMustUseClaimMySoToken: u64 = 21;
-const EDirectClaimDisabled: u64 = 22;
 const EInvalidClaimPolicy: u64 = 23;
 
 const CLAIM_POLICY_DIRECT: u8 = 0;
-const CLAIM_POLICY_CONVERT_TO_MYUSD: u8 = 1;
 const CLAIM_POLICY_DISABLED: u8 = 2;
 
 const CURRENT_VERSION: u64 = 0;
@@ -250,36 +248,22 @@ public fun send_token<T>(
     ctx: &mut TxContext,
 ) {
     let inner = load_inner_mut(bridge);
-
-    let bridge_seq_num = inner.get_current_seq_num_and_increment(message_types::token());
     let token_id = inner.treasury.token_id<T>();
-    let token_amount = token.balance().value();
-    assert!(target_address.length() == EVM_ADDRESS_LENGTH, EInvalidEvmAddress);
-    assert!(token_amount > 0, ETokenValueIsZero);
+    send_token_with_rail_inner(inner, target_chain, target_address, token, token_id, ctx)
+}
 
-    // create bridge message
-    let message = message::create_token_bridge_message(
-        inner.chain_id,
-        bridge_seq_num,
-        address::to_bytes(ctx.sender()),
-        target_chain,
-        target_address,
-        token_id,
-        token_amount,
-    );
-
-    inner.send_token_internal(target_chain, token, message);
-
-    // emit event
-    event::emit(TokenDepositedEvent {
-        seq_num: bridge_seq_num,
-        source_chain: inner.chain_id,
-        sender_address: address::to_bytes(ctx.sender()),
-        target_chain,
-        target_address,
-        token_type: token_id,
-        amount: token_amount,
-    });
+/// Send a coin whose Move type maps to more than one rail (e.g. myUSD → USDC or USDT).
+public fun send_token_with_rail<T>(
+    bridge: &mut Bridge,
+    target_chain: u8,
+    target_address: vector<u8>,
+    token: Coin<T>,
+    rail_id: u8,
+    ctx: &mut TxContext,
+) {
+    let inner = load_inner_mut(bridge);
+    assert!(inner.treasury.type_matches_token_id<T>(rail_id), EUnexpectedTokenType);
+    send_token_with_rail_inner(inner, target_chain, target_address, token, rail_id, ctx)
 }
 
 // Create bridge request to send token to other chain, the request will be in
@@ -293,8 +277,86 @@ public fun send_token_v2<T>(
     ctx: &mut TxContext,
 ) {
     let inner = load_inner_mut(bridge);
-    let bridge_seq_num = inner.get_current_seq_num_and_increment(message_types::token());
     let token_id = inner.treasury.token_id<T>();
+    send_token_with_rail_v2_inner(
+        inner,
+        target_chain,
+        target_address,
+        token,
+        token_id,
+        clock,
+        ctx,
+    )
+}
+
+public fun send_token_with_rail_v2<T>(
+    bridge: &mut Bridge,
+    target_chain: u8,
+    target_address: vector<u8>,
+    token: Coin<T>,
+    rail_id: u8,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    let inner = load_inner_mut(bridge);
+    assert!(inner.treasury.type_matches_token_id<T>(rail_id), EUnexpectedTokenType);
+    send_token_with_rail_v2_inner(
+        inner,
+        target_chain,
+        target_address,
+        token,
+        rail_id,
+        clock,
+        ctx,
+    )
+}
+
+fun send_token_with_rail_inner<T>(
+    inner: &mut BridgeInner,
+    target_chain: u8,
+    target_address: vector<u8>,
+    token: Coin<T>,
+    token_id: u8,
+    ctx: &TxContext,
+) {
+    let bridge_seq_num = inner.get_current_seq_num_and_increment(message_types::token());
+    let token_amount = token.balance().value();
+    assert!(target_address.length() == EVM_ADDRESS_LENGTH, EInvalidEvmAddress);
+    assert!(token_amount > 0, ETokenValueIsZero);
+
+    let message = message::create_token_bridge_message(
+        inner.chain_id,
+        bridge_seq_num,
+        address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_id,
+        token_amount,
+    );
+
+    inner.send_token_internal(target_chain, token, token_id, token_amount, message);
+
+    event::emit(TokenDepositedEvent {
+        seq_num: bridge_seq_num,
+        source_chain: inner.chain_id,
+        sender_address: address::to_bytes(ctx.sender()),
+        target_chain,
+        target_address,
+        token_type: token_id,
+        amount: token_amount,
+    });
+}
+
+fun send_token_with_rail_v2_inner<T>(
+    inner: &mut BridgeInner,
+    target_chain: u8,
+    target_address: vector<u8>,
+    token: Coin<T>,
+    token_id: u8,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    let bridge_seq_num = inner.get_current_seq_num_and_increment(message_types::token());
     let token_amount = token.balance().value();
     assert!(target_address.length() == EVM_ADDRESS_LENGTH, EInvalidEvmAddress);
     assert!(token_amount > 0, ETokenValueIsZero);
@@ -310,9 +372,8 @@ public fun send_token_v2<T>(
         clock.timestamp_ms(),
     );
 
-    inner.send_token_internal(target_chain, token, message);
+    inner.send_token_internal(target_chain, token, token_id, token_amount, message);
 
-    // emit event
     event::emit(TokenDepositedEventV2 {
         seq_num: bridge_seq_num,
         source_chain: inner.chain_id,
@@ -478,8 +539,6 @@ public fun approve_token_transfer(
 // in which case, no event will be emitted and only abort code will be returned.
 public fun claim_policy_direct(): u8 { CLAIM_POLICY_DIRECT }
 
-public fun claim_policy_convert_to_myusd(): u8 { CLAIM_POLICY_CONVERT_TO_MYUSD }
-
 public fun claim_policy_disabled(): u8 { CLAIM_POLICY_DISABLED }
 
 public fun effective_claim_policy(
@@ -500,9 +559,7 @@ public(package) fun set_token_claim_policy(
     _ctx: &TxContext,
 ) {
     assert!(
-        policy == CLAIM_POLICY_DIRECT
-            || policy == CLAIM_POLICY_CONVERT_TO_MYUSD
-            || policy == CLAIM_POLICY_DISABLED,
+        policy == CLAIM_POLICY_DIRECT || policy == CLAIM_POLICY_DISABLED,
         EInvalidClaimPolicy,
     );
     let inner = load_inner_mut(bridge);
@@ -525,7 +582,6 @@ public fun claim_token<T>(
     bridge_seq_num: u64,
     ctx: &mut TxContext,
 ): Coin<T> {
-    assert_direct_claim_allowed<T>(bridge, source_chain, bridge_seq_num);
     let (maybe_token, owner) = bridge.claim_token_internal<T>(
         clock,
         source_chain,
@@ -547,7 +603,6 @@ public fun claim_and_transfer_token<T>(
     bridge_seq_num: u64,
     ctx: &mut TxContext,
 ) {
-    assert_direct_claim_allowed<T>(bridge, source_chain, bridge_seq_num);
     let (token, owner) = bridge.claim_token_internal<T>(clock, source_chain, bridge_seq_num, ctx);
     if (token.is_some()) {
         transfer::public_transfer(token.destroy_some(), owner)
@@ -706,31 +761,16 @@ fun load_inner_mut(bridge: &mut Bridge): &mut BridgeInner {
     inner
 }
 
-fun assert_direct_claim_allowed<T>(bridge: &Bridge, source_chain: u8, bridge_seq_num: u64) {
-    let inner = load_inner(bridge);
-    let token_id = inner.treasury.token_id<T>();
-    let policy = effective_claim_policy_inner(inner, token_id, source_chain, bridge_seq_num);
-    assert!(policy == CLAIM_POLICY_DIRECT, EDirectClaimDisabled);
-}
-
 fun effective_claim_policy_inner(
     inner: &BridgeInner,
     token_id: u8,
-    source_chain: u8,
-    bridge_seq_num: u64,
+    _source_chain: u8,
+    _bridge_seq_num: u64,
 ): u8 {
     if (!inner.token_claim_policies.contains(&token_id)) {
         return CLAIM_POLICY_DIRECT
     };
-    let stored = inner.token_claim_policies[&token_id];
-    if (
-        stored.policy == CLAIM_POLICY_CONVERT_TO_MYUSD
-            && source_chain == stored.boundary_source_chain
-            && bridge_seq_num < stored.boundary_seq
-    ) {
-        return CLAIM_POLICY_DIRECT
-    };
-    stored.policy
+    inner.token_claim_policies[&token_id].policy
 }
 
 // Claim token from approved bridge message
@@ -789,11 +829,8 @@ public(package) fun claim_token_internal<T>(
     // TODO: add unit tests
     // `get_route` abort if route is invalid
     let route = chain_ids::get_route(source_chain, target_chain);
-    // check token type
-    assert!(
-        treasury::token_id<T>(&inner.treasury) == token_payload.token_type(),
-        EUnexpectedTokenType,
-    );
+    let token_id = token_payload.token_type();
+    assert!(inner.treasury.type_matches_token_id<T>(token_id), EUnexpectedTokenType);
 
     let amount = token_payload.token_amount();
     // Make sure transfer is within limit.
@@ -801,10 +838,11 @@ public(package) fun claim_token_internal<T>(
         !bypass_limiter &&
         !inner
             .limiter
-            .check_and_record_sending_transfer<T>(
+            .check_and_record_sending_transfer_by_id(
                 &inner.treasury,
                 clock,
                 route,
+                token_id,
                 amount,
             )
     ) {
@@ -812,9 +850,10 @@ public(package) fun claim_token_internal<T>(
         return (option::none(), owner)
     };
 
-    assert!(token_payload.token_type() != 0, EMustUseClaimMySoToken);
+    assert!(token_id != 0, EMustUseClaimMySoToken);
 
     let token = inner.treasury.mint<T>(amount, ctx);
+    inner.treasury.credit_rail(token_id, amount);
 
     // Record changes
     record.claimed = true;
@@ -898,6 +937,8 @@ fun send_token_internal<T>(
     inner: &mut BridgeInner,
     target_chain: u8,
     token: Coin<T>,
+    token_id: u8,
+    amount: u64,
     message: BridgeMessage,
 ) {
     assert!(!inner.paused, EBridgeUnavailable);
@@ -909,7 +950,7 @@ fun send_token_internal<T>(
         EMustUseSendMySoToken,
     );
 
-    // burn / escrow token, unsupported coins will fail in this step
+    inner.treasury.debit_rail(token_id, amount);
     inner.treasury.burn(token);
 
     // Store pending bridge request
