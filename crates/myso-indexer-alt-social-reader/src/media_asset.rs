@@ -8,8 +8,9 @@ use diesel_async::RunQueryDsl;
 
 use crate::metrics::DbReaderMetrics;
 use myso_indexer_alt_social_schema::models::{
-    CompositionAnalysisRow, GOV_LINK_STATUS_ACTIVE, MediaAssetGovernanceLinkRow,
-    MediaAssetRightsUpdateRow, MediaAssetRow, MediaAssetUsageRow, RevenueManifestRow,
+    CompositionAnalysisRow, GOV_LINK_STATUS_ACTIVE, LicenseInstanceRow, LicenseTemplateVersionRow,
+    MediaAssetGovernanceLinkRow, MediaAssetRightsUpdateRow, MediaAssetRow, MediaAssetUsageRow,
+    RevenueManifestRow,
 };
 use myso_pg_db::Connection;
 
@@ -24,6 +25,8 @@ pub(crate) async fn get_media_asset_by_id(
     let query = "
         SELECT media_asset_id, content_commitment, media_type, asset_kind, originality_status,
                provenance_status, lineage_parent_id, rights_version, economics_version,
+               COALESCE(authorization_version, 1) AS authorization_version,
+               COALESCE(future_usage_paused, FALSE) AS future_usage_paused,
                registered_by, registered_at, verified_at
         FROM (
             SELECT DISTINCT ON (media_asset_id) *
@@ -288,4 +291,91 @@ pub(crate) async fn get_revenue_manifest_for_post(
 
     metrics.requests_succeeded.inc();
     Ok(result)
+}
+
+pub(crate) async fn list_license_templates_for_asset(
+    conn: &mut Connection<'_>,
+    media_asset_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<LicenseTemplateVersionRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT t.template_version_id, t.family_id, t.version, t.creator, t.granted_rights,
+               t.allow_derivatives, t.attribution_required, t.royalty_bps, t.derivative_royalty_bps,
+               COALESCE(t.instance_revocable, TRUE) AS instance_revocable,
+               t.legal_terms_uri, t.legal_terms_hash, t.governing_law,
+               COALESCE(t.license_schema_version, 1) AS license_schema_version
+        FROM (
+            SELECT DISTINCT ON (template_version_id) *
+            FROM license_template_versions
+            ORDER BY template_version_id, time DESC
+        ) t
+        WHERE EXISTS (
+            SELECT 1 FROM (
+                SELECT DISTINCT ON (license_instance_id) *
+                FROM license_instances
+                ORDER BY license_instance_id, time DESC
+            ) i
+            WHERE i.template_version_id = t.template_version_id
+              AND i.licensor_asset_id = $1
+        )
+           OR EXISTS (
+            SELECT 1 FROM (
+                SELECT DISTINCT ON (child_asset_id, parent_asset_id, relationship_id) *
+                FROM media_asset_derivative_edges
+                ORDER BY child_asset_id, parent_asset_id, relationship_id, time DESC
+            ) e
+            WHERE e.template_version_id = t.template_version_id
+              AND (e.parent_asset_id = $1 OR e.child_asset_id = $1)
+        )
+        ORDER BY t.version DESC, t.template_version_id
+        LIMIT $2 OFFSET $3
+    ";
+
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(media_asset_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<LicenseTemplateVersionRow>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(rows)
+}
+
+pub(crate) async fn list_license_instances_for_asset(
+    conn: &mut Connection<'_>,
+    media_asset_id: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<LicenseInstanceRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT license_instance_id, template_version_id, licensor_asset_id, licensee, status, accepted_at
+        FROM (
+            SELECT DISTINCT ON (license_instance_id) *
+            FROM license_instances
+            WHERE licensor_asset_id = $1
+            ORDER BY license_instance_id, time DESC
+        ) sub
+        ORDER BY accepted_at DESC
+        LIMIT $2 OFFSET $3
+    ";
+
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(media_asset_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<LicenseInstanceRow>(conn)
+        .await?;
+
+    metrics.requests_succeeded.inc();
+    Ok(rows)
 }

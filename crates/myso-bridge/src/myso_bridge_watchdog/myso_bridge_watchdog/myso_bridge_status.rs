@@ -36,9 +36,12 @@ impl Observable for MySoBridgeStatus {
     async fn observe_and_report(&self) {
         let status = self.myso_client.is_bridge_paused().await;
         match status {
-            Ok(status) => {
-                self.metric.set(status as i64);
-                info!("MySo Bridge Status: {:?}", status);
+            Ok(paused) => {
+                self.metric.set(paused as i64);
+                info!(
+                    "MySo bridge paused: {paused}{}",
+                    if paused { "" } else { " (ok)" }
+                );
             }
             Err(e) => {
                 error!("Error getting myso bridge status: {:?}", e);

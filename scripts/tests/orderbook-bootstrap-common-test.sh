@@ -106,10 +106,14 @@ MM_POOLS="$(jq -nc \
     --arg myso "$MYSO_MYUSD_POOL_ID" \
     --arg eth "$ETH_MYUSD_POOL_ID" \
     '[{poolId: $myso}, {poolId: $eth}]')"
-if orderbook_filter_mm_pools_shared 2>/dev/null; then
-    echo "market-maker validation must fail when BTC_MYUSD is missing" >&2
-    exit 1
-fi
+orderbook_filter_mm_pools_shared
+assert_eq 2 "$(echo "$MM_POOLS" | jq -r length)" \
+    "default MM may omit BTC when it is not required"
+
+assert_eq "MYSO_MYUSD_POOL_ID" "$(orderbook_mm_required_pool_id_vars)" \
+    "default MM required pool is MYSO only"
+assert_eq "0xabcdef" "$(orderbook_coin_pkg '0xabcdef::btc::BTC')" \
+    "coin pkg is the address prefix"
 
 assert_eq "MYSO_MYUSD" "$(orderbook_normalize_mm_pool_filter MYSO)" "MYSO alias should normalize"
 assert_eq "BTC_MYUSD" "$(orderbook_normalize_mm_pool_filter btc_myusd)" "btc_myusd should normalize"
@@ -241,5 +245,26 @@ if orderbook_should_skip_myso_fee_prices "$empty_mm" "$two_sided_catalog"; then
     echo "catalog two-sided MYSO book must not skip fee price points" >&2
     exit 1
 fi
+
+DEPLOYER_ADDRESS=''
+PRIVATE_KEY=''
+resolve_myso_active_address() {
+    printf '%s' '0xabc'
+}
+orderbook_export_active_private_key() {
+    printf '%s' 'mysoprivkey1test'
+}
+orderbook_save_session() { :; }
+log_session_use() { :; }
+orderbook_ensure_deployer_identity
+assert_eq "$(normalize_hex_id abc)" "$DEPLOYER_ADDRESS" \
+    "ensure should set DEPLOYER_ADDRESS from active-address"
+assert_eq "mysoprivkey1test" "$PRIVATE_KEY" \
+    "ensure should export PRIVATE_KEY when session is empty"
+
+timeout_dump='ChangedObject { object_id: Some("0x02c0b2923372c636a53b503df5a554d1855da0881e241e16935907a13e3445ad"), object_type: Some("0x2::package::UpgradeCap") } ChangedObject { object_id: Some("0x131643887b867ca4b970ee7029432769f8eb96db5f245b51b8be1e2d3f7982ad"), output_state: Some(PackageWrite), object_type: Some("package") }'
+extracted="$(orderbook_package_id_from_publish_output "$timeout_dump")"
+assert_eq "$(normalize_hex_id 131643887b867ca4b970ee7029432769f8eb96db5f245b51b8be1e2d3f7982ad)" \
+    "$extracted" "checkpoint-timeout dump should yield the published package id"
 
 echo "orderbook bootstrap helper tests passed"

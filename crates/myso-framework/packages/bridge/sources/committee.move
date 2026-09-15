@@ -350,6 +350,15 @@ public(package) fun bridge_pubkey_bytes(registration: &CommitteeMemberRegistrati
 }
 
 #[test_only]
+public(package) fun create_for_testing(): BridgeCommittee {
+    BridgeCommittee {
+        members: vec_map::empty(),
+        member_registrations: vec_map::empty(),
+        last_committee_update_epoch: 0,
+    }
+}
+
+#[test_only]
 public(package) fun make_bridge_committee(
     members: VecMap<vector<u8>, CommitteeMember>,
     member_registrations: VecMap<address, CommitteeMemberRegistration>,

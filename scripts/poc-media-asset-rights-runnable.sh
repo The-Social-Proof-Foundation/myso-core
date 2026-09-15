@@ -99,16 +99,6 @@ load_poc_rights_session() {
     social_load_session
 }
 
-poc_rights_repo() {
-    poc_oracle_resolve_repo
-}
-
-literal_move_hex_bytes() {
-    local hex="$1"
-    hex="${hex#0x}"
-    printf 'x"%s"' "$hex"
-}
-
 run_myso_call_as_capture() {
     local sender="$1" module="$2" func="$3"
     shift 3
@@ -253,25 +243,6 @@ ensure_new_rights_holder() {
     save_poc_rights_session
 }
 
-deterministic_commitments_for_run() {
-    python3 - "$SOCIAL_RUN_ID" <<'PY'
-import hashlib, sys
-run_id = sys.argv[1].encode()
-content = hashlib.sha256(b"content:" + run_id).digest()
-fingerprint = hashlib.sha256(b"fingerprint:" + run_id).digest()
-print(content.hex())
-print(fingerprint.hex())
-PY
-}
-
-extract_request_id_from_digest() {
-    local digest="$1" req_id
-    req_id="$(extract_created_object_by_type "$digest" "MediaResolutionRequest")"
-    [[ -n "$req_id" ]] || req_id="$(extract_event_field "$digest" MediaResolutionRequestedEvent request_id 2>/dev/null || true)"
-    [[ -n "$req_id" ]] || return 1
-    normalize_hex_id "$req_id"
-}
-
 extract_proposal_id_from_digest() {
     local digest="$1" pid
     pid="$(extract_created_object_by_type "$digest" "governance::Proposal")"
@@ -281,40 +252,9 @@ extract_proposal_id_from_digest() {
     normalize_hex_id "$pid"
 }
 
-extract_media_asset_from_digest() {
-    local digest="$1" asset_id
-    asset_id="$(extract_created_object_by_type "$digest" "media_asset::MediaAsset")"
-    [[ -n "$asset_id" ]] || asset_id="$(extract_created_object_by_type "$digest" "MediaAsset")"
-    [[ -n "$asset_id" ]] || asset_id="$(extract_event_field "$digest" MediaAssetResolvedEvent media_asset_id 2>/dev/null || true)"
-    [[ -n "$asset_id" ]] || return 1
-    normalize_hex_id "$asset_id"
-}
-
-poc_rights_python() {
-    local poc_repo
-    poc_repo="$(poc_rights_repo)"
-    [[ -d "$poc_repo" ]] || {
-        echo "proof-of-creativity repo not found at $poc_repo (set MYSO_POC_REPO)" >&2
-        return 1
-    }
-    (
-        cd "$poc_repo"
-        export MYSO_POC_PACKAGE_ID="${PKG_SOCIAL:-${MYSO_POC_PACKAGE_ID:-}}"
-        export MYSO_PLATFORM_PACKAGE_ADDRESS="${PKG_SOCIAL:-${MYSO_PLATFORM_PACKAGE_ADDRESS:-0x50c1}}"
-        export MYSO_POC_CONFIG_ID="${POC_CONFIG_ID:-${MYSO_POC_CONFIG_ID:-}}"
-        export MYSO_POC_REGISTRY_ID="${POC_REGISTRY_ID:-${MYSO_POC_REGISTRY_ID:-}}"
-        export POC_GOVERNANCE_REGISTRY_ID="${POC_GOVERNANCE_REGISTRY_ID:-}"
-        export MYSO_ECOSYSTEM_TREASURY_ID="${ECOSYSTEM_TREASURY_ID:-${MYSO_ECOSYSTEM_TREASURY_ID:-}}"
-        export MYSO_CLOCK_OBJECT_ID="${CLOCK_ID:-${MYSO_CLOCK_OBJECT_ID:-0x6}}"
-        export GRAPHQL_URL="${GRAPHQL_URL:-http://127.0.0.1:9125/graphql}"
-        export POC_ORACLE_NETWORK="${POC_ORACLE_NETWORK:-localnet}"
-        PYTHONPATH="${poc_repo}${PYTHONPATH:+:$PYTHONPATH}" python3 "$@"
-    )
-}
-
 build_default_claims_json() {
     local holder="$1"
-    poc_rights_python - "$holder" <<'PY'
+    poc_python - "$holder" <<'PY'
 import json, sys
 holder = sys.argv[1]
 claims = [
@@ -362,7 +302,7 @@ prepare_claims_bundle_local() {
     local holder="$1" body commitment
     holder="$(normalize_hex_id "$holder")" || return 1
     body="$(build_default_claims_json "$holder")" || return 1
-    commitment="$(poc_rights_python - "$body" <<'PY'
+    commitment="$(poc_python - "$body" <<'PY'
 import json, sys
 from app.chain.bcs_media_asset_claims import compute_claims_bundle_commitment
 bundle = json.loads(sys.argv[1])
@@ -464,7 +404,7 @@ step_oracle_finalize_media_asset_direct() {
     oracle="$(normalize_hex_id "$oracle")"
 
     log_step "oracle finalize_media_asset request=$RESOLUTION_REQUEST_ID holder=$holder"
-    out="$(poc_rights_python - \
+    out="$(poc_python - \
         "$POC_CONFIG_ID" "$RESOLUTION_REQUEST_ID" "$CREATOR_ADDRESS" "$holder" <<'PY'
 import json, os, sys
 from app.services.media_asset_submission import MediaResolutionResult, build_finalize_media_asset_move_call
@@ -531,29 +471,6 @@ wait_for_oracle_resolve_media_asset() {
         sleep 2
     done
     echo "Timed out waiting for oracle to finalize MediaAsset" >&2
-    return 1
-}
-
-wait_for_gql_media_asset_by_submitter() {
-    local owner="$1" attempt resp asset_id
-    owner="$(normalize_hex_id "$owner")" || return 1
-    for attempt in $(seq 1 45); do
-        resp="$(graphql_post \
-            'query MediaAssets($owner: String!) {
-                objects(filter: { type: "0x50c1::media_asset::MediaAsset", ownerKind: SHARED }, first: 50) {
-                    nodes { address }
-                }
-            }' \
-            '{}')" || resp='{}'
-        while IFS= read -r asset_id; do
-            [[ -n "$asset_id" ]] || continue
-            if object_exists_on_fullnode "$asset_id"; then
-                normalize_hex_id "$asset_id"
-                return 0
-            fi
-        done < <(echo "$resp" | jq -r '.data.objects.nodes[]?.address // empty')
-        sleep 1
-    done
     return 1
 }
 
@@ -751,7 +668,7 @@ step_implement_rights_direct() {
     oracle="$(normalize_hex_id "$oracle")"
 
     log_step "oracle implement_media_asset_rights proposal=$PROPOSAL_ID"
-    out="$(poc_rights_python - \
+    out="$(poc_python - \
         "$POC_CONFIG_ID" "$POC_GOVERNANCE_REGISTRY_ID" "$PROPOSAL_ID" "$MEDIA_ASSET_ID" \
         "$ECOSYSTEM_TREASURY_ID" "$NEW_RIGHTS_HOLDER_ADDRESS" <<'PY'
 import json, sys

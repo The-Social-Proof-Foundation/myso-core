@@ -37,6 +37,7 @@ use crate::media_asset::{
     count_rights_disputes_submitted, get_active_rights_proposal_id_for_asset,
     get_composition_analysis_for_post, get_media_asset_by_id,
     get_media_asset_id_for_rights_proposal, get_revenue_manifest_for_post,
+    list_license_instances_for_asset, list_license_templates_for_asset,
     list_media_asset_governance_links, list_media_asset_rights_updates, list_media_asset_usages,
 };
 use crate::media_asset_graph::{
@@ -1719,6 +1720,26 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::DetectedRelationshipRow>> {
         let mut conn = self.connect().await?;
         list_detected_relationships(&mut conn, asset_id, limit, offset, &self.metrics).await
+    }
+
+    pub async fn list_license_templates_for_asset(
+        &self,
+        asset_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::LicenseTemplateVersionRow>> {
+        let mut conn = self.connect().await?;
+        list_license_templates_for_asset(&mut conn, asset_id, limit, offset, &self.metrics).await
+    }
+
+    pub async fn list_license_instances_for_asset(
+        &self,
+        asset_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::LicenseInstanceRow>> {
+        let mut conn = self.connect().await?;
+        list_license_instances_for_asset(&mut conn, asset_id, limit, offset, &self.metrics).await
     }
 
     /// List indexed usages of a MediaAsset (posts, profiles, etc.).

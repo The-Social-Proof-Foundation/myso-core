@@ -6,7 +6,7 @@ use std::str::FromStr;
 use async_graphql::Context;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    PocAnalysisResultRow, PocBadgeRow, PocBeneficiaryVaultRow, PocDisputeRow, PocDisputeVoteRow,
+    PocAnalysisResultRow, PocBeneficiaryVaultRow, PocDisputeRow, PocDisputeVoteRow,
     PocRevenueRedirectionRow, PocVaultClaimRow, PocVaultCoinBalanceRow, PocVaultDepositRow,
 };
 
@@ -15,76 +15,6 @@ use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
 use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
 use crate::api::types::profile_summary::ProfileSummary;
-
-#[derive(Clone)]
-pub(crate) struct PocBadge {
-    inner: PocBadgeRow,
-}
-
-impl PocBadge {
-    pub(crate) fn from_row(inner: PocBadgeRow) -> Self {
-        Self { inner }
-    }
-}
-
-#[Object]
-impl PocBadge {
-    /// Badge ID.
-    async fn badge_id(&self) -> &str {
-        &self.inner.badge_id
-    }
-
-    /// Post ID this badge was issued for.
-    async fn post_id(&self) -> &str {
-        &self.inner.post_id
-    }
-
-    /// Media type (1=image, 2=video, 3=audio).
-    async fn media_type(&self) -> i16 {
-        self.inner.media_type
-    }
-
-    /// Address of the oracle that issued the badge.
-    async fn issued_by(&self) -> MySoAddress {
-        MySoAddress::from_str(&self.inner.issued_by)
-            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
-    }
-
-    /// When the badge was issued (epoch milliseconds).
-    async fn issued_at(&self) -> i64 {
-        self.inner.issued_at
-    }
-
-    /// Whether the badge has been revoked.
-    async fn revoked(&self) -> bool {
-        self.inner.revoked
-    }
-
-    async fn beneficiary_address(&self) -> Option<&str> {
-        self.inner.beneficiary_address.as_deref()
-    }
-
-    async fn matched_anchor_id(&self) -> Option<&str> {
-        self.inner.matched_anchor_id.as_deref()
-    }
-
-    async fn media_index(&self) -> Option<i16> {
-        self.inner.media_index
-    }
-
-    /// Indexed beneficiary vault for this badge's `beneficiary_address`, when present and materialized.
-    async fn poc_beneficiary_vault(&self, ctx: &Context<'_>) -> Option<PocBeneficiaryVault> {
-        let addr = self.inner.beneficiary_address.as_deref()?;
-        let reader_opt = ctx
-            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
-        let reader = reader_opt.as_ref().as_ref()?;
-        let row = reader
-            .get_poc_beneficiary_vault_by_beneficiary_address(addr)
-            .await
-            .ok()??;
-        Some(PocBeneficiaryVault::from_row(row))
-    }
-}
 
 #[derive(Clone)]
 pub(crate) struct PocRevenueRedirection {

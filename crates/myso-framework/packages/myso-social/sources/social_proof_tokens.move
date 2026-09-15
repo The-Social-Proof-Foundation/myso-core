@@ -205,9 +205,9 @@ module social_contracts::social_proof_tokens {
     /// Nano-SPT per 1.0 whole display token.
     const SPT_SCALE: u64 = 1_000_000_000;
 
-    // Default AMM curve parameters
-    const DEFAULT_BASE_PRICE: u64 = 1_000_000_000; // 1.0 MYSO in smallest units
-    const DEFAULT_QUADRATIC_COEFFICIENT: u64 = 100_000; // Coefficient for quadratic curve
+    // Default AMM curve parameters. Launch and the linear curve leg are always 1 MYSO per SPT.
+    const FIXED_BASE_PRICE: u64 = SPT_SCALE;
+    const DEFAULT_QUADRATIC_COEFFICIENT: u64 = 100_000; // Coefficient for quadratic curve above launch supply
 
     // Reservation threshold constants for social proof token creation
     const DEFAULT_POST_THRESHOLD: u64 = 1_000_000_000_000; // 1,000 MYSO in smallest units (9 decimals)
@@ -242,9 +242,7 @@ module social_contracts::social_proof_tokens {
         reservation_platform_fee_bps: u64,
         /// Treasury reservation fee percentage in basis points
         reservation_treasury_fee_bps: u64,
-        /// Base price for new tokens
-        base_price: u64,
-        /// Quadratic coefficient for pricing curve
+        /// Quadratic coefficient for pricing curve (applied above launch supply)
         quadratic_coefficient: u64,
         /// Max fraction of circulating supply one wallet may hold, in basis points (`10_000` = 100%).
         max_hold_percent_bps: u64,
@@ -303,10 +301,12 @@ module social_contracts::social_proof_tokens {
         associated_id: address,
         /// Circulating supply in **nano-SPT** (`10^9` per 1.0 token).
         circulating_supply: u64,
-        /// Base price for this token
+        /// Snapshot of the 1 MYSO per SPT constant at launch.
         base_price: u64,
         /// Quadratic coefficient for this token's pricing curve
         quadratic_coefficient: u64,
+        /// Nano-SPT minted at launch (`S0`). Price is flat at 1 MYSO/SPT at or below this supply.
+        launch_supply: u64,
         /// Creation timestamp
         created_at: u64,
     }
@@ -371,6 +371,8 @@ module social_contracts::social_proof_tokens {
         circulating_supply: u64,
         /// MYSO reserved (smallest units).
         total_reserved_at_launch: u64,
+        /// Nano-SPT minted at launch (`S0`).
+        launch_supply: u64,
     }
 
     /// Event emitted when a post pool is auto-initialized by SPoT flow
@@ -500,8 +502,7 @@ module social_contracts::social_proof_tokens {
         reservation_creator_fee_bps: u64,
         reservation_platform_fee_bps: u64,
         reservation_treasury_fee_bps: u64,
-        /// Curve parameters
-        base_price: u64,
+        /// Quadratic coefficient (linear launch price is always 1 MYSO per SPT)
         quadratic_coefficient: u64,
         /// Maximum hold percentage
         max_hold_percent_bps: u64,
@@ -685,7 +686,6 @@ module social_contracts::social_proof_tokens {
             reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
             reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
             reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
-            base_price: DEFAULT_BASE_PRICE,
             quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
             max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
             post_threshold: DEFAULT_POST_THRESHOLD,
@@ -711,7 +711,6 @@ module social_contracts::social_proof_tokens {
             reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
             reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
             reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
-            base_price: DEFAULT_BASE_PRICE,
             quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
             max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
             post_threshold: DEFAULT_POST_THRESHOLD,
@@ -749,7 +748,6 @@ module social_contracts::social_proof_tokens {
         reservation_creator_fee_bps: u64,
         reservation_platform_fee_bps: u64,
         reservation_treasury_fee_bps: u64,
-        base_price: u64,
         quadratic_coefficient: u64,
         max_hold_percent_bps: u64,
         post_threshold: u64,
@@ -761,8 +759,8 @@ module social_contracts::social_proof_tokens {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        // Verify curve parameters are valid
-        assert!(base_price > 0 && quadratic_coefficient > 0, EInvalidCurveParams);
+        // Verify curve parameters are valid (launch price is the 1 MYSO constant)
+        assert!(quadratic_coefficient > 0, EInvalidCurveParams);
         
         // Validate fee configurations to prevent division by zero and overflow
         // Calculate totals before updating to validate
@@ -827,7 +825,6 @@ module social_contracts::social_proof_tokens {
         config.reservation_treasury_fee_bps = reservation_treasury_fee_bps;
         
         // Update curve parameters
-        config.base_price = base_price;
         config.quadratic_coefficient = quadratic_coefficient;
         
         // Update max hold percentage
@@ -857,7 +854,6 @@ module social_contracts::social_proof_tokens {
             reservation_creator_fee_bps,
             reservation_platform_fee_bps,
             reservation_treasury_fee_bps,
-            base_price,
             quadratic_coefficient,
             max_hold_percent_bps,
             post_threshold,
@@ -2856,18 +2852,10 @@ module social_contracts::social_proof_tokens {
         // Verify token has not already been created
         assert!(!table::contains(&registry.tokens, associated_id), ETokenAlreadyExists);
         
-        // Initial nano-SPT supply: net nano-MYSO reserved × (nano-SPT per whole SPT) / `base_price`,
-        // so implied cost per display SPT at the linear curve leg matches reservation (same `base_price`
-        // stored on the pool). Reservers still split this supply proportionally by reservation_amount.
+        // 1 MYSO net reserved = 1 SPT. `S0 = total_reserved` (nano-MYSO = nano-SPT).
         let total_reserved = reservation_pool_object.info.total_reserved;
         assert!(total_reserved > 0, ENoContribution);
-        let base_price = config.base_price;
-        // Intermediate `total_reserved * SPT_SCALE` may exceed u64 (e.g. default 10k MYSO
-        // profile threshold). That is expected; the bound that matters is the quotient.
-        let product_u128 = (total_reserved as u128) * (SPT_SCALE as u128);
-        let initial_u128 = product_u128 / (base_price as u128);
-        assert!(initial_u128 > 0 && initial_u128 <= MAX_ONCHAIN_U64_U128, EInvalidCurveParams);
-        let initial_token_supply = initial_u128 as u64;
+        let initial_token_supply = total_reserved;
         
         // Create token info
         let token_info = TokenInfo {
@@ -2876,8 +2864,9 @@ module social_contracts::social_proof_tokens {
             owner: reservation_pool_object.info.owner,
             associated_id,
             circulating_supply: initial_token_supply,
-            base_price: config.base_price,
+            base_price: FIXED_BASE_PRICE,
             quadratic_coefficient: config.quadratic_coefficient,
+            launch_supply: initial_token_supply,
             created_at: clock::timestamp_ms(clock),
         };
         
@@ -2898,6 +2887,7 @@ module social_contracts::social_proof_tokens {
             circulating_supply: updated_token_info.circulating_supply,
             base_price: updated_token_info.base_price,
             quadratic_coefficient: updated_token_info.quadratic_coefficient,
+            launch_supply: updated_token_info.launch_supply,
             created_at: updated_token_info.created_at,
         };
         
@@ -2973,6 +2963,8 @@ module social_contracts::social_proof_tokens {
         // Update circulating supply to match actually distributed tokens
         token_pool.info.circulating_supply = distributed_total;
         updated_token_info.circulating_supply = distributed_total;
+        token_pool.info.launch_supply = distributed_total;
+        updated_token_info.launch_supply = distributed_total;
         
         // Transfer all reserved MYSO to the token pool as initial liquidity
         balance::join(&mut token_pool.myso_balance, balance::withdraw_all(&mut reservation_pool_object.myso_balance));
@@ -3003,6 +2995,7 @@ module social_contracts::social_proof_tokens {
             quadratic_coefficient: token_pool.info.quadratic_coefficient,
             circulating_supply: token_pool.info.circulating_supply,
             total_reserved_at_launch,
+            launch_supply: token_pool.info.launch_supply,
         });
         
         // Share the token pool
@@ -3788,6 +3781,37 @@ module social_contracts::social_proof_tokens {
         begin_creator_fee_settlement(pool, creator_payment, ctx)
     }
 
+    /// Budget buy: one MYSO payment `P`. Largest `q` with `curve(q) + fee(curve(q)) <= P`.
+    /// `min_tokens` is optional slippage (`0` = none). Returns `(q, curve, fee, creator, platform, treasury)`.
+    fun resolve_budget_buy(
+        pool: &TokenPool,
+        config: &SocialProofTokensConfig,
+        payment_value: u64,
+        min_tokens: u64,
+    ): (u64, u64, u64, u64, u64, u64) {
+        validate_trading_fees(config);
+        let total_fee_bps = calculate_total_fee_bps(config);
+        let (q, curve) = calculate_max_buy_amount(
+            pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
+            pool.info.circulating_supply,
+            payment_value,
+            total_fee_bps,
+        );
+        assert!(q > 0 && curve > 0, EInsufficientFunds);
+        if (min_tokens > 0) {
+            assert!(q >= min_tokens, ESlippageExceeded);
+        };
+        let fee_amount = calculate_fee_amount_safe(curve, total_fee_bps);
+        assert!(payment_value >= curve, EInsufficientFunds);
+        assert!(curve <= MAX_U64 - fee_amount, EOverflow);
+        assert!(payment_value >= curve + fee_amount, EInsufficientFunds);
+        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
+        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
+        let treasury_fee = fee_amount - creator_fee - platform_fee;
+        (q, curve, fee_amount, creator_fee, platform_fee, treasury_fee)
+    }
+
     #[allow(lint(self_transfer))]
     fun buy_tokens_impl(
         _registry: &TokenRegistry,
@@ -3815,27 +3839,12 @@ module social_contracts::social_proof_tokens {
         // Check if token owner is blocked by the buyer
         assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
         
-        // Calculate the price for the tokens based on quadratic curve
-        let (price, _) = calculate_buy_price(
-            pool.info.base_price,
-            pool.info.quadratic_coefficient,
-            pool.info.circulating_supply,
-            amount
+        let (amount, price, fee_amount, creator_fee, platform_fee, treasury_fee) = resolve_budget_buy(
+            pool,
+            config,
+            coin::value(&payment),
+            amount,
         );
-        
-        // Ensure buyer has enough funds
-        assert!(coin::value(&payment) >= price, EInsufficientFunds);
-        
-        // Validate fees and calculate with overflow protection
-        validate_trading_fees(config);
-        let total_fee_bps = calculate_total_fee_bps(config);
-        let fee_amount = calculate_fee_amount_safe(price, total_fee_bps);
-        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
-        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
-        let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
-        // Calculate the net amount to the liquidity pool
-        let net_amount = price - fee_amount;
         
         let creator_payment = coin::split(&mut payment, creator_fee, ctx);
 
@@ -3855,8 +3864,8 @@ module social_contracts::social_proof_tokens {
             };
         };
         
-        // Add remaining payment to pool
-        let pool_payment = coin::split(&mut payment, net_amount, ctx);
+        // Deposit the full curve reserve; fee is skimmed from the same budget
+        let pool_payment = coin::split(&mut payment, price, ctx);
         balance::join(&mut pool.myso_balance, coin::into_balance(pool_payment));
         
         // Refund any excess payment
@@ -3906,8 +3915,8 @@ module social_contracts::social_proof_tokens {
         
         // Calculate the new price after purchase
         let new_price = calculate_token_price(
-            pool.info.base_price,
             pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
             pool.info.circulating_supply
         );
         
@@ -4006,27 +4015,12 @@ module social_contracts::social_proof_tokens {
         // Check if token owner is blocked by the buyer
         assert!(!block_list::is_blocked(block_list_registry, buyer, pool.info.owner), EBlockedUser);
         
-        // Calculate the price for the tokens based on quadratic curve
-        let (price, _) = calculate_buy_price(
-            pool.info.base_price,
-            pool.info.quadratic_coefficient,
-            pool.info.circulating_supply,
-            amount
+        let (amount, price, fee_amount, creator_fee, platform_fee, treasury_fee) = resolve_budget_buy(
+            pool,
+            config,
+            coin::value(&payment),
+            amount,
         );
-        
-        // Ensure buyer has enough funds
-        assert!(coin::value(&payment) >= price, EInsufficientFunds);
-        
-        // Validate fees and calculate with overflow protection
-        validate_trading_fees(config);
-        let total_fee_bps = calculate_total_fee_bps(config);
-        let fee_amount = calculate_fee_amount_safe(price, total_fee_bps);
-        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
-        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
-        let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
-        // Calculate the net amount to the liquidity pool
-        let net_amount = price - fee_amount;
         
         let creator_payment = coin::split(&mut payment, creator_fee, ctx);
 
@@ -4047,8 +4041,8 @@ module social_contracts::social_proof_tokens {
             };
         };
         
-        // Add remaining payment to pool
-        let pool_payment = coin::split(&mut payment, net_amount, ctx);
+        // Deposit the full curve reserve; fee is skimmed from the same budget
+        let pool_payment = coin::split(&mut payment, price, ctx);
         balance::join(&mut pool.myso_balance, coin::into_balance(pool_payment));
         
         // Refund any excess payment
@@ -4097,8 +4091,8 @@ module social_contracts::social_proof_tokens {
         
         // Calculate the new price after purchase
         let new_price = calculate_token_price(
-            pool.info.base_price,
             pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
             pool.info.circulating_supply
         );
         
@@ -4189,27 +4183,12 @@ module social_contracts::social_proof_tokens {
         assert!(social_token.pool_id == object::uid_to_address(&pool.id), EInvalidID);
         assert!(social_token.amount > 0, ENoTokensOwned);
         
-        // Calculate the price for the tokens based on quadratic curve
-        let (price, _) = calculate_buy_price(
-            pool.info.base_price,
-            pool.info.quadratic_coefficient,
-            pool.info.circulating_supply,
-            amount
+        let (amount, price, fee_amount, creator_fee, platform_fee, treasury_fee) = resolve_budget_buy(
+            pool,
+            config,
+            coin::value(&payment),
+            amount,
         );
-        
-        // Ensure buyer has enough funds
-        assert!(coin::value(&payment) >= price, EInsufficientFunds);
-        
-        // Validate fees and calculate with overflow protection
-        validate_trading_fees(config);
-        let total_fee_bps = calculate_total_fee_bps(config);
-        let fee_amount = calculate_fee_amount_safe(price, total_fee_bps);
-        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
-        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
-        let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
-        // Calculate the net amount to the liquidity pool
-        let net_amount = price - fee_amount;
         
         let creator_payment = coin::split(&mut payment, creator_fee, ctx);
 
@@ -4229,8 +4208,8 @@ module social_contracts::social_proof_tokens {
             };
         };
         
-        // Add remaining payment to pool
-        let pool_payment = coin::split(&mut payment, net_amount, ctx);
+        // Deposit the full curve reserve; fee is skimmed from the same budget
+        let pool_payment = coin::split(&mut payment, price, ctx);
         balance::join(&mut pool.myso_balance, coin::into_balance(pool_payment));
         
         // Refund any excess payment
@@ -4278,8 +4257,8 @@ module social_contracts::social_proof_tokens {
         
         // Calculate the new price after purchase
         let new_price = calculate_token_price(
-            pool.info.base_price,
             pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
             pool.info.circulating_supply
         );
         
@@ -4385,27 +4364,12 @@ module social_contracts::social_proof_tokens {
         assert!(social_token.pool_id == object::uid_to_address(&pool.id), EInvalidID);
         assert!(social_token.amount > 0, ENoTokensOwned);
         
-        // Calculate the price for the tokens based on quadratic curve
-        let (price, _) = calculate_buy_price(
-            pool.info.base_price,
-            pool.info.quadratic_coefficient,
-            pool.info.circulating_supply,
-            amount
+        let (amount, price, fee_amount, creator_fee, platform_fee, treasury_fee) = resolve_budget_buy(
+            pool,
+            config,
+            coin::value(&payment),
+            amount,
         );
-        
-        // Ensure buyer has enough funds
-        assert!(coin::value(&payment) >= price, EInsufficientFunds);
-        
-        // Validate fees and calculate with overflow protection
-        validate_trading_fees(config);
-        let total_fee_bps = calculate_total_fee_bps(config);
-        let fee_amount = calculate_fee_amount_safe(price, total_fee_bps);
-        let creator_fee = calculate_component_fee_safe(fee_amount, config.trading_creator_fee_bps, total_fee_bps);
-        let platform_fee = calculate_component_fee_safe(fee_amount, config.trading_platform_fee_bps, total_fee_bps);
-        let treasury_fee = fee_amount - creator_fee - platform_fee;
-        
-        // Calculate the net amount to the liquidity pool
-        let net_amount = price - fee_amount;
         
         let creator_payment = coin::split(&mut payment, creator_fee, ctx);
 
@@ -4426,8 +4390,8 @@ module social_contracts::social_proof_tokens {
             };
         };
         
-        // Add remaining payment to pool
-        let pool_payment = coin::split(&mut payment, net_amount, ctx);
+        // Deposit the full curve reserve; fee is skimmed from the same budget
+        let pool_payment = coin::split(&mut payment, price, ctx);
         balance::join(&mut pool.myso_balance, coin::into_balance(pool_payment));
         
         // Refund any excess payment
@@ -4474,8 +4438,8 @@ module social_contracts::social_proof_tokens {
         
         // Calculate the new price after purchase
         let new_price = calculate_token_price(
-            pool.info.base_price,
             pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
             pool.info.circulating_supply
         );
         
@@ -4564,8 +4528,8 @@ module social_contracts::social_proof_tokens {
 
         // Calculate the sell price based on quadratic curve
         let (refund_amount, _) = calculate_sell_price(
-            pool.info.base_price,
             pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
             pool.info.circulating_supply,
             amount
         );
@@ -4641,8 +4605,8 @@ module social_contracts::social_proof_tokens {
 
         // Calculate the new price after sale
         let new_price = calculate_token_price(
-            pool.info.base_price,
             pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
             pool.info.circulating_supply
         );
 
@@ -4746,8 +4710,8 @@ module social_contracts::social_proof_tokens {
 
         // Calculate the sell price based on quadratic curve
         let (refund_amount, _) = calculate_sell_price(
-            pool.info.base_price,
             pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
             pool.info.circulating_supply,
             amount
         );
@@ -4824,8 +4788,8 @@ module social_contracts::social_proof_tokens {
 
         // Calculate the new price after sale
         let new_price = calculate_token_price(
-            pool.info.base_price,
             pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
             pool.info.circulating_supply
         );
 
@@ -5087,8 +5051,8 @@ module social_contracts::social_proof_tokens {
         let total_fee_bps = calculate_total_fee_bps(config);
 
         let (sell_gross, sell_fee_amount, net_bridge) = calculate_swap_proceeds(
-            source_pool.info.base_price,
             source_pool.info.quadratic_coefficient,
+            source_pool.info.launch_supply,
             source_pool.info.circulating_supply,
             sell_amount,
             total_fee_bps
@@ -5137,8 +5101,8 @@ module social_contracts::social_proof_tokens {
         };
 
         let source_new_price = calculate_token_price(
-            source_pool.info.base_price,
             source_pool.info.quadratic_coefficient,
+            source_pool.info.launch_supply,
             source_pool.info.circulating_supply
         );
         event::emit(TokenSoldEvent {
@@ -5155,22 +5119,21 @@ module social_contracts::social_proof_tokens {
 
         let bridge_value = balance::value(&bridge);
         let (dest_amount, buy_gross) = calculate_max_buy_amount(
-            dest_pool.info.base_price,
             dest_pool.info.quadratic_coefficient,
+            dest_pool.info.launch_supply,
             dest_pool.info.circulating_supply,
-            bridge_value
+            bridge_value,
+            total_fee_bps
         );
         assert!(dest_amount >= min_dest_amount, ESlippageExceeded);
         assert!(dest_amount > 0, EInsufficientFunds);
-        assert!(bridge_value >= buy_gross, EInsufficientFunds);
-
         let buy_fee_amount = calculate_fee_amount_safe(buy_gross, total_fee_bps);
+        assert!(buy_gross <= MAX_U64 - buy_fee_amount, EOverflow);
+        assert!(bridge_value >= buy_gross + buy_fee_amount, EInsufficientFunds);
         let buy_creator_fee = calculate_component_fee_safe(buy_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
         let buy_platform_fee = calculate_component_fee_safe(buy_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
         let buy_treasury_fee = buy_fee_amount - buy_creator_fee - buy_platform_fee;
-        let buy_net = buy_gross - buy_fee_amount;
-
-        let mut payment = coin::from_balance(balance::split(&mut bridge, buy_gross), ctx);
+        let mut payment = coin::from_balance(balance::split(&mut bridge, buy_gross + buy_fee_amount), ctx);
         if (buy_fee_amount > 0) {
             if (buy_creator_fee > 0) {
                 distribute_creator_fee(dest_pool, buy_creator_fee, &mut payment, ctx);
@@ -5184,7 +5147,7 @@ module social_contracts::social_proof_tokens {
                 transfer::public_transfer(c, profile::get_treasury_address(treasury));
             };
         };
-        let pool_payment = coin::split(&mut payment, buy_net, ctx);
+        let pool_payment = coin::split(&mut payment, buy_gross, ctx);
         balance::join(&mut dest_pool.myso_balance, coin::into_balance(pool_payment));
         coin::destroy_zero(payment);
 
@@ -5223,8 +5186,8 @@ module social_contracts::social_proof_tokens {
 
         dest_pool.info.circulating_supply = new_supply;
         let dest_new_price = calculate_token_price(
-            dest_pool.info.base_price,
             dest_pool.info.quadratic_coefficient,
+            dest_pool.info.launch_supply,
             dest_pool.info.circulating_supply
         );
         event::emit(TokenBoughtEvent {
@@ -5298,8 +5261,8 @@ module social_contracts::social_proof_tokens {
         let total_fee_bps = calculate_total_fee_bps(config);
 
         let (sell_gross, sell_fee_amount, net_bridge) = calculate_swap_proceeds(
-            source_pool.info.base_price,
             source_pool.info.quadratic_coefficient,
+            source_pool.info.launch_supply,
             source_pool.info.circulating_supply,
             sell_amount,
             total_fee_bps
@@ -5349,8 +5312,8 @@ module social_contracts::social_proof_tokens {
         };
 
         let source_new_price = calculate_token_price(
-            source_pool.info.base_price,
             source_pool.info.quadratic_coefficient,
+            source_pool.info.launch_supply,
             source_pool.info.circulating_supply
         );
         event::emit(TokenSoldEvent {
@@ -5367,22 +5330,21 @@ module social_contracts::social_proof_tokens {
 
         let bridge_value = balance::value(&bridge);
         let (dest_amount, buy_gross) = calculate_max_buy_amount(
-            dest_pool.info.base_price,
             dest_pool.info.quadratic_coefficient,
+            dest_pool.info.launch_supply,
             dest_pool.info.circulating_supply,
-            bridge_value
+            bridge_value,
+            total_fee_bps
         );
         assert!(dest_amount >= min_dest_amount, ESlippageExceeded);
         assert!(dest_amount > 0, EInsufficientFunds);
-        assert!(bridge_value >= buy_gross, EInsufficientFunds);
-
         let buy_fee_amount = calculate_fee_amount_safe(buy_gross, total_fee_bps);
+        assert!(buy_gross <= MAX_U64 - buy_fee_amount, EOverflow);
+        assert!(bridge_value >= buy_gross + buy_fee_amount, EInsufficientFunds);
         let buy_creator_fee = calculate_component_fee_safe(buy_fee_amount, config.trading_creator_fee_bps, total_fee_bps);
         let buy_platform_fee = calculate_component_fee_safe(buy_fee_amount, config.trading_platform_fee_bps, total_fee_bps);
         let buy_treasury_fee = buy_fee_amount - buy_creator_fee - buy_platform_fee;
-        let buy_net = buy_gross - buy_fee_amount;
-
-        let mut payment = coin::from_balance(balance::split(&mut bridge, buy_gross), ctx);
+        let mut payment = coin::from_balance(balance::split(&mut bridge, buy_gross + buy_fee_amount), ctx);
         if (buy_fee_amount > 0) {
             if (buy_creator_fee > 0) {
                 distribute_creator_fee(dest_pool, buy_creator_fee, &mut payment, ctx);
@@ -5397,7 +5359,7 @@ module social_contracts::social_proof_tokens {
                 transfer::public_transfer(c, profile::get_treasury_address(treasury));
             };
         };
-        let pool_payment = coin::split(&mut payment, buy_net, ctx);
+        let pool_payment = coin::split(&mut payment, buy_gross, ctx);
         balance::join(&mut dest_pool.myso_balance, coin::into_balance(pool_payment));
         coin::destroy_zero(payment);
 
@@ -5436,8 +5398,8 @@ module social_contracts::social_proof_tokens {
 
         dest_pool.info.circulating_supply = new_supply;
         let dest_new_price = calculate_token_price(
-            dest_pool.info.base_price,
             dest_pool.info.quadratic_coefficient,
+            dest_pool.info.launch_supply,
             dest_pool.info.circulating_supply
         );
         event::emit(TokenBoughtEvent {
@@ -5627,98 +5589,164 @@ module social_contracts::social_proof_tokens {
 
     // === Utility Functions ===
 
-    /// Marginal MYSO price for the next infinitesimal nano-SPT at `supply_nano` (nano-SPT in pool).
-    /// `p(s) = base_price + quadratic_coefficient * (s / SPT_SCALE)^2 / BPS_DENOM` (permyriad).
-    public fun calculate_token_price(
-        base_price: u64,
+    /// Cumulative reserve `R(S)` in nano-MYSO as `u256`. `R(0) = 0`.
+    /// Linear (`R = S`) at or below launch supply; linear plus quadratic integral on `S - S0` above.
+    /// Differences of this value are the trade curve; the full `R` may exceed `u64`.
+    fun reserve_myso_u256(
         quadratic_coefficient: u64,
+        launch_supply: u64,
+        supply: u64
+    ): u256 {
+        if (supply == 0) {
+            return 0u256
+        };
+        if (supply <= launch_supply) {
+            return supply as u256
+        };
+        let excess = (supply - launch_supply) as u256;
+        let quad = quad_integral_leg_mist(
+            quadratic_coefficient as u256,
+            0u256,
+            excess,
+            SPT_SCALE as u256,
+            true
+        );
+        unwrap_u256_opt(u256::checked_add(supply as u256, quad))
+    }
+
+    /// Cumulative reserve `R(S)` in nano-MYSO. `R(0) = 0`.
+    /// Linear (`R = S`) at or below launch supply; linear plus quadratic integral on `S - S0` above.
+    /// Aborts `EOverflow` if `R(S)` does not fit `u64`.
+    public fun reserve_myso(
+        quadratic_coefficient: u64,
+        launch_supply: u64,
+        supply: u64
+    ): u64 {
+        mist_amount_u256_to_u64(reserve_myso_u256(quadratic_coefficient, launch_supply, supply))
+    }
+
+    fun curve_cost(
+        quadratic_coefficient: u64,
+        launch_supply: u64,
+        current_supply: u64,
+        amount: u64
+    ): u64 {
+        if (amount == 0) {
+            return 0
+        };
+        assert!(current_supply <= MAX_U64 - amount, EOverflow);
+        let r_after = reserve_myso_u256(
+            quadratic_coefficient,
+            launch_supply,
+            current_supply + amount
+        );
+        let r_before = reserve_myso_u256(quadratic_coefficient, launch_supply, current_supply);
+        assert!(r_after >= r_before, EOverflow);
+        mist_amount_u256_to_u64(r_after - r_before)
+    }
+
+    fun curve_refund(
+        quadratic_coefficient: u64,
+        launch_supply: u64,
+        current_supply: u64,
+        amount: u64
+    ): u64 {
+        if (amount == 0) {
+            return 0
+        };
+        assert!(current_supply >= amount, EInsufficientLiquidity);
+        let r_before = reserve_myso_u256(quadratic_coefficient, launch_supply, current_supply);
+        let r_after = reserve_myso_u256(
+            quadratic_coefficient,
+            launch_supply,
+            current_supply - amount
+        );
+        assert!(r_before >= r_after, EOverflow);
+        mist_amount_u256_to_u64(r_before - r_after)
+    }
+
+    fun all_in_buy_cost(curve: u64, total_fee_bps: u64): u64 {
+        let fee = calculate_fee_amount_safe(curve, total_fee_bps);
+        assert!(curve <= MAX_U64 - fee, EOverflow);
+        curve + fee
+    }
+
+    /// Marginal MYSO price for the next infinitesimal nano-SPT at `supply_nano`.
+    /// Flat at 1 MYSO per SPT at or below `launch_supply`; then `1 + quad((s-S0)/scale)`.
+    public fun calculate_token_price(
+        quadratic_coefficient: u64,
+        launch_supply: u64,
         supply_nano: u64
     ): u64 {
-        let base = base_price as u256;
+        if (supply_nano <= launch_supply) {
+            return FIXED_BASE_PRICE
+        };
+        let excess = (supply_nano - launch_supply) as u256;
         let coeff = quadratic_coefficient as u256;
-        let s = supply_nano as u256;
         let scale = SPT_SCALE as u256;
         let scale2 = unwrap_u256_opt(u256::checked_mul(scale, scale));
         let denom = unwrap_u256_opt(u256::checked_mul(scale2, BPS_DENOM as u256));
         assert!(denom > 0u256, EInvalidCurveParams);
-        let s2 = unwrap_u256_opt(u256::checked_mul(s, s));
+        let s2 = unwrap_u256_opt(u256::checked_mul(excess, excess));
         let coeff_s2 = unwrap_u256_opt(u256::checked_mul(coeff, s2));
         let quad = coeff_s2 / denom;
-        let total = unwrap_u256_opt(u256::checked_add(base, quad));
+        let total = unwrap_u256_opt(u256::checked_add(FIXED_BASE_PRICE as u256, quad));
         mist_amount_u256_to_u64(total)
     }
 
-    /// Total MYSO cost to buy `amount_nano` nano-SPT when current circulating supply is `current_supply_nano`.
-    /// Uses the closed-form integral of the marginal quadratic curve over human supply
-    /// (continuous approximation; `amount` and `supply` are nano-SPT).
+    /// Total MYSO curve cost to buy `amount_nano` nano-SPT (`R(S+q) - R(S)`).
     /// Returns `(total_mysos, avg_mysos_per_nano_unit)`.
     public fun calculate_buy_price(
-        base_price: u64,
         quadratic_coefficient: u64,
+        launch_supply: u64,
         current_supply_nano: u64,
         amount_nano: u64
     ): (u64, u64) {
         if (amount_nano == 0) {
             return (0, 0)
         };
-        let base = base_price as u256;
-        let coeff = quadratic_coefficient as u256;
-        let s = current_supply_nano as u256;
-        let a = amount_nano as u256;
-        let scale = SPT_SCALE as u256;
-
-        let base_prod = unwrap_u256_opt(u256::checked_mul(base, a));
-        let base_part = base_prod / scale;
-
-        let quad_part = quad_integral_leg_mist(coeff, s, a, scale, true);
-
-        let total = unwrap_u256_opt(u256::checked_add(base_part, quad_part));
-        let total_u64 = mist_amount_u256_to_u64(total);
-        let avg_u64 = mist_amount_u256_to_u64(total / a);
+        let total_u64 = curve_cost(
+            quadratic_coefficient,
+            launch_supply,
+            current_supply_nano,
+            amount_nano
+        );
+        let avg_u64 = mist_amount_u256_to_u64((total_u64 as u256) / (amount_nano as u256));
         (total_u64, avg_u64)
     }
 
-    /// MYSO refund for selling `amount_nano` nano-SPT when current circulating supply is `current_supply_nano`.
+    /// MYSO refund for selling `amount_nano` nano-SPT (`R(S) - R(S-q)`).
     /// Returns `(total_refund_mysos, avg_mysos_per_nano_unit)`.
     public fun calculate_sell_price(
-        base_price: u64,
         quadratic_coefficient: u64,
+        launch_supply: u64,
         current_supply_nano: u64,
         amount_nano: u64
     ): (u64, u64) {
         if (amount_nano == 0) {
             return (0, 0)
         };
-        assert!(current_supply_nano >= amount_nano, EInsufficientLiquidity);
-
-        let base = base_price as u256;
-        let coeff = quadratic_coefficient as u256;
-        let s = current_supply_nano as u256;
-        let a = amount_nano as u256;
-        let scale = SPT_SCALE as u256;
-
-        let base_prod = unwrap_u256_opt(u256::checked_mul(base, a));
-        let base_part = base_prod / scale;
-
-        let quad_part = quad_integral_leg_mist(coeff, s, a, scale, false);
-
-        let total = unwrap_u256_opt(u256::checked_add(base_part, quad_part));
-        let total_u64 = mist_amount_u256_to_u64(total);
-        let avg_u64 = mist_amount_u256_to_u64(total / a);
+        let total_u64 = curve_refund(
+            quadratic_coefficient,
+            launch_supply,
+            current_supply_nano,
+            amount_nano
+        );
+        let avg_u64 = mist_amount_u256_to_u64((total_u64 as u256) / (amount_nano as u256));
         (total_u64, avg_u64)
     }
 
     /// Gross MYSO proceeds, sell fee, and net MYSO after selling `sell_amount` nano-SPT.
     public fun calculate_swap_proceeds(
-        base_price: u64,
         quadratic_coefficient: u64,
+        launch_supply: u64,
         current_supply_nano: u64,
         sell_amount: u64,
         total_fee_bps: u64
     ): (u64, u64, u64) {
         let (sell_gross, _) = calculate_sell_price(
-            base_price,
             quadratic_coefficient,
+            launch_supply,
             current_supply_nano,
             sell_amount
         );
@@ -5727,41 +5755,41 @@ module social_contracts::social_proof_tokens {
         (sell_gross, sell_fee, sell_gross - sell_fee)
     }
 
-    /// Largest nano-SPT buy whose gross MYSO cost is `<= myso_budget` (binary search).
-    /// Returns `(dest_amount, buy_gross)`.
+    /// Largest nano-SPT buy whose curve + fee fits `myso_budget` (binary search).
+    /// Returns `(dest_amount, buy_curve)`.
     public fun calculate_max_buy_amount(
-        base_price: u64,
         quadratic_coefficient: u64,
+        launch_supply: u64,
         current_supply_nano: u64,
-        myso_budget: u64
+        myso_budget: u64,
+        total_fee_bps: u64
     ): (u64, u64) {
         if (myso_budget == 0) {
             return (0, 0)
         };
 
         let (cost1, _) = calculate_buy_price(
-            base_price,
             quadratic_coefficient,
+            launch_supply,
             current_supply_nano,
             1
         );
-        if (cost1 > myso_budget) {
+        if (cost1 == 0 || all_in_buy_cost(cost1, total_fee_bps) > myso_budget) {
             return (0, 0)
         };
 
-        // Expand upper bound until cost exceeds budget.
         let mut lo: u64 = 1;
         let mut lo_cost: u64 = cost1;
         let mut hi: u64 = 2;
         let mut guard = 0u64;
         while (guard < 63) {
             let (cost, _) = calculate_buy_price(
-                base_price,
                 quadratic_coefficient,
+                launch_supply,
                 current_supply_nano,
                 hi
             );
-            if (cost > myso_budget) {
+            if (cost == 0 || all_in_buy_cost(cost, total_fee_bps) > myso_budget) {
                 break
             };
             lo = hi;
@@ -5773,16 +5801,15 @@ module social_contracts::social_proof_tokens {
             guard = guard + 1;
         };
 
-        // Binary search in (lo, hi)
         while (lo + 1 < hi) {
             let mid = lo + (hi - lo) / 2;
             let (cost, _) = calculate_buy_price(
-                base_price,
                 quadratic_coefficient,
+                launch_supply,
                 current_supply_nano,
                 mid
             );
-            if (cost <= myso_budget) {
+            if (cost > 0 && all_in_buy_cost(cost, total_fee_bps) <= myso_budget) {
                 lo = mid;
                 lo_cost = cost;
             } else {
@@ -5793,32 +5820,34 @@ module social_contracts::social_proof_tokens {
     }
 
     /// Quote an exact-in swap: sell `sell_amount` from source curve into dest curve.
-    /// Returns `(dest_amount, sell_gross, buy_gross, net_bridge, leftover_myso)`.
+    /// Dest fill is fee-inclusive. Returns `(dest_amount, sell_gross, buy_curve, net_bridge, leftover_myso)`.
     public fun calculate_swap_quote(
-        source_base_price: u64,
         source_quadratic_coefficient: u64,
+        source_launch_supply: u64,
         source_supply_nano: u64,
-        dest_base_price: u64,
         dest_quadratic_coefficient: u64,
+        dest_launch_supply: u64,
         dest_supply_nano: u64,
         sell_amount: u64,
         total_fee_bps: u64
     ): (u64, u64, u64, u64, u64) {
         let (sell_gross, _sell_fee, net_bridge) = calculate_swap_proceeds(
-            source_base_price,
             source_quadratic_coefficient,
+            source_launch_supply,
             source_supply_nano,
             sell_amount,
             total_fee_bps
         );
         let (dest_amount, buy_gross) = calculate_max_buy_amount(
-            dest_base_price,
             dest_quadratic_coefficient,
+            dest_launch_supply,
             dest_supply_nano,
-            net_bridge
+            net_bridge,
+            total_fee_bps
         );
-        assert!(net_bridge >= buy_gross, EOverflow);
-        (dest_amount, sell_gross, buy_gross, net_bridge, net_bridge - buy_gross)
+        let buy_all_in = if (buy_gross == 0) { 0 } else { all_in_buy_cost(buy_gross, total_fee_bps) };
+        assert!(net_bridge >= buy_all_in, EOverflow);
+        (dest_amount, sell_gross, buy_gross, net_bridge, net_bridge - buy_all_in)
     }
 
     /// `10^9` nano-SPT per 1.0 display token (for clients / indexers).
@@ -5858,6 +5887,11 @@ module social_contracts::social_proof_tokens {
         info.circulating_supply
     }
 
+    /// Launch supply `S0` (nano-SPT) from a `TokenInfo` reference.
+    public fun token_info_launch_supply(info: &TokenInfo): u64 {
+        info.launch_supply
+    }
+
     /// Check if a token exists in the registry
     public fun token_exists(registry: &TokenRegistry, id: address): bool {
         table::contains(&registry.tokens, id)
@@ -5872,8 +5906,8 @@ module social_contracts::social_proof_tokens {
     /// Get current token price for a specific pool
     public fun get_pool_price(pool: &TokenPool): u64 {
         calculate_token_price(
-            pool.info.base_price, 
             pool.info.quadratic_coefficient,
+            pool.info.launch_supply,
             pool.info.circulating_supply
         )
     }
@@ -6067,7 +6101,6 @@ module social_contracts::social_proof_tokens {
                 reservation_creator_fee_bps: DEFAULT_RESERVATION_CREATOR_FEE_BPS,
                 reservation_platform_fee_bps: DEFAULT_RESERVATION_PLATFORM_FEE_BPS,
                 reservation_treasury_fee_bps: DEFAULT_RESERVATION_TREASURY_FEE_BPS,
-                base_price: DEFAULT_BASE_PRICE,
                 quadratic_coefficient: DEFAULT_QUADRATIC_COEFFICIENT,
                 max_hold_percent_bps: MAX_HOLD_PERCENT_BPS,
                 post_threshold: DEFAULT_POST_THRESHOLD,
@@ -6106,7 +6139,7 @@ module social_contracts::social_proof_tokens {
         owner: address,
         associated_id: address,
         circulating_supply: u64,
-        base_price: u64,
+        _base_price: u64,
         quadratic_coefficient: u64,
         created_at: u64
     ): TokenInfo {
@@ -6116,8 +6149,9 @@ module social_contracts::social_proof_tokens {
             owner,
             associated_id,
             circulating_supply,
-            base_price,
+            base_price: FIXED_BASE_PRICE,
             quadratic_coefficient,
+            launch_supply: circulating_supply,
             created_at,
         }
     }

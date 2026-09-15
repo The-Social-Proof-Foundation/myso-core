@@ -141,6 +141,7 @@ ensure_service() {
         "@$(normalize_hex_id "$CREATOR_PROFILE_ID")" "@$(normalize_hex_id "$CLOCK_ID")")" || return 1
     assert_tx_success "$out" || { echo "create_profile_service_entry failed" >&2; return 1; }
     digest="$(extract_tx_digest "$out" 2>/dev/null || true)"
+    SERVICE_ID=''
     if [[ -n "$digest" ]]; then
         SERVICE_ID="$(extract_created_object_by_type "$digest" "subscription::ProfileSubscriptionService" 2>/dev/null || true)"
     fi
@@ -163,7 +164,16 @@ create_myusd_plan() {
         plan_id="$(tx_event_field "$digest" "SubscriptionPlanCreatedEvent" "plan_id" 2>/dev/null || true)"
     fi
     if [[ -z "${plan_id:-}" ]]; then
-        plan_id="$(extract_created_object_from_call_output "$out" "SubscriptionPlan")" || return 1
+        local attempt
+        for attempt in 1 2 3 4 5 6 7 8; do
+            plan_id="$(gql_plan_id_for_title "$SERVICE_ID" "$title" 2>/dev/null || true)"
+            [[ -n "${plan_id:-}" ]] && break
+            sleep 2
+        done
+    fi
+    if [[ -z "${plan_id:-}" ]]; then
+        echo "Could not resolve plan id for $title after create (checkpoint timeout / indexer lag)" >&2
+        return 1
     fi
     printf '%s' "$(normalize_hex_id "$plan_id")"
 }
@@ -189,7 +199,6 @@ run_create_plans() {
     MYUSD_COIN_TYPE="$(resolve_myusd_coin_type)" || return 1
     ensure_dripdrop_platform || return 1
     ensure_creator || return 1
-    ensure_script_gas_coin_for_address "$CREATOR_ADDRESS" || return 1
     ensure_service || return 1
     DRIPDROP_PREMIUM_SERVICE_ID="$SERVICE_ID"
     if [[ -n "${MONTHLY_PLAN_ID:-}" ]] && ! gql_subscription_plan_exists "$MONTHLY_PLAN_ID"; then

@@ -4,6 +4,9 @@
 COMMENT ON COLUMN spt_pools.circulating_supply IS
     'nano-SPT: 10^9 units per 1.0 display token (fixed-point integer; matches chain TokenInfo.circulating_supply).';
 
+COMMENT ON COLUMN spt_pools.launch_supply IS
+    'nano-SPT minted at launch (S0). Required; 1:1 with net reserved MYSO. Do not invent 0.';
+
 COMMENT ON COLUMN spt_holdings.amount IS
     'nano-SPT: 10^9 units per 1.0 display token. SUM(amount) per (pool_id, holder) is balance in smallest units.';
 

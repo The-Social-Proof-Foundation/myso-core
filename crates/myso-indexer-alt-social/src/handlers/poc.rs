@@ -5,7 +5,6 @@
 //!
 //! **Chain ↔ indexer map (see also `handlers/post.rs` for `post.move` social events):**
 //! - `AnalysisSubmittedEvent` → `poc_analysis_results` + `posts` PoC columns
-//! - `PoCBadgeIssuedEvent` → `poc_badges`
 //! - `RevenueRedirectionActivatedEvent` → `poc_revenue_redirections`
 //! - `PoCResultAppliedEvent` → `posts.poc_outcome` / `poc_redirection_kind` (via `posts_handler`)
 //! - `PoCDisputeSubmittedEvent` → `poc_disputes`
@@ -23,7 +22,7 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewPocAnalysisResult, NewPocBadge, NewPocConfiguration, NewPocCreatorIdentityLink,
+    NewPocAnalysisResult, NewPocConfiguration, NewPocCreatorIdentityLink,
     NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
     NewPocUsernameBeneficiaryEvent, NewTip, NewUnifiedRevenue, CONTENT_TYPE_POST, CURRENCY_MYSO,
     DISPUTE_STATUS_VOTING, EVENT_TYPE_CLAIMED, EVENT_TYPE_CONFLICT,
@@ -84,22 +83,6 @@ struct AnalysisSubmittedEvent {
     reasoning: Option<String>,
     #[serde(default)]
     evidence_urls: Option<Vec<String>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct PocBadgeIssuedEvent {
-    badge_id: String,
-    post_id: String,
-    media_type: u8,
-    issued_by: String,
-    #[serde(default)]
-    beneficiary_address: Option<String>,
-    #[serde(default)]
-    matched_anchor_id: Option<String>,
-    #[serde(default)]
-    media_index: Option<u8>,
-    #[serde(deserialize_with = "deserialize_u64")]
-    timestamp: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -305,9 +288,6 @@ pub fn handle_poc_event(
             process_poc_result_applied_event(data, event_id)
         }
         "AnalysisSubmittedEvent" => process_analysis_submitted_event(data, event_id, &tx_id),
-        "PoCBadgeIssuedEvent" | "PocBadgeIssuedEvent" | "BadgeIssuedEvent" => {
-            process_poc_badge_issued_event(data, event_id, &tx_id)
-        }
         "RevenueRedirectionActivatedEvent" => {
             process_revenue_redirection_activated_event(data, event_id, &tx_id)
         }
@@ -448,64 +428,6 @@ fn process_analysis_submitted_event(
     Some(vec![
         SocialEventRow::PocAnalysisResult(analysis),
         post_update,
-    ])
-}
-
-fn process_poc_badge_issued_event(
-    data: &serde_json::Value,
-    event_id: &str,
-    tx_id: &str,
-) -> Option<Vec<SocialEventRow>> {
-    let ev: PocBadgeIssuedEvent = common::deserialize_social_event_json(
-        "poc",
-        "PoCBadgeIssuedEvent",
-        event_id,
-        data,
-        "poc PoCBadgeIssuedEvent JSON did not match PoCBadgeIssuedEvent",
-    )?;
-    if ev.badge_id.is_empty() || ev.post_id.is_empty() || ev.issued_by.is_empty() {
-        return None;
-    }
-    if ev.media_type != 1 && ev.media_type != 2 && ev.media_type != 3 {
-        tracing::warn!(
-            post_id = %ev.post_id,
-            media_type = ev.media_type,
-            "PoCBadgeIssuedEvent ignored: media_type must be 1, 2, or 3"
-        );
-        return None;
-    }
-    let badge_id = ev.badge_id.clone();
-    let post_id = ev.post_id.clone();
-    let beneficiary_address = ev
-        .beneficiary_address
-        .as_ref()
-        .filter(|s| !s.is_empty())
-        .cloned();
-    let matched_anchor_id = ev
-        .matched_anchor_id
-        .as_ref()
-        .filter(|s| !s.is_empty())
-        .cloned();
-    let media_index = ev.media_index.map(i16::from);
-    let badge = NewPocBadge {
-        badge_id: ev.badge_id,
-        post_id: ev.post_id,
-        media_type: ev.media_type as i16,
-        issued_by: ev.issued_by,
-        beneficiary_address,
-        matched_anchor_id,
-        media_index,
-        issued_at: ev.timestamp as i64,
-        revoked: false,
-        revoked_at: None,
-        transaction_id: tx_id.to_string(),
-    };
-    Some(vec![
-        SocialEventRow::PocBadge(badge),
-        SocialEventRow::PostPocBadgePointer {
-            post_id,
-            poc_badge_object_id: badge_id,
-        },
     ])
 }
 

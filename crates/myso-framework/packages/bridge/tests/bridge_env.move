@@ -245,6 +245,10 @@ module bridge::bridge_env {
     //
 
     /// Get the current clock timestamp in milliseconds
+    public fun clock(env: &BridgeEnv): &myso::clock::Clock {
+        &env.clock
+    }
+
     public fun clock_timestamp_ms(env: &BridgeEnv): u64 {
         env.clock.timestamp_ms()
     }
@@ -758,6 +762,106 @@ module bridge::bridge_env {
         token
     }
 
+    public fun setup_myusd_peg(env: &mut BridgeEnv, sender: address): bridge::myusd_peg::ConversionAdminCap {
+        use bridge::myusd;
+        use bridge::myusd_peg;
+        env.scenario.next_tx(sender);
+        let cap = myusd::create_treasury_cap_for_testing(env.scenario.ctx());
+        myusd_peg::create(cap, env.scenario.ctx())
+    }
+
+    public fun enable_stable_conversion(
+        env: &mut BridgeEnv,
+        admin: &bridge::myusd_peg::ConversionAdminCap,
+        token_id: u8,
+        boundary_seq: u64,
+    ) {
+        use bridge::myusd_peg::{Self, MyUsdPeg};
+        env.scenario.next_tx(@0x0);
+        let mut peg = env.scenario.take_shared<MyUsdPeg>();
+        let mut bridge = env.scenario.take_shared<Bridge>();
+        myusd_peg::set_rail_enabled(&mut peg, admin, token_id, true, env.scenario.ctx());
+        myusd_peg::enable_conversion_policy(
+            &mut bridge,
+            &peg,
+            admin,
+            token_id,
+            chain_ids::eth_custom(),
+            boundary_seq,
+            env.scenario.ctx(),
+        );
+        test_scenario::return_shared(peg);
+        test_scenario::return_shared(bridge);
+    }
+
+    public fun enable_conversion_policy_only(
+        env: &mut BridgeEnv,
+        admin: &bridge::myusd_peg::ConversionAdminCap,
+        token_id: u8,
+        boundary_seq: u64,
+    ) {
+        use bridge::myusd_peg::{Self, MyUsdPeg};
+        env.scenario.next_tx(@0x0);
+        let peg = env.scenario.take_shared<MyUsdPeg>();
+        let mut bridge = env.scenario.take_shared<Bridge>();
+        myusd_peg::enable_conversion_policy(
+            &mut bridge,
+            &peg,
+            admin,
+            token_id,
+            chain_ids::eth_custom(),
+            boundary_seq,
+            env.scenario.ctx(),
+        );
+        test_scenario::return_shared(peg);
+        test_scenario::return_shared(bridge);
+    }
+
+    public fun claim_stable_into_myusd<T>(
+        env: &mut BridgeEnv,
+        source_chain: u8,
+        bridge_seq_num: u64,
+    ) {
+        use bridge::myusd_peg::{Self, MyUsdPeg};
+        env.scenario.next_tx(@0xBEEF);
+        let clock = &env.clock;
+        let mut peg = env.scenario.take_shared<MyUsdPeg>();
+        let mut bridge = env.scenario.take_shared<Bridge>();
+        myusd_peg::claim_stable_into_myusd<T>(
+            &mut bridge,
+            &mut peg,
+            clock,
+            source_chain,
+            bridge_seq_num,
+            env.scenario.ctx(),
+        );
+        test_scenario::return_shared(peg);
+        test_scenario::return_shared(bridge);
+    }
+
+    public fun redeem_myusd_and_send_to_evm<T>(
+        env: &mut BridgeEnv,
+        sender: address,
+        myusd: myso::coin::Coin<bridge::myusd::MYUSD>,
+        target_chain: u8,
+        target_address: vector<u8>,
+    ) {
+        use bridge::myusd_peg::{Self, MyUsdPeg};
+        env.scenario.next_tx(sender);
+        let mut peg = env.scenario.take_shared<MyUsdPeg>();
+        let mut bridge = env.scenario.take_shared<Bridge>();
+        myusd_peg::redeem_myusd_and_send_to_evm<T>(
+            &mut bridge,
+            &mut peg,
+            myusd,
+            target_chain,
+            target_address,
+            env.scenario.ctx(),
+        );
+        test_scenario::return_shared(peg);
+        test_scenario::return_shared(bridge);
+    }
+
     // Claim a token and transfer to the receiver in the bridge message
     public fun claim_and_transfer_token<T>(
         env: &mut BridgeEnv,
@@ -1251,26 +1355,26 @@ module bridge::test_token {
     use std::ascii;
     use std::type_name;
     use myso::address;
-    use myso::coin::{CoinMetadata, TreasuryCap, create_currency};
+    use myso::coin::{CoinMetadata, TreasuryCap};
     use myso::hex;
     use myso::package::{UpgradeCap, test_publish};
-    use myso::test_utils::create_one_time_witness;
 
     public struct TEST_TOKEN has drop {}
 
     public fun create_bridge_token(
         ctx: &mut TxContext,
     ): (UpgradeCap, TreasuryCap<TEST_TOKEN>, CoinMetadata<TEST_TOKEN>) {
-        let otw = create_one_time_witness<TEST_TOKEN>();
-        let (treasury_cap, metadata) = create_currency(
-            otw,
+        let admin = myso::coin::create_coin_creation_admin_cap_for_testing(ctx);
+        let (treasury_cap, metadata) = myso::coin::create_currency_with_admin<TEST_TOKEN>(
             8,
             b"tst",
             b"test",
             b"bridge test token",
             option::none(),
+            &admin,
             ctx,
         );
+        myso::test_utils::destroy(admin);
 
         let type_name = type_name::with_defining_ids<TEST_TOKEN>();
         let address_bytes = hex::decode(
@@ -1288,26 +1392,26 @@ module bridge::btc {
     use std::ascii;
     use std::type_name;
     use myso::address;
-    use myso::coin::{CoinMetadata, TreasuryCap, create_currency};
+    use myso::coin::{CoinMetadata, TreasuryCap};
     use myso::hex;
     use myso::package::{UpgradeCap, test_publish};
-    use myso::test_utils::create_one_time_witness;
 
     public struct BTC has drop {}
 
     public fun create_bridge_token(
         ctx: &mut TxContext,
     ): (UpgradeCap, TreasuryCap<BTC>, CoinMetadata<BTC>) {
-        let otw = create_one_time_witness<BTC>();
-        let (treasury_cap, metadata) = create_currency(
-            otw,
+        let admin = myso::coin::create_coin_creation_admin_cap_for_testing(ctx);
+        let (treasury_cap, metadata) = myso::coin::create_currency_with_admin<BTC>(
             8,
             b"btc",
             b"bitcoin",
             b"bridge bitcoin token",
             option::none(),
+            &admin,
             ctx,
         );
+        myso::test_utils::destroy(admin);
 
         let type_name = type_name::with_defining_ids<BTC>();
         let address_bytes = hex::decode(
@@ -1325,26 +1429,26 @@ module bridge::eth {
     use std::ascii;
     use std::type_name;
     use myso::address;
-    use myso::coin::{CoinMetadata, TreasuryCap, create_currency};
+    use myso::coin::{CoinMetadata, TreasuryCap};
     use myso::hex;
     use myso::package::{UpgradeCap, test_publish};
-    use myso::test_utils::create_one_time_witness;
 
     public struct ETH has drop {}
 
     public fun create_bridge_token(
         ctx: &mut TxContext,
     ): (UpgradeCap, TreasuryCap<ETH>, CoinMetadata<ETH>) {
-        let otw = create_one_time_witness<ETH>();
-        let (treasury_cap, metadata) = create_currency(
-            otw,
+        let admin = myso::coin::create_coin_creation_admin_cap_for_testing(ctx);
+        let (treasury_cap, metadata) = myso::coin::create_currency_with_admin<ETH>(
             8,
             b"eth",
             b"eth",
             b"bridge ethereum token",
             option::none(),
+            &admin,
             ctx,
         );
+        myso::test_utils::destroy(admin);
 
         let type_name = type_name::with_defining_ids<ETH>();
         let address_bytes = hex::decode(
@@ -1357,76 +1461,3 @@ module bridge::eth {
     }
 }
 
-#[test_only, allow(deprecated_usage)]
-module bridge::usdc {
-    use std::ascii;
-    use std::type_name;
-    use myso::address;
-    use myso::coin::{CoinMetadata, TreasuryCap, create_currency};
-    use myso::hex;
-    use myso::package::{UpgradeCap, test_publish};
-    use myso::test_utils::create_one_time_witness;
-
-    public struct USDC has drop {}
-
-    public fun create_bridge_token(
-        ctx: &mut TxContext,
-    ): (UpgradeCap, TreasuryCap<USDC>, CoinMetadata<USDC>) {
-        let otw = create_one_time_witness<USDC>();
-        let (treasury_cap, metadata) = create_currency(
-            otw,
-            6,
-            b"usdc",
-            b"usdc",
-            b"bridge usdc token",
-            option::none(),
-            ctx,
-        );
-
-        let type_name = type_name::with_defining_ids<USDC>();
-        let address_bytes = hex::decode(
-            ascii::into_bytes(type_name::address_string(&type_name)),
-        );
-        let coin_id = address::from_bytes(address_bytes).to_id();
-        let upgrade_cap = test_publish(coin_id, ctx);
-
-        (upgrade_cap, treasury_cap, metadata)
-    }
-}
-
-#[test_only, allow(deprecated_usage)]
-module bridge::usdt {
-    use std::ascii;
-    use std::type_name;
-    use myso::address;
-    use myso::coin::{CoinMetadata, TreasuryCap, create_currency};
-    use myso::hex;
-    use myso::package::{UpgradeCap, test_publish};
-    use myso::test_utils::create_one_time_witness;
-
-    public struct USDT has drop {}
-
-    public fun create_bridge_token(
-        ctx: &mut TxContext,
-    ): (UpgradeCap, TreasuryCap<USDT>, CoinMetadata<USDT>) {
-        let otw = create_one_time_witness<USDT>();
-        let (treasury_cap, metadata) = create_currency(
-            otw,
-            6,
-            b"usdt",
-            b"usdt",
-            b"bridge usdt token",
-            option::none(),
-            ctx,
-        );
-
-        let type_name = type_name::with_defining_ids<USDT>();
-        let address_bytes = hex::decode(
-            ascii::into_bytes(type_name::address_string(&type_name)),
-        );
-        let coin_id = address::from_bytes(address_bytes).to_id();
-        let upgrade_cap = test_publish(coin_id, ctx);
-
-        (upgrade_cap, treasury_cap, metadata)
-    }
-}

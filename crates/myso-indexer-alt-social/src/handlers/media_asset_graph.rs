@@ -28,6 +28,10 @@ fn u64_from_json(value: &serde_json::Value) -> Option<u64> {
         .or_else(|| value.as_str().and_then(|s| s.parse().ok()))
 }
 
+fn bytes_as_utf8_uri(value: &serde_json::Value) -> Option<String> {
+    String::from_utf8(bytes_from_json(value)?).ok()
+}
+
 #[derive(Debug, Deserialize)]
 struct MediaAssetIdentity {
     content_commitment: serde_json::Value,
@@ -116,6 +120,16 @@ struct LicenseTemplatePublishedEvent {
     royalty_bps: Option<serde_json::Value>,
     #[serde(default)]
     derivative_royalty_bps: Option<serde_json::Value>,
+    #[serde(default)]
+    instance_revocable: Option<bool>,
+    #[serde(default)]
+    legal_terms_uri_bytes: Option<serde_json::Value>,
+    #[serde(default)]
+    legal_terms_hash: Option<serde_json::Value>,
+    #[serde(default)]
+    governing_law: Option<serde_json::Value>,
+    #[serde(default)]
+    license_schema_version: Option<serde_json::Value>,
     #[serde(deserialize_with = "super::poc::deserialize_u64")]
     timestamp: u64,
 }
@@ -156,6 +170,8 @@ fn new_media_asset_from_identity(
         lineage_parent_id: None,
         rights_version: 1,
         economics_version: 1,
+        authorization_version: 1,
+        future_usage_paused: false,
         registered_by: identity.creator.clone(),
         registered_at: timestamp as i64,
         verified_at: Some(timestamp as i64),
@@ -580,6 +596,18 @@ pub fn handle_license_template_event(
                         .as_ref()
                         .and_then(u64_from_json)
                         .unwrap_or(0) as i64,
+                    instance_revocable: ev.instance_revocable.unwrap_or(true),
+                    legal_terms_uri: ev
+                        .legal_terms_uri_bytes
+                        .as_ref()
+                        .and_then(bytes_as_utf8_uri),
+                    legal_terms_hash: ev.legal_terms_hash.as_ref().and_then(bytes_from_json),
+                    governing_law: ev.governing_law.as_ref().and_then(bytes_from_json),
+                    license_schema_version: ev
+                        .license_schema_version
+                        .as_ref()
+                        .and_then(u64_from_json)
+                        .unwrap_or(1) as i64,
                     transaction_id: tx_id,
                     time: chain_time(ev.timestamp),
                 },

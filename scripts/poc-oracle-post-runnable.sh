@@ -75,6 +75,8 @@ LAST_TX_DIGEST=''
 LAST_TIP_TX_DIGEST=''
 LAST_RESERVE_TX_DIGEST=''
 SELF_MATCH_ANALYZE_DIGEST=''
+ANALYZE_TX_DIGEST=''
+MEDIA_ASSET_ID=''
 POST_GQL_SNAPSHOT=''
 GQL_INDEXED='false'
 
@@ -89,6 +91,7 @@ POC_ORACLE_SESSION_KEYS=(
     TIPPER_ADDRESS TIPPER_MEMORY_ACCOUNT_ID
     POST_ID RESERVATION_POOL_ID POC_BENEFICIARY_VAULT_ID
     LAST_TX_DIGEST LAST_TIP_TX_DIGEST LAST_RESERVE_TX_DIGEST SELF_MATCH_ANALYZE_DIGEST
+    ANALYZE_TX_DIGEST MEDIA_ASSET_ID
 )
 
 usage() {
@@ -330,89 +333,77 @@ end_fresh_ptb_gas_coin() {
 poc_oracle_load_localnet_env
 
 analyze_post_as_oracle() {
-    local post_id="$1" media_type="$2" score="$3" original_creator_arg="$4" \
-        deriv_target="$5" embed_audio="$6" apply_explicit="$7" explicit_outcome="$8"
-    if [[ "${POC_USE_DIRECT_MOVE:-0}" == "1" ]]; then
-        analyze_post_as_oracle_direct "$post_id" "$media_type" "$score" "$original_creator_arg" \
-            "$deriv_target" "$embed_audio" "$apply_explicit" "$explicit_outcome"
-        return $?
-    fi
+    local post_id="$1"
+    local original_creator_arg="${4:-none}"
+    local deriv_target="${5:-0}"
+    local apply_explicit="${7:-false}"
+    local explicit_outcome="${8:-0}"
+    local asset_id opts beneficiary share_bps payout_mode digest
+    post_id="$(normalize_hex_id "$post_id")" || return 1
     sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
     ensure_poc_oracle_key_in_env || return 1
-    poc_oracle_analyze_post "$post_id" "$media_type" "$score" "$original_creator_arg" \
-        "$deriv_target" "$embed_audio" "$apply_explicit" "$explicit_outcome"
-}
 
-analyze_post_as_oracle_direct() {
-    local post_id="$1" media_type="$2" score="$3" original_creator_arg="$4" \
-        deriv_target="$5" embed_audio="$6" apply_explicit="$7" explicit_outcome="$8"
-    local oracle ref_cfg ref_reg ref_vault ref_post ref_clk creator_arg out digest
-    require_hex_ids POC_CONFIG_ID POC_REGISTRY_ID POC_VAULT_DIRECTORY_ID CLOCK_ID || return 1
-    creator_arg="$(ptb_option_address_from_arg "$original_creator_arg")"
-    oracle="$(read_poc_oracle_address_from_graphql)" || {
-        echo "Could not resolve PoC oracle address from GraphQL" >&2
-        return 1
-    }
-    switch_wallet "$oracle" || return 1
-    log_step "analyze_and_update_post post=$post_id score=$score creator=$original_creator_arg"
-    ref_cfg="$(ptb_shared_ref "$POC_CONFIG_ID")" || { restore_wallet; return 1; }
-    ref_reg="$(ptb_shared_ref "$POC_REGISTRY_ID")" || { restore_wallet; return 1; }
-    ref_vault="$(ptb_shared_ref "$POC_VAULT_DIRECTORY_ID")" || { restore_wallet; return 1; }
-    ref_post="$(ptb_shared_ref "$post_id")" || { restore_wallet; return 1; }
-    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { restore_wallet; return 1; }
-    begin_fresh_ptb_gas_coin "$oracle" || { restore_wallet; return 1; }
-    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$oracle" \
-        --move-call "${PKG_SOCIAL}::proof_of_creativity::analyze_and_update_post" \
-        "$ref_cfg" "$ref_reg" "$ref_vault" "$ref_post" \
-        "$media_type" "$score" "$creator_arg" "$deriv_target" \
-        "$embed_audio" "$apply_explicit" "$explicit_outcome" \
-        none none "$ref_clk")" || {
-        end_fresh_ptb_gas_coin
-        restore_wallet
-        return 1
-    }
-    end_fresh_ptb_gas_coin
-    restore_wallet
-    digest="$(extract_tx_digest "$out")"
-    wait_for_tx_finalized "$digest" || return 1
-    [[ -n "$digest" ]]
-    printf '%s' "$digest"
+    if [[ "${POC_USE_DIRECT_MOVE:-0}" == "1" ]]; then
+        asset_id="$(wait_for_post_media_asset_id "$post_id")" || return 1
+        share_bps=0
+        payout_mode=0
+        beneficiary=""
+        if [[ "$apply_explicit" == "true" && "$explicit_outcome" == "4" ]]; then
+            opts="$(jq -nc '{reasoning: "E2E royalty-free composition"}')"
+        else
+            if [[ "$original_creator_arg" != "none" && -n "$original_creator_arg" ]]; then
+                beneficiary="${original_creator_arg#some(}"
+                beneficiary="${beneficiary%)}"
+                beneficiary="$(normalize_hex_id "$beneficiary")"
+                share_bps=10000
+                payout_mode=0
+                [[ "$deriv_target" == "1" ]] && payout_mode=1
+            fi
+            opts="$(jq -nc \
+                --arg beneficiary "$beneficiary" \
+                --argjson share_bps "$share_bps" \
+                --argjson payout_mode "$payout_mode" \
+                --argjson contains_derivatives "$([[ $share_bps -gt 0 ]] && echo true || echo false)" \
+                '{
+                    share_bps: $share_bps,
+                    beneficiary: (if $beneficiary == "" then null else $beneficiary end),
+                    payout_mode: $payout_mode,
+                    contains_derivatives: $contains_derivatives,
+                    reasoning: "E2E direct-move composition"
+                }')"
+        fi
+        digest="$(submit_analyze_post_composition_direct "$post_id" "$asset_id" "$opts")" || return 1
+        printf '%s' "$digest"
+        return 0
+    fi
+    poc_oracle_wait_for_composition "$post_id" VERIFIED
 }
 
 assert_self_match_analyze_tx() {
     local digest="$1"
     [[ -n "$digest" ]] || return 1
-    assert_poc_scenario_events self_match "$digest" || return 1
-    log_step "self-match analyze OK digest=$digest (badge issued, no redirect)"
+    assert_poc_scenario_events composition_self_match "$digest" || return 1
+    log_step "self-match composition OK digest=$digest"
 }
 
 create_poc_post_for_analyze() {
     local label="$1"
-    local out digest post_id body_lit media_opt ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mcfg ref_mr ref_mem ref_clk
+    local content_hex="${2:-}"
+    local fingerprint_hex="${3:-}"
+    local out digest post_id body_lit
     require_hex_ids USERNAME_REGISTRY_ID PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID \
         BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MEMORY_CONFIG_ID MYDATA_REGISTRY_ID \
         MEMORY_ACCOUNT_ID CLOCK_ID || return 1
     body_lit="$(literal_move_string "$label")"
-    media_opt="some(vector[$(literal_move_string "$POST_MEDIA_URL")])"
-    ref_ur="$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" || return 1
-    ref_pr="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
-    ref_plat="$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" || return 1
-    ref_blr="$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" || return 1
-    ref_cfg="$(ptb_shared_ref "$POST_CONFIG_ID")" || return 1
-    ref_mcfg="$(ptb_shared_ref "$MEMORY_CONFIG_ID")" || return 1
-    ref_mr="$(ptb_shared_ref "$MYDATA_REGISTRY_ID")" || return 1
-    ref_mem="$(ptb_shared_ref "$MEMORY_ACCOUNT_ID")" || return 1
-    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    if [[ -z "$content_hex" || -z "$fingerprint_hex" ]]; then
+        mapfile -t _commits < <(deterministic_commitments_for_run)
+        content_hex="${_commits[0]}"
+        fingerprint_hex="${_commits[1]}"
+    fi
     switch_wallet "$CREATOR_ADDRESS" || return 1
     begin_fresh_ptb_gas_coin "$CREATOR_ADDRESS" || { restore_wallet; return 1; }
-    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
-        --move-call "${PKG_SOCIAL}::post::create_post" \
-        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
-        "$body_lit" \
-        "$media_opt" \
-        none none none none none none none \
-        some\(true\) none 1 none none none \
-        "$ref_mr" "$ref_mem" "$ref_clk")" || {
+    out="$(create_post_post_first "$CREATOR_ADDRESS" "$body_lit" "$POST_MEDIA_URL" \
+        "$content_hex" "$fingerprint_hex" "some(true)")" || {
         end_fresh_ptb_gas_coin
         restore_wallet
         return 1
@@ -441,20 +432,26 @@ run_self_match_analyze_flow() {
         echo "Run --refresh-session first" >&2
         return 1
     }
-    local post1 post2 digest
+    local post1 post2 digest content_hex fingerprint_hex gql_resp monetization
     LAST_PTB_GAS_COIN_USED=''
     ensure_platform_ready || return 1
     step_creator_profile_and_join || return 1
     ensure_creator_wallet || return 1
 
-    log_step "self-match 1/3 baseline original post + analyze"
-    post1="$(create_poc_post_for_analyze "PoC self-match baseline ${SOCIAL_RUN_ID}")" || return 1
-    digest="$(analyze_post_as_oracle "$post1" 1 50 none 0 false false 0)" || return 1
+    mapfile -t _commits < <(deterministic_commitments_for_run)
+    content_hex="${_commits[0]}"
+    fingerprint_hex="${_commits[1]}"
+
+    log_step "self-match 1/3 baseline original post + composition (shared commitments)"
+    post1="$(create_poc_post_for_analyze "PoC self-match baseline ${SOCIAL_RUN_ID}" \
+        "$content_hex" "$fingerprint_hex")" || return 1
+    digest="$(analyze_post_as_oracle "$post1")" || return 1
     assert_self_match_analyze_tx "$digest" || return 1
 
-    log_step "self-match 2/3 second post analyzed with original_creator=post owner (score 100)"
-    post2="$(create_poc_post_for_analyze "PoC self-match repost ${SOCIAL_RUN_ID}")" || return 1
-    digest="$(analyze_post_as_oracle "$post2" 1 100 "some($CREATOR_ADDRESS)" 1 false false 0)" || return 1
+    log_step "self-match 2/3 second post with the same content/fingerprint commitments"
+    post2="$(create_poc_post_for_analyze "PoC self-match repost ${SOCIAL_RUN_ID}" \
+        "$content_hex" "$fingerprint_hex")" || return 1
+    digest="$(analyze_post_as_oracle "$post2")" || return 1
     assert_self_match_analyze_tx "$digest" || return 1
     SELF_MATCH_ANALYZE_DIGEST="$digest"
     POST_ID="$(normalize_hex_id "$post2")"
@@ -462,12 +459,11 @@ run_self_match_analyze_flow() {
     log_session_use "SELF_MATCH_ANALYZE_DIGEST" "$SELF_MATCH_ANALYZE_DIGEST"
     save_poc_oracle_session
 
-    log_step "self-match 3/3 verify GraphQL has no revenue redirect on repost"
-    local gql_resp redirect
-    gql_resp="$(gql_post_snapshot "$post2" 2>/dev/null)" || gql_resp='{}'
-    redirect="$(echo "$gql_resp" | jq -r '.data.post.revenueRedirectTo // empty')"
-    if [[ -n "$redirect" && "$redirect" != "null" ]]; then
-        echo "self-match post $post2 unexpectedly has revenueRedirectTo=$redirect" >&2
+    log_step "self-match 3/3 verify GraphQL monetization is not ENABLED on repost"
+    gql_resp="$(gql_cross_check_post_poc "$post2" 2>/dev/null)" || gql_resp='{}'
+    monetization="$(echo "$gql_resp" | jq -r '.data.post.monetizationStatus // empty')"
+    if [[ "$monetization" == "ENABLED" ]]; then
+        echo "self-match post $post2 unexpectedly has monetizationStatus=ENABLED" >&2
         return 1
     fi
 
@@ -481,41 +477,29 @@ run_self_match_analyze_flow() {
 
 ensure_beneficiary_vault_via_royalty_free_analyze() {
     local post_id="$1" owner="$2"
-    local oracle ref_cfg ref_reg ref_vault ref_post ref_clk out vault_id
+    local vault_id asset_id digest opts
     post_id="$(normalize_hex_id "$post_id")" || return 1
     owner="$(normalize_hex_id "$owner")" || return 1
     require_session_fields POC_CONFIG_ID POC_REGISTRY_ID POC_VAULT_DIRECTORY_ID CLOCK_ID || return 1
-    require_hex_ids POC_CONFIG_ID POC_REGISTRY_ID POC_VAULT_DIRECTORY_ID CLOCK_ID || return 1
 
-    oracle="$(read_poc_oracle_address_from_graphql)" || oracle="$owner"
-    switch_wallet "$oracle" || return 1
-    ref_cfg="$(ptb_shared_ref "$POC_CONFIG_ID")" || { restore_wallet; return 1; }
-    ref_reg="$(ptb_shared_ref "$POC_REGISTRY_ID")" || { restore_wallet; return 1; }
-    ref_vault="$(ptb_shared_ref "$POC_VAULT_DIRECTORY_ID")" || { restore_wallet; return 1; }
-    ref_post="$(ptb_shared_ref "$post_id")" || { restore_wallet; return 1; }
-    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || { restore_wallet; return 1; }
-
-    log_step "Creating PoCBeneficiaryVault for $owner (royalty-free analyze on post $post_id)"
-    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$oracle" \
-        --move-call "${PKG_SOCIAL}::proof_of_creativity::analyze_and_update_post" \
-        "$ref_cfg" "$ref_reg" "$ref_vault" "$ref_post" \
-        1 0 none 0 false true 4 \
-        none none "$ref_clk")" || {
-        restore_wallet
-        return 1
-    }
-    restore_wallet
-
-    digest="$(extract_tx_digest "$out")"
-    vault_id="$(extract_created_object_by_type "$digest" "PoCBeneficiaryVault")" || true
+    vault_id="$(gql_beneficiary_vault_id_for_address "$owner" 2>/dev/null)" || vault_id=''
+    [[ -n "$vault_id" ]] || vault_id="$(lookup_beneficiary_vault_id_on_fullnode "$owner" 2>/dev/null)" || vault_id=''
     if [[ -z "$vault_id" ]]; then
-        vault_id="$(gql_beneficiary_vault_id_for_address "$owner")" || true
-    fi
-    if [[ -z "$vault_id" ]]; then
-        vault_id="$(lookup_beneficiary_vault_id_on_fullnode "$owner")" || true
+        log_step "Creating PoCBeneficiaryVault for $owner via escrow composition on post $post_id"
+        asset_id="$(wait_for_post_media_asset_id "$post_id")" || return 1
+        opts="$(jq -nc --arg beneficiary "$owner" \
+            '{share_bps: 10000, beneficiary: $beneficiary, payout_mode: 1, contains_derivatives: true, reasoning: "E2E escrow vault provision"}')"
+        digest="$(submit_analyze_post_composition_direct "$post_id" "$asset_id" "$opts")" || return 1
+        vault_id="$(extract_created_object_by_type "$digest" "PoCBeneficiaryVault")" || true
+        if [[ -z "$vault_id" ]]; then
+            vault_id="$(gql_beneficiary_vault_id_for_address "$owner")" || true
+        fi
+        if [[ -z "$vault_id" ]]; then
+            vault_id="$(lookup_beneficiary_vault_id_on_fullnode "$owner")" || true
+        fi
     fi
     [[ -n "$vault_id" ]] && object_exists_on_fullnode "$vault_id" || {
-        echo "royalty-free analyze did not create PoCBeneficiaryVault for $owner" >&2
+        echo "composition did not create PoCBeneficiaryVault for $owner" >&2
         return 1
     }
     POC_BENEFICIARY_VAULT_ID="$(normalize_hex_id "$vault_id")"
@@ -861,8 +845,7 @@ step_creator_profile_and_join() {
 }
 
 step_create_poc_post() {
-    local out digest body_lit media_opt pool_id
-    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mcfg ref_mr ref_mem ref_clk
+    local out digest body_lit pool_id content_hex fingerprint_hex
     local ref_token ref_spt ref_post ref_clk_pool
 
     require_hex_ids USERNAME_REGISTRY_ID PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID \
@@ -871,28 +854,14 @@ step_create_poc_post() {
         MEMORY_ACCOUNT_ID CLOCK_ID || return 1
 
     body_lit="$(literal_move_string "PoC oracle test post ${SOCIAL_RUN_ID}")"
-    media_opt="some(vector[$(literal_move_string "$POST_MEDIA_URL")])"
-
-    ref_ur="$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" || return 1
-    ref_pr="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
-    ref_plat="$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" || return 1
-    ref_blr="$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" || return 1
-    ref_cfg="$(ptb_shared_ref "$POST_CONFIG_ID")" || return 1
-    ref_mcfg="$(ptb_shared_ref "$MEMORY_CONFIG_ID")" || return 1
-    ref_mr="$(ptb_shared_ref "$MYDATA_REGISTRY_ID")" || return 1
-    ref_mem="$(ptb_shared_ref "$MEMORY_ACCOUNT_ID")" || return 1
-    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    mapfile -t _commits < <(deterministic_commitments_for_run)
+    content_hex="${_commits[0]}"
+    fingerprint_hex="${_commits[1]}"
 
     switch_wallet "$CREATOR_ADDRESS" || return 1
-    log_step "create_post enable_spt=true media=$POST_MEDIA_URL"
-    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$CREATOR_ADDRESS" \
-        --move-call "${PKG_SOCIAL}::post::create_post" \
-        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
-        "$body_lit" \
-        "$media_opt" \
-        none none none none none none none \
-        some\(true\) none 1 none none none \
-        "$ref_mr" "$ref_mem" "$ref_clk")" || {
+    log_step "create_post post-first enable_spt=true media=$POST_MEDIA_URL"
+    out="$(create_post_post_first "$CREATOR_ADDRESS" "$body_lit" "$POST_MEDIA_URL" \
+        "$content_hex" "$fingerprint_hex" "some(true)")" || {
         restore_wallet
         return 1
     }
@@ -949,6 +918,9 @@ gql_post_snapshot() {
                 content
                 enableSpt
                 mediaUrls
+                mediaAssetIds
+                compositionStatus
+                monetizationStatus
                 platformId
                 owner
                 createdAt
@@ -1046,6 +1018,8 @@ print_poc_oracle_post_summary() {
     print_run_summary_line "enableSpt (GraphQL)" "$(echo "$gql_resp" | jq -r '.data.post.enableSpt // "pending"')"
     print_run_summary_line "Reservation pool" "$(normalize_hex_id "${RESERVATION_POOL_ID:-}")"
     print_run_summary_line "Media URL" "$POST_MEDIA_URL"
+    print_run_summary_line "MediaAsset" "$(normalize_hex_id "${MEDIA_ASSET_ID:-}")"
+    print_run_summary_line "compositionStatus" "$(echo "$gql_resp" | jq -r '.data.post.compositionStatus // "pending"')"
     print_run_summary_line "mediaUrls (GraphQL)" "${media_urls:-pending}"
     print_run_summary_line "Post owner (GraphQL)" "${owner:-pending}"
     print_run_summary_line "createdAt (GraphQL)" "${created_at:-pending}"
@@ -1245,6 +1219,10 @@ run_poc_oracle_post_flow() {
     ensure_platform_ready || return 1
     step_creator_profile_and_join || return 1
     step_create_poc_post || return 1
+    ANALYZE_TX_DIGEST="$(wait_for_poc_post_composed "$POST_ID" VERIFIED)" || return 1
+    assert_poc_scenario_events composition_original "$ANALYZE_TX_DIGEST" || return 1
+    log_session_use "ANALYZE_TX_DIGEST" "$ANALYZE_TX_DIGEST"
+    [[ -n "${MEDIA_ASSET_ID:-}" ]] && log_session_use "MEDIA_ASSET_ID" "$MEDIA_ASSET_ID"
     assert_poc_post_graphql
     save_poc_oracle_session
     print_poc_oracle_post_summary

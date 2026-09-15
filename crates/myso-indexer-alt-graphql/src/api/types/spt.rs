@@ -217,6 +217,11 @@ impl SptPool {
         BigInt::from(self.inner.circulating_supply)
     }
 
+    /// Nano-SPT minted at launch (`S0`). Price is 1 MYSO per SPT at or below this supply.
+    async fn launch_supply(&self) -> BigInt {
+        BigInt::from(self.inner.launch_supply)
+    }
+
     /// Current price (smallest units).
     async fn price(&self) -> i64 {
         self.inner.price

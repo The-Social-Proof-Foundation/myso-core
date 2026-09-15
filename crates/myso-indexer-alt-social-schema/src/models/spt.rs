@@ -34,7 +34,7 @@ pub const DEFAULT_RESERVATION_CREATOR_FEE_BPS: i64 = 100;
 pub const DEFAULT_RESERVATION_PLATFORM_FEE_BPS: i64 = 25;
 pub const DEFAULT_RESERVATION_TREASURY_FEE_BPS: i64 = 25;
 pub const MAX_HOLD_PERCENT_BPS: i64 = 500;
-pub const DEFAULT_BASE_PRICE: i64 = 100_000_000;
+pub const DEFAULT_BASE_PRICE: i64 = 1_000_000_000;
 pub const DEFAULT_QUADRATIC_COEFFICIENT: i64 = 100_000;
 pub const DEFAULT_POST_THRESHOLD: i64 = 1_000_000_000_000;
 pub const DEFAULT_PROFILE_THRESHOLD: i64 = 10_000_000_000_000;
@@ -53,6 +53,8 @@ pub struct NewSptPool {
     pub associated_id: String,
     /// nano-SPT: `10^9` units per 1.0 display token (`spt_pools.circulating_supply`).
     pub circulating_supply: i64,
+    /// Nano-SPT minted at launch (`S0`). Required; never invent 0.
+    pub launch_supply: i64,
     pub base_price: i64,
     pub quadratic_coefficient: i64,
     pub created_at: i64,
@@ -165,6 +167,8 @@ pub struct SptPoolRow {
     pub associated_id: String,
     #[diesel(sql_type = BigInt)]
     pub circulating_supply: i64,
+    #[diesel(sql_type = BigInt)]
+    pub launch_supply: i64,
     #[diesel(sql_type = BigInt)]
     pub base_price: i64,
     #[diesel(sql_type = BigInt)]
@@ -587,6 +591,7 @@ pub fn merge_spt_config(prev: &InsertSptConfig, incoming: &NewSptConfigEvent) ->
     }
 
     let mut merged = InsertSptConfig::from_event(incoming, trading_enabled).with_version(version);
+    merged.base_price = DEFAULT_BASE_PRICE;
     merged.admin_address = incoming
         .admin_address
         .clone()
@@ -1079,7 +1084,9 @@ pub struct NewSocialProofTokensEvent {
 
 #[cfg(test)]
 mod spt_config_merge_tests {
-    use super::{default_spt_config, merge_spt_config, NewSptConfigEvent};
+    use super::{
+        default_spt_config, merge_spt_config, NewSptConfigEvent, DEFAULT_BASE_PRICE,
+    };
 
     #[test]
     fn kill_switch_preserves_fee_fields() {
@@ -1156,7 +1163,7 @@ mod spt_config_merge_tests {
             version: 0,
         };
         let merged = merge_spt_config(&prev, &incoming);
-        assert_eq!(merged.base_price, 200);
+        assert_eq!(merged.base_price, DEFAULT_BASE_PRICE);
         assert_eq!(merged.admin_address, "0xkill_admin");
         assert_eq!(merged.reason, "halt");
         assert_eq!(merged.updated_by, "0xconfig_admin");

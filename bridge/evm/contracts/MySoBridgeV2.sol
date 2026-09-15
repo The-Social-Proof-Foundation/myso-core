@@ -80,7 +80,7 @@ contract MySoBridgeV2 is MySoBridge {
         uint8 destinationChainID
     ) external whenNotPaused nonReentrant onlySupportedChain(destinationChainID) {
         require(
-            recipientAddress.length == MySo_ADDRESS_LENGTH,
+            recipientAddress.length == MYSO_ADDRESS_LENGTH,
             "MySoBridge: Invalid recipient address length"
         );
 
@@ -142,7 +142,7 @@ contract MySoBridgeV2 is MySoBridge {
         onlySupportedChain(destinationChainID)
     {
         require(
-            recipientAddress.length == MySo_ADDRESS_LENGTH,
+            recipientAddress.length == MYSO_ADDRESS_LENGTH,
             "MySoBridge: Invalid recipient address length"
         );
 

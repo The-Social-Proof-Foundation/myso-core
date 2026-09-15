@@ -64,7 +64,6 @@ fn ensure_poc_env(repo: &Path, api_port: u16) -> anyhow::Result<()> {
     upsert(&mut lines, "API_PORT", &api_port.to_string());
     upsert(&mut lines, "MYSO_INTEGRATION_ENABLED", "true");
     upsert(&mut lines, "MYSO_REFRESH_SESSION_OBJECTS", "true");
-    upsert(&mut lines, "POC_E2E_SUBMIT_OVERRIDE", "1");
     upsert(&mut lines, "POC_IDENTITY_VERIFIER", "mock");
     upsert(&mut lines, "DISCOVERY_ENABLED", "true");
     upsert(&mut lines, "DISCOVERY_EMBED_ENABLED", "true");

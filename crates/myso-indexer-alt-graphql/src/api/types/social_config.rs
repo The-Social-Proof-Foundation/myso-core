@@ -117,7 +117,7 @@ impl SptExchangeConfig {
         self.inner.max_reservers_per_pool
     }
 
-    /// Base price for new tokens.
+    /// Protocol launch price: always 1 MYSO per SPT (`1e9` nano). Not admin-configurable.
     async fn base_price(&self) -> i64 {
         self.inner.base_price
     }

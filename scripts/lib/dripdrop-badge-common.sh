@@ -59,11 +59,27 @@ dripdrop_gql_platform_badge_context() {
     printf '%s' "$resp"
 }
 
+dripdrop_gql_platform_id_by_name() {
+    local name="${1:-DripDrop}" resp id
+    resp="$(graphql_post \
+        'query ApprovedPlatforms { platforms(approvedOnly: true, limit: 50) { id name } }' \
+        '{}')" || return 1
+    id="$(echo "$resp" | jq -r --arg name "$name" '
+        [.data.platforms[]? | select(.name == $name) | .id] | first // empty
+    ')"
+    [[ -n "$id" ]] || return 1
+    normalize_hex_id "$id"
+}
+
 dripdrop_resolve_moderators_group_id() {
     local platform_id="$1" group_id
     if [[ -n "${PERMISSIONED_GROUP_ID:-}" ]]; then
-        normalize_hex_id "$PERMISSIONED_GROUP_ID"
-        return 0
+        if object_exists_on_fullnode "$PERMISSIONED_GROUP_ID"; then
+            normalize_hex_id "$PERMISSIONED_GROUP_ID"
+            return 0
+        fi
+        echo "Ignoring stale PERMISSIONED_GROUP_ID ${PERMISSIONED_GROUP_ID} (not on fullnode)" >&2
+        PERMISSIONED_GROUP_ID=''
     fi
     platform_id="$(normalize_hex_id "$platform_id")" || return 1
     group_id="$(gql_platform_moderators_group_id "$platform_id")" || group_id=''

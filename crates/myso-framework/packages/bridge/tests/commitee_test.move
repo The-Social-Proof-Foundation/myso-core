@@ -24,8 +24,9 @@ use bridge::committee::{
     make_bridge_committee
 };
 use bridge::crypto;
-use bridge::message;
+use bridge::message::{Self, BridgeMessage};
 use std::unit_test::{destroy, assert_eq};
+use myso::ecdsa_k1::{secp256k1_keypair_from_seed, secp256k1_sign, KeyPair};
 use myso::hex;
 use myso::test_scenario;
 use myso::vec_map;
@@ -47,75 +48,39 @@ const VALIDATOR2_PUBKEY: vector<u8> =
 const VALIDATOR3_PUBKEY: vector<u8> =
     b"033e99a541db69bd32040dfe5037fbf5210dafa8151a71e21c5204b05d95ce0a63";
 
+const MYSO_MESSAGE_PREFIX: vector<u8> = b"MYSO_BRIDGE_MESSAGE";
+
 #[test]
 fun test_verify_signatures_good_path() {
-    let committee = setup_test();
+    let (committee, kp1, kp2) = setup_signing_committee();
     let msg = message::deserialize_message_test_only(hex::decode(TEST_MSG));
-    // good path
-    committee.verify_signatures(
-        msg,
-        vector[
-            hex::decode(
-                b"8ba030a450cb1e36f61e572645fc9da1dea5f79b6db663a21ab63286d7fc29af447433abdd0c0b35ab751154ac5b612ae64d3be810f0d9e10ff68e764514ced300",
-            ),
-            hex::decode(
-                b"439379cc7b3ee3ebe1ff59d011dafc1caac47da6919b089c90f6a24e8c284b963b20f1f5421385456e57ac6b69c4b5f0d345aa09b8bc96d88d87051c7349e83801",
-            ),
-        ],
-    );
-
-    // Clean up
+    committee.verify_signatures(msg, vector[sign_test_msg(&kp1, &msg), sign_test_msg(&kp2, &msg)]);
     destroy(committee)
 }
 
 #[test, expected_failure(abort_code = bridge::committee::EDuplicatedSignature)]
 fun test_verify_signatures_duplicated_sig() {
-    let committee = setup_test();
+    let (committee, kp1, _kp2) = setup_signing_committee();
     let msg = message::deserialize_message_test_only(hex::decode(TEST_MSG));
-    // good path
-    committee.verify_signatures(
-        msg,
-        vector[
-            hex::decode(
-                b"439379cc7b3ee3ebe1ff59d011dafc1caac47da6919b089c90f6a24e8c284b963b20f1f5421385456e57ac6b69c4b5f0d345aa09b8bc96d88d87051c7349e83801",
-            ),
-            hex::decode(
-                b"439379cc7b3ee3ebe1ff59d011dafc1caac47da6919b089c90f6a24e8c284b963b20f1f5421385456e57ac6b69c4b5f0d345aa09b8bc96d88d87051c7349e83801",
-            ),
-        ],
-    );
+    let sig = sign_test_msg(&kp1, &msg);
+    committee.verify_signatures(msg, vector[sig, sig]);
     abort
 }
 
 #[test, expected_failure(abort_code = bridge::committee::EInvalidSignature)]
 fun test_verify_signatures_invalid_signature() {
-    let committee = setup_test();
+    let (committee, _kp1, _kp2) = setup_signing_committee();
+    let outsider = secp256k1_keypair_from_seed(&signing_seed(9));
     let msg = message::deserialize_message_test_only(hex::decode(TEST_MSG));
-    // good path
-    committee.verify_signatures(
-        msg,
-        vector[
-            hex::decode(
-                b"6ffb3e5ce04dd138611c49520fddfbd6778879c2db4696139f53a487043409536c369c6ffaca165ce3886723cfa8b74f3e043e226e206ea25e313ea2215e6caf01",
-            ),
-        ],
-    );
+    committee.verify_signatures(msg, vector[sign_test_msg(&outsider, &msg)]);
     abort
 }
 
 #[test, expected_failure(abort_code = bridge::committee::ESignatureBelowThreshold)]
 fun test_verify_signatures_below_threshold() {
-    let committee = setup_test();
+    let (committee, kp1, _kp2) = setup_signing_committee();
     let msg = message::deserialize_message_test_only(hex::decode(TEST_MSG));
-    // good path
-    committee.verify_signatures(
-        msg,
-        vector[
-            hex::decode(
-                b"439379cc7b3ee3ebe1ff59d011dafc1caac47da6919b089c90f6a24e8c284b963b20f1f5421385456e57ac6b69c4b5f0d345aa09b8bc96d88d87051c7349e83801",
-            ),
-        ],
-    );
+    committee.verify_signatures(msg, vector[sign_test_msg(&kp1, &msg)]);
     abort
 }
 
@@ -486,29 +451,17 @@ fun tx(sender: address, hint: u64): TxContext {
 
 #[test, expected_failure(abort_code = bridge::committee::ESignatureBelowThreshold)]
 fun test_verify_signatures_with_blocked_committee_member() {
-    let mut committee = setup_test();
+    let (mut committee, kp1, kp2) = setup_signing_committee();
     let msg = message::deserialize_message_test_only(hex::decode(TEST_MSG));
-    // good path, this test should have passed in previous test
-    committee.verify_signatures(
-        msg,
-        vector[
-            hex::decode(
-                b"8ba030a450cb1e36f61e572645fc9da1dea5f79b6db663a21ab63286d7fc29af447433abdd0c0b35ab751154ac5b612ae64d3be810f0d9e10ff68e764514ced300",
-            ),
-            hex::decode(
-                b"439379cc7b3ee3ebe1ff59d011dafc1caac47da6919b089c90f6a24e8c284b963b20f1f5421385456e57ac6b69c4b5f0d345aa09b8bc96d88d87051c7349e83801",
-            ),
-        ],
-    );
+    committee.verify_signatures(msg, vector[sign_test_msg(&kp1, &msg), sign_test_msg(&kp2, &msg)]);
 
     let (validator1, member) = committee.members().get_entry_by_idx(0);
     assert!(!member.blocklisted());
 
-    // Block a member
     let blocklist = message::create_blocklist_message(
         chain_ids::myso_testnet(),
         0,
-        0, // type 0 is block
+        0,
         vector[crypto::ecdsa_pub_key_to_eth_address(validator1)],
     );
     let blocklist = message::extract_blocklist_payload(&blocklist);
@@ -517,20 +470,8 @@ fun test_verify_signatures_with_blocked_committee_member() {
     let (_, blocked_member) = committee.members().get_entry_by_idx(0);
     assert!(blocked_member.blocklisted());
 
-    // Verify signature should fail now
-    committee.verify_signatures(
-        msg,
-        vector[
-            hex::decode(
-                b"8ba030a450cb1e36f61e572645fc9da1dea5f79b6db663a21ab63286d7fc29af447433abdd0c0b35ab751154ac5b612ae64d3be810f0d9e10ff68e764514ced300",
-            ),
-            hex::decode(
-                b"439379cc7b3ee3ebe1ff59d011dafc1caac47da6919b089c90f6a24e8c284b963b20f1f5421385456e57ac6b69c4b5f0d345aa09b8bc96d88d87051c7349e83801",
-            ),
-        ],
-    );
+    committee.verify_signatures(msg, vector[sign_test_msg(&kp1, &msg), sign_test_msg(&kp2, &msg)]);
 
-    // Clean up
     destroy(committee);
 }
 
@@ -620,6 +561,42 @@ fun test_execute_blocklist() {
 
     // Clean up
     destroy(committee);
+}
+
+fun signing_seed(tag: u8): vector<u8> {
+    let mut seed = vector[];
+    let mut i = 0u64;
+    while (i < 31) {
+        seed.push_back(0);
+        i = i + 1;
+    };
+    seed.push_back(tag);
+    seed
+}
+
+fun sign_test_msg(kp: &KeyPair, msg: &BridgeMessage): vector<u8> {
+    let mut message_bytes = MYSO_MESSAGE_PREFIX;
+    message_bytes.append((*msg).serialize_message());
+    secp256k1_sign(kp.private_key(), &message_bytes, 0, true)
+}
+
+fun setup_signing_committee(): (BridgeCommittee, KeyPair, KeyPair) {
+    let kp1 = secp256k1_keypair_from_seed(&signing_seed(1));
+    let kp2 = secp256k1_keypair_from_seed(&signing_seed(2));
+    let mut members = vec_map::empty<vector<u8>, CommitteeMember>();
+
+    let pk1 = *kp1.public_key();
+    members.insert(
+        pk1,
+        make_committee_member(@0xA, pk1, 3333, b"https://127.0.0.1:9191", false),
+    );
+    let pk2 = *kp2.public_key();
+    members.insert(
+        pk2,
+        make_committee_member(@0xC, pk2, 3333, b"https://127.0.0.1:9192", false),
+    );
+
+    (make_bridge_committee(members, vec_map::empty(), 1), kp1, kp2)
 }
 
 fun setup_test(): BridgeCommittee {

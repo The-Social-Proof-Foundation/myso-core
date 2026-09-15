@@ -2853,6 +2853,10 @@ type MediaAsset {
 	derivativeGraph(limit: Int, offset: Int): DerivativeGraph
 	detectedRelationships(limit: Int, offset: Int): [DetectedAssetRelationship!]
 	economicsVersion: Int!
+	authorizationVersion: Int!
+	futureUsagePaused: Boolean!
+	licenseInstances(limit: Int, offset: Int): [MediaAssetLicenseInstance!]
+	licenseTerms(limit: Int, offset: Int): [LicenseTemplateTerms!]
 	lineageParentId: String
 	mediaAssetId: String!
 	mediaType: MediaAssetMediaType!
@@ -2912,6 +2916,24 @@ type MediaAssetRightsUpdate {
 	rightsVersion: Int!
 	time: DateTime!
 	transactionId: String!
+}
+
+type LicenseTemplateTerms {
+	governingLaw: String
+	instanceRevocable: Boolean!
+	legalTermsHash: String
+	legalTermsUri: String
+	licenseSchemaVersion: Int!
+	templateVersionId: String!
+	version: Int!
+}
+
+type MediaAssetLicenseInstance {
+	acceptedAt: Int!
+	licenseInstanceId: String!
+	licensee: String!
+	status: Int!
+	templateVersionId: String!
 }
 
 type MediaAssetUsage {
@@ -5129,6 +5151,10 @@ type PerEpochConfig {
 
 type Platform implements Node {
 	"""
+	Shared platform badge ledger object id.
+	"""
+	badgeLedgerId: String
+	"""
 	Wallets blocked by this platform (paginated).
 	"""
 	blockedProfiles(limit: Int, offset: Int): [PlatformBlockedProfileSummary!]
@@ -5595,40 +5621,6 @@ type PocAnalysisResult {
 	Whether similarity to existing content was detected.
 	"""
 	similarityDetected: Boolean!
-}
-
-type PocBadge {
-	"""
-	Badge ID.
-	"""
-	badgeId: String!
-	beneficiaryAddress: String
-	"""
-	When the badge was issued (epoch milliseconds).
-	"""
-	issuedAt: Int!
-	"""
-	Address of the oracle that issued the badge.
-	"""
-	issuedBy: MySoAddress!
-	matchedAnchorId: String
-	mediaIndex: Int
-	"""
-	Media type (1=image, 2=video, 3=audio).
-	"""
-	mediaType: Int!
-	"""
-	Indexed beneficiary vault for this badge's `beneficiary_address`, when present and materialized.
-	"""
-	pocBeneficiaryVault: PocBeneficiaryVault
-	"""
-	Post ID this badge was issued for.
-	"""
-	postId: String!
-	"""
-	Whether the badge has been revoked.
-	"""
-	revoked: Boolean!
 }
 
 type PocBeneficiaryVault {
@@ -6111,10 +6103,6 @@ type Post implements Node {
 	"""
 	pocAnalyzedAt: Int
 	"""
-	PoC badges for this post (paginated).
-	"""
-	pocBadges(limit: Int, offset: Int): [PocBadge!]
-	"""
 	PoC disputes for this post (paginated).
 	"""
 	pocDisputes(limit: Int, offset: Int): [PocDispute!]
@@ -6126,10 +6114,6 @@ type Post implements Node {
 	Evidence URLs from PoC analysis.
 	"""
 	pocEvidenceUrls: JSON
-	"""
-	PoC record/badge ID for original content.
-	"""
-	pocId: String
 	"""
 	Media type analyzed (1=image, 2=video, 3=audio).
 	"""
@@ -6688,6 +6672,10 @@ type Profile implements Node {
 	"""
 	selectedBadgeId: String
 	"""
+	Selected ecosystem badge.
+	"""
+	selectedEcosystemBadge: SelectedBadge
+	"""
 	Selected ecosystem badge ID.
 	"""
 	selectedEcosystemBadgeId: String
@@ -6770,6 +6758,10 @@ type ProfileBadge {
 	"""
 	badgeId: String!
 	"""
+	owned | platform
+	"""
+	badgeKind: String!
+	"""
 	Badge media URL.
 	"""
 	badgeMediaUrl: String
@@ -6781,6 +6773,10 @@ type ProfileBadge {
 	Badge type.
 	"""
 	badgeType: Int!
+	"""
+	Expiry (epoch ms). Null means no expiry.
+	"""
+	expiresAt: BigInt
 	"""
 	Platform ID.
 	"""
@@ -8057,6 +8053,10 @@ type Query {
 	List vesting wallets with optional owner and active-only filters. Returns empty when social DB not configured.
 	"""
 	vestingWallets(owner: MySoAddress, activeOnly: Boolean, limit: Int, offset: Int): [VestingWallet!]
+	"""
+	Wallet identity (always resolves). Distinct from chain `address(address:)`.
+	"""
+	wallet(address: MySoAddress!): Wallet!
 }
 
 """
@@ -8404,8 +8404,8 @@ type SocialProofToken {
 	basePrice: Int
 	"""
 	Circulating supply in nano-SPT (`10^9` units per display token).
-	After launch from a reservation pool, initial supply on-chain is `(total_reserved * 10^9) / base_price`
-	(nano-MYSO reserved × scale ÷ pool `base_price` in MYSO smallest units), before further trades.
+	After launch from a reservation pool, initial supply is 1:1 with net reserved MYSO
+	(`S0 = total_reserved` nano-SPT), before further trades.
 	"""
 	circulatingSupply: BigInt
 	"""
@@ -8957,7 +8957,7 @@ type SptCreatorFeeSettlement {
 
 type SptExchangeConfig {
 	"""
-	Base price for new tokens.
+	Protocol launch price: always 1 MYSO per SPT (`1e9` nano). Not admin-configurable.
 	"""
 	basePrice: Int!
 	"""
@@ -9144,6 +9144,10 @@ type SptPool {
 	Current holders of this token (paginated, ordered by balance DESC).
 	"""
 	holders(viewer: MySoAddress, prioritizeFollowed: Boolean, limit: Int, offset: Int): [SptHolding!]
+	"""
+	Nano-SPT minted at launch (`S0`). Price is 1 MYSO per SPT at or below this supply.
+	"""
+	launchSupply: BigInt!
 	"""
 	Market cap (price in MYSO smallest units × circulating supply in nano-SPT).
 	"""
@@ -10307,6 +10311,32 @@ type VoteDecryptionFailure {
 	failureReason: String!
 	proposalId: String!
 	voterAddress: MySoAddress!
+}
+
+type Wallet {
+	address: MySoAddress!
+	badges(limit: Int, offset: Int): [ProfileBadge!]
+	blockedCount: Int
+	blockedPlatforms(limit: Int, offset: Int): [BlockedPlatformSummary!]
+	blockedProfiles(limit: Int, offset: Int): [BlockedProfileSummary!]
+	followers(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
+	followersCount: Int
+	following(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
+	followingCount: Int
+	id: ID!
+	mutualConnections(viewer: MySoAddress!, limit: Int, offset: Int): [ProfileSummary!]
+	mydataRecords(limit: Int, offset: Int): [MyDataRecord!]
+	platformMemberships(limit: Int, offset: Int): [PlatformMembershipSummary!]
+	platformMembershipsPage(limit: Int, offset: Int): PlatformMembershipPage
+	platformMembershipsTotal: Int
+	pnl(windows: [ProfilePnLWindow!]): [ProfilePnLWindowStats!]
+	profile: Profile
+	recommendations(viewer: MySoAddress, limit: Int, offset: Int): [ProfileSummary!]
+	selectedBadge: SelectedBadge
+	selectedBadgeId: String
+	selectedEcosystemBadge: SelectedBadge
+	selectedEcosystemBadgeId: String
+	subscriptions(serviceId: ID, limit: Int, offset: Int): [ProfileSubscription!]
 }
 
 """

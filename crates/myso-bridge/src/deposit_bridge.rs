@@ -12,7 +12,10 @@ use crate::deposit_gas_manager::DepositGasManager;
 use crate::deposit_monitor::{EvmDepositEvent, MySoDepositEvent};
 use crate::error::{BridgeError, BridgeResult};
 use crate::myso_client::MySoBridgeClient;
-use crate::storage::{BridgeOrchestratorTables, DepositAddressKey, DepositTxKey};
+use crate::deposit_callback::spawn_status_webhook;
+use crate::storage::{
+    BridgeOrderPatch, BridgeOrderStatus, BridgeOrchestratorTables, DepositAddressKey, DepositTxKey,
+};
 use crate::utils::EthProvider;
 use alloy::network::EthereumWallet;
 use alloy::network::TransactionBuilder;
@@ -126,6 +129,15 @@ impl DepositBridgeHandler {
             destination_len = recipient_info.destination_address.len(),
             amount = ?event.amount,
             "Processing EVM deposit"
+        );
+        self.notify_lifecycle(
+            &deposit_address_key,
+            BridgeOrderStatus::DepositReceived,
+            BridgeOrderPatch {
+                amount: Some(event.amount.to_string()),
+                deposit_tx_digest: Some(format!("{:?}", event.tx_hash)),
+                ..Default::default()
+            },
         );
 
         let deposit_signer = self
@@ -291,6 +303,16 @@ impl DepositBridgeHandler {
         )?;
 
         info!(?tx_hash, "EVM deposit bridged successfully");
+        self.notify_lifecycle(
+            &deposit_address_key,
+            BridgeOrderStatus::Completed,
+            BridgeOrderPatch {
+                amount: Some(amount_to_bridge.to_string()),
+                deposit_tx_digest: Some(format!("{:?}", event.tx_hash)),
+                evm_tx_hash: Some(format!("{:?}", tx_hash)),
+                ..Default::default()
+            },
+        );
 
         Ok(tx_hash)
     }
@@ -336,6 +358,15 @@ impl DepositBridgeHandler {
             .try_into()
             .map_err(|_| BridgeError::Generic("Invalid destination address length".to_string()))?;
         let hd_index = recipient_info.hd_index;
+        self.notify_lifecycle(
+            &deposit_address_key,
+            BridgeOrderStatus::DepositReceived,
+            BridgeOrderPatch {
+                amount: Some(event.amount.to_string()),
+                deposit_tx_digest: Some(event.tx_digest.to_string()),
+                ..Default::default()
+            },
+        );
 
         let coin_type_tag = parse_myso_type_tag(&event.coin_type).map_err(|e| {
             BridgeError::Generic(format!("Invalid coin type '{}': {:?}", event.coin_type, e))
@@ -435,7 +466,16 @@ impl DepositBridgeHandler {
                     event.amount.to_string(),
                 )?;
                 info!(?tx_digest, "MySo→EVM deposit bridged successfully");
-                self.notify_deposit_bridge_complete(&event, tx_digest, target_address);
+                self.notify_lifecycle(
+                    &deposit_address_key,
+                    BridgeOrderStatus::Completed,
+                    BridgeOrderPatch {
+                        amount: Some(event.amount.to_string()),
+                        deposit_tx_digest: Some(event.tx_digest.to_string()),
+                        bridge_tx_digest: Some(tx_digest.to_string()),
+                        ..Default::default()
+                    },
+                );
                 Ok(tx_digest)
             }
             myso_json_rpc_types::MySoExecutionStatus::Failure { error } => Err(
@@ -444,56 +484,82 @@ impl DepositBridgeHandler {
         }
     }
 
-    fn notify_deposit_bridge_complete(
+    fn notify_lifecycle(
         &self,
-        event: &MySoDepositEvent,
-        bridge_tx_digest: TransactionDigest,
-        target_address: [u8; 20],
+        deposit_key: &DepositAddressKey,
+        status: BridgeOrderStatus,
+        patch: BridgeOrderPatch,
     ) {
-        let deposit_key = DepositAddressKey::from_myso(event.recipient);
-        let stored = self
+        let order = match self.storage.update_bridge_order_status(deposit_key, status, patch) {
+            Ok(order) => order,
+            Err(err) => {
+                warn!(?err, "Failed to update bridge order status");
+                None
+            }
+        };
+        let recipient = self
             .storage
-            .get_recipient_for_deposit(&deposit_key)
+            .get_recipient_for_deposit(deposit_key)
             .ok()
             .flatten();
-        let url = stored
+        let url = order
             .as_ref()
-            .and_then(|r| r.deposit_callback_url.clone())
+            .and_then(|o| o.callback_url.clone())
+            .or_else(|| {
+                recipient
+                    .as_ref()
+                    .and_then(|r| r.deposit_callback_url.clone())
+            })
             .or_else(|| self.deposit_callback_url.clone());
         let Some(url) = url else {
             return;
         };
-        let api_key = stored
-            .and_then(|r| r.deposit_callback_api_key)
+        let api_key = order
+            .as_ref()
+            .and_then(|o| o.callback_api_key.clone())
+            .or_else(|| {
+                recipient
+                    .as_ref()
+                    .and_then(|r| r.deposit_callback_api_key.clone())
+            })
             .or_else(|| self.deposit_callback_api_key.clone());
+
+        let status_str = match order.as_ref().map(|o| &o.status).unwrap_or(&status) {
+            BridgeOrderStatus::AwaitingDeposit => "awaiting_deposit",
+            BridgeOrderStatus::DepositReceived => "deposit_received",
+            BridgeOrderStatus::Bridging => "bridging",
+            BridgeOrderStatus::Completed => "completed",
+            BridgeOrderStatus::Failed => "failed",
+        };
         let payload = serde_json::json!({
-            "mysoSendAddress": format!("{}", event.recipient),
-            "mysoDepositTxDigest": event.tx_digest.to_string(),
-            "bridgeTxDigest": bridge_tx_digest.to_string(),
-            "evmDestinationAddress": format!("{:?}", EthAddress::from_slice(&target_address)),
-            "amount": event.amount.to_string(),
-            "finality": "confirmed",
+            "eventType": "status_changed",
+            "orderId": order.as_ref().map(|o| o.order_id.clone()),
+            "status": status_str,
+            "direction": order.as_ref().map(|o| match o.direction {
+                crate::storage::BridgeOrderDirection::In => "in",
+                crate::storage::BridgeOrderDirection::Out => "out",
+            }),
+            "mysoWallet": order.as_ref().map(|o| o.myso_wallet.clone()),
+            "depositAddress": order.as_ref().map(|o| o.deposit_address.clone()),
+            "destinationAddress": order.as_ref().map(|o| o.destination_address.clone()),
+            "amount": order.as_ref().and_then(|o| o.amount.clone()),
+            "depositTxDigest": order.as_ref().and_then(|o| o.deposit_tx_digest.clone()),
+            "bridgeTxDigest": order.as_ref().and_then(|o| o.bridge_tx_digest.clone()),
+            "evmTxHash": order.as_ref().and_then(|o| o.evm_tx_hash.clone()),
+            "finality": if status_str == "completed" { "confirmed" } else { "pending" },
+            "mysoSendAddress": order.as_ref().map(|o| o.deposit_address.clone()),
+            "mysoDepositTxDigest": order.as_ref().and_then(|o| o.deposit_tx_digest.clone()),
+            "evmDestinationAddress": order.as_ref().map(|o| o.destination_address.clone()),
         });
-        tokio::spawn(async move {
-            let mut request = reqwest::Client::new().post(url).json(&payload);
-            if let Some(key) = api_key {
-                request = request.header("x-internal-api-key", key);
-            }
-            match request.send().await {
-                Ok(response) if response.status().is_success() => {
-                    info!("Deposit bridge-complete callback succeeded");
-                }
-                Ok(response) => {
-                    warn!(
-                        status = %response.status(),
-                        "Deposit bridge-complete callback rejected"
-                    );
-                }
-                Err(err) => {
-                    warn!(?err, "Deposit bridge-complete callback failed");
-                }
-            }
-        });
+        spawn_status_webhook(url, api_key, payload);
+    }
+
+    pub fn notify_deposit_failed(&self, deposit_key: DepositAddressKey) {
+        self.notify_lifecycle(
+            &deposit_key,
+            BridgeOrderStatus::Failed,
+            BridgeOrderPatch::default(),
+        );
     }
 
     /// Find a gas coin for the address with balance >= amount

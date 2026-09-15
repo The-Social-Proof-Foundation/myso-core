@@ -21,6 +21,9 @@ pub struct SptPoolRow {
     #[serde(serialize_with = "json_string_i64::serialize")]
     #[diesel(sql_type = BigInt)]
     pub circulating_supply: i64,
+    #[serde(serialize_with = "json_string_i64::serialize")]
+    #[diesel(sql_type = BigInt)]
+    pub launch_supply: i64,
     #[diesel(sql_type = BigInt)]
     pub base_price: i64,
     #[diesel(sql_type = BigInt)]

@@ -2,8 +2,8 @@
 # Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Publish MyUSD/BTC/ETH, create three MyUSD-quoted orderbook pools, and register
-# the assets + pools in the local orderbook catalog (localhost:9008).
+# Publish MyUSD, reuse bridge-registered BTC/ETH, create three MyUSD-quoted
+# pools, and register the assets + pools in the local orderbook catalog (localhost:9008).
 #
 # All object IDs, package IDs, cap IDs, coin types, and pool IDs are discovered
 # automatically from GraphQL + the active wallet. Do not paste addresses.
@@ -16,6 +16,7 @@
 # Prerequisites:
 #   - myso start --with-indexer --with-orderbook
 #   - ./scripts/bootstrap.sh completed (caps owned by the active address)
+#   - ./scripts/bridge-bootstrap.sh completed (writes BRIDGE_BTC_TYPE / BRIDGE_ETH_TYPE)
 #   - myso, curl, jq, python3 on PATH
 #
 # Session (write-only output): network.config/orderbook/orderbook-session.env
@@ -194,11 +195,13 @@ run_bootstrap() {
     myso client faucet || true
 
     orderbook_load_session
+    DEPLOYER_ADDRESS="${DEPLOYER_ADDRESS:-$active}"
     orderbook_refresh_session_from_graphql || return 1
     orderbook_validate_session_ids
+    orderbook_ensure_deployer_identity || return 1
     require_session_fields ORDERBOOK_REGISTRY_ID ORDERBOOK_ADMIN_CAP_ID \
         COIN_CREATION_ADMIN_CAP_ID PACKAGE_PUBLISH_ADMIN_CAP_ID \
-        ORDERBOOK_PACKAGE_ID CLOCK_ID || return 1
+        ORDERBOOK_PACKAGE_ID CLOCK_ID DEPLOYER_ADDRESS PRIVATE_KEY || return 1
 
     if ! orderbook_admin_health; then
         echo "Orderbook admin API not reachable at ${ORDERBOOK_API_URL}/admin/health" >&2
@@ -208,28 +211,22 @@ run_bootstrap() {
 
     ensure_token_published MYUSD PKG_MYUSD MYUSD_COIN_TYPE "myusd::MYUSD" \
         "$REPO_ROOT/bridge/move/tokens/myusd" || return 1
-    ensure_token_published BTC PKG_BTC BTC_COIN_TYPE "btc::BTC" \
-        "$REPO_ROOT/bridge/move/tokens/btc" || return 1
-    ensure_token_published ETH PKG_ETH ETH_COIN_TYPE "eth::ETH" \
-        "$REPO_ROOT/bridge/move/tokens/eth" || return 1
+    orderbook_import_bridge_btc_eth || return 1
+    orderbook_save_session
 
     ensure_token_initialized MYUSD MYUSD_TREASURY_CAP_ID \
         orderbook_init_myusd "$PKG_MYUSD" "$active" || return 1
-    ensure_token_initialized BTC BTC_TREASURY_CAP_ID \
-        orderbook_init_bridged_token "$PKG_BTC" btc || return 1
-    ensure_token_initialized ETH ETH_TREASURY_CAP_ID \
-        orderbook_init_bridged_token "$PKG_ETH" eth || return 1
 
     if [[ "$SKIP_MINT" != 1 ]]; then
-        log_step "Minting test supply"
+        log_step "Minting test MyUSD (BTC/ETH come from inbound bridge claims)"
         orderbook_mint_token "$MYUSD_COIN_TYPE" "$MYUSD_TREASURY_CAP_ID" "$MYUSD_MINT_AMOUNT" "$active" || return 1
-        orderbook_mint_token "$BTC_COIN_TYPE" "$BTC_TREASURY_CAP_ID" "$BTC_MINT_AMOUNT" "$active" || return 1
-        orderbook_mint_token "$ETH_COIN_TYPE" "$ETH_TREASURY_CAP_ID" "$ETH_MINT_AMOUNT" "$active" || return 1
         orderbook_save_session
     else
         log_step "Skipping mint (--skip-mint)"
     fi
 
+    log_step "Initializing orderbook BalanceManager map"
+    orderbook_init_balance_manager_map || return 1
     log_step "Registering MyUSD as orderbook stablecoin"
     orderbook_add_myusd_stablecoin || return 1
     orderbook_save_session
@@ -304,9 +301,13 @@ run_mm_only() {
     done < <(orderbook_mm_required_pool_id_vars)
 
     orderbook_load_session
+    DEPLOYER_ADDRESS="${DEPLOYER_ADDRESS:-$active}"
     orderbook_refresh_session_from_graphql || return 1
     orderbook_validate_session_ids
+    orderbook_import_bridge_btc_eth || return 1
+    orderbook_ensure_deployer_identity || return 1
     require_session_fields ORDERBOOK_REGISTRY_ID MYUSD_COIN_TYPE MYUSD_TREASURY_CAP_ID \
+        BTC_COIN_TYPE ETH_COIN_TYPE \
         DEPLOYER_ADDRESS PRIVATE_KEY "${required_pools[@]}" || return 1
 
     if ! orderbook_admin_health; then

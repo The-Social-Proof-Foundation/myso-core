@@ -90,9 +90,12 @@ public fun build(builder: TestRunnerBuilder): TestRunner {
     // create stake subsidy
     let stake_subsidy = stake_subsidy::create(
         balance::create_for_testing<MYSO>(myso_supply_amount.destroy_or!(1000) * MIST_PER_MYSO), // myso_supply
-        0, // stake subsidy initial distribution amount
+        0, // initial APY bps
         10, // stake_subsidy_period_length
         0, // stake_subsidy_decrease_rate
+        10000, // max_apy_bps
+        0, // min_apy_bps
+        1, // intended_duration_years
         scenario.ctx(),
     );
 

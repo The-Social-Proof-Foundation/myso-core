@@ -200,6 +200,11 @@ fn process_token_pool_created_event(
         "total_reserved_at_launch",
         "TokenPoolCreatedEvent",
     )?;
+    let launch_supply = require_chain_u64_as_i64(
+        data.get("launch_supply"),
+        "launch_supply",
+        "TokenPoolCreatedEvent",
+    )?;
 
     let pool = NewSptPool {
         pool_id: id.clone(),
@@ -207,6 +212,7 @@ fn process_token_pool_created_event(
         owner: owner.clone(),
         associated_id: associated_id.clone(),
         circulating_supply,
+        launch_supply,
         base_price,
         quadratic_coefficient,
         created_at: ts,
@@ -794,7 +800,7 @@ fn process_spt_config_updated_event(
     let reservation_creator_fee_bps = json_to_i64(data.get("reservation_creator_fee_bps")?);
     let reservation_platform_fee_bps = json_to_i64(data.get("reservation_platform_fee_bps")?);
     let reservation_treasury_fee_bps = json_to_i64(data.get("reservation_treasury_fee_bps")?);
-    let base_price = json_to_i64(data.get("base_price")?);
+    let base_price = myso_indexer_alt_social_schema::models::DEFAULT_BASE_PRICE;
     let quadratic_coefficient = json_to_i64(data.get("quadratic_coefficient")?);
     let max_hold_percent_bps = json_to_i64(data.get("max_hold_percent_bps")?);
     let post_threshold = json_to_i64(data.get("post_threshold")?);
@@ -909,12 +915,18 @@ fn process_social_proof_init_pool_event(
     let base_price = json_to_i64(data.get("base_price")?);
     let quadratic_coefficient = json_to_i64(data.get("quadratic_coefficient")?);
 
+    let launch_supply = require_chain_u64_as_i64(
+        data.get("launch_supply"),
+        "launch_supply",
+        "SocialProofInitPoolEvent",
+    )?;
     let pool = NewSptPool {
         pool_id: id,
         token_type,
         owner,
         associated_id,
         circulating_supply: 0,
+        launch_supply,
         base_price,
         quadratic_coefficient,
         created_at: ts,
@@ -1185,7 +1197,7 @@ mod tests {
 
     #[test]
     fn token_pool_created_sets_supply_price_profile_and_launch_holdings_marker() {
-        // circulating_supply = nano-SPT; total_reserved_at_launch = nano-MYSO (need not equal; on-chain supply scales by base_price).
+        // circulating_supply = nano-SPT; launch_supply = S0 (required; 1:1 with net reserved MYSO).
         let data = json!({
             "id": "0xpool1",
             "token_type": 1u64,
@@ -1195,6 +1207,7 @@ mod tests {
             "quadratic_coefficient": 1i64,
             "circulating_supply": 100u64 * SPT_AMOUNT_NANO_SCALE as u64,
             "total_reserved_at_launch": 1000u64,
+            "launch_supply": 100u64 * SPT_AMOUNT_NANO_SCALE as u64,
         });
         let rows = handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).expect("rows");
         let pool = rows
@@ -1208,6 +1221,7 @@ mod tests {
             })
             .expect("SptPool");
         assert_eq!(pool.circulating_supply, 100 * SPT_AMOUNT_NANO_SCALE);
+        assert_eq!(pool.launch_supply, 100 * SPT_AMOUNT_NANO_SCALE);
         let ph = rows
             .iter()
             .find_map(|r| {
@@ -1259,6 +1273,7 @@ mod tests {
             "quadratic_coefficient": 0i64,
             "circulating_supply": 10u64 * SPT_AMOUNT_NANO_SCALE as u64,
             "total_reserved_at_launch": 100u64,
+            "launch_supply": 10u64 * SPT_AMOUNT_NANO_SCALE as u64,
         });
         let rows = handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).expect("rows");
         assert!(
@@ -1281,38 +1296,20 @@ mod tests {
     }
 
     #[test]
-    fn token_pool_created_without_supply_skips_launch_row() {
+    fn token_pool_created_without_launch_supply_skips_batch() {
         let data = json!({
             "id": "0xpool1",
             "token_type": 2u64,
             "owner": "0xowner",
             "associated_id": "0xpost",
-            "base_price": 0i64,
-            "quadratic_coefficient": 0i64,
+            "base_price": 1_000_000_000i64,
+            "quadratic_coefficient": 100_000i64,
+            "circulating_supply": 10u64 * SPT_AMOUNT_NANO_SCALE as u64,
+            "total_reserved_at_launch": 100u64,
         });
-        let rows = handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).expect("rows");
         assert!(
-            !rows
-                .iter()
-                .any(|r| matches!(r, SocialEventRow::SptLaunchHoldingsFromReservations { .. })),
-            "legacy JSON omits circulating_supply → no launch holdings row"
-        );
-        let pool = rows
-            .iter()
-            .find_map(|r| {
-                if let SocialEventRow::SptPool(p) = r {
-                    Some(p)
-                } else {
-                    None
-                }
-            })
-            .expect("SptPool");
-        assert_eq!(pool.circulating_supply, 0);
-        assert!(
-            rows.iter().any(|r| {
-                matches!(r, SocialEventRow::SocialProofTokensEvent(e) if e.event_type == "TokenPoolCreatedEvent")
-            }),
-            "TokenPoolCreatedEvent still logged when circulating_supply is 0"
+            handle_spt_event("TokenPoolCreatedEvent", &data, "tx:0", 0, 5000).is_none(),
+            "launch_supply is required; do not invent 0"
         );
     }
 

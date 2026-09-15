@@ -3,8 +3,13 @@
 
 //! Per-address deposit completion callbacks (platform-neutral).
 
+use serde_json::Value;
 use std::net::IpAddr;
+use std::time::Duration;
+use tracing::{info, warn};
 use url::Url;
+
+const CALLBACK_MAX_ATTEMPTS: u32 = 5;
 
 /// Validate a platform callback URL. HTTPS only; reject loopback / private hosts.
 /// When `allowlist` is non-empty, the host must match one of those names.
@@ -53,6 +58,40 @@ pub fn parse_callback_host_allowlist(raw: Option<&str>) -> Vec<String> {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect()
+}
+
+/// POST a lifecycle webhook with exponential backoff. Fire-and-forget.
+pub fn spawn_status_webhook(url: String, api_key: Option<String>, payload: Value) {
+    tokio::spawn(async move {
+        let client = reqwest::Client::new();
+        for attempt in 1..=CALLBACK_MAX_ATTEMPTS {
+            let mut request = client.post(&url).json(&payload);
+            if let Some(key) = api_key.as_ref() {
+                request = request.header("x-internal-api-key", key);
+            }
+            match request.send().await {
+                Ok(response) if response.status().is_success() => {
+                    info!(attempt, "Bridge status webhook succeeded");
+                    return;
+                }
+                Ok(response) => {
+                    warn!(
+                        attempt,
+                        status = %response.status(),
+                        "Bridge status webhook rejected"
+                    );
+                }
+                Err(err) => {
+                    warn!(attempt, ?err, "Bridge status webhook failed");
+                }
+            }
+            if attempt < CALLBACK_MAX_ATTEMPTS {
+                let delay = Duration::from_secs(2u64.saturating_pow(attempt.min(4)));
+                tokio::time::sleep(delay).await;
+            }
+        }
+        warn!("Bridge status webhook exhausted retries");
+    });
 }
 
 fn is_blocked_ip(ip: IpAddr) -> bool {

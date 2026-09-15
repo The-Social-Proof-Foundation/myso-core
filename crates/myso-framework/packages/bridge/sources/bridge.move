@@ -66,6 +66,14 @@ public struct BridgeInner has store {
     token_transfer_records: LinkedTable<BridgeMessageKey, BridgeRecord>,
     limiter: TransferLimiter,
     paused: bool,
+    /// token_id -> claim policy and conversion boundary.
+    token_claim_policies: VecMap<u8, TokenClaimPolicy>,
+}
+
+public struct TokenClaimPolicy has copy, drop, store {
+    policy: u8,
+    boundary_source_chain: u8,
+    boundary_seq: u64,
 }
 
 public struct TokenDepositedEvent has copy, drop {
@@ -121,6 +129,12 @@ const EInvalidEvmAddress: u64 = 18;
 const ETokenValueIsZero: u64 = 19;
 const EMustUseSendMySoToken: u64 = 20;
 const EMustUseClaimMySoToken: u64 = 21;
+const EDirectClaimDisabled: u64 = 22;
+const EInvalidClaimPolicy: u64 = 23;
+
+const CLAIM_POLICY_DIRECT: u8 = 0;
+const CLAIM_POLICY_CONVERT_TO_MYUSD: u8 = 1;
+const CLAIM_POLICY_DISABLED: u8 = 2;
 
 const CURRENT_VERSION: u64 = 0;
 
@@ -162,6 +176,7 @@ fun create(id: UID, chain_id: u8, ctx: &mut TxContext) {
         token_transfer_records: linked_table::new(ctx),
         limiter: limiter::new(),
         paused: false,
+        token_claim_policies: vec_map::empty(),
     };
     let bridge = Bridge {
         id,
@@ -461,6 +476,48 @@ public fun approve_token_transfer(
 // This function can only be called by the token recipient
 // Abort if the token has already been claimed or hits limiter currently,
 // in which case, no event will be emitted and only abort code will be returned.
+public fun claim_policy_direct(): u8 { CLAIM_POLICY_DIRECT }
+
+public fun claim_policy_convert_to_myusd(): u8 { CLAIM_POLICY_CONVERT_TO_MYUSD }
+
+public fun claim_policy_disabled(): u8 { CLAIM_POLICY_DISABLED }
+
+public fun effective_claim_policy(
+    bridge: &Bridge,
+    token_id: u8,
+    source_chain: u8,
+    bridge_seq_num: u64,
+): u8 {
+    effective_claim_policy_inner(load_inner(bridge), token_id, source_chain, bridge_seq_num)
+}
+
+public(package) fun set_token_claim_policy(
+    bridge: &mut Bridge,
+    token_id: u8,
+    policy: u8,
+    boundary_source_chain: u8,
+    boundary_seq: u64,
+    _ctx: &TxContext,
+) {
+    assert!(
+        policy == CLAIM_POLICY_DIRECT
+            || policy == CLAIM_POLICY_CONVERT_TO_MYUSD
+            || policy == CLAIM_POLICY_DISABLED,
+        EInvalidClaimPolicy,
+    );
+    let inner = load_inner_mut(bridge);
+    let next = TokenClaimPolicy {
+        policy,
+        boundary_source_chain,
+        boundary_seq,
+    };
+    if (inner.token_claim_policies.contains(&token_id)) {
+        *inner.token_claim_policies.get_mut(&token_id) = next;
+    } else {
+        inner.token_claim_policies.insert(token_id, next);
+    };
+}
+
 public fun claim_token<T>(
     bridge: &mut Bridge,
     clock: &Clock,
@@ -468,6 +525,7 @@ public fun claim_token<T>(
     bridge_seq_num: u64,
     ctx: &mut TxContext,
 ): Coin<T> {
+    assert_direct_claim_allowed<T>(bridge, source_chain, bridge_seq_num);
     let (maybe_token, owner) = bridge.claim_token_internal<T>(
         clock,
         source_chain,
@@ -489,6 +547,7 @@ public fun claim_and_transfer_token<T>(
     bridge_seq_num: u64,
     ctx: &mut TxContext,
 ) {
+    assert_direct_claim_allowed<T>(bridge, source_chain, bridge_seq_num);
     let (token, owner) = bridge.claim_token_internal<T>(clock, source_chain, bridge_seq_num, ctx);
     if (token.is_some()) {
         transfer::public_transfer(token.destroy_some(), owner)
@@ -647,9 +706,36 @@ fun load_inner_mut(bridge: &mut Bridge): &mut BridgeInner {
     inner
 }
 
+fun assert_direct_claim_allowed<T>(bridge: &Bridge, source_chain: u8, bridge_seq_num: u64) {
+    let inner = load_inner(bridge);
+    let token_id = inner.treasury.token_id<T>();
+    let policy = effective_claim_policy_inner(inner, token_id, source_chain, bridge_seq_num);
+    assert!(policy == CLAIM_POLICY_DIRECT, EDirectClaimDisabled);
+}
+
+fun effective_claim_policy_inner(
+    inner: &BridgeInner,
+    token_id: u8,
+    source_chain: u8,
+    bridge_seq_num: u64,
+): u8 {
+    if (!inner.token_claim_policies.contains(&token_id)) {
+        return CLAIM_POLICY_DIRECT
+    };
+    let stored = inner.token_claim_policies[&token_id];
+    if (
+        stored.policy == CLAIM_POLICY_CONVERT_TO_MYUSD
+            && source_chain == stored.boundary_source_chain
+            && bridge_seq_num < stored.boundary_seq
+    ) {
+        return CLAIM_POLICY_DIRECT
+    };
+    stored.policy
+}
+
 // Claim token from approved bridge message
 // Returns Some(Coin) if coin can be claimed. If already claimed, return None
-fun claim_token_internal<T>(
+public(package) fun claim_token_internal<T>(
     bridge: &mut Bridge,
     clock: &Clock,
     source_chain: u8,
@@ -972,11 +1058,12 @@ public fun new_for_testing(chain_id: u8, ctx: &mut TxContext): Bridge {
         message_version: MESSAGE_VERSION,
         chain_id,
         sequence_nums: vec_map::empty(),
-        committee: committee::create(ctx),
+        committee: committee::create_for_testing(),
         treasury: treasury::create(ctx),
         token_transfer_records: linked_table::new(ctx),
         limiter: limiter::new(),
         paused: false,
+        token_claim_policies: vec_map::empty(),
     };
     let mut bridge = Bridge {
         id,
@@ -1072,6 +1159,17 @@ public fun inner_treasury_mut(bridge_inner: &mut BridgeInner): &mut BridgeTreasu
 }
 
 #[test_only]
+public fun test_set_token_claim_policy(
+    bridge: &mut Bridge,
+    token_id: u8,
+    policy: u8,
+    boundary_source_chain: u8,
+    boundary_seq: u64,
+    ctx: &TxContext,
+) {
+    set_token_claim_policy(bridge, token_id, policy, boundary_source_chain, boundary_seq, ctx)
+}
+
 public fun inner_paused(bridge_inner: &BridgeInner): bool {
     bridge_inner.paused
 }

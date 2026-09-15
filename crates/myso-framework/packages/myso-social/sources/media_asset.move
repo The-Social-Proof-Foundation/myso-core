@@ -20,6 +20,9 @@
 /// - `finalize_media_asset` / `oracle_update_media_asset_claims` — `public(package)`, oracle-gated
 /// - `proof_of_creativity::finalize_media_asset` — public entry wrapper for oracle PTBs
 /// - `update_media_asset_usage_grants` — rights controller or license authority
+/// - `set_media_asset_future_usage_paused` — rights controller or license authority
+/// - `revoke_license_instance_by_licensor` — rights controller or license authority
+/// - `attach_media_asset_license` — rights controller or license authority
 /// - `update_media_asset_economics` — authorized economics parties only
 /// - Validation, grant checks, manifest helpers — `public(package)` (same package only)
 ///
@@ -83,9 +86,11 @@ module social_contracts::media_asset {
     const EActiveRightsProposal: u64 = 27;
     const ENoActiveRightsProposal: u64 = 28;
     const ERightsDisputeCapReached: u64 = 29;
+    const ETemplateNotAttached: u64 = 30;
+    const EInstanceAssetMismatch: u64 = 31;
 
     const RIGHTS_DISPUTE_DF_KEY: vector<u8> = b"rights_dispute_state";
-    const ERoyaltyOverflow: u64 = 29;
+    const ERoyaltyOverflow: u64 = 32;
 
     public struct LineageCommitment has store, copy, drop {
         parent_asset_ids: vector<ID>,
@@ -289,6 +294,9 @@ module social_contracts::media_asset {
         beneficiary_splits: vector<BeneficiarySplit>,
         rights_version: u64,
         economics_version: u64,
+        /// Enforcement epoch — bumps on pause, grant edits, denials, and licensor revoke.
+        authorization_version: u64,
+        future_usage_paused: bool,
         provenance_status: u8,
         originality_status: u8,
         lineage_parent_id: Option<ID>,
@@ -315,6 +323,7 @@ module social_contracts::media_asset {
         asset_id: ID,
         rights_version: u64,
         economics_version: u64,
+        authorization_version: u64,
         usage_class: u8,
     }
 
@@ -392,9 +401,25 @@ module social_contracts::media_asset {
     public struct MediaAssetRightsUpdatedEvent has copy, drop {
         media_asset_id: ID,
         rights_version: u64,
+        authorization_version: u64,
         usage_grants: vector<UsageGrant>,
         creators: vector<address>,
         controllers: vector<address>,
+        timestamp: u64,
+    }
+
+    public struct MediaAssetFutureUsagePausedEvent has copy, drop {
+        media_asset_id: ID,
+        paused: bool,
+        authorization_version: u64,
+        timestamp: u64,
+    }
+
+    public struct MediaAssetLicenseInstanceRevokedByLicensorEvent has copy, drop {
+        media_asset_id: ID,
+        license_instance_id: ID,
+        revoked_by: address,
+        authorization_version: u64,
         timestamp: u64,
     }
 
@@ -447,6 +472,31 @@ module social_contracts::media_asset {
 
     public(package) fun economics_version(asset: &MediaAsset): u64 {
         asset.economics_version
+    }
+
+    public(package) fun authorization_version(asset: &MediaAsset): u64 {
+        asset.authorization_version
+    }
+
+    public(package) fun future_usage_paused(asset: &MediaAsset): bool {
+        asset.future_usage_paused
+    }
+
+    public(package) fun bump_authorization_version(asset: &mut MediaAsset) {
+        asset.authorization_version = asset.authorization_version + 1;
+    }
+
+    public(package) fun new_asset_version_commitment(
+        asset: &MediaAsset,
+        usage_class: u8,
+    ): AssetVersionCommitment {
+        AssetVersionCommitment {
+            asset_id: object::id(asset),
+            rights_version: asset.rights_version,
+            economics_version: asset.economics_version,
+            authorization_version: asset.authorization_version,
+            usage_class,
+        }
     }
 
     public(package) fun assert_valid_usage_class(usage_class: u8) {
@@ -527,6 +577,9 @@ module social_contracts::media_asset {
     }
 
     fun find_usage_grant(asset: &MediaAsset, usage_class: u8, now: u64): Option<UsageGrant> {
+        if (asset.future_usage_paused) {
+            return option::none()
+        };
         let grants = &asset.usage_grants;
         let mut i = 0;
         let len = vector::length(grants);
@@ -1058,6 +1111,8 @@ module social_contracts::media_asset {
                 beneficiary_splits,
                 rights_version: 1,
                 economics_version: 1,
+                authorization_version: 1,
+                future_usage_paused: false,
                 provenance_status: provenance_verified(),
                 originality_status,
                 lineage_parent_id,
@@ -1116,13 +1171,121 @@ module social_contracts::media_asset {
         assert_valid_usage_grants(&usage_grants, now, max_compensation_bps);
         asset.usage_grants = usage_grants;
         asset.rights_version = asset.rights_version + 1;
+        bump_authorization_version(asset);
         event::emit(MediaAssetRightsUpdatedEvent {
             media_asset_id: object::id(asset),
             rights_version: asset.rights_version,
+            authorization_version: asset.authorization_version,
             usage_grants: asset.usage_grants,
             creators: asset.creators,
             controllers: controller_addresses(&asset.rights_interests),
             timestamp: now,
+        });
+    }
+
+    /// Rights controller or license authority: pause or unpause future usage.
+    /// Stored grants are unchanged. Bumps `authorization_version`.
+    public fun set_media_asset_future_usage_paused(
+        asset: &mut MediaAsset,
+        paused: bool,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_media_asset_version(asset);
+        assert!(can_update_rights(asset, tx_context::sender(ctx)), EUnauthorized);
+        asset.future_usage_paused = paused;
+        bump_authorization_version(asset);
+        event::emit(MediaAssetFutureUsagePausedEvent {
+            media_asset_id: object::id(asset),
+            paused,
+            authorization_version: asset.authorization_version,
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    fun asset_has_attached_template(asset: &MediaAsset, template_version_id: ID): bool {
+        let licenses = &asset.asset_licenses;
+        let mut i = 0;
+        let len = vector::length(licenses);
+        while (i < len) {
+            let offer = vector::borrow(licenses, i);
+            if (license_tpl::asset_license_template_id(offer) == template_version_id) {
+                return true
+            };
+            i = i + 1;
+        };
+        false
+    }
+
+    /// Licensor-authorized revoke. The generic `license_template::revoke_license_instance`
+    /// is package-private and is not a controller bypass.
+    public fun revoke_license_instance_by_licensor(
+        asset: &mut MediaAsset,
+        instance: &mut LicenseInstance,
+        template: &LicenseTemplateVersion,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_media_asset_version(asset);
+        let sender = tx_context::sender(ctx);
+        assert!(can_update_rights(asset, sender), EUnauthorized);
+        let template_id = license_tpl::template_version_id(template);
+        assert!(asset_has_attached_template(asset, template_id), ETemplateNotAttached);
+        license_tpl::assert_instance_matches_template(instance, template);
+        assert!(
+            license_tpl::instance_licensor_asset_id(instance) == object::id(asset),
+            EInstanceAssetMismatch,
+        );
+        license_tpl::revoke_license_instance(instance, template, clock, ctx);
+        bump_authorization_version(asset);
+        event::emit(MediaAssetLicenseInstanceRevokedByLicensorEvent {
+            media_asset_id: object::id(asset),
+            license_instance_id: license_tpl::license_instance_id(instance),
+            revoked_by: sender,
+            authorization_version: asset.authorization_version,
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Replace or add a standing license offer for `usage_class` (new immutable template version).
+    public fun attach_media_asset_license(
+        asset: &mut MediaAsset,
+        template: &LicenseTemplateVersion,
+        usage_class: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_media_asset_version(asset);
+        assert!(can_update_rights(asset, tx_context::sender(ctx)), EUnauthorized);
+        assert_valid_usage_class(usage_class);
+        let template_id = license_tpl::template_version_id(template);
+        let offer = license_tpl::new_asset_license(template_id, usage_class, true);
+        let mut replaced = false;
+        let mut i = 0;
+        let len = vector::length(&asset.asset_licenses);
+        while (i < len) {
+            let existing = vector::borrow(&asset.asset_licenses, i);
+            if (license_tpl::asset_license_usage_class(existing) == usage_class) {
+                *vector::borrow_mut(&mut asset.asset_licenses, i) = offer;
+                replaced = true;
+                break
+            };
+            i = i + 1;
+        };
+        if (!replaced) {
+            assert!(vector::length(&asset.asset_licenses) < MAX_ASSET_LICENSES, EInvalidRightsGrant);
+            vector::push_back(&mut asset.asset_licenses, offer);
+        };
+        asset.rights_version = asset.rights_version + 1;
+        bump_authorization_version(asset);
+        event::emit(MediaAssetRightsUpdatedEvent {
+            media_asset_id: object::id(asset),
+            rights_version: asset.rights_version,
+            authorization_version: asset.authorization_version,
+            usage_grants: asset.usage_grants,
+            creators: asset.creators,
+            controllers: controller_addresses(&asset.rights_interests),
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -1156,9 +1319,11 @@ module social_contracts::media_asset {
         asset.rights_interests = rights_interests;
         asset.usage_grants = usage_grants;
         asset.rights_version = asset.rights_version + 1;
+        bump_authorization_version(asset);
         event::emit(MediaAssetRightsUpdatedEvent {
             media_asset_id: asset_id,
             rights_version: asset.rights_version,
+            authorization_version: asset.authorization_version,
             usage_grants: asset.usage_grants,
             creators: asset.creators,
             controllers: controller_addresses(&asset.rights_interests),
@@ -1426,7 +1591,8 @@ module social_contracts::media_asset {
             let c = vector::borrow(commitments, i);
             let live = vector::borrow(live_assets, i);
             if (c.rights_version != live.rights_version ||
-                c.economics_version != live.economics_version) {
+                c.economics_version != live.economics_version ||
+                c.authorization_version != live.authorization_version) {
                 return false
             };
             i = i + 1;
@@ -1666,6 +1832,8 @@ module social_contracts::media_asset {
             beneficiary_splits: default_beneficiary_splits(creator),
             rights_version: 1,
             economics_version: 1,
+            authorization_version: 1,
+            future_usage_paused: false,
             provenance_status: provenance_verified(),
             originality_status: originality_derivative(),
             lineage_parent_id: option::none(),
@@ -1746,9 +1914,11 @@ module social_contracts::media_asset {
         );
         vector::push_back(&mut child.derivative_relationships, edge);
         child.rights_version = child.rights_version + 1;
+        bump_authorization_version(child);
         event::emit(MediaAssetRightsUpdatedEvent {
             media_asset_id: child_id,
             rights_version: child.rights_version,
+            authorization_version: child.authorization_version,
             usage_grants: child.usage_grants,
             creators: child.creators,
             controllers: controller_addresses(&child.rights_interests),
@@ -1776,9 +1946,11 @@ module social_contracts::media_asset {
         assert!(vector::length(&asset_licenses) <= MAX_ASSET_LICENSES, EInvalidRightsGrant);
         asset.asset_licenses = asset_licenses;
         asset.rights_version = asset.rights_version + 1;
+        bump_authorization_version(asset);
         event::emit(MediaAssetRightsUpdatedEvent {
             media_asset_id: object::id(asset),
             rights_version: asset.rights_version,
+            authorization_version: asset.authorization_version,
             usage_grants: asset.usage_grants,
             creators: asset.creators,
             controllers: controller_addresses(&asset.rights_interests),
@@ -1810,6 +1982,7 @@ module social_contracts::media_asset {
             timestamp: clock::timestamp_ms(clock),
         });
         asset.rights_version = asset.rights_version + 1;
+        bump_authorization_version(asset);
     }
 
     // =========================================================================
@@ -2069,6 +2242,8 @@ module social_contracts::media_asset {
             beneficiary_splits: default_beneficiary_splits(creator),
             rights_version: 1,
             economics_version: 1,
+            authorization_version: 1,
+            future_usage_paused: false,
             provenance_status: provenance_verified(),
             originality_status,
             lineage_parent_id: option::none(),
@@ -2497,6 +2672,8 @@ module social_contracts::media_asset {
             beneficiary_splits: default_beneficiary_splits(owner),
             rights_version: 1,
             economics_version: 1,
+            authorization_version: 1,
+            future_usage_paused: false,
             provenance_status: provenance_verified(),
             originality_status: originality_original(),
             lineage_parent_id: option::none(),
@@ -2723,6 +2900,16 @@ module social_contracts::media_asset {
     }
 
     #[test_only]
+    public fun test_authorization_version(asset: &MediaAsset): u64 {
+        asset.authorization_version
+    }
+
+    #[test_only]
+    public fun test_future_usage_paused(asset: &MediaAsset): bool {
+        asset.future_usage_paused
+    }
+
+    #[test_only]
     public fun test_destroy_media_asset(asset: MediaAsset) {
         let MediaAsset {
             id,
@@ -2738,6 +2925,8 @@ module social_contracts::media_asset {
             beneficiary_splits: _,
             rights_version: _,
             economics_version: _,
+            authorization_version: _,
+            future_usage_paused: _,
             provenance_status: _,
             originality_status: _,
             lineage_parent_id: _,
@@ -3352,6 +3541,10 @@ module social_contracts::license_template {
         royalty_bps: u64,
         derivative_royalty_bps: u64,
         instance_revocable: bool,
+        legal_terms_uri_bytes: vector<u8>,
+        legal_terms_hash: vector<u8>,
+        governing_law: vector<u8>,
+        license_schema_version: u64,
         timestamp: u64,
     }
 
@@ -3404,6 +3597,30 @@ module social_contracts::license_template {
 
     public fun template_attribution_required(template: &LicenseTemplateVersion): bool {
         template.attribution_required
+    }
+
+    public fun template_version(template: &LicenseTemplateVersion): u64 {
+        template.version
+    }
+
+    public fun template_instance_revocable(template: &LicenseTemplateVersion): bool {
+        template.instance_revocable
+    }
+
+    public fun template_legal_terms_uri(template: &LicenseTemplateVersion): &Url {
+        &template.legal_terms_uri
+    }
+
+    public fun template_legal_terms_hash(template: &LicenseTemplateVersion): &vector<u8> {
+        &template.legal_terms_hash
+    }
+
+    public fun template_governing_law(template: &LicenseTemplateVersion): &vector<u8> {
+        &template.governing_law
+    }
+
+    public fun template_license_schema_version(template: &LicenseTemplateVersion): u64 {
+        template.license_schema_version
     }
 
     public fun instance_is_active(instance: &LicenseInstance, clock: &Clock): bool {
@@ -3533,6 +3750,10 @@ module social_contracts::license_template {
             royalty_bps,
             derivative_royalty_bps,
             instance_revocable,
+            legal_terms_uri_bytes,
+            legal_terms_hash,
+            governing_law,
+            license_schema_version,
             timestamp: clock::timestamp_ms(clock),
         });
         transfer::share_object(template);
@@ -3569,11 +3790,11 @@ module social_contracts::license_template {
         instance
     }
 
-    public fun revoke_license_instance(
+    public(package) fun revoke_license_instance(
         instance: &mut LicenseInstance,
         template: &LicenseTemplateVersion,
         clock: &Clock,
-        ctx: &mut TxContext,
+        ctx: &TxContext,
     ) {
         assert_instance_matches_template(instance, template);
         assert!(template.instance_revocable, EInstanceNotRevocable);
@@ -3668,6 +3889,12 @@ module social_contracts::license_template {
             expires_at: option::none(),
             status: license_instance_active(),
         }
+    }
+
+    #[test_only]
+    #[allow(lint(custom_state_change))]
+    public fun test_share_template(template: LicenseTemplateVersion) {
+        transfer::share_object(template);
     }
 
     #[test_only]

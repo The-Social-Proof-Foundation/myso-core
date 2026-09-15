@@ -129,15 +129,17 @@ module social_contracts::post_enforcement_tests {
         {
             let clock = test_scenario::take_shared<Clock>(&scen);
             let mut post = test_scenario::take_shared<Post>(&scen);
-            let asset = test_scenario::take_shared<MediaAsset>(&scen);
+            let mut asset = test_scenario::take_shared<MediaAsset>(&scen);
+            let before = ma::test_authorization_version(&asset);
             post::deny_container_usage(
                 &mut post,
-                &asset,
+                &mut asset,
                 BINDING_ID,
                 post::test_denial_scope_playback(),
                 &clock,
                 test_scenario::ctx(&mut scen),
             );
+            assert!(ma::test_authorization_version(&asset) == before + 1);
             assert!(!post::test_decision_playback_permitted(&post, BINDING_ID));
             assert!(post::test_composition_status(&post) == ma::composition_invalid());
             test_scenario::return_shared(asset);
@@ -149,10 +151,10 @@ module social_contracts::post_enforcement_tests {
         {
             let clock = test_scenario::take_shared<Clock>(&scen);
             let mut post = test_scenario::take_shared<Post>(&scen);
-            let asset = test_scenario::take_shared<MediaAsset>(&scen);
+            let mut asset = test_scenario::take_shared<MediaAsset>(&scen);
             post::lift_container_usage_denial(
                 &mut post,
-                &asset,
+                &mut asset,
                 BINDING_ID,
                 post::test_denial_scope_playback(),
                 &clock,

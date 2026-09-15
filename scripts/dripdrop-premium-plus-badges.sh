@@ -63,15 +63,15 @@ save_badge_session() {
 }
 
 import_social_and_plans() {
-    if [[ -f "$SOCIAL_SESSION" ]]; then
-        # shellcheck disable=SC1090
-        source "$SOCIAL_SESSION"
-        log_step "Imported live IDs from social-session.env"
-    fi
     if [[ -f "$PLANS_SESSION" ]]; then
         # shellcheck disable=SC1090
         source "$PLANS_SESSION"
         log_step "Imported IDs from dripdrop-subscription-plans-session.env"
+    fi
+    if [[ -f "$SOCIAL_SESSION" ]]; then
+        # shellcheck disable=SC1090
+        source "$SOCIAL_SESSION"
+        log_step "Imported live IDs from social-session.env (overrides stale badge/plans platform ids)"
     fi
 }
 
@@ -83,17 +83,35 @@ load_badge_session() {
 }
 
 ensure_dripdrop_platform() {
-    if [[ -n "${DRIPDROP_PLATFORM_ID:-}" ]]; then
-        PLATFORM_OBJECT_ID="$(normalize_hex_id "$DRIPDROP_PLATFORM_ID")"
-    elif [[ -n "${PLATFORM_OBJECT_ID:-}" ]]; then
-        PLATFORM_OBJECT_ID="$(normalize_hex_id "$PLATFORM_OBJECT_ID")"
-        DRIPDROP_PLATFORM_ID="$PLATFORM_OBJECT_ID"
-    else
-        echo "PLATFORM_OBJECT_ID / DRIPDROP_PLATFORM_ID is required (run bootstrap or --refresh-session)" >&2
-        return 1
+    local candidate resolved
+    # Prefer social-session / GraphQL live IDs. Badge-session leftovers from a
+    # previous regenesis (e.g. 0x0abce9ee…) must not win.
+    for candidate in "${PLATFORM_OBJECT_ID:-}" "${DRIPDROP_PLATFORM_ID:-}"; do
+        [[ -n "$candidate" ]] || continue
+        if object_exists_on_fullnode "$candidate"; then
+            DRIPDROP_PLATFORM_ID="$(normalize_hex_id "$candidate")"
+            PLATFORM_OBJECT_ID="$DRIPDROP_PLATFORM_ID"
+            log_session_use "DRIPDROP_PLATFORM_ID" "$DRIPDROP_PLATFORM_ID"
+            return 0
+        fi
+        log_step "Ignoring stale platform id $candidate (not on fullnode)"
+        if [[ "${DRIPDROP_PLATFORM_ID:-}" == "$candidate" ]]; then
+            DRIPDROP_PLATFORM_ID=''
+        fi
+        if [[ "${PLATFORM_OBJECT_ID:-}" == "$candidate" ]]; then
+            PLATFORM_OBJECT_ID=''
+        fi
+    done
+    resolved="$(dripdrop_gql_platform_id_by_name DripDrop 2>/dev/null || true)"
+    if [[ -n "$resolved" ]] && object_exists_on_fullnode "$resolved"; then
+        DRIPDROP_PLATFORM_ID="$(normalize_hex_id "$resolved")"
+        PLATFORM_OBJECT_ID="$DRIPDROP_PLATFORM_ID"
+        log_step "Resolved live DripDrop platform from GraphQL"
+        log_session_use "DRIPDROP_PLATFORM_ID" "$DRIPDROP_PLATFORM_ID"
+        return 0
     fi
-    DRIPDROP_PLATFORM_ID="$(normalize_hex_id "$DRIPDROP_PLATFORM_ID")"
-    log_session_use "DRIPDROP_PLATFORM_ID" "$DRIPDROP_PLATFORM_ID"
+    echo "DRIPDROP_PLATFORM_ID not on fullnode — run ./scripts/bootstrap.sh or --refresh-session" >&2
+    return 1
 }
 
 ensure_badge_wallets() {
@@ -102,8 +120,8 @@ ensure_badge_wallets() {
     fi
     DRIPDROP_BADGE_ADMIN_ADDRESS="$(normalize_hex_id "$DRIPDROP_BADGE_ADMIN_ADDRESS")" || return 1
     if [[ -z "${DRIPDROP_BADGE_MOD_ADDRESS:-}" ]]; then
-        echo "Set DRIPDROP_BADGE_MOD_ADDRESS (DripDrop badge distributor / PREMIUM_BADGE_SIGNER wallet)" >&2
-        return 1
+        DRIPDROP_BADGE_MOD_ADDRESS="$DRIPDROP_BADGE_ADMIN_ADDRESS"
+        log_step "DRIPDROP_BADGE_MOD_ADDRESS unset; using admin $DRIPDROP_BADGE_MOD_ADDRESS"
     fi
     DRIPDROP_BADGE_MOD_ADDRESS="$(normalize_hex_id "$DRIPDROP_BADGE_MOD_ADDRESS")" || return 1
     log_session_use "DRIPDROP_BADGE_ADMIN_ADDRESS" "$DRIPDROP_BADGE_ADMIN_ADDRESS"
@@ -134,6 +152,8 @@ resolve_assign_recipient_profile() {
 
 run_grant_phase() {
     local developer
+    social_validate_session_id_on_fullnode PLATFORM_REGISTRY_ID '0x50c1::platform::PlatformRegistry' SHARED 1 || return 1
+    social_validate_session_id_on_fullnode PLATFORM_CONFIG_ID '0x50c1::platform::PlatformConfig' SHARED 1 || return 1
     require_session_fields PKG_SOCIAL PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID CLOCK_ID || return 1
     ensure_dripdrop_platform || return 1
     ensure_badge_wallets || return 1

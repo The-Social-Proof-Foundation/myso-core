@@ -6,6 +6,7 @@
 # Source after scripts/lib/social-runtime-common.sh.
 # All on-chain IDs are GraphQL/wallet discovered — none are required as user input.
 # Env overrides (PKG_MYUSD, ORDERBOOK_REGISTRY_ID, …) are debug-only.
+# BTC/ETH coin types come from bridge-session.env (BRIDGE_BTC_TYPE / BRIDGE_ETH_TYPE).
 
 if [[ -n "${_ORDERBOOK_BOOTSTRAP_COMMON_SOURCED:-}" ]]; then
     return 0 2>/dev/null || exit 0
@@ -212,6 +213,66 @@ orderbook_validate_session_ids() {
     fi
 }
 
+orderbook_bridge_session_file() {
+    printf '%s' "${BRIDGE_SESSION_SAVE_PATH:-$REPO_ROOT/network.config/bridge/bridge-session.env}"
+}
+
+orderbook_coin_pkg() {
+    local type_name="$1"
+    printf '%s' "${type_name%%::*}"
+}
+
+orderbook_apply_bridge_coin_type() {
+    local kind="$1" type_name="$2" pkg old_type type_var pkg_var pool_var cap_var
+    type_var="${kind}_COIN_TYPE"
+    pkg_var="PKG_${kind}"
+    pool_var="${kind}_MYUSD_POOL_ID"
+    cap_var="${kind}_TREASURY_CAP_ID"
+    old_type="${!type_var:-}"
+    type_name="${type_name//$'\n'/}"
+    [[ -n "$type_name" ]] || return 1
+    pkg="$(orderbook_coin_pkg "$type_name")"
+    pkg="$(normalize_hex_id "$pkg")" || return 1
+    object_exists_on_fullnode "$pkg" || {
+        echo "Bridge $kind package $pkg is not on fullnode — re-run ./scripts/bridge-bootstrap.sh" >&2
+        return 1
+    }
+    printf -v "$pkg_var" '%s' "$pkg"
+    printf -v "$type_var" '%s' "$type_name"
+    printf -v "$cap_var" '%s' ''
+    if [[ -n "$old_type" && "$old_type" != "$type_name" ]]; then
+        printf -v "$pool_var" '%s' ''
+        log_step "Cleared $pool_var — coin type changed from $old_type to $type_name"
+    fi
+    log_session_use "$pkg_var" "$pkg"
+    log_session_use "$type_var" "$type_name"
+}
+
+orderbook_import_bridge_btc_eth() {
+    local file line btc eth
+    file="$(orderbook_bridge_session_file)"
+    btc="${BRIDGE_BTC_TYPE:-}"
+    eth="${BRIDGE_ETH_TYPE:-}"
+    if [[ -f "$file" ]]; then
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            case "$line" in
+                BRIDGE_BTC_TYPE=*|BRIDGE_ETH_TYPE=*|PKG_BRIDGE_BTC=*|PKG_BRIDGE_ETH=*)
+                    eval "$line"
+                    ;;
+            esac
+        done < "$file"
+        btc="${BRIDGE_BTC_TYPE:-$btc}"
+        eth="${BRIDGE_ETH_TYPE:-$eth}"
+    fi
+    if [[ -z "$btc" || -z "$eth" ]]; then
+        echo "Bridge BTC/ETH types not found. Run ./scripts/bridge-bootstrap.sh first (${file})." >&2
+        return 1
+    fi
+    orderbook_apply_bridge_coin_type BTC "$btc" || return 1
+    orderbook_apply_bridge_coin_type ETH "$eth" || return 1
+    log_step "Using bridge-registered BTC $BTC_COIN_TYPE and ETH $ETH_COIN_TYPE"
+}
+
 orderbook_cap_owned_by() {
     local cap="$1" expected="$2" owner
     cap="$(normalize_hex_id "$cap")" || return 1
@@ -290,17 +351,7 @@ orderbook_discover_published_tokens() {
                 MYUSD_TREASURY_CAP_ID="$addr"
                 log_session_use "MYUSD_TREASURY_CAP_ID" "$addr"
                 ;;
-            *::btc::BTC)
-                PKG_BTC="$pkg"
-                BTC_COIN_TYPE="${pkg}::btc::BTC"
-                BTC_TREASURY_CAP_ID="$addr"
-                log_session_use "BTC_TREASURY_CAP_ID" "$addr"
-                ;;
-            *::eth::ETH)
-                PKG_ETH="$pkg"
-                ETH_COIN_TYPE="${pkg}::eth::ETH"
-                ETH_TREASURY_CAP_ID="$addr"
-                log_session_use "ETH_TREASURY_CAP_ID" "$addr"
+            *::btc::BTC|*::eth::ETH)
                 ;;
         esac
     done < <(echo "$json" | jq -r '
@@ -313,7 +364,7 @@ orderbook_discover_published_tokens() {
 
 orderbook_discover_treasuries_from_wallet() {
     local active="$1" json
-    [[ -n "${MYUSD_TREASURY_CAP_ID:-}" && -n "${BTC_TREASURY_CAP_ID:-}" && -n "${ETH_TREASURY_CAP_ID:-}" ]] && return 0
+    [[ -n "${MYUSD_TREASURY_CAP_ID:-}" ]] && return 0
     json="$(myso client objects "$active" --json 2>/dev/null)" || return 0
     local addr typ inner pkg
     while IFS=$'\t' read -r addr typ; do
@@ -332,19 +383,7 @@ orderbook_discover_treasuries_from_wallet() {
                 MYUSD_TREASURY_CAP_ID="$addr"
                 log_session_use "MYUSD_TREASURY_CAP_ID" "$addr"
                 ;;
-            *::btc::BTC)
-                [[ -n "${BTC_TREASURY_CAP_ID:-}" ]] && continue
-                PKG_BTC="$pkg"
-                BTC_COIN_TYPE="${pkg}::btc::BTC"
-                BTC_TREASURY_CAP_ID="$addr"
-                log_session_use "BTC_TREASURY_CAP_ID" "$addr"
-                ;;
-            *::eth::ETH)
-                [[ -n "${ETH_TREASURY_CAP_ID:-}" ]] && continue
-                PKG_ETH="$pkg"
-                ETH_COIN_TYPE="${pkg}::eth::ETH"
-                ETH_TREASURY_CAP_ID="$addr"
-                log_session_use "ETH_TREASURY_CAP_ID" "$addr"
+            *::btc::BTC|*::eth::ETH)
                 ;;
         esac
     done < <(echo "$json" | jq -r '
@@ -424,10 +463,15 @@ orderbook_refresh_session_from_graphql() {
         echo "GraphQL unreachable at $GRAPHQL_URL — start myso start --with-indexer --with-orderbook" >&2
         return 1
     fi
+    if [[ -z "${DEPLOYER_ADDRESS:-}" ]]; then
+        DEPLOYER_ADDRESS="$active"
+        log_session_use "DEPLOYER_ADDRESS" "$DEPLOYER_ADDRESS"
+    fi
     for ((attempt = 1; attempt <= max; attempt++)); do
         log_step "Refreshing orderbook session from GraphQL (attempt $attempt/$max)"
         if orderbook_graphql_refresh_once "$active"; then
             orderbook_apply_defaults
+            orderbook_ensure_deployer_identity || return 1
             return 0
         fi
         sleep 2
@@ -439,6 +483,7 @@ orderbook_refresh_session_from_graphql() {
     orderbook_resolve_admin_caps "$active" '{}' || return 1
     orderbook_discover_published_tokens '{}' "$active"
     orderbook_apply_defaults
+    orderbook_ensure_deployer_identity || return 1
 }
 
 orderbook_extract_json() {
@@ -466,6 +511,36 @@ if last is None:
     sys.exit(1)
 json.dump(last, sys.stdout)
 ' "$raw"
+}
+
+orderbook_package_id_from_debug_dump() {
+    local out="$1"
+    python3 -c '
+import re, sys
+text = sys.argv[1]
+for chunk in text.split("ChangedObject"):
+    if "PackageWrite" not in chunk and "object_type: Some(\"package\")" not in chunk:
+        continue
+    match = re.search(r"object_id: Some\(\"(0x[0-9a-fA-F]{1,64})\"\)", chunk)
+    if match:
+        print(match.group(1))
+        sys.exit(0)
+sys.exit(1)
+' "$out"
+}
+
+orderbook_package_id_from_publish_output() {
+    local out="$1" json pkg
+    json="$(orderbook_extract_json "$out" 2>/dev/null)" || json=''
+    if [[ -n "$json" ]]; then
+        pkg="$(orderbook_package_id_from_json "$json")"
+        if pkg="$(normalize_hex_id "$pkg" 2>/dev/null)"; then
+            printf '%s' "$pkg"
+            return 0
+        fi
+    fi
+    pkg="$(orderbook_package_id_from_debug_dump "$out")" || return 1
+    normalize_hex_id "$pkg"
 }
 
 orderbook_package_id_from_json() {
@@ -710,7 +785,7 @@ orderbook_publish_token_package() {
     local pkg_path="$1"
     shift
     local -a extra_flags=("$@")
-    local -a cmd out json pkg env_arg
+    local -a cmd out pkg env_arg
     cmd=(myso client publish "$pkg_path" --publish-admin-cap "$PACKAGE_PUBLISH_ADMIN_CAP_ID")
     local g
     while IFS= read -r env_arg; do
@@ -733,15 +808,15 @@ orderbook_publish_token_package() {
     local rc=0
     out="$(run_with_timeout "${MYSO_CMD_TIMEOUT_SEC:-300}" "${cmd[@]}" 2>&1)" || rc=$?
     echo "$out" >&2
-    if [[ "$rc" != 0 ]]; then
+    if myso_output_is_executed_success "$out"; then
+        if echo "$out" | grep -q 'checkpoint wait timed out'; then
+            echo "Publish executed (checkpoint wait timed out — treating as success)" >&2
+        fi
+        rc=0
+    elif [[ "$rc" != 0 ]]; then
         return "$rc"
     fi
-    json="$(orderbook_extract_json "$out")" || {
-        echo "Publish succeeded but JSON parse failed for $pkg_path" >&2
-        return 1
-    }
-    pkg="$(orderbook_package_id_from_json "$json")"
-    pkg="$(normalize_hex_id "$pkg")" || {
+    pkg="$(orderbook_package_id_from_publish_output "$out")" || {
         echo "Publish did not return a packageId for $pkg_path" >&2
         return 1
     }
@@ -924,6 +999,30 @@ orderbook_run_mm_stack() {
     orderbook_ensure_deployer_myusd_for_mm || return 1
     orderbook_ensure_demo_trade_funds || return 1
     orderbook_mm_supervisor_run "$skip_oracle" "$run_test" || return 1
+}
+
+orderbook_init_balance_manager_map() {
+    local out active
+    out="$(orderbook_myso_call_capture "$ORDERBOOK_PACKAGE_ID" registry init_balance_manager_map \
+        --args "@$(normalize_hex_id "$ORDERBOOK_REGISTRY_ID")" \
+               "@$(normalize_hex_id "$ORDERBOOK_ADMIN_CAP_ID")")" || true
+    if ! assert_tx_success "$out"; then
+        active="$(resolve_myso_active_address)" || return 1
+        out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$active" \
+            --move-call "${ORDERBOOK_PACKAGE_ID}::registry::init_balance_manager_map" \
+            "$(ptb_shared_ref "$ORDERBOOK_REGISTRY_ID")" \
+            "@$(normalize_hex_id "$ORDERBOOK_ADMIN_CAP_ID")")" || true
+    fi
+    if assert_tx_success "$out"; then
+        log_step "BalanceManager map initialized on registry"
+        return 0
+    fi
+    if echo "$out" | grep -qiE 'already|exists|EFieldAlreadyExists|MoveAbort'; then
+        log_step "BalanceManager map already present"
+        return 0
+    fi
+    echo "init_balance_manager_map failed" >&2
+    return 1
 }
 
 orderbook_add_myusd_stablecoin() {
@@ -1373,7 +1472,11 @@ orderbook_ensure_demo_trade_funds() {
         orderbook_mint_token "$MYUSD_COIN_TYPE" "$MYUSD_TREASURY_CAP_ID" "$myusd_mint" "$trader_addr" || return 1
     fi
     if [[ "${have_btc:-0}" -lt "$btc_mint" ]]; then
-        orderbook_mint_token "$BTC_COIN_TYPE" "$BTC_TREASURY_CAP_ID" "$btc_mint" "$trader_addr" || return 1
+        if [[ -n "${BTC_TREASURY_CAP_ID:-}" ]]; then
+            orderbook_mint_token "$BTC_COIN_TYPE" "$BTC_TREASURY_CAP_ID" "$btc_mint" "$trader_addr" || return 1
+        else
+            log_step "Skipping BTC demo mint — cap is on the bridge; claim inbound BTC first"
+        fi
     fi
 }
 
@@ -1708,13 +1811,50 @@ orderbook_register_pools() {
 }
 
 orderbook_export_active_private_key() {
-    local active key_json
-    active="$(resolve_myso_active_address)" || return 1
+    local active="${1:-}" key_json key
+    if [[ -z "$active" ]]; then
+        active="$(resolve_myso_active_address)" || {
+            echo "Could not resolve myso client active-address for key export" >&2
+            return 1
+        }
+    fi
+    active="$(normalize_hex_id "$active")" || return 1
     key_json="$(myso keytool export --key-identity "$active" --json 2>/dev/null)" || {
-        echo "Could not export private key for active address $active" >&2
+        echo "Could not export private key for $active (myso keytool export)" >&2
         return 1
     }
-    echo "$key_json" | jq -r '.exportedPrivateKey // empty'
+    key="$(printf '%s' "$key_json" | jq -r '.exportedPrivateKey // .exported_private_key // empty')"
+    [[ -n "$key" && "$key" != "null" ]] || {
+        echo "myso keytool export returned no private key for $active" >&2
+        return 1
+    }
+    printf '%s' "$key"
+}
+
+# Wallet identity is not in GraphQL. After bootstrap.sh the active address owns
+# the admin caps — use that address and its keystore key when session is empty.
+orderbook_ensure_deployer_identity() {
+    local active key changed=0
+    if [[ -z "${DEPLOYER_ADDRESS:-}" ]]; then
+        active="$(resolve_myso_active_address)" || {
+            echo "Could not resolve DEPLOYER_ADDRESS from myso client active-address" >&2
+            return 1
+        }
+        DEPLOYER_ADDRESS="$(normalize_hex_id "$active")" || return 1
+        log_session_use "DEPLOYER_ADDRESS" "$DEPLOYER_ADDRESS"
+        changed=1
+    else
+        DEPLOYER_ADDRESS="$(normalize_hex_id "$DEPLOYER_ADDRESS")" || return 1
+    fi
+    if [[ -z "${PRIVATE_KEY:-}" ]]; then
+        key="$(orderbook_export_active_private_key "$DEPLOYER_ADDRESS")" || return 1
+        PRIVATE_KEY="$key"
+        log_session_use "PRIVATE_KEY" "<exported>"
+        changed=1
+    fi
+    if [[ "$changed" == 1 ]]; then
+        orderbook_save_session
+    fi
 }
 
 orderbook_apply_pyth_setup_output() {
@@ -1959,6 +2099,7 @@ orderbook_fetch_mm_pools_json() {
         ')" || return 1
 
     orderbook_filter_mm_pools_shared || return 1
+    orderbook_drop_unfunded_bridge_mm_pairs
     log_session_use "MM_POOLS" "<$(echo "$MM_POOLS" | jq 'length') pools>"
     orderbook_save_session
     printf '%s' "$MM_POOLS"
@@ -2022,7 +2163,7 @@ orderbook_mm_required_pool_id_vars() {
         MYSO_MYUSD) printf '%s\n' MYSO_MYUSD_POOL_ID ;;
         BTC_MYUSD) printf '%s\n' BTC_MYUSD_POOL_ID ;;
         ETH_MYUSD) printf '%s\n' ETH_MYUSD_POOL_ID ;;
-        *) printf '%s\n' MYSO_MYUSD_POOL_ID BTC_MYUSD_POOL_ID ETH_MYUSD_POOL_ID ;;
+        *) printf '%s\n' MYSO_MYUSD_POOL_ID ;;
     esac
 }
 
@@ -2058,6 +2199,45 @@ orderbook_oracle_status_is_live_for_mm() {
         [[ -n "$eth" && "$eth" != "null" ]] || return 1
     fi
     return 0
+}
+
+orderbook_mm_base_funded() {
+    local coin_type="$1" need="${2:-1}" wallet=0 bm=0 addr="${DEPLOYER_ADDRESS:-}"
+    [[ -n "$addr" && -n "$coin_type" ]] || return 1
+    wallet="$(orderbook_resolve_myusd_balance "$addr" "$coin_type")"
+    bm="$(orderbook_owned_bm_coin_balance_total "$coin_type")"
+    [[ "$((wallet + bm))" -ge "$need" ]]
+}
+
+# BTC/ETH inventory only exists after an inbound bridge claim (cap lives on the bridge).
+orderbook_drop_unfunded_bridge_mm_pairs() {
+    local filter row name coin_type need kept='[]' dropped=0
+    filter="$(orderbook_normalize_mm_pool_filter "${MM_POOL_FILTER:-}")" || return 0
+    [[ -z "$filter" ]] || return 0
+    [[ -n "${MM_POOLS:-}" ]] || return 0
+    while IFS= read -r row; do
+        [[ -n "$row" ]] || continue
+        name="$(orderbook_mm_pool_name_for_row "$row")" || name=''
+        coin_type="$(echo "$row" | jq -r '.baseCoinType // empty')"
+        need="$(echo "$row" | jq -r '.baseDepositAmount // "1"')"
+        case "$name" in
+            BTC_MYUSD|ETH_MYUSD)
+                if orderbook_mm_base_funded "$coin_type" "$need"; then
+                    kept="$(echo "$kept" | jq --argjson r "$row" '. + [$r]')"
+                else
+                    dropped=1
+                    log_step "Skipping $name MM — no bridged ${name%%_*} balance (claim inbound first)"
+                fi
+                ;;
+            *)
+                kept="$(echo "$kept" | jq --argjson r "$row" '. + [$r]')"
+                ;;
+        esac
+    done < <(echo "$MM_POOLS" | jq -c '.[]')
+    MM_POOLS="$kept"
+    if [[ "$dropped" == 1 ]]; then
+        log_session_use "MM_POOLS" "<$(echo "$MM_POOLS" | jq 'length') pools>"
+    fi
 }
 
 orderbook_filter_mm_pools_shared() {

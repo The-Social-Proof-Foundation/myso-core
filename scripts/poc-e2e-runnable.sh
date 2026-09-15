@@ -2,7 +2,7 @@
 # Copyright (c) The Social Proof Foundation, LLC.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Unified PoC E2E: session refresh → oracle sync → post → grpc-sync attestation →
+# Unified PoC E2E: session refresh → oracle sync → post-first create → composition →
 # on-chain event asserts → GraphQL cross-check → tip/reserve → discovery embed → mock claim.
 #
 # Prerequisites:
@@ -17,6 +17,7 @@
 #   ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all
 #   ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all --skip-discovery
 #   ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all --skip-claim
+#   ASSUME_YES=1 ./scripts/poc-e2e-runnable.sh --run-all --with-rights
 #   ./scripts/poc-e2e-runnable.sh --refresh-session
 
 set -euo pipefail
@@ -42,11 +43,13 @@ source "${SCRIPT_DIR}/lib/runnable-summary-common.sh"
 RUN_MODE=''
 SKIP_DISCOVERY=0
 SKIP_CLAIM=0
+WITH_RIGHTS=0
 POC_USE_DIRECT_MOVE="${POC_USE_DIRECT_MOVE:-0}"
 export POC_USE_DIRECT_MOVE
 
 ANALYZE_TX_DIGEST=''
 POC_CONFIG_SYNC_DIGEST=''
+MEDIA_ASSET_ID=''
 
 usage() {
     sed -n '2,24p' "$0" | sed 's/^# \?//'
@@ -99,12 +102,25 @@ step_create_post() {
     log_step "Post created POST_ID=$POST_ID pool=$RESERVATION_POOL_ID digest=$LAST_TX_DIGEST"
 }
 
-step_wait_worker_attestation() {
+step_wait_worker_composition() {
     local digest
-    log_step "Waiting for grpc-sync + oracle worker attestation on post $POST_ID"
-    digest="$(wait_for_poc_post_attested "$POST_ID" "${POC_ORACLE_ATTESTATION_TIMEOUT_SEC:-180}")" || return 1
+    log_step "Waiting for grpc-sync + oracle worker composition on post $POST_ID"
+    digest="$(wait_for_poc_post_composed "$POST_ID" VERIFIED "${POC_ORACLE_ATTESTATION_TIMEOUT_SEC:-180}")" || return 1
     ANALYZE_TX_DIGEST="$digest"
-    log_step "Worker attested post=$POST_ID analyze_tx=$ANALYZE_TX_DIGEST"
+    log_step "Worker composed post=$POST_ID compose_tx=$ANALYZE_TX_DIGEST media_asset=${MEDIA_ASSET_ID:-}"
+}
+
+step_direct_move_composition() {
+    local asset_id
+    log_step "POC_USE_DIRECT_MOVE=1 — submit analyze_post_composition after MediaAsset resolve"
+    sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
+    ensure_poc_oracle_key_in_env || return 1
+    asset_id="${MEDIA_ASSET_ID:-}"
+    [[ -n "$asset_id" ]] || asset_id="$(wait_for_post_media_asset_id "$POST_ID")" || return 1
+    MEDIA_ASSET_ID="$(normalize_hex_id "$asset_id")"
+    ANALYZE_TX_DIGEST="$(submit_analyze_post_composition_direct "$POST_ID" "$MEDIA_ASSET_ID" \
+        '{"reasoning":"E2E direct-move original composition"}')" || return 1
+    log_step "Direct-move composition post=$POST_ID compose_tx=$ANALYZE_TX_DIGEST asset=$MEDIA_ASSET_ID"
 }
 
 step_assert_analyze_chain_events() {
@@ -113,8 +129,8 @@ step_assert_analyze_chain_events() {
         return 1
     }
     wait_for_tx_finalized "$ANALYZE_TX_DIGEST" || return 1
-    assert_poc_scenario_events analyze_original "$ANALYZE_TX_DIGEST" || return 1
-    log_step "Chain events OK for analyze tx $ANALYZE_TX_DIGEST"
+    assert_poc_scenario_events composition_original "$ANALYZE_TX_DIGEST" || return 1
+    log_step "Chain events OK for composition tx $ANALYZE_TX_DIGEST"
 }
 
 step_graphql_cross_check() {
@@ -154,15 +170,24 @@ step_username_provision_and_claim() {
     load_e2e_session
 }
 
+step_media_asset_rights() {
+    log_step "Media asset rights DAO dispute (poc-media-asset-rights-runnable --run-all)"
+    SOCIAL_SESSION_SAVE_PATH="${REPO_ROOT}/network.config/poc/poc-media-asset-rights-session.env" \
+        ASSUME_YES="$ASSUME_YES" SKIP_CONFIRM_RUN="$SKIP_CONFIRM_RUN" \
+        POC_USE_DIRECT_MOVE="$POC_USE_DIRECT_MOVE" \
+        "$SCRIPT_DIR/poc-media-asset-rights-runnable.sh" --run-all
+}
+
 print_e2e_summary() {
     print_run_summary_header "PoC E2E — full loop completed"
     print_run_summary_line "Session file" "$SOCIAL_SESSION_SAVE_PATH"
     print_run_summary_line "Oracle address" "${POC_DEFAULT_ORACLE_ADDRESS:-}"
     print_run_summary_line "Config sync digest" "${POC_CONFIG_SYNC_DIGEST:-<skipped>}"
     print_run_summary_line "Post" "$(normalize_hex_id "${POST_ID:-}")"
+    print_run_summary_line "MediaAsset" "$(normalize_hex_id "${MEDIA_ASSET_ID:-}")"
     print_run_summary_line "Reservation pool" "$(normalize_hex_id "${RESERVATION_POOL_ID:-}")"
     print_run_summary_line "Create digest" "${LAST_TX_DIGEST:-}"
-    print_run_summary_line "Analyze digest (worker)" "${ANALYZE_TX_DIGEST:-}"
+    print_run_summary_line "Composition digest" "${ANALYZE_TX_DIGEST:-}"
     print_run_summary_line "Tip digest" "${LAST_TIP_TX_DIGEST:-}"
     print_run_summary_line "Reserve digest" "${LAST_RESERVE_TX_DIGEST:-}"
     if [[ -n "${POC_UB_LAST_BENEFICIARY_ID:-}" ]]; then
@@ -180,11 +205,9 @@ run_poc_e2e_all() {
     step_create_post || return 1
 
     if [[ "$POC_USE_DIRECT_MOVE" == "1" ]]; then
-        log_step "POC_USE_DIRECT_MOVE=1 — triggering HTTP/e2e analyze instead of worker wait"
-        sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
-        ANALYZE_TX_DIGEST="$(poc_oracle_analyze_post "$POST_ID" 1 50 none 0 false false 0)" || return 1
+        step_direct_move_composition || return 1
     else
-        step_wait_worker_attestation || return 1
+        step_wait_worker_composition || return 1
     fi
 
     step_assert_analyze_chain_events || return 1
@@ -203,6 +226,10 @@ run_poc_e2e_all() {
         log_step "Skipping username claim (--skip-claim)"
     fi
 
+    if [[ "$WITH_RIGHTS" == "1" ]]; then
+        step_media_asset_rights || return 1
+    fi
+
     print_e2e_summary
 }
 
@@ -215,7 +242,8 @@ show_menu() {
     echo " Advanced"
     echo " a) Full E2E — skip discovery embed"
     echo " b) Full E2E — skip username claim"
-    echo " c) Full E2E — direct-move analyze (no worker wait)"
+    echo " c) Full E2E — direct-move composition (no worker wait)"
+    echo " d) Full E2E — include media-asset rights dispute"
     echo " ?) Help"
     echo " q) Quit"
     read -r -p "Choice: " choice
@@ -239,6 +267,11 @@ show_menu() {
             POC_USE_DIRECT_MOVE=0
             export POC_USE_DIRECT_MOVE
             ;;
+        [Dd])
+            WITH_RIGHTS=1
+            run_poc_e2e_all
+            WITH_RIGHTS=0
+            ;;
         \?) usage ;;
         [Qq]) exit 0 ;;
         *) echo "Invalid choice" ;;
@@ -255,6 +288,7 @@ main() {
             --run-all) RUN_MODE=run_all; shift ;;
             --skip-discovery) SKIP_DISCOVERY=1; shift ;;
             --skip-claim) SKIP_CLAIM=1; shift ;;
+            --with-rights) WITH_RIGHTS=1; shift ;;
             --direct-move) POC_USE_DIRECT_MOVE=1; export POC_USE_DIRECT_MOVE; shift ;;
             *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
         esac

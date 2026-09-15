@@ -1761,18 +1761,6 @@ pub struct BcsAnalysisSubmittedEvent {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BcsPocBadgeIssuedEvent {
-    badge_id: AccountAddress,
-    post_id: AccountAddress,
-    media_type: u8,
-    issued_by: AccountAddress,
-    beneficiary_address: Option<AccountAddress>,
-    matched_anchor_id: Option<AccountAddress>,
-    media_index: u8,
-    timestamp: u64,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct BcsRevenueRedirectionActivatedEvent {
     redirection_id: AccountAddress,
     accused_post_id: AccountAddress,
@@ -1891,9 +1879,45 @@ pub struct BcsMediaAssetGovernanceProposalClearedEvent {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct BcsUsageGrant {
+    usage_class: u8,
+    granted_rights: u64,
+    license_type: u8,
+    compensation_type: u8,
+    compensation_bps: u64,
+    attribution_required: bool,
+    derivatives_permitted: bool,
+    commercial_use_permitted: bool,
+    effective_from: u64,
+    expires_at: Option<u64>,
+    revocable: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsMediaAssetRightsUpdatedEvent {
     media_asset_id: AccountAddress,
     rights_version: u64,
+    authorization_version: u64,
+    usage_grants: Vec<BcsUsageGrant>,
+    creators: Vec<AccountAddress>,
+    controllers: Vec<AccountAddress>,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMediaAssetFutureUsagePausedEvent {
+    media_asset_id: AccountAddress,
+    paused: bool,
+    authorization_version: u64,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsMediaAssetLicenseInstanceRevokedByLicensorEvent {
+    media_asset_id: AccountAddress,
+    license_instance_id: AccountAddress,
+    revoked_by: AccountAddress,
+    authorization_version: u64,
     timestamp: u64,
 }
 
@@ -2674,10 +2698,12 @@ pub struct BcsTokenPoolCreatedEvent {
     associated_id: AccountAddress,
     base_price: u64,
     quadratic_coefficient: u64,
-    /// Initial nano-SPT circulating supply at pool creation (launch mint; on-chain `(total_reserved * SPT_SCALE) / base_price`).
+    /// Initial nano-SPT circulating supply at pool creation (1:1 with net reserved MYSO).
     circulating_supply: u64,
     /// Net nano-MYSO reserved at launch (denominator for proportional indexer split).
     total_reserved_at_launch: u64,
+    /// Nano-SPT minted at launch (`S0`). Required; do not invent 0.
+    launch_supply: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2811,7 +2837,6 @@ pub struct BcsSptConfigUpdatedEvent {
     reservation_creator_fee_bps: u64,
     reservation_platform_fee_bps: u64,
     reservation_treasury_fee_bps: u64,
-    base_price: u64,
     quadratic_coefficient: u64,
     max_hold_percent_bps: u64,
     post_threshold: u64,
@@ -5082,6 +5107,28 @@ fn parse_media_asset_event(
             Ok(Some(serde_json::json!({
                 "media_asset_id": addr_to_string(&ev.media_asset_id),
                 "rights_version": ev.rights_version,
+                "authorization_version": ev.authorization_version,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "MediaAssetFutureUsagePausedEvent" => {
+            let ev = bcs::from_bytes::<BcsMediaAssetFutureUsagePausedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "media_asset_id": addr_to_string(&ev.media_asset_id),
+                "paused": ev.paused,
+                "authorization_version": ev.authorization_version,
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "MediaAssetLicenseInstanceRevokedByLicensorEvent" => {
+            let ev = bcs::from_bytes::<BcsMediaAssetLicenseInstanceRevokedByLicensorEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "media_asset_id": addr_to_string(&ev.media_asset_id),
+                "license_instance_id": addr_to_string(&ev.license_instance_id),
+                "revoked_by": addr_to_string(&ev.revoked_by),
+                "authorization_version": ev.authorization_version,
                 "timestamp": ev.timestamp,
             })))
         }
@@ -5119,20 +5166,7 @@ fn parse_poc_event(
                 "evidence_urls": ev.evidence_urls,
             })))
         }
-        "PoCBadgeIssuedEvent" | "PocBadgeIssuedEvent" => {
-            let ev = bcs::from_bytes::<BcsPocBadgeIssuedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "badge_id": addr_to_string(&ev.badge_id),
-                "post_id": addr_to_string(&ev.post_id),
-                "media_type": ev.media_type,
-                "issued_by": addr_to_string(&ev.issued_by),
-                "beneficiary_address": ev.beneficiary_address.as_ref().map(addr_to_string),
-                "matched_anchor_id": ev.matched_anchor_id.as_ref().map(addr_to_string),
-                "media_index": ev.media_index,
-                "timestamp": ev.timestamp,
-            })))
-        }
+        "PoCBadgeIssuedEvent" | "PocBadgeIssuedEvent" => Ok(None),
         "RevenueRedirectionActivatedEvent" => {
             let ev = bcs::from_bytes::<BcsRevenueRedirectionActivatedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -6144,6 +6178,7 @@ fn parse_spt_event(
                 "quadratic_coefficient": ev.quadratic_coefficient,
                 "circulating_supply": ev.circulating_supply,
                 "total_reserved_at_launch": ev.total_reserved_at_launch,
+                "launch_supply": ev.launch_supply,
             })))
         }
         "TokenCreatorFeeSettledEvent" => {
@@ -6293,7 +6328,6 @@ fn parse_spt_event(
                 "reservation_creator_fee_bps": ev.reservation_creator_fee_bps,
                 "reservation_platform_fee_bps": ev.reservation_platform_fee_bps,
                 "reservation_treasury_fee_bps": ev.reservation_treasury_fee_bps,
-                "base_price": ev.base_price,
                 "quadratic_coefficient": ev.quadratic_coefficient,
                 "max_hold_percent_bps": ev.max_hold_percent_bps,
                 "post_threshold": ev.post_threshold,
@@ -6872,6 +6906,7 @@ mod tests {
             quadratic_coefficient: 2,
             circulating_supply: 999,
             total_reserved_at_launch: 5000,
+            launch_supply: 999,
         };
         let bytes = bcs::to_bytes(&ev).expect("bcs serialize TokenPoolCreatedEvent");
         let json = parse_spt_event("TokenPoolCreatedEvent", &bytes)
@@ -6879,6 +6914,32 @@ mod tests {
             .expect("event json");
         assert_eq!(json["circulating_supply"], 999);
         assert_eq!(json["total_reserved_at_launch"], 5000);
+        assert_eq!(json["launch_supply"], 999);
+    }
+
+    #[test]
+    fn token_pool_created_bcs_roundtrip() {
+        let id = AccountAddress::from_hex_literal("0xa").unwrap();
+        let owner = AccountAddress::from_hex_literal("0xb").unwrap();
+        let associated_id = AccountAddress::from_hex_literal("0xc").unwrap();
+        let ev = BcsTokenPoolCreatedEvent {
+            id,
+            token_type: 1,
+            owner,
+            associated_id,
+            base_price: 1_000_000_000,
+            quadratic_coefficient: 100_000,
+            circulating_supply: 1_000_000_000,
+            total_reserved_at_launch: 1_000_000_000,
+            launch_supply: 1_000_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("bcs serialize TokenPoolCreatedEvent");
+        let json = parse_spt_event("TokenPoolCreatedEvent", &bytes)
+            .expect("parse_spt_event ok")
+            .expect("event json");
+        assert_eq!(json["base_price"], 1_000_000_000u64);
+        assert_eq!(json["launch_supply"], 1_000_000_000u64);
+        assert_eq!(json["circulating_supply"], 1_000_000_000u64);
     }
 
     #[test]
@@ -8688,7 +8749,6 @@ mod tests {
             reservation_creator_fee_bps: 100,
             reservation_platform_fee_bps: 25,
             reservation_treasury_fee_bps: 25,
-            base_price: 100_000_000,
             quadratic_coefficient: 100_000,
             max_hold_percent_bps: 500,
             post_threshold: 1_000_000_000_000,
@@ -8703,7 +8763,8 @@ mod tests {
         let json = parse_event_contents("social_proof_tokens", "ConfigUpdatedEvent", &bytes)
             .expect("parse ConfigUpdatedEvent");
         assert_eq!(json["total_fee_bps"], 150);
-        assert_eq!(json["base_price"], 100_000_000);
+        assert_eq!(json["quadratic_coefficient"], 100_000);
+        assert!(json.get("base_price").is_none());
         assert_eq!(json["trading_enabled"], true);
         assert_eq!(json["timestamp"].as_u64(), Some(1_700_000_000_000));
     }

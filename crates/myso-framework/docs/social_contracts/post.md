@@ -8124,11 +8124,7 @@ Same as [<code><a href="../social_contracts/post.md#social_contracts_post_apply_
     usage_class: u8,
     clock: &Clock,
 ): (bool, u8, u64) {
-    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_version">version</a> = <b>if</b> (option::is_some(&<a href="../social_contracts/media_asset.md#social_contracts_media_asset_resolved_policy_version">media_asset::resolved_policy_version</a>(asset))) {
-        *option::borrow(&<a href="../social_contracts/media_asset.md#social_contracts_media_asset_resolved_policy_version">media_asset::resolved_policy_version</a>(asset))
-    } <b>else</b> {
-        0
-    };
+    <b>let</b> <a href="../social_contracts/post.md#social_contracts_post_version">version</a> = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_authorization_version">media_asset::authorization_version</a>(asset);
     <b>let</b> grant_playback = <a href="../social_contracts/media_asset.md#social_contracts_media_asset_rights_permits_usage">media_asset::rights_permits_usage</a>(asset, usage_class, clock);
     <b>if</b> (!grant_playback) {
         <b>return</b> (<b>false</b>, <a href="../social_contracts/post.md#social_contracts_post_REASON_NO_GRANT">REASON_NO_GRANT</a>, <a href="../social_contracts/post.md#social_contracts_post_version">version</a>)
@@ -8417,7 +8413,7 @@ Oracle submits a candidate revenue manifest for indexer materialization.
 Rights holder denies container-scoped usage on this post for one binding.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deny_container_usage">deny_container_usage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, binding_id: u64, denial_scope: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deny_container_usage">deny_container_usage</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, asset: &<b>mut</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, binding_id: u64, denial_scope: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -8428,7 +8424,7 @@ Rights holder denies container-scoped usage on this post for one binding.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_deny_container_usage">deny_container_usage</a>(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
-    asset: &MediaAsset,
+    asset: &<b>mut</b> MediaAsset,
     binding_id: u64,
     denial_scope: u8,
     clock: &Clock,
@@ -8441,6 +8437,7 @@ Rights holder denies container-scoped usage on this post for one binding.
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(&bindings, binding_id)), <a href="../social_contracts/post.md#social_contracts_post_EBindingNotFound">EBindingNotFound</a>);
     <b>let</b> binding = <a href="../social_contracts/post.md#social_contracts_post_borrow_binding">borrow_binding</a>(&bindings, binding_id);
     <b>assert</b>!(binding.source_asset_id == object::id(asset), <a href="../social_contracts/post.md#social_contracts_post_EBindingAssetMismatch">EBindingAssetMismatch</a>);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_bump_authorization_version">media_asset::bump_authorization_version</a>(asset);
     <b>let</b> timestamp = clock::timestamp_ms(clock);
     <b>let</b> <b>mut</b> denials = <a href="../social_contracts/post.md#social_contracts_post_usage_denials">usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <a href="../social_contracts/post.md#social_contracts_post_upsert_denial">upsert_denial</a>(&<b>mut</b> denials, <a href="../social_contracts/post.md#social_contracts_post_ContainerUsageDenial">ContainerUsageDenial</a> { binding_id, denial_scope });
@@ -8466,7 +8463,7 @@ Rights holder denies container-scoped usage on this post for one binding.
 Rights holder lifts a container-scoped denial for one binding and scope.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_lift_container_usage_denial">lift_container_usage_denial</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, asset: &<a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, binding_id: u64, denial_scope: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_lift_container_usage_denial">lift_container_usage_denial</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, asset: &<b>mut</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset_MediaAsset">social_contracts::media_asset::MediaAsset</a>, binding_id: u64, denial_scope: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -8477,7 +8474,7 @@ Rights holder lifts a container-scoped denial for one binding and scope.
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_lift_container_usage_denial">lift_container_usage_denial</a>(
     <a href="../social_contracts/post.md#social_contracts_post">post</a>: &<b>mut</b> <a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
-    asset: &MediaAsset,
+    asset: &<b>mut</b> MediaAsset,
     binding_id: u64,
     denial_scope: u8,
     clock: &Clock,
@@ -8490,6 +8487,7 @@ Rights holder lifts a container-scoped denial for one binding and scope.
     <b>assert</b>!(option::is_some(&<a href="../social_contracts/post.md#social_contracts_post_find_binding_index">find_binding_index</a>(&bindings, binding_id)), <a href="../social_contracts/post.md#social_contracts_post_EBindingNotFound">EBindingNotFound</a>);
     <b>let</b> binding = <a href="../social_contracts/post.md#social_contracts_post_borrow_binding">borrow_binding</a>(&bindings, binding_id);
     <b>assert</b>!(binding.source_asset_id == object::id(asset), <a href="../social_contracts/post.md#social_contracts_post_EBindingAssetMismatch">EBindingAssetMismatch</a>);
+    <a href="../social_contracts/media_asset.md#social_contracts_media_asset_bump_authorization_version">media_asset::bump_authorization_version</a>(asset);
     <b>let</b> timestamp = clock::timestamp_ms(clock);
     <b>let</b> <b>mut</b> denials = <a href="../social_contracts/post.md#social_contracts_post_usage_denials">usage_denials</a>(<a href="../social_contracts/post.md#social_contracts_post">post</a>);
     <a href="../social_contracts/post.md#social_contracts_post_remove_denial">remove_denial</a>(&<b>mut</b> denials, binding_id, denial_scope);

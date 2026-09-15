@@ -11,6 +11,7 @@ use myso_types::event::EventID;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::path::Path;
+use std::str::FromStr;
 use std::sync::Arc;
 use typed_store::DBMapUtils;
 use typed_store::Map;
@@ -73,6 +74,16 @@ impl DepositAddressKey {
         Self {
             address: addr.to_vec(),
         }
+    }
+
+    pub fn from_formatted(address: &str) -> Option<Self> {
+        if let Ok(myso) = MySoAddress::from_str(address) {
+            return Some(Self::from_myso(myso));
+        }
+        if let Ok(evm) = AlloyAddress::from_str(address) {
+            return Some(Self::from_evm(evm));
+        }
+        None
     }
 }
 
@@ -139,6 +150,47 @@ pub struct DepositRecord {
     pub amount: String,
 }
 
+/// Direction of a custodial bridge order.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum BridgeOrderDirection {
+    In,
+    Out,
+}
+
+/// Lifecycle status owned by the bridge node.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BridgeOrderStatus {
+    AwaitingDeposit,
+    DepositReceived,
+    Bridging,
+    Completed,
+    Failed,
+}
+
+/// Platform-facing bridge order (source of truth for lifecycle).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BridgeOrderRecord {
+    pub order_id: String,
+    pub direction: BridgeOrderDirection,
+    pub status: BridgeOrderStatus,
+    pub myso_wallet: String,
+    pub deposit_address: String,
+    pub destination_chain: String,
+    pub destination_address: String,
+    pub amount: Option<String>,
+    pub deposit_tx_digest: Option<String>,
+    pub bridge_tx_digest: Option<String>,
+    pub evm_tx_hash: Option<String>,
+    pub created_at: u64,
+    pub updated_at: u64,
+    #[serde(default)]
+    pub callback_url: Option<String>,
+    #[serde(default)]
+    pub callback_api_key: Option<String>,
+}
+
 /// Status of a relayed transfer
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum RelayResult {
@@ -176,6 +228,25 @@ impl RelayKey {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct BridgeOrderPatch {
+    pub amount: Option<String>,
+    pub deposit_tx_digest: Option<String>,
+    pub bridge_tx_digest: Option<String>,
+    pub evm_tx_hash: Option<String>,
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64
+}
+
+fn deposit_key_from_formatted(address: &str) -> Option<DepositAddressKey> {
+    DepositAddressKey::from_formatted(address)
+}
+
 #[derive(DBMapUtils)]
 pub struct BridgeOrchestratorTables {
     /// pending BridgeActions that orchestrator received but not yet executed
@@ -200,6 +271,12 @@ pub struct BridgeOrchestratorTables {
     pub(crate) hd_wallet_counters: DBMap<u8, u32>,
     /// EVM deposit monitor: last checked block per chain (chain_id -> block_number)
     pub(crate) evm_deposit_monitor_cursor: DBMap<u64, u64>,
+    /// Canonical bridge orders keyed by order id
+    #[allow(dead_code)]
+    pub(crate) bridge_orders: DBMap<String, BridgeOrderRecord>,
+    /// Deposit address → latest order id
+    #[allow(dead_code)]
+    pub(crate) deposit_to_order: DBMap<DepositAddressKey, String>,
 }
 
 impl BridgeOrchestratorTables {
@@ -575,6 +652,73 @@ impl BridgeOrchestratorTables {
             .collect()
     }
 
+    pub(crate) fn upsert_bridge_order(&self, order: BridgeOrderRecord) -> BridgeResult<()> {
+        let deposit_key = deposit_key_from_formatted(&order.deposit_address);
+        self.bridge_orders
+            .insert(&order.order_id, &order)
+            .map_err(|e| {
+                BridgeError::StorageError(format!("Failed to store bridge order: {:?}", e))
+            })?;
+        if let Some(deposit_key) = deposit_key {
+            self.deposit_to_order
+                .insert(&deposit_key, &order.order_id)
+                .map_err(|e| {
+                    BridgeError::StorageError(format!("Failed to index deposit order: {:?}", e))
+                })?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn get_bridge_order(&self, order_id: &str) -> BridgeResult<Option<BridgeOrderRecord>> {
+        self.bridge_orders.get(&order_id.to_string()).map_err(|e| {
+            BridgeError::StorageError(format!("Failed to get bridge order: {:?}", e))
+        })
+    }
+
+    pub(crate) fn get_order_for_deposit(
+        &self,
+        deposit_key: &DepositAddressKey,
+    ) -> BridgeResult<Option<BridgeOrderRecord>> {
+        let order_id = self.deposit_to_order.get(deposit_key).map_err(|e| {
+            BridgeError::StorageError(format!("Failed to get deposit order id: {:?}", e))
+        })?;
+        let Some(order_id) = order_id else {
+            return Ok(None);
+        };
+        self.get_bridge_order(&order_id)
+    }
+
+    pub(crate) fn update_bridge_order_status(
+        &self,
+        deposit_key: &DepositAddressKey,
+        status: BridgeOrderStatus,
+        patch: BridgeOrderPatch,
+    ) -> BridgeResult<Option<BridgeOrderRecord>> {
+        let Some(mut order) = self.get_order_for_deposit(deposit_key)? else {
+            return Ok(None);
+        };
+        order.status = status;
+        order.updated_at = now_ms();
+        if let Some(amount) = patch.amount {
+            order.amount = Some(amount);
+        }
+        if let Some(digest) = patch.deposit_tx_digest {
+            order.deposit_tx_digest = Some(digest);
+        }
+        if let Some(digest) = patch.bridge_tx_digest {
+            order.bridge_tx_digest = Some(digest);
+        }
+        if let Some(hash) = patch.evm_tx_hash {
+            order.evm_tx_hash = Some(hash);
+        }
+        self.bridge_orders
+            .insert(&order.order_id, &order)
+            .map_err(|e| {
+                BridgeError::StorageError(format!("Failed to update bridge order: {:?}", e))
+            })?;
+        Ok(Some(order))
+    }
+
     // ========== EVM Deposit Monitor Cursor ==========
 
     pub(crate) fn get_evm_deposit_monitor_cursor(
@@ -772,5 +916,47 @@ mod tests {
             alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
                 .unwrap();
         assert_eq!(wrapped_address.0, expected_address);
+    }
+
+    #[tokio::test]
+    async fn test_bridge_order_roundtrip() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let store = BridgeOrchestratorTables::new(temp_dir.path());
+        let evm = alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
+            .unwrap();
+        let order = BridgeOrderRecord {
+            order_id: "brg_test".to_string(),
+            direction: BridgeOrderDirection::In,
+            status: BridgeOrderStatus::AwaitingDeposit,
+            myso_wallet: "0xmyso".to_string(),
+            deposit_address: format!("{:?}", evm),
+            destination_chain: "mysocial".to_string(),
+            destination_address: "0xmyso".to_string(),
+            amount: None,
+            deposit_tx_digest: None,
+            bridge_tx_digest: None,
+            evm_tx_hash: None,
+            created_at: 1,
+            updated_at: 1,
+            callback_url: None,
+            callback_api_key: None,
+        };
+        store.upsert_bridge_order(order.clone()).unwrap();
+        let loaded = store.get_bridge_order("brg_test").unwrap().unwrap();
+        assert_eq!(loaded.order_id, "brg_test");
+        let by_deposit = store
+            .get_order_for_deposit(&DepositAddressKey::from_evm(evm))
+            .unwrap()
+            .unwrap();
+        assert_eq!(by_deposit.order_id, "brg_test");
+        let updated = store
+            .update_bridge_order_status(
+                &DepositAddressKey::from_evm(evm),
+                BridgeOrderStatus::Completed,
+                BridgeOrderPatch::default(),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(updated.status, BridgeOrderStatus::Completed);
     }
 }

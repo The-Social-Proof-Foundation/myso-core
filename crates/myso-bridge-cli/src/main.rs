@@ -94,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
             let bridge_summary = myso_bridge_client
                 .get_bridge_summary()
                 .await
-                .expect("Failed to get bridge summary");
+                .map_err(|e| anyhow::anyhow!("Failed to get bridge summary: {:?}", e))?;
             let bridge_committee = Arc::new(
                 myso_bridge_client
                     .get_bridge_committee()

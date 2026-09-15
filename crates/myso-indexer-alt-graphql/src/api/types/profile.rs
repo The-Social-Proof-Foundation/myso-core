@@ -1083,8 +1083,8 @@ impl SocialProofToken {
     }
 
     /// Circulating supply in nano-SPT (`10^9` units per display token).
-    /// After launch from a reservation pool, initial supply on-chain is `(total_reserved * 10^9) / base_price`
-    /// (nano-MYSO reserved × scale ÷ pool `base_price` in MYSO smallest units), before further trades.
+    /// After launch from a reservation pool, initial supply is 1:1 with net reserved MYSO
+    /// (`S0 = total_reserved` nano-SPT), before further trades.
     async fn circulating_supply(&self) -> Option<BigInt> {
         self.inner.circulating_supply.map(BigInt::from)
     }

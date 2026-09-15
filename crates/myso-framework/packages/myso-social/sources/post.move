@@ -3173,11 +3173,7 @@ module social_contracts::post {
         usage_class: u8,
         clock: &Clock,
     ): (bool, u8, u64) {
-        let version = if (option::is_some(&media_asset::resolved_policy_version(asset))) {
-            *option::borrow(&media_asset::resolved_policy_version(asset))
-        } else {
-            0
-        };
+        let version = media_asset::authorization_version(asset);
         let grant_playback = media_asset::rights_permits_usage(asset, usage_class, clock);
         if (!grant_playback) {
             return (false, REASON_NO_GRANT, version)
@@ -3337,7 +3333,7 @@ module social_contracts::post {
     /// Rights holder denies container-scoped usage on this post for one binding.
     public entry fun deny_container_usage(
         post: &mut Post,
-        asset: &MediaAsset,
+        asset: &mut MediaAsset,
         binding_id: u64,
         denial_scope: u8,
         clock: &Clock,
@@ -3350,6 +3346,7 @@ module social_contracts::post {
         assert!(option::is_some(&find_binding_index(&bindings, binding_id)), EBindingNotFound);
         let binding = borrow_binding(&bindings, binding_id);
         assert!(binding.source_asset_id == object::id(asset), EBindingAssetMismatch);
+        media_asset::bump_authorization_version(asset);
         let timestamp = clock::timestamp_ms(clock);
         let mut denials = usage_denials(post);
         upsert_denial(&mut denials, ContainerUsageDenial { binding_id, denial_scope });
@@ -3366,7 +3363,7 @@ module social_contracts::post {
     /// Rights holder lifts a container-scoped denial for one binding and scope.
     public entry fun lift_container_usage_denial(
         post: &mut Post,
-        asset: &MediaAsset,
+        asset: &mut MediaAsset,
         binding_id: u64,
         denial_scope: u8,
         clock: &Clock,
@@ -3379,6 +3376,7 @@ module social_contracts::post {
         assert!(option::is_some(&find_binding_index(&bindings, binding_id)), EBindingNotFound);
         let binding = borrow_binding(&bindings, binding_id);
         assert!(binding.source_asset_id == object::id(asset), EBindingAssetMismatch);
+        media_asset::bump_authorization_version(asset);
         let timestamp = clock::timestamp_ms(clock);
         let mut denials = usage_denials(post);
         remove_denial(&mut denials, binding_id, denial_scope);

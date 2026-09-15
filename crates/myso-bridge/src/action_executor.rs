@@ -23,15 +23,15 @@ use mysten_metrics::spawn_logged_monitored_task;
 use shared_crypto::intent::{Intent, IntentMessage};
 
 use crate::events::{
-    TokenTransferAlreadyApproved, TokenTransferAlreadyClaimed, TokenTransferApproved,
-    TokenTransferClaimed,
+    StableClaimConvertedToMyUsd, TokenTransferAlreadyApproved, TokenTransferAlreadyClaimed,
+    TokenTransferApproved, TokenTransferClaimed,
 };
 use crate::metrics::BridgeMetrics;
 use crate::{
     client::bridge_authority_aggregator::BridgeAuthorityAggregator,
     error::BridgeError,
     myso_client::{ExecuteTransactionResult, MySoClient, MySoClientInner},
-    myso_transaction_builder::build_myso_transaction,
+    myso_transaction_builder::build_myso_transaction_ex,
     storage::BridgeOrchestratorTables,
     types::{BridgeAction, BridgeActionStatus, VerifiedCertifiedBridgeAction},
 };
@@ -77,6 +77,7 @@ pub struct BridgeActionExecutor<C> {
     gas_object_id: ObjectID,
     store: Arc<BridgeOrchestratorTables>,
     bridge_object_arg: ObjectArg,
+    peg_object_arg: Option<ObjectArg>,
     myso_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
     bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
     metrics: Arc<BridgeMetrics>,
@@ -123,10 +124,16 @@ where
             gas_object_id,
             myso_address,
             bridge_object_arg,
+            peg_object_arg: None,
             myso_token_type_tags,
             bridge_pause_rx,
             metrics,
         }
+    }
+
+    pub fn with_peg_object_arg(mut self, peg_object_arg: Option<ObjectArg>) -> Self {
+        self.peg_object_arg = peg_object_arg;
+        self
     }
 
     fn run_inner(
@@ -183,6 +190,7 @@ where
                 execution_tx_clone,
                 execution_rx,
                 self.bridge_object_arg,
+                self.peg_object_arg,
                 self.myso_token_type_tags,
                 self.bridge_pause_rx,
                 metrics,
@@ -414,6 +422,7 @@ where
             CertifiedBridgeActionExecutionWrapper,
         >,
         bridge_object_arg: ObjectArg,
+        peg_object_arg: Option<ObjectArg>,
         myso_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
         bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
         metrics: Arc<BridgeMetrics>,
@@ -439,6 +448,7 @@ where
                 &store,
                 &execution_queue_sender,
                 &bridge_object_arg,
+                peg_object_arg,
                 &myso_token_type_tags,
                 &metrics,
             )
@@ -459,6 +469,7 @@ where
             CertifiedBridgeActionExecutionWrapper,
         >,
         bridge_object_arg: &ObjectArg,
+        peg_object_arg: Option<ObjectArg>,
         myso_token_type_tags: &ArcSwap<HashMap<u8, TypeTag>>,
         metrics: &Arc<BridgeMetrics>,
     ) {
@@ -493,12 +504,25 @@ where
 
         info!("Building MySo transaction");
         let rgp = myso_client.get_reference_gas_price_until_success().await;
-        let tx_data = match build_myso_transaction(
+        let policies = if peg_object_arg.is_some() {
+            match myso_client.get_bridge_summary().await {
+                Ok(summary) => summary.token_claim_policies,
+                Err(e) => {
+                    warn!("Failed to load token claim policies: {e:?}");
+                    vec![]
+                }
+            }
+        } else {
+            vec![]
+        };
+        let tx_data = match build_myso_transaction_ex(
             *myso_address,
             &gas_object_ref,
             ceriticate_clone.clone(),
             *bridge_object_arg,
             myso_token_type_tags.load().as_ref(),
+            peg_object_arg,
+            &policies,
             rgp,
         ) {
             Ok(tx_data) => tx_data,
@@ -513,12 +537,14 @@ where
                     Ok(new_token_map) => {
                         myso_token_type_tags.store(Arc::new(new_token_map));
                         // Retry building transaction with refreshed token map
-                        match build_myso_transaction(
+                        match build_myso_transaction_ex(
                             *myso_address,
                             &gas_object_ref,
                             ceriticate_clone,
                             *bridge_object_arg,
                             myso_token_type_tags.load().as_ref(),
+                            peg_object_arg,
+                            &policies,
                             rgp,
                         ) {
                             Ok(tx_data) => tx_data,
@@ -636,6 +662,7 @@ where
                             || e.type_ == *TokenTransferClaimed.get().unwrap()
                             || e.type_ == *TokenTransferApproved.get().unwrap()
                             || e.type_ == *TokenTransferAlreadyApproved.get().unwrap()
+                            || e.type_ == *StableClaimConvertedToMyUsd.get().unwrap()
                     })
                     .collect::<Vec<_>>();
                 assert!(
@@ -732,6 +759,7 @@ pub async fn submit_to_executor(
 #[cfg(test)]
 mod tests {
     use crate::events::init_all_struct_tags;
+    use crate::myso_transaction_builder::build_myso_transaction;
     use crate::test_utils::DUMMY_MUTALBE_BRIDGE_OBJECT_ARG;
     use crate::types::BRIDGE_PAUSED;
     use fastcrypto::traits::KeyPair;

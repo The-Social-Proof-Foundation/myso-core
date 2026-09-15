@@ -128,6 +128,16 @@ where
         .await
     }
 
+    pub async fn get_mutable_shared_object_arg_must_succeed(&self, id: ObjectID) -> ObjectArg {
+        let Ok(Ok(arg)) = retry_with_max_elapsed_time!(
+            self.inner.get_mutable_shared_object_arg(id),
+            Duration::from_secs(30)
+        ) else {
+            panic!("Failed to get shared object arg {id} after retries");
+        };
+        arg
+    }
+
     /// Returns BridgeAction from a MySo Transaction with transaction hash
     /// and the event index. If event is declared in an unrecognized
     /// package, return error.
@@ -435,6 +445,8 @@ pub trait MySoClientInner: Send + Sync {
 
     async fn get_mutable_bridge_object_arg(&self) -> Result<ObjectArg, BridgeError>;
 
+    async fn get_mutable_shared_object_arg(&self, id: ObjectID) -> Result<ObjectArg, BridgeError>;
+
     async fn get_bridge_summary(&self) -> Result<BridgeSummary, BridgeError>;
 
     async fn execute_transaction_block_with_effects(
@@ -485,6 +497,144 @@ pub trait MySoClientInner: Send + Sync {
         &self,
         source_chain_id: u8,
     ) -> Result<u64, BridgeError>;
+}
+
+/// Localnet genesis stores BridgeInner at Versioned key 0; testnet uses 1.
+/// Layout is BridgeInnerV1 in both cases. Try the on-chain key first, then the other.
+fn bridge_inner_version_keys(on_chain_version: u64) -> Vec<u64> {
+    match on_chain_version {
+        0 => vec![0, 1],
+        1 => vec![1, 0],
+        other => vec![other],
+    }
+}
+
+fn is_bridge_object_not_found(err: &BridgeError) -> bool {
+    matches!(err, BridgeError::Generic(msg) if msg.to_ascii_lowercase().contains("not found"))
+}
+
+async fn read_bridge_wrapper(client: &myso_rpc_api::Client) -> Result<BridgeWrapper, BridgeError> {
+    let bridge_wrapper_bcs = client
+        .clone()
+        .inner_mut()
+        .ledger_client()
+        .get_object(
+            GetObjectRequest::new(&(MYSO_BRIDGE_OBJECT_ID.into())).with_read_mask(
+                FieldMask::from_paths([Object::path_builder().contents().finish()]),
+            ),
+        )
+        .await?
+        .into_inner()
+        .object()
+        .contents()
+        .to_owned();
+    Ok(bcs::from_bytes(bridge_wrapper_bcs.value())?)
+}
+
+async fn get_object_contents(
+    client: &myso_rpc_api::Client,
+    object_id: Address,
+) -> Result<Option<Vec<u8>>, BridgeError> {
+    match client
+        .clone()
+        .inner_mut()
+        .ledger_client()
+        .get_object(GetObjectRequest::new(&object_id).with_read_mask(FieldMask::from_paths([
+            Object::path_builder().contents().finish(),
+        ])))
+        .await
+    {
+        Ok(response) => Ok(Some(
+            response.into_inner().object().contents().value().to_vec(),
+        )),
+        Err(status) if status.code() == tonic::Code::NotFound => Ok(None),
+        Err(status) => Err(status.into()),
+    }
+}
+
+async fn fetch_bridge_inner_field(
+    client: &myso_rpc_api::Client,
+    parent: Address,
+    key: u64,
+) -> Result<myso_types::dynamic_field::Field<u64, myso_types::bridge::BridgeInnerV1>, BridgeError>
+{
+    let bridge_inner_id = parent.derive_dynamic_child_id(
+        &myso_sdk_types::TypeTag::U64,
+        &bcs::to_bytes(&key).map_err(|e| {
+            BridgeError::Generic(format!("Failed to serialize bridge inner key {key}: {e}"))
+        })?,
+    );
+    let Some(bytes) = get_object_contents(client, bridge_inner_id).await? else {
+        return Err(BridgeError::Generic(format!(
+            "Bridge inner object {bridge_inner_id} not found for version {key}"
+        )));
+    };
+    bcs::from_bytes(&bytes).map_err(|e| {
+        BridgeError::Generic(format!(
+            "Failed to deserialize bridge inner at {bridge_inner_id}: {e}"
+        ))
+    })
+}
+
+async fn resolve_bridge_inner_key(
+    client: &myso_rpc_api::Client,
+) -> Result<(Address, u64), BridgeError> {
+    let wrapper = read_bridge_wrapper(client).await?;
+    let parent: Address = wrapper.version.id.id.bytes.into();
+    let on_chain_version = wrapper.version.version;
+    if on_chain_version != 0 && on_chain_version != 1 {
+        return Err(BridgeError::Generic(format!(
+            "Unsupported MySoBridge version: {on_chain_version}"
+        )));
+    }
+
+    for key in bridge_inner_version_keys(on_chain_version) {
+        match fetch_bridge_inner_field(client, parent, key).await {
+            Ok(_) => return Ok((parent, key)),
+            Err(e) if is_bridge_object_not_found(&e) => continue,
+            Err(e) => return Err(e),
+        }
+    }
+
+    resolve_bridge_inner_key_from_dynamic_fields(client, parent).await
+}
+
+async fn resolve_bridge_inner_key_from_dynamic_fields(
+    client: &myso_rpc_api::Client,
+    parent: Address,
+) -> Result<(Address, u64), BridgeError> {
+    let parent_id = ObjectID::from_bytes(<Address as AsRef<[u8]>>::as_ref(&parent)).map_err(|e| {
+        BridgeError::Generic(format!("Invalid Versioned parent id {parent}: {e}"))
+    })?;
+    let listed = client
+        .get_dynamic_fields(parent_id, Some(16), None)
+        .await
+        .map_err(|e| {
+            BridgeError::Generic(format!(
+                "Failed to list bridge Versioned dynamic fields on {parent}: {e}"
+            ))
+        })?;
+    for field in listed.dynamic_fields {
+        let Some(field_id) = field.field_id.as_ref() else {
+            continue;
+        };
+        let Ok(field_addr) = field_id.parse::<Address>() else {
+            continue;
+        };
+        let Some(bytes) = get_object_contents(client, field_addr).await? else {
+            continue;
+        };
+        if let Ok(decoded) = bcs::from_bytes::<
+            myso_types::dynamic_field::Field<u64, myso_types::bridge::BridgeInnerV1>,
+        >(&bytes)
+            && (decoded.name == 0 || decoded.name == 1)
+        {
+            return Ok((parent, decoded.name));
+        }
+    }
+    Err(BridgeError::Generic(format!(
+        "Could not load BridgeInner (version 0 or 1) under Versioned parent {parent}"
+    )))
 }
 
 #[async_trait]
@@ -580,14 +730,19 @@ impl MySoClientInner for myso_rpc_api::Client {
     }
 
     async fn get_mutable_bridge_object_arg(&self) -> Result<ObjectArg, BridgeError> {
+        self.get_mutable_shared_object_arg(MYSO_BRIDGE_OBJECT_ID)
+            .await
+    }
+
+    async fn get_mutable_shared_object_arg(&self, id: ObjectID) -> Result<ObjectArg, BridgeError> {
         let owner = self
             .clone()
             .inner_mut()
             .ledger_client()
             .get_object(
-                GetObjectRequest::new(&(MYSO_BRIDGE_OBJECT_ID.into())).with_read_mask(
-                    FieldMask::from_paths([Object::path_builder().owner().finish()]),
-                ),
+                GetObjectRequest::new(&(id.into())).with_read_mask(FieldMask::from_paths([
+                    Object::path_builder().owner().finish(),
+                ])),
             )
             .await?
             .into_inner()
@@ -595,61 +750,24 @@ impl MySoClientInner for myso_rpc_api::Client {
             .owner()
             .to_owned();
         Ok(ObjectArg::SharedObject {
-            id: MYSO_BRIDGE_OBJECT_ID,
+            id,
             initial_shared_version: SequenceNumber::from_u64(owner.version()),
             mutability: SharedObjectMutability::Mutable,
         })
     }
 
     async fn get_bridge_summary(&self) -> Result<BridgeSummary, BridgeError> {
-        static BRIDGE_VERSION_ID: tokio::sync::OnceCell<Address> =
+        // Cache the working (Versioned parent, DF key) only after a successful fetch so
+        // a first miss on testnet-style key 1 cannot pin this process to a missing object.
+        static BRIDGE_INNER_KEY: tokio::sync::OnceCell<(Address, u64)> =
             tokio::sync::OnceCell::const_new();
 
-        let bridge_version_id = BRIDGE_VERSION_ID
-            .get_or_try_init::<BridgeError, _, _>(|| async {
-                let bridge_wrapper_bcs = self
-                    .clone()
-                    .inner_mut()
-                    .ledger_client()
-                    .get_object(
-                        GetObjectRequest::new(&(MYSO_BRIDGE_OBJECT_ID.into())).with_read_mask(
-                            FieldMask::from_paths([Object::path_builder().contents().finish()]),
-                        ),
-                    )
-                    .await?
-                    .into_inner()
-                    .object()
-                    .contents()
-                    .to_owned();
-
-                let bridge_wrapper: BridgeWrapper = bcs::from_bytes(bridge_wrapper_bcs.value())?;
-
-                Ok(bridge_wrapper.version.id.id.bytes.into())
-            })
+        let (parent, key) = BRIDGE_INNER_KEY
+            .get_or_try_init::<BridgeError, _, _>(|| async { resolve_bridge_inner_key(self).await })
             .await?;
 
-        let bridge_inner_id = bridge_version_id.derive_dynamic_child_id(
-            &myso_sdk_types::TypeTag::U64,
-            &bcs::to_bytes(&1u64).unwrap(),
-        );
-
-        let field_bcs = self
-            .clone()
-            .inner_mut()
-            .ledger_client()
-            .get_object(GetObjectRequest::new(&bridge_inner_id).with_read_mask(
-                FieldMask::from_paths([Object::path_builder().contents().finish()]),
-            ))
-            .await?
-            .into_inner()
-            .object()
-            .contents()
-            .to_owned();
-
-        let field: myso_types::dynamic_field::Field<u64, myso_types::bridge::BridgeInnerV1> =
-            bcs::from_bytes(field_bcs.value())?;
-        let summary = field.value.try_into_bridge_summary()?;
-        Ok(summary)
+        let field = fetch_bridge_inner_field(self, *parent, *key).await?;
+        Ok(field.value.try_into_bridge_summary()?)
     }
 
     async fn get_token_transfer_action_onchain_status(
@@ -987,6 +1105,10 @@ impl MySoClientInner for MySoClientInternal {
         self.grpc_client.get_mutable_bridge_object_arg().await
     }
 
+    async fn get_mutable_shared_object_arg(&self, id: ObjectID) -> Result<ObjectArg, BridgeError> {
+        self.grpc_client.get_mutable_shared_object_arg(id).await
+    }
+
     async fn get_bridge_summary(&self) -> Result<BridgeSummary, BridgeError> {
         self.grpc_client.get_bridge_summary().await
     }
@@ -1105,6 +1227,23 @@ mod tests {
 
     use super::*;
     use crate::events::{MySoToEthTokenBridgeV1, init_all_struct_tags};
+
+    #[test]
+    fn bridge_inner_version_keys_prefers_on_chain_then_alternate() {
+        assert_eq!(bridge_inner_version_keys(0), vec![0, 1]);
+        assert_eq!(bridge_inner_version_keys(1), vec![1, 0]);
+        assert_eq!(bridge_inner_version_keys(2), vec![2]);
+    }
+
+    #[test]
+    fn is_bridge_object_not_found_matches_generic_not_found() {
+        assert!(is_bridge_object_not_found(&BridgeError::Generic(
+            "Bridge inner object 0x0166 not found for version 1".into()
+        )));
+        assert!(!is_bridge_object_not_found(&BridgeError::InternalError(
+            "boom".into()
+        )));
+    }
 
     #[tokio::test]
     async fn get_bridge_action_by_tx_digest_and_event_idx_maybe() {

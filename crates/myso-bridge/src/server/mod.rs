@@ -32,6 +32,7 @@ use tracing::{info, instrument};
 pub mod deposit_api;
 pub mod governance_verifier;
 pub mod handler;
+pub mod order_api;
 
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod mock_handler;
@@ -150,6 +151,8 @@ pub(crate) fn make_router(
                 "/deposit/addresses/{address}",
                 get(deposit_api::query_deposit_addresses),
             )
+            .route("/orders", post(order_api::create_bridge_order))
+            .route("/orders/{order_id}", get(order_api::get_bridge_order))
             .with_state(deposit_state);
         main_router.merge(deposit_router)
     } else {

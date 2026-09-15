@@ -192,6 +192,14 @@ impl MySoClientInner for MySoMockClient {
         Ok(DUMMY_MUTALBE_BRIDGE_OBJECT_ARG)
     }
 
+    async fn get_mutable_shared_object_arg(&self, id: ObjectID) -> Result<ObjectArg, BridgeError> {
+        let mut arg = DUMMY_MUTALBE_BRIDGE_OBJECT_ARG;
+        if let ObjectArg::SharedObject { id: existing, .. } = &mut arg {
+            *existing = id;
+        }
+        Ok(arg)
+    }
+
     async fn get_reference_gas_price(&self) -> Result<u64, BridgeError> {
         Ok(1000)
     }
@@ -212,6 +220,7 @@ impl MySoClientInner for MySoMockClient {
                 .clone()
                 .unwrap_or_default(),
             treasury: Default::default(),
+            token_claim_policies: vec![],
         })
     }
 

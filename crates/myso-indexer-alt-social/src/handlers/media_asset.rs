@@ -100,7 +100,20 @@ pub fn handle_media_asset_event(
         "MediaAssetRightsUpdatedEvent" => {
             super::media_asset_rights::handle_media_asset_rights_updated_event(data, event_id)
         }
+        "MediaAssetFutureUsagePausedEvent" => {
+            super::media_asset_rights::handle_media_asset_future_usage_paused_event(data, event_id)
+        }
+        "MediaAssetLicenseInstanceRevokedByLicensorEvent" => {
+            super::media_asset_rights::handle_media_asset_license_revoked_by_licensor_event(
+                data, event_id,
+            )
+        }
         other => {
+            if let Some(rows) =
+                super::media_asset_graph::handle_license_template_event(other, data, event_id)
+            {
+                return Some(rows);
+            }
             if let Some(rows) =
                 super::post_enforcement::handle_post_enforcement_event(other, data, event_id)
             {
@@ -158,6 +171,8 @@ fn process_media_asset_resolved_event(
         lineage_parent_id: ev.lineage_parent_id,
         rights_version: 1,
         economics_version: 1,
+        authorization_version: 1,
+        future_usage_paused: false,
         registered_by,
         registered_at: ev.timestamp as i64,
         verified_at: Some(ev.timestamp as i64),

@@ -3,7 +3,7 @@
 
 /// Proof of Creativity module for the MySocial network
 /// Manages content originality verification through oracle analysis,
-/// PoC badge issuance, revenue redirection, and community dispute voting
+/// MediaAsset resolution, revenue redirection, and community dispute voting
 ///
 /// **Revenue hierarchy (tips vs fee-split flows):**
 /// - Tips enter the post pool with no platform/ecosystem skim; manifest splits only.
@@ -2165,9 +2165,7 @@ module social_contracts::proof_of_creativity {
 #[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::poc_vault {
     use std::option::{Self, Option};
-    use std::string::String;
     use std::type_name::{Self, TypeName};
-    use std::vector;
 
     use myso::{
         bag::{Self, Bag},
@@ -2206,11 +2204,6 @@ module social_contracts::poc_vault {
     /// Bag key for `Balance<T>` buckets (same phantom-key pattern as orderbook `BalanceKey`).
     public struct VaultBalanceKey<phantom T> has copy, drop, store {}
 
-    /// Sentinel media index when oracle did not bind to a specific attachment slot.
-    public fun media_index_unspecified(): u8 {
-        255
-    }
-
     /// Maps beneficiary wallet → shared `PoCBeneficiaryVault` object address (lookup only).
     public struct PoCVaultDirectory has key {
         id: UID,
@@ -2223,22 +2216,6 @@ module social_contracts::poc_vault {
         id: UID,
         beneficiary: address,
         balances: Bag,
-        version: u64,
-    }
-
-    /// Authoritative on-chain PoC badge record for a post (shared object).
-    public struct PoCBadgeObject has key {
-        id: UID,
-        post_id: address,
-        beneficiary_address: Option<address>,
-        matched_anchor_id: Option<address>,
-        media_index: u8,
-        reasoning: Option<String>,
-        evidence_urls: Option<vector<String>>,
-        similarity_score: Option<u64>,
-        media_type: Option<u8>,
-        oracle_address: Option<address>,
-        analyzed_at: Option<u64>,
         version: u64,
     }
 
@@ -2563,39 +2540,6 @@ module social_contracts::poc_vault {
         balance::value(bag::borrow<VaultBalanceKey<T>, Balance<T>>(&vault.balances, key))
     }
 
-    public(package) fun new_poc_badge_object(
-        post_id: address,
-        beneficiary_address: Option<address>,
-        matched_anchor_id: Option<address>,
-        media_index: u8,
-        reasoning: Option<String>,
-        evidence_urls: Option<vector<String>>,
-        similarity_score: Option<u64>,
-        media_type: Option<u8>,
-        oracle_address: Option<address>,
-        analyzed_at: Option<u64>,
-        ctx: &mut TxContext
-    ): PoCBadgeObject {
-        PoCBadgeObject {
-            id: object::new(ctx),
-            post_id,
-            beneficiary_address,
-            matched_anchor_id,
-            media_index,
-            reasoning,
-            evidence_urls,
-            similarity_score,
-            media_type,
-            oracle_address,
-            analyzed_at,
-            version: upgrade::current_version(),
-        }
-    }
-
-    public(package) fun share_po_badge_object(badge: PoCBadgeObject) {
-        transfer::share_object(badge);
-    }
-
     public entry fun migrate_poc_vault_directory(
         directory: &mut PoCVaultDirectory,
         _: &UpgradeAdminCap,
@@ -2628,27 +2572,6 @@ module social_contracts::poc_vault {
             old_version,
             tx_context::sender(ctx)
         );
-    }
-
-    public entry fun migrate_poc_badge_object(
-        badge: &mut PoCBadgeObject,
-        _: &UpgradeAdminCap,
-        ctx: &mut TxContext
-    ) {
-        let current_version = upgrade::current_version();
-        assert!(badge.version < current_version, EWrongVersion);
-        let old_version = badge.version;
-        badge.version = current_version;
-        upgrade::emit_migration_event(
-            object::id(badge),
-            string::utf8(b"PoCBadgeObject"),
-            old_version,
-            tx_context::sender(ctx)
-        );
-    }
-
-    public(package) fun po_badge_object_address(badge: &PoCBadgeObject): address {
-        object::uid_to_address(&badge.id)
     }
 
     #[test_only]

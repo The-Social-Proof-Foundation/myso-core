@@ -1,5 +1,6 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/api/types/available_range.rs
+assertion_line: 619
 expression: output
 ---
 AccumulatorRootCreateTransaction._
@@ -200,6 +201,9 @@ AiCreditBalance.balanceId
 AiCreditBalance.balanceMist
   => {}
 
+AiCreditBalance.contractVersion
+  => {}
+
 AiCreditBalance.credits
   => {}
 
@@ -282,6 +286,18 @@ AiCreditUsageLine.settlementTx
   => {}
 
 AiCreditUsageLine.createdAt
+  => {}
+
+AncestrySnapshot.mediaAssetId
+  => {}
+
+AncestrySnapshot.ancestryVersion
+  => {}
+
+AncestrySnapshot.ancestorIds
+  => {}
+
+AncestrySnapshot.ancestryHash
   => {}
 
 AnonymousVote.proposalId
@@ -704,6 +720,9 @@ CommentSummary.reactionCount
 CommentSummary.commentCount
   => {}
 
+CommentSummary.tipsReceived
+  => {}
+
 CommentSummary.attribution
   => {}
 
@@ -732,6 +751,24 @@ CommunityVote.voteTime
   => {}
 
 CommunityVote.voteCost
+  => {}
+
+CompositionAnalysis.postId
+  => {}
+
+CompositionAnalysis.analyzedAt
+  => {}
+
+CompositionAnalysis.usageContext
+  => {}
+
+CompositionAnalysis.compositionStatus
+  => {}
+
+CompositionAnalysis.monetizationStatus
+  => {}
+
+CompositionAnalysis.analysisJson
   => {}
 
 ConsensusAddressOwner.startVersion
@@ -765,6 +802,12 @@ ConsensusObjectCancelled.cancellationReason
   => {}
 
 ConsensusObjectRead.object
+  => {}
+
+ContainerUsageDenial.bindingId
+  => {}
+
+ContainerUsageDenial.denialScope
   => {}
 
 Delegate.address
@@ -861,6 +904,60 @@ DelegateVote.voteTime
   => {}
 
 DelegateVote.reason
+  => {}
+
+DerivativeEdge.childAssetId
+  => {}
+
+DerivativeEdge.parentAssetId
+  => {}
+
+DerivativeEdge.relationshipId
+  => {}
+
+DerivativeEdge.relationshipType
+  => {}
+
+DerivativeEdge.licenseInstanceId
+  => {}
+
+DerivativeEdge.templateVersionId
+  => {}
+
+DerivativeEdge.parentShareBps
+  => {}
+
+DerivativeEdge.ancestryVersion
+  => {}
+
+DerivativeGraph.assetId
+  => {}
+
+DerivativeGraph.parentEdges
+  => {}
+
+DerivativeGraph.childEdges
+  => {}
+
+DetectedAssetRelationship.proposalId
+  => {}
+
+DetectedAssetRelationship.accusedPendingId
+  => {}
+
+DetectedAssetRelationship.accusedAssetId
+  => {}
+
+DetectedAssetRelationship.originalAssetId
+  => {}
+
+DetectedAssetRelationship.similarityBps
+  => {}
+
+DetectedAssetRelationship.status
+  => {}
+
+DetectedAssetRelationship.detectedAt
   => {}
 
 Display.output
@@ -969,6 +1066,21 @@ EcosystemTreasury.time
   => {}
 
 EcosystemTreasury.transactionId
+  => {}
+
+EmbeddedAssetBinding.bindingId
+  => {}
+
+EmbeddedAssetBinding.sourceAssetId
+  => {}
+
+EmbeddedAssetBinding.usageClass
+  => {}
+
+EmbeddedAssetBinding.stem
+  => {}
+
+EmbeddedAssetBinding.mediaComponent
   => {}
 
 EndOfEpochTransaction.transactions
@@ -1514,6 +1626,9 @@ InsuranceConfiguration.router
 InsuranceCoverageRoute.routeId
   => {}
 
+InsuranceCoverageRoute.contractVersion
+  => {}
+
 InsuranceCoverageRoute.insured
   => {}
 
@@ -1620,6 +1735,9 @@ InsurancePolicy.vaultId
   => {}
 
 InsurancePolicy.status
+  => {}
+
+InsurancePolicy.contractVersion
   => {}
 
 InsurancePolicy.createdAt
@@ -1880,6 +1998,144 @@ MakeMoveVecCommand.type
 MakeMoveVecCommand.elements
   => {}
 
+MediaAsset.mediaAssetId
+  => {}
+
+MediaAsset.mediaType
+  => {}
+
+MediaAsset.assetKind
+  => {}
+
+MediaAsset.originalityStatus
+  => {}
+
+MediaAsset.provenanceStatus
+  => {}
+
+MediaAsset.lineageParentId
+  => {}
+
+MediaAsset.rightsVersion
+  => {}
+
+MediaAsset.economicsVersion
+  => {}
+
+MediaAsset.authorizationVersion
+  => {}
+
+MediaAsset.futureUsagePaused
+  => {}
+
+MediaAsset.registeredBy
+  => {}
+
+MediaAsset.registeredAt
+  => {}
+
+MediaAsset.verifiedAt
+  => {}
+
+MediaAsset.usages
+  => {}
+
+MediaAsset.licenseTerms
+  => {}
+
+MediaAsset.licenseInstances
+  => {}
+
+MediaAsset.derivativeGraph
+  => {}
+
+MediaAsset.ancestry
+  => {}
+
+MediaAsset.resolvedPolicy
+  => {}
+
+MediaAsset.detectedRelationships
+  => {}
+
+MediaAsset.rightsDisputesSubmitted
+  => {}
+
+MediaAsset.activeRightsProposal
+  => {}
+
+MediaAsset.rightsProposals
+  => {}
+
+MediaAsset.rightsUpdates
+  => {}
+
+MediaAssetRightsUpdate.mediaAssetId
+  => {}
+
+MediaAssetRightsUpdate.rightsVersion
+  => {}
+
+MediaAssetRightsUpdate.proposalId
+  => {}
+
+MediaAssetRightsUpdate.transactionId
+  => {}
+
+MediaAssetRightsUpdate.time
+  => {}
+
+LicenseTemplateTerms.templateVersionId
+  => {}
+
+LicenseTemplateTerms.version
+  => {}
+
+LicenseTemplateTerms.legalTermsUri
+  => {}
+
+LicenseTemplateTerms.legalTermsHash
+  => {}
+
+LicenseTemplateTerms.governingLaw
+  => {}
+
+LicenseTemplateTerms.licenseSchemaVersion
+  => {}
+
+LicenseTemplateTerms.instanceRevocable
+  => {}
+
+MediaAssetLicenseInstance.licenseInstanceId
+  => {}
+
+MediaAssetLicenseInstance.templateVersionId
+  => {}
+
+MediaAssetLicenseInstance.licensee
+  => {}
+
+MediaAssetLicenseInstance.status
+  => {}
+
+MediaAssetLicenseInstance.acceptedAt
+  => {}
+
+MediaAssetUsage.containerId
+  => {}
+
+MediaAssetUsage.containerType
+  => {}
+
+MediaAssetUsage.assetId
+  => {}
+
+MediaAssetUsage.usageClass
+  => {}
+
+MediaAssetUsage.position
+  => {}
+
 MemoryAccount.accountId
   => {}
 
@@ -1893,6 +2149,9 @@ MemoryAccount.active
   => {}
 
 MemoryAccount.createdAt
+  => {}
+
+MemoryAccount.contractVersion
   => {}
 
 MemoryConfig.updatedBy
@@ -2696,6 +2955,9 @@ MyDataRecord.isUpdating
 MyDataRecord.updateFrequency
   => {}
 
+MyDataRecord.version
+  => {}
+
 MyDataRecord.purchases
   => {}
 
@@ -3218,6 +3480,9 @@ Platform.developerAddress
 Platform.moderatorsGroupId
   => {}
 
+Platform.badgeLedgerId
+  => {}
+
 Platform.developerProfile
   => {}
 
@@ -3285,6 +3550,9 @@ Platform.quorumVotes
   => {}
 
 Platform.votingPeriodEpochs
+  => {}
+
+Platform.treasuryBalances
   => {}
 
 Platform.treasuryBalance
@@ -3554,6 +3822,18 @@ PlatformRevenueSummary.activeMonths
 PlatformRevenueSummary.lastActiveMonth
   => {}
 
+PlatformTreasuryBalance.coinType
+  => {}
+
+PlatformTreasuryBalance.balance
+  => {}
+
+PlatformTreasuryBalance.lastFundedAt
+  => {}
+
+PlatformTreasuryBalance.lastWithdrawnAt
+  => {}
+
 PlatformTreasuryWithdrawalSummary.platformId
   => {}
 
@@ -3570,6 +3850,9 @@ PlatformTreasuryWithdrawalSummary.executedBy
   => {}
 
 PlatformTreasuryWithdrawalSummary.timestamp
+  => {}
+
+PlatformTreasuryWithdrawalSummary.coinType
   => {}
 
 PlatformUserAccess.isMember
@@ -3599,6 +3882,12 @@ PlatformUserAccess.canWithdrawFromPlatformTreasury
 PlatformUserAccess.canManagePromotions
   => {}
 
+PlaybackPolicy.audioMuted
+  => {}
+
+PlaybackPolicy.videoRestricted
+  => {}
+
 PocAnalysisResult.postId
   => {}
 
@@ -3624,36 +3913,6 @@ PocAnalysisResult.evidenceUrls
   => {}
 
 PocAnalysisResult.analysisTimestamp
-  => {}
-
-PocBadge.badgeId
-  => {}
-
-PocBadge.postId
-  => {}
-
-PocBadge.mediaType
-  => {}
-
-PocBadge.issuedBy
-  => {}
-
-PocBadge.issuedAt
-  => {}
-
-PocBadge.revoked
-  => {}
-
-PocBadge.beneficiaryAddress
-  => {}
-
-PocBadge.matchedAnchorId
-  => {}
-
-PocBadge.mediaIndex
-  => {}
-
-PocBadge.pocBeneficiaryVault
   => {}
 
 PocBeneficiaryVault.vaultId
@@ -3746,6 +4005,15 @@ PocConfig.maxDisputesPerPost
 PocConfig.minVaultDepositAmount
   => {}
 
+PocConfig.mediaAssetDisputeCost
+  => {}
+
+PocConfig.maxDisputesPerMediaAsset
+  => {}
+
+PocConfig.maxEmbeddedAssetRedirectBps
+  => {}
+
 PocConfig.disputeGovernanceRegistryId
   => {}
 
@@ -3759,6 +4027,9 @@ PocConfig.time
   => {}
 
 PocConfig.transactionId
+  => {}
+
+PocConfig.version
   => {}
 
 PocDispute.disputeId
@@ -4034,6 +4305,9 @@ Post.postType
 Post.createdAt
   => {}
 
+Post.contractVersion
+  => {}
+
 Post.reactionCount
   => {}
 
@@ -4067,9 +4341,6 @@ Post.parentPostId
 Post.updatedAt
   => {}
 
-Post.pocId
-  => {}
-
 Post.revenueRedirectTo
   => {}
 
@@ -4091,7 +4362,40 @@ Post.pocSimilarityScore
 Post.pocOutcome
   => {}
 
+Post.compositionStatus
+  => {}
+
+Post.monetizationStatus
+  => {}
+
+Post.mediaAssetIds
+  => {}
+
+Post.mediaAssets
+  => {}
+
+Post.compositionAnalysis
+  => {}
+
+Post.revenueManifest
+  => {}
+
+Post.embeddedBindings
+  => {}
+
+Post.usageDecisions
+  => {}
+
+Post.usageDenials
+  => {}
+
+Post.playbackPolicy
+  => {}
+
 Post.pocRedirectionKind
+  => {}
+
+Post.postReserveRequiresBeneficiaryVault
   => {}
 
 Post.pocMediaType
@@ -4197,9 +4501,6 @@ Post.spotBetWithdrawals
   => {}
 
 Post.promotion
-  => {}
-
-Post.pocBadges
   => {}
 
 Post.revenueRedirections
@@ -4427,6 +4728,9 @@ Profile.website
 Profile.createdAt
   => {}
 
+Profile.contractVersion
+  => {}
+
 Profile.updatedAt
   => {}
 
@@ -4472,6 +4776,9 @@ Profile.selectedBadgeId
 Profile.selectedEcosystemBadgeId
   => {}
 
+Profile.selectedEcosystemBadge
+  => {}
+
 Profile.badges
   => {}
 
@@ -4479,6 +4786,12 @@ Profile.followers
   => {}
 
 Profile.following
+  => {}
+
+Profile.mutualCount
+  => {}
+
+Profile.mutualConnections
   => {}
 
 Profile.recommendations
@@ -4550,6 +4863,15 @@ Profile.mydataRecords
 Profile.pnl
   => {}
 
+Profile.sptPortfolioMetrics
+  => {}
+
+Profile.sptPositionMetrics
+  => {}
+
+Profile.sptPositionTimeseries
+  => {}
+
 ProfileBadge.badgeId
   => {}
 
@@ -4578,6 +4900,12 @@ ProfileBadge.assignedAt
   => {}
 
 ProfileBadge.badgeType
+  => {}
+
+ProfileBadge.badgeKind
+  => {}
+
+ProfileBadge.expiresAt
   => {}
 
 ProfileConfig.updatedBy
@@ -4673,6 +5001,9 @@ ProfileSubscription.tierLevel
 ProfileSubscription.platformId
   => {}
 
+ProfileSubscription.coinType
+  => {}
+
 ProfileSubscription.price
   => {}
 
@@ -4728,6 +5059,9 @@ ProfileSubscriptionPlan.tierLevel
   => {}
 
 ProfileSubscriptionPlan.platformId
+  => {}
+
+ProfileSubscriptionPlan.coinType
   => {}
 
 ProfileSubscriptionPlan.active
@@ -4985,6 +5319,9 @@ Proposal.referenceId
 Proposal.spotRecord
   => {}
 
+Proposal.mediaAsset
+  => {}
+
 Proposal.implementedDescription
   => {}
 
@@ -5069,6 +5406,9 @@ Pure.bytes
 Query.node
   => {}
 
+Query.wallet
+  => {}
+
 Query.profile
   => {}
 
@@ -5082,6 +5422,12 @@ Query.usernameAvailability
   => {}
 
 Query.post
+  => {}
+
+Query.mediaAsset
+  => {}
+
+Query.mediaAssetRightsProposals
   => {}
 
 Query.posts
@@ -5127,6 +5473,9 @@ Query.vestingWallet
   => {}
 
 Query.vestingWallets
+  => {}
+
+Query.traderReturnLeaderboard
   => {}
 
 Query.vestingLeaderboard
@@ -5574,6 +5923,69 @@ RepostSummary.createdAt
   => {}
 
 RepostSummary.attribution
+  => {}
+
+ResolvedObligation.obligationIndex
+  => {}
+
+ResolvedObligation.beneficiaryAssetId
+  => {}
+
+ResolvedObligation.beneficiaryAddress
+  => {}
+
+ResolvedObligation.shareBps
+  => {}
+
+ResolvedObligation.sourceRelationshipId
+  => {}
+
+ResolvedObligation.sourceLicenseInstanceId
+  => {}
+
+ResolvedObligation.obligationKind
+  => {}
+
+ResolvedPolicy.mediaAssetId
+  => {}
+
+ResolvedPolicy.policyVersion
+  => {}
+
+ResolvedPolicy.effectiveRights
+  => {}
+
+ResolvedPolicy.derivativesAllowed
+  => {}
+
+ResolvedPolicy.attributionRequired
+  => {}
+
+ResolvedPolicy.commercialAllowed
+  => {}
+
+ResolvedPolicy.lineageJson
+  => {}
+
+ResolvedPolicy.lineageHash
+  => {}
+
+ResolvedPolicy.obligations
+  => {}
+
+RevenueManifest.postId
+  => {}
+
+RevenueManifest.manifestVersion
+  => {}
+
+RevenueManifest.entriesJson
+  => {}
+
+RevenueManifest.usesEscrowRedirect
+  => {}
+
+RevenueManifest.escrowBeneficiaries
   => {}
 
 RewardDistribution.proposalId
@@ -6191,6 +6603,9 @@ SpotRecord.daoEscalatedAtMs
 SpotRecord.proposal
   => {}
 
+SpotRecord.version
+  => {}
+
 SpotRefund.recipient
   => {}
 
@@ -6246,6 +6661,30 @@ SpotRoute.spotClaim
   => {}
 
 SpotRoute.spotMarket
+  => {}
+
+SptCreatorFeeSettlement.eventId
+  => {}
+
+SptCreatorFeeSettlement.poolId
+  => {}
+
+SptCreatorFeeSettlement.trader
+  => {}
+
+SptCreatorFeeSettlement.sourcePostId
+  => {}
+
+SptCreatorFeeSettlement.creatorFee
+  => {}
+
+SptCreatorFeeSettlement.walletAmount
+  => {}
+
+SptCreatorFeeSettlement.vaultAmount
+  => {}
+
+SptCreatorFeeSettlement.timestamp
   => {}
 
 SptExchangeConfig.updatedBy
@@ -6359,10 +6798,16 @@ SptHolding.blockedByViewer
 SptHolding.blockedBySubject
   => {}
 
+SptHolding.metrics
+  => {}
+
 SptPool.poolId
   => {}
 
 SptPool.totalSupply
+  => {}
+
+SptPool.launchSupply
   => {}
 
 SptPool.price
@@ -6404,6 +6849,15 @@ SptPool.ecosystemEarnings
 SptPool.transactions
   => {}
 
+SptPool.creatorFeeSettlements
+  => {}
+
+SptPool.swaps
+  => {}
+
+SptPool.transfers
+  => {}
+
 SptPool.priceHistory
   => {}
 
@@ -6414,6 +6868,111 @@ SptPool.reservationHolders
   => {}
 
 SptPool.formerReservationHolders
+  => {}
+
+SptPortfolioMetrics.holderAddress
+  => {}
+
+SptPortfolioMetrics.currentValueMyso
+  => {}
+
+SptPortfolioMetrics.totalInvestedMyso
+  => {}
+
+SptPortfolioMetrics.totalReturnedMyso
+  => {}
+
+SptPortfolioMetrics.realizedPlMyso
+  => {}
+
+SptPortfolioMetrics.disposedCostBasisMyso
+  => {}
+
+SptPortfolioMetrics.unrealizedPlMyso
+  => {}
+
+SptPortfolioMetrics.lifetimeNetPlMyso
+  => {}
+
+SptPortfolioMetrics.lifetimeRoiPct
+  => {}
+
+SptPortfolioMetrics.realizedRoiPct
+  => {}
+
+SptPortfolioMetrics.positions
+  => {}
+
+SptPositionMetrics.poolId
+  => {}
+
+SptPositionMetrics.tokenBalance
+  => {}
+
+SptPositionMetrics.supplyPct
+  => {}
+
+SptPositionMetrics.currentValueMyso
+  => {}
+
+SptPositionMetrics.avgEntryPrice
+  => {}
+
+SptPositionMetrics.avgExitPrice
+  => {}
+
+SptPositionMetrics.unrealizedPlMyso
+  => {}
+
+SptPositionMetrics.unrealizedRoiPct
+  => {}
+
+SptPositionMetrics.realizedPlMyso
+  => {}
+
+SptPositionMetrics.realizedRoiPct
+  => {}
+
+SptPositionMetrics.disposedCostBasisMyso
+  => {}
+
+SptPositionMetrics.totalInvestedMyso
+  => {}
+
+SptPositionMetrics.totalReturnedMyso
+  => {}
+
+SptPositionMetrics.lifetimeNetPlMyso
+  => {}
+
+SptPositionMetrics.lifetimeRoiPct
+  => {}
+
+SptPositionMetrics.costBasisUnknown
+  => {}
+
+SptPositionMetrics.windowPlMyso
+  => {}
+
+SptPositionMetrics.windowCapitalAtRiskMyso
+  => {}
+
+SptPositionMetrics.windowReturnPct
+  => {}
+
+SptPositionTimeSeriesPoint.time
+  => {}
+
+SptPositionTimeSeriesPoint.tokenBalance
+  => {}
+
+SptPositionTimeSeriesPoint.supplyPct
+  => {}
+
+SptPositionTimeSeriesPoint.markValueMyso
+  => {}
+
+SptPositionTimeSeriesPoint.unrealizedRoiPct
   => {}
 
 SptPriceHistory.poolId
@@ -6506,6 +7065,66 @@ SptReservationVolumeBucket.depositCount
 SptReservationVolumeBucket.withdrawalCount
   => {}
 
+SptSwap.transactionId
+  => {}
+
+SptSwap.trader
+  => {}
+
+SptSwap.sourcePoolId
+  => {}
+
+SptSwap.destPoolId
+  => {}
+
+SptSwap.sellAmount
+  => {}
+
+SptSwap.destAmount
+  => {}
+
+SptSwap.sellMysoGross
+  => {}
+
+SptSwap.buyMysoGross
+  => {}
+
+SptSwap.sellFeeAmount
+  => {}
+
+SptSwap.buyFeeAmount
+  => {}
+
+SptSwap.sellCreatorFee
+  => {}
+
+SptSwap.sellPlatformFee
+  => {}
+
+SptSwap.sellTreasuryFee
+  => {}
+
+SptSwap.buyCreatorFee
+  => {}
+
+SptSwap.buyPlatformFee
+  => {}
+
+SptSwap.buyTreasuryFee
+  => {}
+
+SptSwap.leftoverMyso
+  => {}
+
+SptSwap.sourceNewPrice
+  => {}
+
+SptSwap.destNewPrice
+  => {}
+
+SptSwap.timestamp
+  => {}
+
 SptTransaction.type
   => {}
 
@@ -6521,6 +7140,12 @@ SptTransaction.to
 SptTransaction.timestamp
   => {}
 
+SptTransaction.isSwapLeg
+  => {}
+
+SptTransaction.counterpartyPoolId
+  => {}
+
 SptTransaction.viewerIsFollowing
   => {}
 
@@ -6531,6 +7156,24 @@ SptTransaction.blockedByViewer
   => {}
 
 SptTransaction.blockedBySubject
+  => {}
+
+SptTransfer.transactionId
+  => {}
+
+SptTransfer.poolId
+  => {}
+
+SptTransfer.from
+  => {}
+
+SptTransfer.to
+  => {}
+
+SptTransfer.amount
+  => {}
+
+SptTransfer.timestamp
   => {}
 
 StakeSubsidy.balance
@@ -6689,6 +7332,21 @@ TipSummary.createdAt
 TipSummary.organizationId
   => {}
 
+TraderReturnLeaderboardEntry.rank
+  => {}
+
+TraderReturnLeaderboardEntry.wallet
+  => {}
+
+TraderReturnLeaderboardEntry.sortValue
+  => {}
+
+TraderReturnLeaderboardEntry.sortMetric
+  => {}
+
+TraderReturnLeaderboardEntry.metrics
+  => {}
+
 Transaction.id
   => {}
 
@@ -6804,6 +7462,21 @@ UpgradeCommand.currentPackage
   => {}
 
 UpgradeCommand.upgradeTicket
+  => {}
+
+UsageDecisionSnapshot.bindingId
+  => {}
+
+UsageDecisionSnapshot.policyPlaybackPermitted
+  => {}
+
+UsageDecisionSnapshot.playbackPermitted
+  => {}
+
+UsageDecisionSnapshot.policyReasonCode
+  => {}
+
+UsageDecisionSnapshot.policyVersionAtDecision
   => {}
 
 UserSignature.signatureBytes
@@ -6963,6 +7636,75 @@ VoteDecryptionFailure.failureReason
   => {}
 
 VoteDecryptionFailure.attemptedAt
+  => {}
+
+Wallet.id
+  => {}
+
+Wallet.address
+  => {}
+
+Wallet.profile
+  => {}
+
+Wallet.badges
+  => {}
+
+Wallet.selectedBadge
+  => {}
+
+Wallet.selectedBadgeId
+  => {}
+
+Wallet.selectedEcosystemBadgeId
+  => {}
+
+Wallet.selectedEcosystemBadge
+  => {}
+
+Wallet.platformMemberships
+  => {}
+
+Wallet.platformMembershipsPage
+  => {}
+
+Wallet.platformMembershipsTotal
+  => {}
+
+Wallet.pnl
+  => {}
+
+Wallet.followers
+  => {}
+
+Wallet.following
+  => {}
+
+Wallet.followersCount
+  => {}
+
+Wallet.followingCount
+  => {}
+
+Wallet.blockedCount
+  => {}
+
+Wallet.mutualConnections
+  => {}
+
+Wallet.recommendations
+  => {}
+
+Wallet.mydataRecords
+  => {}
+
+Wallet.subscriptions
+  => {}
+
+Wallet.blockedProfiles
+  => {}
+
+Wallet.blockedPlatforms
   => {}
 
 WithdrawMaxAmountU64.amount

@@ -42,6 +42,7 @@ use myso::address;
 use myso::balance;
 use myso::bcs;
 use myso::coin::{Self, Coin};
+use myso::ecdsa_k1::{secp256k1_ecrecover, secp256k1_keypair_from_seed, secp256k1_sign};
 use myso::hex;
 use myso::test_scenario;
 
@@ -461,13 +462,19 @@ fun test_add_tokens_on_myso_message_serialization_2() {
     let mut message_bytes = b"MYSO_BRIDGE_MESSAGE";
     message_bytes.append(message);
 
-    let pubkey = myso::ecdsa_k1::secp256k1_ecrecover(
-        &x"b75e64b040eef6fa510e4b9be853f0d35183de635c6456c190714f9546b163ba12583e615a2e9944ec2d21b520aebd9b14e181dcae0fcc6cdaefc0aa235b3abe00",
-        &message_bytes,
-        0,
-    );
-
-    assert_eq!(pubkey, x"025a8c385af9a76aa506c395e240735839cb06531301f9b396e5f9ef8eeb0d8879");
+    // Sign with a fresh key so recovery stays valid if the prefix or hash params stay aligned
+    // with `committee::verify_signatures`. Frozen Sui-era signatures do not recover here.
+    let mut seed = vector[];
+    let mut i = 0u64;
+    while (i < 31) {
+        seed.push_back(0);
+        i = i + 1;
+    };
+    seed.push_back(7);
+    let kp = secp256k1_keypair_from_seed(&seed);
+    let signature = secp256k1_sign(kp.private_key(), &message_bytes, 0, true);
+    let pubkey = secp256k1_ecrecover(&signature, &message_bytes, 0);
+    assert_eq!(pubkey, *kp.public_key());
     destroy(treasury);
     test_scenario::end(scenario);
 }

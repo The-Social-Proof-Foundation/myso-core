@@ -8,6 +8,8 @@
 
 # shellcheck source=lib/social-runtime-common.sh
 source "${REPO_ROOT}/scripts/lib/social-runtime-common.sh"
+# shellcheck source=lib/poc-media-asset-common.sh
+source "${REPO_ROOT}/scripts/lib/poc-media-asset-common.sh"
 
 readonly POC_DEFAULT_ORACLE_ADDRESS='0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8'
 readonly POC_DEFAULT_ORACLE_PRIVATE_KEY_HEX='736c869f584b6fdf1d961541e515304cdbeaf8e3d7789ae79fd05e2d9da34578'
@@ -100,7 +102,6 @@ upserts = {
     "MYSO_REFRESH_SESSION_OBJECTS": "true",
     "DISCOVERY_EMBED_SECRET": "discovery-secret",
     "DISCOVERY_ENABLED": "true",
-    "POC_E2E_SUBMIT_OVERRIDE": "1",
     "POC_IDENTITY_VERIFIER": "mock",
     "ORACLE_PRIVATE_KEY_LOCALNET": "736c869f584b6fdf1d961541e515304cdbeaf8e3d7789ae79fd05e2d9da34578",
     "POC_ADMIN_PRIVATE_KEY_LOCALNET": "736c869f584b6fdf1d961541e515304cdbeaf8e3d7789ae79fd05e2d9da34578",
@@ -277,23 +278,23 @@ assert_poc_scenario_events() {
         reservation_pool_created)
             assert_tx_events "$digest" ReservationPoolCreatedEvent
             ;;
-        analyze_original)
-            assert_tx_events "$digest" AnalysisSubmittedEvent
-            assert_tx_event_absent "$digest" RevenueRedirectionActivatedEvent
+        analyze_original|analyze_badge|composition_original)
+            assert_tx_events "$digest" PostCompositionAnalyzedEvent
             ;;
-        analyze_badge)
-            assert_tx_events "$digest" AnalysisSubmittedEvent PoCBadgeIssuedEvent
+        analyze_derivative|composition_derivative)
+            assert_tx_events "$digest" PostCompositionAnalyzedEvent
             ;;
-        analyze_derivative)
-            assert_tx_events "$digest" AnalysisSubmittedEvent RevenueRedirectionActivatedEvent PoCResultAppliedEvent
-            ;;
-        self_match)
-            assert_tx_events "$digest" AnalysisSubmittedEvent PoCBadgeIssuedEvent
-            assert_tx_event_absent "$digest" RevenueRedirectionActivatedEvent
+        self_match|composition_self_match)
+            assert_tx_events "$digest" PostCompositionAnalyzedEvent
             ;;
         royalty_free)
-            assert_tx_events "$digest" AnalysisSubmittedEvent PoCResultAppliedEvent
-            assert_tx_event_absent "$digest" RevenueRedirectionActivatedEvent
+            assert_tx_events "$digest" PostCompositionAnalyzedEvent
+            ;;
+        resolution_requested)
+            assert_tx_events "$digest" MediaResolutionRequestedEvent
+            ;;
+        asset_resolved)
+            assert_tx_events "$digest" MediaAssetResolvedEvent
             ;;
         tip_post)
             # A tip either pays the creator directly (TipEvent) or, when the post is under full PoC
@@ -362,6 +363,7 @@ wait_for_poc_post_attested() {
         digest="$(echo "$resp" | jq -r '.tx_digest // empty')"
         if [[ "$status" == "attested" && -n "$digest" ]]; then
             ANALYZE_TX_DIGEST="$digest"
+            ANALYZE_POST_LAST_DIGEST="$digest"
             printf '%s' "$digest"
             return 0
         fi
@@ -371,12 +373,47 @@ wait_for_poc_post_attested() {
     return 1
 }
 
+wait_for_poc_post_composed() {
+    local post_id="$1"
+    local expected="${2:-VERIFIED}"
+    local timeout_sec="${3:-${POC_ORACLE_ATTESTATION_TIMEOUT_SEC:-180}}"
+    local digest gql_resp status
+    post_id="$(normalize_hex_id "$post_id")" || return 1
+    digest="$(wait_for_poc_post_attested "$post_id" "$timeout_sec")" || return 1
+    if declare -F wait_for_gql_post_composition >/dev/null 2>&1; then
+        gql_resp="$(wait_for_gql_post_composition "$post_id" "$expected" "$timeout_sec")" || return 1
+        status="$(echo "$gql_resp" | jq -r '.data.post.compositionStatus // empty')"
+        if [[ -n "$expected" && "$status" != "$expected" ]]; then
+            echo "GraphQL compositionStatus=$status expected $expected for post $post_id" >&2
+            return 1
+        fi
+        MEDIA_ASSET_ID="$(echo "$gql_resp" | jq -r '
+            .data.post.mediaAssetIds
+            | if type == "array" then .[0]
+              elif type == "string" then .
+              else empty end
+        ')"
+        if [[ -n "${MEDIA_ASSET_ID:-}" && "$MEDIA_ASSET_ID" != "null" ]]; then
+            MEDIA_ASSET_ID="$(normalize_hex_id "$MEDIA_ASSET_ID")"
+        fi
+    fi
+    printf '%s' "$digest"
+}
+
 gql_cross_check_post_poc() {
     local post_id="$1" attempt resp
     post_id="$(normalize_hex_id "$post_id")" || return 1
     for attempt in $(seq 1 30); do
         resp="$(graphql_post \
-            'query($id: ID!) { post(id: $id) { id enableSpt mediaUrls pocOutcome revenueRedirectTo } }' \
+            'query($id: ID!) {
+                post(id: $id) {
+                    id
+                    mediaAssetIds
+                    compositionStatus
+                    monetizationStatus
+                    enableSpt
+                }
+            }' \
             "$(jq -nc --arg id "$post_id" '{id: $id}')" 2>/dev/null)" || resp='{}'
         if [[ -n "$(echo "$resp" | jq -r '.data.post.id // empty')" ]]; then
             printf '%s' "$resp"

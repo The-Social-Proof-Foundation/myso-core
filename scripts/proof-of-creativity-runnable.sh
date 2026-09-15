@@ -31,7 +31,7 @@
 #   POC_SKIP_USERNAME=1, POC_SKIP_DISPUTE=1, POC_INCLUDE_SPT=1, POC_INCLUDE_PROFILE_RESERVATION=1
 #   POC_INCLUDE_POST_RESERVATION=1, POC_INCLUDE_DISPUTE_REANALYZE=1
 #   POC_ORACLE_URL=http://127.0.0.1:8001, POC_ORACLE_NETWORK=localnet, POC_USE_DIRECT_MOVE=0
-#   POC_E2E_SUBMIT_OVERRIDE=1 (localnet upload score/creator overrides)
+#   POC_POST_FIRST=1 (default; create_post with metadata commitments)
 #   POC_NO_PLATFORM=1, POC_REQUIRE_PLATFORM=1, POC_SKIP_VAULT_FUNDING=1, POC_FORCE_UPDATE_CONFIG=1
 #
 # No-platform (--run-all without PLATFORM_OBJECT_ID): preflight + username beneficiary PoC only.
@@ -2221,32 +2221,20 @@ create_test_platform() {
 create_post_poc_enabled() {
     local body_lit="$1"
     local enable_spt_arg="${2:-none}"
-    local ref_ur ref_pr ref_plat ref_blr ref_cfg ref_mcfg ref_mr ref_mem ref_clk
+    local content_hex="${3:-}"
+    local fingerprint_hex="${4:-}"
+    local media_url="${5:-$POC_DEFAULT_MEDIA_URL}"
 
     prepare_for_create_post || return 1
 
-    require_hex_ids USERNAME_REGISTRY_ID PLATFORM_REGISTRY_ID PLATFORM_OBJECT_ID \
-        BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MEMORY_CONFIG_ID MYDATA_REGISTRY_ID \
-        MEMORY_ACCOUNT_ID CLOCK_ID || return 1
-    ref_ur="$(ptb_shared_ref "$USERNAME_REGISTRY_ID")" || return 1
-    ref_pr="$(ptb_shared_ref "$PLATFORM_REGISTRY_ID")" || return 1
-    ref_plat="$(ptb_shared_ref "$PLATFORM_OBJECT_ID")" || return 1
-    ref_blr="$(ptb_shared_ref "$BLOCK_LIST_REGISTRY_ID")" || return 1
-    ref_cfg="$(ptb_shared_ref "$POST_CONFIG_ID")" || return 1
-    ref_mcfg="$(ptb_shared_ref "$MEMORY_CONFIG_ID")" || return 1
-    ref_mr="$(ptb_shared_ref "$MYDATA_REGISTRY_ID")" || return 1
-    ref_mem="$(ptb_shared_ref "$MEMORY_ACCOUNT_ID")" || return 1
-    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
+    if [[ -z "$content_hex" || -z "$fingerprint_hex" ]]; then
+        mapfile -t _commits < <(deterministic_commitments_for_run "${POC_RUN_ID:-$SOCIAL_RUN_ID}")
+        content_hex="${_commits[0]}"
+        fingerprint_hex="${_commits[1]}"
+    fi
 
-    log_step "Creating post: $body_lit"
-    SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
-        --move-call "${PKG_SOCIAL}::post::create_post" \
-        "$ref_ur" "$ref_pr" "$ref_plat" "$ref_blr" "$ref_cfg" "$ref_mcfg" \
-        "$body_lit" \
-        none \
-        none none none none none none none \
-        "$enable_spt_arg" none none \
-        "$ref_mr" "$ref_mem" "$ref_clk"
+    create_post_post_first "${CREATOR_ADDRESS:-}" "$body_lit" "$media_url" \
+        "$content_hex" "$fingerprint_hex" "$enable_spt_arg"
 }
 
 enable_spt_for_post_call() {
@@ -2285,47 +2273,75 @@ ptb_option_address_from_arg() {
     printf '%s' "$arg"
 }
 
-analyze_post_direct() {
-    local post_id="$1" media_type="$2" score="$3" original_creator_arg="$4" \
-        deriv_target="$5" embed_audio="$6" apply_explicit="$7" explicit_outcome="$8"
-    local sender="${9:-}"
-    local ref_cfg ref_reg ref_vault ref_post ref_clk creator_arg out digest
-    creator_arg="$(ptb_option_address_from_arg "$original_creator_arg")"
-    log_step "analyze_and_update_post post=$post_id score=$score${sender:+ sender=$sender}"
-    ref_cfg="$(ptb_shared_ref "$POC_CONFIG_ID")" || return 1
-    ref_reg="$(ptb_shared_ref "$POC_REGISTRY_ID")" || return 1
-    ref_vault="$(ptb_shared_ref "$POC_VAULT_DIRECTORY_ID")" || return 1
-    ref_post="$(ptb_shared_ref "$post_id")" || return 1
-    ref_clk="$(ptb_shared_ref "$CLOCK_ID")" || return 1
-    if [[ -n "$sender" ]]; then
-        out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$sender" \
-            --move-call "${PKG_SOCIAL}::proof_of_creativity::analyze_and_update_post" \
-            "$ref_cfg" "$ref_reg" "$ref_vault" "$ref_post" \
-            "$media_type" "$score" "$creator_arg" "$deriv_target" \
-            "$embed_audio" "$apply_explicit" "$explicit_outcome" \
-            none none "$ref_clk")" || return 1
+analyze_post_composition_from_legacy_args() {
+    local post_id="$1"
+    local original_creator_arg="${4:-none}"
+    local deriv_target="${5:-0}"
+    local apply_explicit="${7:-false}"
+    local explicit_outcome="${8:-0}"
+    local spt_pool_id="${11:-}"
+    local asset_id opts beneficiary share_bps payout_mode digest
+    post_id="$(normalize_hex_id "$post_id")" || return 1
+    asset_id="$(wait_for_post_media_asset_id "$post_id")" || return 1
+    MEDIA_ASSET_ID="$asset_id"
+    share_bps=0
+    payout_mode=0
+    beneficiary=""
+    if [[ "$apply_explicit" == "true" && "$explicit_outcome" == "4" ]]; then
+        opts="$(jq -nc --arg spt "$spt_pool_id" \
+            '{reasoning: "E2E royalty-free composition", spt_pool_id: (if $spt == "" then null else $spt end)}')"
     else
-        out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_capture \
-            --move-call "${PKG_SOCIAL}::proof_of_creativity::analyze_and_update_post" \
-            "$ref_cfg" "$ref_reg" "$ref_vault" "$ref_post" \
-            "$media_type" "$score" "$creator_arg" "$deriv_target" \
-            "$embed_audio" "$apply_explicit" "$explicit_outcome" \
-            none none "$ref_clk")" || return 1
+        if [[ "$original_creator_arg" != "none" && -n "$original_creator_arg" ]]; then
+            beneficiary="${original_creator_arg#some(}"
+            beneficiary="${beneficiary%)}"
+            beneficiary="$(normalize_hex_id "$beneficiary")"
+            share_bps=10000
+            payout_mode=0
+            [[ "$deriv_target" == "1" ]] && payout_mode=1
+        fi
+        opts="$(jq -nc \
+            --arg beneficiary "$beneficiary" \
+            --arg spt "$spt_pool_id" \
+            --argjson share_bps "$share_bps" \
+            --argjson payout_mode "$payout_mode" \
+            --argjson contains_derivatives "$([[ $share_bps -gt 0 ]] && echo true || echo false)" \
+            '{
+                share_bps: $share_bps,
+                beneficiary: (if $beneficiary == "" then null else $beneficiary end),
+                payout_mode: $payout_mode,
+                contains_derivatives: $contains_derivatives,
+                spt_pool_id: (if $spt == "" then null else $spt end),
+                reasoning: "E2E composition"
+            }')"
     fi
-    digest="$(extract_tx_digest "$out")"
-    ANALYZE_POST_LAST_DIGEST="${digest:-}"
-    [[ -n "$ANALYZE_POST_LAST_DIGEST" ]]
+    digest="$(submit_analyze_post_composition_direct "$post_id" "$asset_id" "$opts")" || return 1
+    ANALYZE_POST_LAST_DIGEST="$digest"
+    ANALYZE_TX_DIGEST="$digest"
+    printf '%s' "$digest"
 }
 
 analyze_post() {
-    if [[ "${POC_USE_DIRECT_MOVE:-0}" == "1" ]]; then
-        analyze_post_direct "$@"
-        return $?
-    fi
+    local post_id="$1"
+    local original_creator_arg="${4:-none}"
+    local apply_explicit="${7:-false}"
+    local explicit_outcome="${8:-0}"
+    local scripted=0
     poc_oracle_load_localnet_env
     sync_poc_config_oracle_on_chain "$POC_DEFAULT_ORACLE_ADDRESS" || return 1
     ensure_poc_oracle_key_in_env || return 1
-    poc_oracle_analyze_post "$@"
+    if [[ "${POC_USE_DIRECT_MOVE:-0}" == "1" ]]; then
+        scripted=1
+    fi
+    if [[ "$original_creator_arg" != "none" || ( "$apply_explicit" == "true" && "$explicit_outcome" == "4" ) ]]; then
+        scripted=1
+    fi
+    if [[ "$scripted" == "1" ]]; then
+        analyze_post_composition_from_legacy_args "$@"
+        return $?
+    fi
+    ANALYZE_POST_LAST_DIGEST="$(wait_for_poc_post_composed "$post_id" VERIFIED)" || return 1
+    ANALYZE_TX_DIGEST="$ANALYZE_POST_LAST_DIGEST"
+    printf '%s' "$ANALYZE_POST_LAST_DIGEST"
 }
 
 tip_post_as_tipper() {
@@ -2708,11 +2724,8 @@ run_spt_sync_flow() {
     SKIP_CONFIRM_RUN=1 run_myso_call social_proof_tokens create_social_proof_token \
         --args "@${TOKEN_REGISTRY_ID}" "@${SOCIAL_PROOF_TOKENS_CONFIG_ID}" "@${pool_id}"
 
-    log_step "3 analyze_and_update_post_sync_token_pool"
-    SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity analyze_and_update_post_sync_token_pool \
-        --args "@${POC_CONFIG_ID}" "@${POC_REGISTRY_ID}" "@${TOKEN_REGISTRY_ID}" \
-        "@${POC_VAULT_DIRECTORY_ID}" "@${post_id}" "@${pool_id}" \
-        1 100 "some($CREATOR_ADDRESS)" 1 false false 0 none none "@${CLOCK_ID}"
+    log_step "3 analyze_post_composition_sync_token_pool"
+    analyze_post "$post_id" 1 100 "some($CREATOR_ADDRESS)" 1 false false 0 "" false "$pool_id" || return 1
 }
 
 run_dispute_flow() {
@@ -2795,10 +2808,9 @@ run_dispute_overturn_reanalyze_flow() {
     SKIP_CONFIRM_RUN=1 run_myso_call proof_of_creativity resolve_dispute_voting \
         --args "@${dispute_id}" "@${post_id}" "@${CLOCK_ID}"
 
-    log_step "4f oracle re-analyze after overturn (force_reanalyze)"
-    export MYSO_POC_ALLOW_FORCE_RESUBMIT=1
-    reanalyze_digest="$(poc_oracle_analyze_post "$post_id" 1 50 none 0 false false 0 "" true)" || return 1
-    log_step "4f re-analyze digest=$reanalyze_digest"
+    log_step "4f oracle re-compose after overturn"
+    reanalyze_digest="$(POC_USE_DIRECT_MOVE=1 analyze_post "$post_id" 1 50 none 0 false false 0)" || return 1
+    log_step "4f re-compose digest=$reanalyze_digest"
     print_poc_dispute_flow_summary
 }
 

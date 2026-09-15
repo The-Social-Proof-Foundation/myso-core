@@ -6,6 +6,7 @@
 
 use crate::deposit_bridge::DepositBridgeHandler;
 use crate::deposit_monitor::{EvmDepositEvent, MySoDepositEvent};
+use crate::storage::DepositAddressKey;
 use std::sync::Arc;
 use tracing::{error, info};
 
@@ -46,6 +47,8 @@ pub async fn run_evm_deposit_processor(
                     error = ?e,
                     "Failed to bridge EVM deposit"
                 );
+                bridge_handler
+                    .notify_deposit_failed(DepositAddressKey::from_evm(deposit_event.to_address));
             }
         }
     }
@@ -90,6 +93,8 @@ pub async fn run_myso_deposit_processor(
                     error = ?e,
                     "Failed to bridge MySocial deposit"
                 );
+                bridge_handler
+                    .notify_deposit_failed(DepositAddressKey::from_myso(deposit_event.recipient));
             }
         }
     }

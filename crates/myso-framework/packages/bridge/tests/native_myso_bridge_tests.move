@@ -4,17 +4,17 @@
 #[test_only]
 module bridge::native_myso_bridge_tests;
 
-use bridge::bridge::{Self, new_for_testing};
+use bridge::bridge::new_for_testing;
 use bridge::chain_ids;
 use bridge::treasury;
-use myso::coin::{Self};
+use myso::coin;
 use myso::myso::MYSO;
 use myso::test_scenario;
 use std::unit_test::destroy;
 
 const BOOTSTRAP_MIST: u64 = 50_000_000_000_000_000;
 
-#[test, expected_failure(abort_code = 6)]
+#[test, expected_failure(abort_code = bridge::treasury::EInvalidBootstrapAmount, location = bridge::treasury)]
 fun test_bootstrap_wrong_amount_aborts() {
     let mut scenario = test_scenario::begin(@0x1);
     let ctx = scenario.ctx();
@@ -23,10 +23,10 @@ fun test_bootstrap_wrong_amount_aborts() {
     bridge.bootstrap_native_myso(wrong);
     destroy(bridge);
     scenario.end();
-    abort 0
+    abort
 }
 
-#[test, expected_failure(abort_code = 5)]
+#[test, expected_failure(abort_code = bridge::treasury::ENativeBridgeAlreadyInitialized, location = bridge::treasury)]
 fun test_bootstrap_twice_aborts() {
     let mut scenario = test_scenario::begin(@0x1);
     let ctx = scenario.ctx();
@@ -37,7 +37,7 @@ fun test_bootstrap_twice_aborts() {
     bridge.bootstrap_native_myso(c2);
     destroy(bridge);
     scenario.end();
-    abort 0
+    abort
 }
 
 #[test]
@@ -58,7 +58,7 @@ fun test_bootstrap_locks_escrow_and_registers_myso_id_zero() {
     scenario.end();
 }
 
-#[test, expected_failure(abort_code = 20)]
+#[test, expected_failure(abort_code = bridge::bridge::EMustUseSendMySoToken, location = bridge::bridge)]
 fun test_send_token_myso_aborts_after_bootstrap() {
     let mut scenario = test_scenario::begin(@0x1);
     let ctx = scenario.ctx();
@@ -75,7 +75,7 @@ fun test_send_token_myso_aborts_after_bootstrap() {
     );
     destroy(bridge);
     scenario.end();
-    abort 0
+    abort
 }
 
 #[test]

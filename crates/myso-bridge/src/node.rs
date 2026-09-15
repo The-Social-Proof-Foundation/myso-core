@@ -341,6 +341,15 @@ async fn start_client_components(
     );
 
     let myso_token_type_tags = Arc::new(ArcSwap::from(Arc::new(myso_token_type_tags)));
+    let peg_object_arg = if let Some(peg_id) = client_config.myusd_peg_object_id {
+        Some(
+            myso_client
+                .get_mutable_shared_object_arg_must_succeed(peg_id)
+                .await,
+        )
+    } else {
+        None
+    };
     let bridge_action_executor = BridgeActionExecutor::new(
         myso_client.clone(),
         bridge_auth_agg.clone(),
@@ -352,7 +361,8 @@ async fn start_client_components(
         bridge_pause_rx,
         metrics.clone(),
     )
-    .await;
+    .await
+    .with_peg_object_arg(peg_object_arg);
 
     let (myso_monitor_tx, myso_monitor_rx) = mysten_metrics::metered_channel::channel(
         10000,
@@ -716,6 +726,7 @@ mod tests {
                 bridge_client_gas_object: None,
                 myso_bridge_module_last_processed_event_id_override: None,
                 myso_bridge_next_sequence_number_override: None,
+                myusd_peg_object_id: None,
             },
             eth: EthConfig {
                 eth_rpc_url: None,
@@ -789,6 +800,7 @@ mod tests {
                     event_seq: 0,
                 }),
                 myso_bridge_next_sequence_number_override: None,
+                myusd_peg_object_id: None,
             },
             eth: EthConfig {
                 eth_rpc_url: None,
@@ -873,6 +885,7 @@ mod tests {
                     event_seq: 0,
                 }),
                 myso_bridge_next_sequence_number_override: None,
+                myusd_peg_object_id: None,
             },
             eth: EthConfig {
                 eth_rpc_url: None,

@@ -831,6 +831,11 @@ myso_output_is_stale_gas() {
     printf '%s' "${1:-}" | grep -qE 'is not available for consumption|Could not find the referenced object'
 }
 
+myso_output_is_transient_tx_error() {
+    myso_output_is_stale_gas "$1" \
+        || printf '%s' "${1:-}" | grep -qE 'already locked by a different transaction'
+}
+
 myso_output_is_executed_success() {
     printf '%s' "${1:-}" | grep -qE \
         'status: Some\(ExecutionStatus \{ success: Some\(true\)|success: Some\(true\)|Transaction executed but checkpoint wait timed out|TransactionEffectsV2 \{ status: Success'
@@ -871,10 +876,10 @@ ensure_script_gas_coin_for_address() {
     log_step "Using dedicated script gas coin $SCRIPT_GAS_COIN_ID"
 }
 
+# Do not pin --gas. A dedicated/stale coin object fails after the first spend;
+# myso client selects a live gas coin when the flag is omitted.
 extra_script_gas() {
-    if [[ -n "${SCRIPT_GAS_COIN_ID:-}" ]]; then
-        printf '%s\n' '--gas' "$(normalize_hex_id "$SCRIPT_GAS_COIN_ID")"
-    fi
+    return 0
 }
 
 run_myso_cmd_with_stale_gas_retry() {
@@ -913,11 +918,9 @@ run_myso_call_as_capture() {
     fi
     for ((attempt = 1; attempt <= max; attempt++)); do
         SCRIPT_GAS_COIN_ID=''
-        ensure_script_gas_coin_for_address "$sender" || return 1
         cmd=(myso client call --package "$PKG_SOCIAL" --sender "$sender" \
             --module "$module" --function "$func")
         while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
-        while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_script_gas)
         while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
         cmd+=(--args)
         cmd+=("${call_args[@]}")
@@ -954,11 +957,9 @@ run_myso_call_as_capture_typed() {
     fi
     for ((attempt = 1; attempt <= max; attempt++)); do
         SCRIPT_GAS_COIN_ID=''
-        ensure_script_gas_coin_for_address "$sender" || return 1
         cmd=(myso client call --package "$PKG_SOCIAL" --sender "$sender" \
             --module "$module" --function "$func" --type-args "$type_args")
         while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_gas_budget)
-        while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_script_gas)
         while IFS= read -r g; do [[ -n "$g" ]] && cmd+=("$g"); done < <(extra_dry)
         cmd+=(--args)
         cmd+=("${call_args[@]}")
@@ -1017,10 +1018,19 @@ extract_created_object_from_call_output() {
 import re, sys
 blob = sys.stdin.read()
 want = sys.argv[1]
-pat = re.compile(r"object_id: Some\(\"(0x[0-9a-fA-F]+)\"\).*?" + re.escape(want), re.S)
-m = pat.search(blob)
-if m:
-    print(m.group(1))
+# Bind object_id to the same ChangedObject block as object_type (DOTALL across
+# the whole blob previously returned the first object_id in the effects).
+for block in blob.split("ChangedObject {"):
+    oid = re.search(r"object_id: Some\(\"(0x[0-9a-fA-F]+)\"\)", block)
+    otype = re.search(r"object_type: Some\(\"([^\"]*)\"\)", block)
+    if not oid or not otype:
+        continue
+    if want not in otype.group(1):
+        continue
+    if "id_operation: Some(Created)" not in block and "id_operation: Some(CREATED)" not in block:
+        continue
+    print(oid.group(1))
+    break
 ' "$type_substring" 2>/dev/null)" || id=''
     [[ -n "$id" ]] || return 1
     normalize_hex_id "$id"

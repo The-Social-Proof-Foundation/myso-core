@@ -421,7 +421,7 @@ pub(crate) async fn get_spt_pool(
     let query = r#"
         WITH latest_pool AS (
             SELECT pool_id, token_type, owner, associated_id, circulating_supply,
-                   base_price, quadratic_coefficient, created_at, time, transaction_id
+                   launch_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
             FROM spt_pools
             WHERE pool_id = $1
             ORDER BY time DESC
@@ -464,7 +464,7 @@ pub(crate) async fn get_spt_pool(
                )
         )
         SELECT p.pool_id, p.token_type, p.owner, p.associated_id,
-               p.circulating_supply, p.base_price, p.quadratic_coefficient, p.created_at,
+               p.circulating_supply, p.launch_supply, p.base_price, p.quadratic_coefficient, p.created_at,
                p.time, p.transaction_id, COALESCE(lp.price, 0)::bigint as price,
                COALESCE(ph24.price, fp.price) as price_24h_ago,
                COALESCE(ph24.circulating_supply, fp.circulating_supply) as circulating_supply_24h_ago,
@@ -731,7 +731,7 @@ pub(crate) async fn list_spt_pools(
         r#"
         WITH latest_pools AS (
             SELECT DISTINCT ON (pool_id) pool_id, token_type, owner, associated_id,
-                   circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
+                   circulating_supply, launch_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
             FROM spt_pools
             WHERE 1=1 {token_filter}
             ORDER BY pool_id, time DESC
@@ -745,6 +745,7 @@ pub(crate) async fn list_spt_pools(
                 p.owner,
                 p.associated_id,
                 p.circulating_supply,
+                p.launch_supply,
                 p.base_price,
                 p.quadratic_coefficient,
                 p.created_at,
@@ -789,7 +790,7 @@ pub(crate) async fn list_spt_pools(
             ) r ON true
         )
         SELECT pool_id, token_type, owner, associated_id, circulating_supply,
-               base_price, quadratic_coefficient, created_at, time, transaction_id, price,
+               launch_supply, base_price, quadratic_coefficient, created_at, time, transaction_id, price,
                price_24h_ago, circulating_supply_24h_ago, volume_24h, creator_earnings, platform_earnings, ecosystem_earnings
         FROM pool_metrics
         ORDER BY {order_clause}

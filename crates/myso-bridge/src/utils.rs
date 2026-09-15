@@ -314,6 +314,7 @@ pub fn generate_bridge_node_config_and_write_to_file(
             bridge_client_gas_object: None,
             myso_bridge_module_last_processed_event_id_override: None,
             myso_bridge_next_sequence_number_override: None,
+            myusd_peg_object_id: None,
         },
         eth: EthConfig {
             eth_rpc_url: None, // to be deprecated

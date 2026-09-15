@@ -21,7 +21,7 @@ use crate::api::types::media_asset::{CompositionAnalysis, MediaAsset, RevenueMan
 use crate::api::types::media_asset_enums::{PostCompositionStatus, PostMonetizationStatus};
 use crate::api::types::memory::SocialAttribution;
 use crate::api::types::mydata::MyDataRecord;
-use crate::api::types::poc::{PocAnalysisResult, PocBadge, PocDispute, PocRevenueRedirection};
+use crate::api::types::poc::{PocAnalysisResult, PocDispute, PocRevenueRedirection};
 use crate::api::types::post_enforcement::{
     ContainerUsageDenial, EmbeddedAssetBinding, PlaybackPolicy, UsageDecisionSnapshot,
     derive_playback_policy, parse_embedded_bindings, parse_usage_decisions, parse_usage_denials,
@@ -163,11 +163,6 @@ impl Post {
     /// When the post was last updated (Unix timestamp in milliseconds).
     async fn updated_at(&self) -> Option<i64> {
         self.inner.updated_at
-    }
-
-    /// PoC record/badge ID for original content.
-    async fn poc_id(&self) -> Option<&str> {
-        self.inner.poc_id.as_deref()
     }
 
     /// Post ID receiving redirected revenue (for derivative content).
@@ -770,25 +765,6 @@ impl Post {
             .await
             .ok()?;
         Some(Promotion::from_row(row, views))
-    }
-
-    /// PoC badges for this post (paginated).
-    async fn poc_badges(
-        &self,
-        ctx: &Context<'_>,
-        limit: Option<u64>,
-        offset: Option<u64>,
-    ) -> Option<Vec<PocBadge>> {
-        let reader_opt = ctx
-            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
-        let reader = reader_opt.as_ref().as_ref()?;
-        let limit = limit.unwrap_or(20).min(100) as i64;
-        let offset = offset.unwrap_or(0) as i64;
-        let rows = reader
-            .get_poc_badges_for_post(&self.inner.post_id, limit, offset)
-            .await
-            .ok()?;
-        Some(rows.into_iter().map(PocBadge::from_row).collect())
     }
 
     /// Revenue redirections for this post (as accused or original).

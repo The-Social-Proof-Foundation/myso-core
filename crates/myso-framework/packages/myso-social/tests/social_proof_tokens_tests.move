@@ -124,7 +124,6 @@ module social_contracts::token_exchange_tests {
                 100, // reservation_creator_fee_bps (1.0%)
                 25,  // reservation_platform_fee_bps (0.25%)
                 25,  // reservation_treasury_fee_bps (0.25%)
-                200_000_000, // base_price (0.2 MYSO)
                 200_000,     // quadratic_coefficient (doubled)
                 1000, // max_hold_percent_bps (10%)
                 2000_000_000, // post_threshold (2000 MYSO)
@@ -169,7 +168,6 @@ module social_contracts::token_exchange_tests {
                 100,
                 25,
                 25,
-                200_000_000,
                 200_000,
                 100_000, // 1_000% of circulating supply per wallet
                 2000_000_000,
@@ -298,7 +296,6 @@ module social_contracts::token_exchange_tests {
                 100, // reservation_creator_fee_bps
                 25,  // reservation_platform_fee_bps
                 25,  // reservation_treasury_fee_bps
-                100_000_000, // base_price
                 100_000,     // quadratic_coefficient
                 500, // max_hold_percent_bps
                 1000_000_000, // post_threshold
@@ -332,15 +329,13 @@ module social_contracts::token_exchange_tests {
         test_scenario::end(scenario);
     }
 
-    /// Launch mint: initial nano-SPT = `total_reserved * 10^9 / base_price` (matches on-chain); split by reservation share.
+    /// Launch mint: 1 net reserved MYSO = 1 SPT (`S0 = total_reserved`).
     const LAUNCH_THRESHOLD_MIST: u64 = 1_000_000_000;
-    const LAUNCH_BASE_PRICE_NANO: u64 = 100_000_000;
-    /// `LAUNCH_THRESHOLD_MIST * 10^9 / LAUNCH_BASE_PRICE_NANO` at configured `base_price`.
-    const LAUNCH_INITIAL_NANO_SPT: u64 = 10_000_000_000;
+    const LAUNCH_INITIAL_NANO_SPT: u64 = 1_000_000_000;
     const RESERVE_NET_A: u64 = 600_000_000;
     const RESERVE_NET_B: u64 = 400_000_000;
-    const LAUNCH_MINT_NET_A: u64 = 6_000_000_000;
-    const LAUNCH_MINT_NET_B: u64 = 4_000_000_000;
+    const LAUNCH_MINT_NET_A: u64 = 600_000_000;
+    const LAUNCH_MINT_NET_B: u64 = 400_000_000;
 
     #[test]
     fun test_create_social_proof_token_launch_supply_base_price_scaled_profile() {
@@ -361,7 +356,6 @@ module social_contracts::token_exchange_tests {
                 100,
                 25,
                 25,
-                LAUNCH_BASE_PRICE_NANO,
                 100_000,
                 500,
                 LAUNCH_THRESHOLD_MIST,
@@ -532,17 +526,15 @@ module social_contracts::token_exchange_tests {
             let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let info = social_proof_tokens::get_token_info(&registry, profile_id);
             assert!(social_proof_tokens::token_info_circulating_supply(info) == LAUNCH_INITIAL_NANO_SPT, 4);
+            assert!(social_proof_tokens::token_info_launch_supply(info) == LAUNCH_INITIAL_NANO_SPT, 5);
             test_scenario::return_shared(registry);
         };
 
         test_scenario::end(scenario);
     }
 
-    /// Production genesis defaults: 10,000 MYSO profile threshold and 1.0 MYSO `base_price`.
-    /// `total_reserved * SPT_SCALE` exceeds u64; launch must still succeed after dividing by `base_price`.
+    /// Production genesis defaults: 10,000 MYSO profile threshold; launch mint is 1:1.
     const DEFAULT_PROFILE_THRESHOLD_MIST: u64 = 10_000_000_000_000;
-    const DEFAULT_BASE_PRICE_NANO: u64 = 1_000_000_000;
-    /// `DEFAULT_PROFILE_THRESHOLD_MIST * 10^9 / DEFAULT_BASE_PRICE_NANO`.
     const DEFAULT_THRESHOLD_INITIAL_NANO_SPT: u64 = 10_000_000_000_000;
 
     #[test]
@@ -563,7 +555,6 @@ module social_contracts::token_exchange_tests {
                 100,
                 25,
                 25,
-                DEFAULT_BASE_PRICE_NANO,
                 100_000,
                 500,
                 1_000_000_000_000,
@@ -691,6 +682,7 @@ module social_contracts::token_exchange_tests {
             let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let info = social_proof_tokens::get_token_info(&registry, profile_id);
             assert!(social_proof_tokens::token_info_circulating_supply(info) == DEFAULT_THRESHOLD_INITIAL_NANO_SPT, 2);
+            assert!(social_proof_tokens::token_info_launch_supply(info) == DEFAULT_THRESHOLD_INITIAL_NANO_SPT, 3);
             test_scenario::return_shared(registry);
         };
 
@@ -707,7 +699,7 @@ module social_contracts::token_exchange_tests {
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
             let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
-            // Match profile test: same threshold, base_price, and expected `LAUNCH_INITIAL_NANO_SPT`.
+            // Match profile test: same threshold and expected 1:1 `LAUNCH_INITIAL_NANO_SPT`.
             social_proof_tokens::update_social_proof_tokens_config(
                 &admin_cap,
                 &mut config,
@@ -717,7 +709,6 @@ module social_contracts::token_exchange_tests {
                 100,
                 25,
                 25,
-                LAUNCH_BASE_PRICE_NANO,
                 100_000,
                 500,
                 LAUNCH_THRESHOLD_MIST,
@@ -930,6 +921,7 @@ CREATOR,
             let registry = test_scenario::take_shared<social_proof_tokens::TokenRegistry>(&scenario);
             let info = social_proof_tokens::get_token_info(&registry, post_id);
             assert!(social_proof_tokens::token_info_circulating_supply(info) == LAUNCH_INITIAL_NANO_SPT, 14);
+            assert!(social_proof_tokens::token_info_launch_supply(info) == LAUNCH_INITIAL_NANO_SPT, 15);
             test_scenario::return_shared(registry);
         };
 
@@ -1044,7 +1036,6 @@ CREATOR,
                 100, // reservation_creator_fee_bps (1.0%)
                 25,  // reservation_platform_fee_bps (0.25%)
                 25,  // reservation_treasury_fee_bps (0.25%)
-                100_000_000, // base_price (0.1 MYSO)
                 100_000,     // quadratic_coefficient
                 500, // max_hold_percent_bps (5%)
                 1000_000_000, // post_threshold (1000 MYSO)
@@ -3815,37 +3806,35 @@ CREATOR,
 
     #[test]
     fun test_marginal_price_matches_human_supply_square() {
-        let base = 100_000_000u64;
         let coeff = 100_000u64;
         let scale = social_proof_tokens::spt_amount_scale();
+        let launch_supply = 0u64;
         let supply_nano = 2 * scale;
-        let p = social_proof_tokens::calculate_token_price(base, coeff, supply_nano);
-        let expected = base + (coeff * 4) / 10000;
+        let p = social_proof_tokens::calculate_token_price(coeff, launch_supply, supply_nano);
+        let expected = scale + (coeff * 4) / 10000;
         assert!(p == expected, 0);
     }
 
     #[test]
     fun test_buy_price_positive_for_one_display_token() {
-        let base = 100_000_000u64;
         // Large enough quadratic term so `total >= amount_nano` and avg (floor(total/amount)) is non-zero.
         let coeff = 30_000_000_000_000u64;
         let scale = social_proof_tokens::spt_amount_scale();
-        let (total, avg) = social_proof_tokens::calculate_buy_price(base, coeff, 0, scale);
+        let (total, avg) = social_proof_tokens::calculate_buy_price(coeff, 0, 0, scale);
         assert!(total > 0, 0);
         assert!(avg > 0, 1);
     }
 
     #[test]
     fun test_sell_buy_symmetry_no_fees() {
-        let base = 100_000_000u64;
         let coeff = 100_000u64;
         let scale = social_proof_tokens::spt_amount_scale();
         let supply = 10 * scale;
         let buy_amt = 2 * scale;
-        let (buy_total, _) = social_proof_tokens::calculate_buy_price(base, coeff, supply, buy_amt);
+        let (buy_total, _) = social_proof_tokens::calculate_buy_price(coeff, 0, supply, buy_amt);
         let new_supply = supply + buy_amt;
         let (sell_total, _) =
-            social_proof_tokens::calculate_sell_price(base, coeff, new_supply, buy_amt);
+            social_proof_tokens::calculate_sell_price(coeff, 0, new_supply, buy_amt);
         assert!(sell_total == buy_total, 0);
     }
 
@@ -3872,50 +3861,46 @@ CREATOR,
 
     #[test]
     fun test_buy_price_500_display_tokens_regression() {
-        let base = 50_000_000u64;
         let coeff = 200_000u64;
         let scale = social_proof_tokens::spt_amount_scale();
         let s = 100 * scale;
         let a = social_proof_tokens::nano_spt_from_whole_tokens(500);
-        let (total, _) = social_proof_tokens::calculate_buy_price(base, coeff, s, a);
+        let (total, _) = social_proof_tokens::calculate_buy_price(coeff, 0, s, a);
         assert!(total > 0, 0);
-        let (_, _) = social_proof_tokens::calculate_sell_price(base, coeff, s + a, a);
+        let (_, _) = social_proof_tokens::calculate_sell_price(coeff, 0, s + a, a);
     }
 
     #[test]
     fun test_buy_sell_price_large_state_no_abort() {
         let scale = social_proof_tokens::spt_amount_scale();
-        let base = 100_000_000u64;
         let coeff = 100_000u64;
         let s = 50_000_000 * scale;
         let a = social_proof_tokens::nano_spt_from_whole_tokens(500);
-        let (buy_total, _) = social_proof_tokens::calculate_buy_price(base, coeff, s, a);
+        let (buy_total, _) = social_proof_tokens::calculate_buy_price(coeff, 0, s, a);
         assert!(buy_total > 0, 0);
         let new_s = s + a;
-        let (sell_total, _) = social_proof_tokens::calculate_sell_price(base, coeff, new_s, a);
+        let (sell_total, _) = social_proof_tokens::calculate_sell_price(coeff, 0, new_s, a);
         assert!(sell_total > 0, 1);
         assert!(sell_total == buy_total, 2);
     }
 
     #[test]
     fun test_quadratic_buy_matches_naive_cube_small_values() {
-        let base = 1_000_000u64;
         let coeff = 99_999u64;
         let scale = social_proof_tokens::spt_amount_scale();
         let s_nano = 2000u64;
         let a_nano = 800u64;
-        let (got, _) = social_proof_tokens::calculate_buy_price(base, coeff, s_nano, a_nano);
-        let base_u = base as u256;
+        let (got, _) = social_proof_tokens::calculate_buy_price(coeff, 0, s_nano, a_nano);
         let coeff_u = coeff as u256;
         let s = s_nano as u256;
         let a = a_nano as u256;
         let scale_u = scale as u256;
-        let base_part = (base_u * a) / scale_u;
+        let linear = a;
         let sp = s + a;
         let cube_diff = sp * sp * sp - s * s * s;
         let denom = 30000u256 * scale_u * scale_u * scale_u;
         let quad_part = (coeff_u * cube_diff) / denom;
-        let expect = base_part + quad_part;
+        let expect = linear + quad_part;
         assert!(expect <= (18446744073709551615u256), 0);
         assert!(got == (expect as u64), 1);
     }
@@ -4090,7 +4075,6 @@ CREATOR,
 
     #[test]
     fun test_calculate_swap_quote_matches_manual_legs() {
-        let base = 100_000_000u64;
         let coeff = 100_000u64;
         let scale = social_proof_tokens::spt_amount_scale();
         let source_supply = 50 * scale;
@@ -4099,34 +4083,35 @@ CREATOR,
         let total_fee_bps = 150u64; // 100 + 25 + 25
 
         let (sell_gross, sell_fee, net_bridge) = social_proof_tokens::calculate_swap_proceeds(
-            base, coeff, source_supply, sell_amount, total_fee_bps
+            coeff, 0, source_supply, sell_amount, total_fee_bps
         );
-        let (manual_sell, _) = social_proof_tokens::calculate_sell_price(base, coeff, source_supply, sell_amount);
+        let (manual_sell, _) = social_proof_tokens::calculate_sell_price(coeff, 0, source_supply, sell_amount);
         assert!(sell_gross == manual_sell, 0);
         assert!(sell_fee == (sell_gross * total_fee_bps) / 10000, 1);
         assert!(net_bridge == sell_gross - sell_fee, 2);
 
         let (dest_amount, buy_gross) = social_proof_tokens::calculate_max_buy_amount(
-            base, coeff, dest_supply, net_bridge
+            coeff, 0, dest_supply, net_bridge, total_fee_bps
         );
         assert!(dest_amount > 0, 3);
-        let (cost_check, _) = social_proof_tokens::calculate_buy_price(base, coeff, dest_supply, dest_amount);
+        let (cost_check, _) = social_proof_tokens::calculate_buy_price(coeff, 0, dest_supply, dest_amount);
         assert!(cost_check == buy_gross, 4);
-        assert!(buy_gross <= net_bridge, 5);
+        let buy_fee = (buy_gross * total_fee_bps) / 10000;
+        assert!(buy_gross + buy_fee <= net_bridge, 5);
 
         let (q_dest, q_sell, q_buy, q_bridge, leftover) = social_proof_tokens::calculate_swap_quote(
-            base, coeff, source_supply, base, coeff, dest_supply, sell_amount, total_fee_bps
+            coeff, 0, source_supply, coeff, 0, dest_supply, sell_amount, total_fee_bps
         );
         assert!(q_dest == dest_amount, 6);
         assert!(q_sell == sell_gross, 7);
         assert!(q_buy == buy_gross, 8);
         assert!(q_bridge == net_bridge, 9);
-        assert!(leftover == net_bridge - buy_gross, 10);
+        assert!(leftover == net_bridge - buy_gross - buy_fee, 10);
     }
 
     #[test]
     fun test_calculate_max_buy_amount_zero_budget() {
-        let (amt, cost) = social_proof_tokens::calculate_max_buy_amount(100_000_000, 100_000, 0, 0);
+        let (amt, cost) = social_proof_tokens::calculate_max_buy_amount(100_000, 0, 0, 0, 150);
         assert!(amt == 0, 0);
         assert!(cost == 0, 1);
     }
@@ -4146,7 +4131,6 @@ CREATOR,
                 &admin_cap,
                 &mut config,
                 100, 25, 25, 100, 25, 25,
-                100_000_000,
                 100_000,
                 10000, // max_hold_percent_bps = 100%
                 1000_000_000,
@@ -4246,8 +4230,8 @@ CREATOR,
             );
 
             let (quote_dest, _, _, _, _) = social_proof_tokens::calculate_swap_quote(
-                100_000_000, 100_000, 10 * scale,
-                100_000_000, 100_000, 0,
+                100_000, 0, 10 * scale,
+                100_000, 0, 0,
                 sell_amount,
                 150
             );
@@ -4300,7 +4284,6 @@ CREATOR,
                 &admin_cap,
                 &mut config,
                 100, 25, 25, 100, 25, 25,
-                100_000_000,
                 100_000,
                 10000, // max_hold_percent_bps = 100%
                 1000_000_000,
@@ -5434,11 +5417,11 @@ CREATOR,
                     media_asset::test_manifest_entry(USER3, 5000, media_asset::payout_escrow()),
                 ])
             );
-            let (gross, _) = social_proof_tokens::calculate_buy_price(100_000_000, 100_000, 0, token_amount);
+            let (gross, _) = social_proof_tokens::calculate_buy_price(100_000, 0, 0, token_amount);
             let fee = (gross * 150) / 10000;
             let creator_fee = (fee * 100) / 150;
             expected_vault = (creator_fee * 5000) / 10000;
-            let payment = coin::mint_for_testing<MYSO>(gross, test_scenario::ctx(&mut scenario));
+            let payment = coin::mint_for_testing<MYSO>(gross + fee, test_scenario::ctx(&mut scenario));
             let mut settlement = social_proof_tokens::buy_tokens_with_vault_routing(
                 &registry, &mut pool, &config, &treasury, &profile_registry, &block_list_registry,
                 payment, token_amount, test_scenario::ctx(&mut scenario)
@@ -5448,7 +5431,7 @@ CREATOR,
             );
             social_proof_tokens::finish_creator_fee_settlement(settlement);
             assert!(poc_vault::balance_for_testing<MYSO>(&vault) == expected_vault, 100);
-            assert!(social_proof_tokens::pool_balance_for_testing(&pool) == gross - fee, 101);
+            assert!(social_proof_tokens::pool_balance_for_testing(&pool) == gross, 101);
             social_proof_tokens::share_token_pool_for_testing(pool);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
@@ -5470,11 +5453,11 @@ CREATOR,
             let mut vault = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut token = test_scenario::take_from_sender<SocialToken>(&scenario);
-            let (gross, _) = social_proof_tokens::calculate_buy_price(100_000_000, 100_000, token_amount, token_amount);
+            let (gross, _) = social_proof_tokens::calculate_buy_price(100_000, 0, token_amount, token_amount);
             let fee = (gross * 150) / 10000;
             let creator_fee = (fee * 100) / 150;
             expected_vault = expected_vault + (creator_fee * 5000) / 10000;
-            let payment = coin::mint_for_testing<MYSO>(gross, test_scenario::ctx(&mut scenario));
+            let payment = coin::mint_for_testing<MYSO>(gross + fee, test_scenario::ctx(&mut scenario));
             let mut settlement = social_proof_tokens::buy_more_tokens_with_vault_routing(
                 &registry, &mut pool, &config, &treasury, &profile_registry, &block_list_registry,
                 payment, token_amount, &mut token, test_scenario::ctx(&mut scenario)
@@ -5504,7 +5487,7 @@ CREATOR,
             let mut vault = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let token = test_scenario::take_from_sender<SocialToken>(&scenario);
-            let (gross, _) = social_proof_tokens::calculate_sell_price(100_000_000, 100_000, 2 * token_amount, token_amount);
+            let (gross, _) = social_proof_tokens::calculate_sell_price(100_000, 0, 2 * token_amount, token_amount);
             let fee = (gross * 150) / 10000;
             let creator_fee = (fee * 100) / 150;
             expected_vault = expected_vault + (creator_fee * 5000) / 10000;
@@ -5558,8 +5541,9 @@ CREATOR,
                 ])
             );
             let amount = social_proof_tokens::spt_amount_scale();
-            let (gross, _) = social_proof_tokens::calculate_buy_price(100_000_000, 100_000, 0, amount);
-            let payment = coin::mint_for_testing<MYSO>(gross, test_scenario::ctx(&mut scenario));
+            let (gross, _) = social_proof_tokens::calculate_buy_price(100_000, 0, 0, amount);
+            let fee = (gross * 150) / 10000;
+            let payment = coin::mint_for_testing<MYSO>(gross + fee, test_scenario::ctx(&mut scenario));
             let mut settlement = social_proof_tokens::buy_tokens_with_vault_routing(
                 &registry, &mut pool, &config, &treasury, &profile_registry, &block_list_registry,
                 payment, amount, test_scenario::ctx(&mut scenario)
@@ -5576,6 +5560,169 @@ CREATOR,
             test_scenario::return_shared(block_list_registry);
             test_scenario::return_shared(wrong_vault);
             test_scenario::return_shared(clock);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_reserve_linear_at_and_below_launch_supply() {
+        let coeff = 100_000u64;
+        let s0 = 1_000_000_000u64;
+        assert!(social_proof_tokens::reserve_myso(coeff, s0, 0) == 0, 0);
+        assert!(social_proof_tokens::reserve_myso(coeff, s0, s0 / 2) == s0 / 2, 1);
+        assert!(social_proof_tokens::reserve_myso(coeff, s0, s0) == s0, 2);
+        let (buy, _) = social_proof_tokens::calculate_buy_price(coeff, s0, 0, s0);
+        assert!(buy == s0, 3);
+        let (sell, _) = social_proof_tokens::calculate_sell_price(coeff, s0, s0, s0);
+        assert!(sell == s0, 4);
+        assert!(social_proof_tokens::calculate_token_price(coeff, s0, 0) == 1_000_000_000, 5);
+        assert!(social_proof_tokens::calculate_token_price(coeff, s0, s0) == 1_000_000_000, 6);
+    }
+
+    #[test]
+    fun test_reserve_quadratic_above_launch_and_cross_s0() {
+        let coeff = 100_000u64;
+        let s0 = 1_000_000_000u64;
+        let extra = 10_000_000_000u64;
+        let r_above = social_proof_tokens::reserve_myso(coeff, s0, s0 + extra);
+        assert!(r_above > s0 + extra, 0);
+        assert!(social_proof_tokens::calculate_token_price(coeff, s0, s0 + extra) > 1_000_000_000, 1);
+
+        let below = s0 / 2;
+        let (cross_buy, _) = social_proof_tokens::calculate_buy_price(coeff, s0, below, s0);
+        let r_after = social_proof_tokens::reserve_myso(coeff, s0, below + s0);
+        let r_before = social_proof_tokens::reserve_myso(coeff, s0, below);
+        assert!(cross_buy == r_after - r_before, 2);
+        let (cross_sell, _) = social_proof_tokens::calculate_sell_price(coeff, s0, below + s0, s0);
+        assert!(cross_sell == cross_buy, 3);
+    }
+
+    #[test]
+    fun test_max_buy_is_fee_inclusive() {
+        let coeff = 100_000u64;
+        let scale = social_proof_tokens::spt_amount_scale();
+        let (curve_only, _) = social_proof_tokens::calculate_buy_price(coeff, 0, 0, scale);
+        let fee_bps = 150u64;
+        let budget = curve_only; // not enough once the fee is included
+        let (q_short, _) = social_proof_tokens::calculate_max_buy_amount(coeff, 0, 0, budget, fee_bps);
+        assert!(q_short < scale, 0);
+
+        let fee = (curve_only * fee_bps) / 10000;
+        let (q_fit, curve) = social_proof_tokens::calculate_max_buy_amount(coeff, 0, 0, curve_only + fee, fee_bps);
+        assert!(q_fit == scale, 1);
+        assert!(curve == curve_only, 2);
+        assert!(curve + (curve * fee_bps) / 10000 <= curve_only + fee, 3);
+    }
+
+    #[test]
+    fun test_tiny_buy_has_nonzero_curve_cost() {
+        let coeff = 100_000u64;
+        let (total, _) = social_proof_tokens::calculate_buy_price(coeff, 0, 0, 1);
+        assert!(total > 0, 0);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_proof_tokens::EInvalidCurveParams)]
+    fun test_config_update_rejects_zero_quadratic() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            social_proof_tokens::init_for_testing(test_scenario::ctx(&mut scenario));
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+        };
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let admin_cap = test_scenario::take_from_sender<social_proof_tokens::SocialProofTokensAdminCap>(&scenario);
+            let mut config = test_scenario::take_shared<social_proof_tokens::SocialProofTokensConfig>(&scenario);
+            social_proof_tokens::update_social_proof_tokens_config(
+                &admin_cap,
+                &mut config,
+                100, 25, 25, 100, 25, 25,
+                0,
+                500,
+                1000_000_000,
+                10000_000_000,
+                2000,
+                1000,
+                5000,
+                5000,
+                &clock,
+                test_scenario::ctx(&mut scenario)
+            );
+            test_scenario::return_to_sender(&scenario, admin_cap);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_budget_buy_then_sell_preserves_pool_backing() {
+        let mut scenario = setup_test_scenario();
+        init_block_list_for_spt_tests(&mut scenario);
+        raise_max_hold_to_100_percent(&mut scenario);
+        create_trader_profile(&mut scenario, USER1, b"Backing Trader", b"backing_trader");
+
+        let token_amount = social_proof_tokens::spt_amount_scale();
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let profile_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let info = social_proof_tokens::create_mock_token_info(
+                @0xB0, TOKEN_TYPE_PROFILE, CREATOR, @0xB0, 0, 1_000_000_000, 100_000, 0
+            );
+            let mut pool = social_proof_tokens::create_mock_token_pool(info, test_scenario::ctx(&mut scenario));
+            let (gross, _) = social_proof_tokens::calculate_buy_price(100_000, 0, 0, token_amount);
+            let fee = (gross * 150) / 10000;
+            let surplus = social_proof_tokens::reserve_myso(100_000, 0, 0);
+            assert!(surplus == 0, 0);
+            let payment = coin::mint_for_testing<MYSO>(gross + fee, test_scenario::ctx(&mut scenario));
+            social_proof_tokens::buy_tokens(
+                &registry, &mut pool, &config, &treasury, &profile_registry, &block_list_registry,
+                payment, token_amount, test_scenario::ctx(&mut scenario)
+            );
+            let bal_after_buy = social_proof_tokens::pool_balance_for_testing(&pool);
+            let r_after_buy = social_proof_tokens::reserve_myso(100_000, 0, token_amount);
+            assert!(bal_after_buy == r_after_buy, 1);
+            assert!(bal_after_buy == gross, 2);
+            social_proof_tokens::share_token_pool_for_testing(pool);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(profile_registry);
+            test_scenario::return_shared(block_list_registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let registry = test_scenario::take_shared<TokenRegistry>(&scenario);
+            let config = test_scenario::take_shared<SocialProofTokensConfig>(&scenario);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scenario);
+            let profile_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let mut pool = test_scenario::take_shared<TokenPool>(&scenario);
+            let token = test_scenario::take_from_sender<SocialToken>(&scenario);
+            let bal_before = social_proof_tokens::pool_balance_for_testing(&pool);
+            let r_before = social_proof_tokens::reserve_myso(100_000, 0, token_amount);
+            social_proof_tokens::sell_tokens(
+                &registry, &mut pool, &config, &treasury, &profile_registry, &block_list_registry,
+                token, token_amount, test_scenario::ctx(&mut scenario)
+            );
+            let bal_after = social_proof_tokens::pool_balance_for_testing(&pool);
+            let r_after = social_proof_tokens::reserve_myso(100_000, 0, 0);
+            assert!(bal_before >= r_before, 3);
+            assert!(bal_after >= r_after, 4);
+            assert!(bal_after - r_after >= bal_before - r_before, 5);
+            test_scenario::return_shared(pool);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(profile_registry);
+            test_scenario::return_shared(block_list_registry);
         };
         test_scenario::end(scenario);
     }

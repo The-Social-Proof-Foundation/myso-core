@@ -6076,6 +6076,9 @@ Bridge
 BridgeInner
 	public struct
 	0xb::bridge
+TokenClaimPolicy
+	public struct
+	0xb::bridge
 TokenDepositedEvent
 	public struct
 	0xb::bridge
@@ -6136,6 +6139,21 @@ send_myso_token_v2
 approve_token_transfer
 	public fun
 	0xb::bridge
+claim_policy_direct
+	public fun
+	0xb::bridge
+claim_policy_convert_to_myusd
+	public fun
+	0xb::bridge
+claim_policy_disabled
+	public fun
+	0xb::bridge
+effective_claim_policy
+	public fun
+	0xb::bridge
+set_token_claim_policy
+	public(package) fun
+	0xb::bridge
 claim_token
 	public fun
 	0xb::bridge
@@ -6163,8 +6181,14 @@ load_inner
 load_inner_mut
 	fun
 	0xb::bridge
-claim_token_internal
+assert_direct_claim_allowed
 	fun
+	0xb::bridge
+effective_claim_policy_inner
+	fun
+	0xb::bridge
+claim_token_internal
+	public(package) fun
 	0xb::bridge
 claim_myso_token_internal
 	fun
@@ -6193,6 +6217,138 @@ get_current_seq_num_and_increment
 get_parsed_token_transfer_message
 	fun
 	0xb::bridge
+inner_paused
+	public fun
+	0xb::bridge
+USDT
+	public struct
+	0xb::usdt
+decimals
+	public fun
+	0xb::usdt
+USDC
+	public struct
+	0xb::usdc
+decimals
+	public fun
+	0xb::usdc
+MYUSD
+	public struct
+	0xb::myusd
+decimals
+	public fun
+	0xb::myusd
+MyUsdPeg
+	public struct
+	0xb::myusd_peg
+ConversionAdminCap
+	public struct
+	0xb::myusd_peg
+StableClaimConvertedToMyUsd
+	public struct
+	0xb::myusd_peg
+StableRedeemedToRail
+	public struct
+	0xb::myusd_peg
+create
+	public fun
+	0xb::myusd_peg
+set_paused
+	public fun
+	0xb::myusd_peg
+set_rail_enabled
+	public fun
+	0xb::myusd_peg
+enable_conversion_policy
+	public fun
+	0xb::myusd_peg
+usdc_reserve
+	public fun
+	0xb::myusd_peg
+usdt_reserve
+	public fun
+	0xb::myusd_peg
+usdc_issued
+	public fun
+	0xb::myusd_peg
+usdt_issued
+	public fun
+	0xb::myusd_peg
+usdc_redeemed
+	public fun
+	0xb::myusd_peg
+usdt_redeemed
+	public fun
+	0xb::myusd_peg
+usdc_enabled
+	public fun
+	0xb::myusd_peg
+usdt_enabled
+	public fun
+	0xb::myusd_peg
+is_paused
+	public fun
+	0xb::myusd_peg
+converted_recipient
+	public fun
+	0xb::myusd_peg
+converted_input_amount
+	public fun
+	0xb::myusd_peg
+converted_myusd_amount
+	public fun
+	0xb::myusd_peg
+myusd_total_supply
+	public fun
+	0xb::myusd_peg
+claim_stable_into_myusd
+	public fun
+	0xb::myusd_peg
+redeem_myusd_and_send_to_evm
+	public fun
+	0xb::myusd_peg
+claim_usdc_into_myusd
+	fun
+	0xb::myusd_peg
+claim_usdt_into_myusd
+	fun
+	0xb::myusd_peg
+finish_usdc_deposit
+	fun
+	0xb::myusd_peg
+finish_usdt_deposit
+	fun
+	0xb::myusd_peg
+pay_myusd
+	fun
+	0xb::myusd_peg
+redeem_myusd_to_rail_usdc
+	public(package) fun
+	0xb::myusd_peg
+redeem_myusd_to_rail_usdt
+	public(package) fun
+	0xb::myusd_peg
+prepare_redeem
+	fun
+	0xb::myusd_peg
+emit_redeem
+	fun
+	0xb::myusd_peg
+assert_can_convert
+	fun
+	0xb::myusd_peg
+rail_enabled
+	fun
+	0xb::myusd_peg
+is_usdc
+	fun
+	0xb::myusd_peg
+is_usdt
+	fun
+	0xb::myusd_peg
+assert_admin
+	fun
+	0xb::myusd_peg
 to_bytes
 	public fun
 	0x1::bcs
@@ -8497,6 +8653,24 @@ template_granted_rights
 template_attribution_required
 	public fun
 	0x50c1::license_template
+template_version
+	public fun
+	0x50c1::license_template
+template_instance_revocable
+	public fun
+	0x50c1::license_template
+template_legal_terms_uri
+	public fun
+	0x50c1::license_template
+template_legal_terms_hash
+	public fun
+	0x50c1::license_template
+template_governing_law
+	public fun
+	0x50c1::license_template
+template_license_schema_version
+	public fun
+	0x50c1::license_template
 instance_is_active
 	public fun
 	0x50c1::license_template
@@ -8528,7 +8702,7 @@ accept_license_instance
 	public fun
 	0x50c1::license_template
 revoke_license_instance
-	public fun
+	public(package) fun
 	0x50c1::license_template
 new_asset_license
 	public(package) fun
@@ -8747,6 +8921,12 @@ MediaAssetUsedEvent
 	public struct
 	0x50c1::media_asset
 MediaAssetRightsUpdatedEvent
+	public struct
+	0x50c1::media_asset
+MediaAssetFutureUsagePausedEvent
+	public struct
+	0x50c1::media_asset
+MediaAssetLicenseInstanceRevokedByLicensorEvent
 	public struct
 	0x50c1::media_asset
 MediaAssetRightsDisputeState
@@ -8983,6 +9163,18 @@ rights_version
 economics_version
 	public(package) fun
 	0x50c1::media_asset
+authorization_version
+	public(package) fun
+	0x50c1::media_asset
+future_usage_paused
+	public(package) fun
+	0x50c1::media_asset
+bump_authorization_version
+	public(package) fun
+	0x50c1::media_asset
+new_asset_version_commitment
+	public(package) fun
+	0x50c1::media_asset
 assert_valid_usage_class
 	public(package) fun
 	0x50c1::media_asset
@@ -9104,6 +9296,18 @@ finalize_media_asset
 	public(package) fun
 	0x50c1::media_asset
 update_media_asset_usage_grants
+	public fun
+	0x50c1::media_asset
+set_media_asset_future_usage_paused
+	public fun
+	0x50c1::media_asset
+asset_has_attached_template
+	fun
+	0x50c1::media_asset
+revoke_license_instance_by_licensor
+	public fun
+	0x50c1::media_asset
+attach_media_asset_license
 	public fun
 	0x50c1::media_asset
 oracle_update_media_asset_claims
@@ -10822,9 +11026,6 @@ PoCVaultDirectory
 PoCBeneficiaryVault
 	public struct
 	0x50c1::poc_vault
-PoCBadgeObject
-	public struct
-	0x50c1::poc_vault
 PoCBeneficiaryVaultDepositEvent
 	public struct
 	0x50c1::poc_vault
@@ -10839,9 +11040,6 @@ assert_vault_directory_version
 	0x50c1::poc_vault
 assert_vault_version
 	public(package) fun
-	0x50c1::poc_vault
-media_index_unspecified
-	public fun
 	0x50c1::poc_vault
 bootstrap_init_directory
 	public(package) fun
@@ -10876,23 +11074,11 @@ sweep_vault_balance_to_treasury
 vault_has_balance
 	public(package) fun
 	0x50c1::poc_vault
-new_poc_badge_object
-	public(package) fun
-	0x50c1::poc_vault
-share_po_badge_object
-	public(package) fun
-	0x50c1::poc_vault
 migrate_poc_vault_directory
 	public entry fun
 	0x50c1::poc_vault
 migrate_poc_beneficiary_vault
 	public entry fun
-	0x50c1::poc_vault
-migrate_poc_badge_object
-	public entry fun
-	0x50c1::poc_vault
-po_badge_object_address
-	public(package) fun
 	0x50c1::poc_vault
 MyData
 	public struct
@@ -12268,6 +12454,9 @@ buy_tokens
 buy_tokens_with_vault_routing
 	public fun
 	0x50c1::social_proof_tokens
+resolve_budget_buy
+	fun
+	0x50c1::social_proof_tokens
 buy_tokens_impl
 	fun
 	0x50c1::social_proof_tokens
@@ -12373,6 +12562,21 @@ quad_integral_leg_mist
 mist_amount_u256_to_u64
 	fun
 	0x50c1::social_proof_tokens
+reserve_myso_u256
+	fun
+	0x50c1::social_proof_tokens
+reserve_myso
+	public fun
+	0x50c1::social_proof_tokens
+curve_cost
+	fun
+	0x50c1::social_proof_tokens
+curve_refund
+	fun
+	0x50c1::social_proof_tokens
+all_in_buy_cost
+	fun
+	0x50c1::social_proof_tokens
 calculate_token_price
 	public fun
 	0x50c1::social_proof_tokens
@@ -12407,6 +12611,9 @@ get_token_info
 	public fun
 	0x50c1::social_proof_tokens
 token_info_circulating_supply
+	public fun
+	0x50c1::social_proof_tokens
+token_info_launch_supply
 	public fun
 	0x50c1::social_proof_tokens
 token_exists

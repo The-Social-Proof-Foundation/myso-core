@@ -64,6 +64,14 @@ impl MediaAsset {
         self.inner.economics_version
     }
 
+    async fn authorization_version(&self) -> i64 {
+        self.inner.authorization_version
+    }
+
+    async fn future_usage_paused(&self) -> bool {
+        self.inner.future_usage_paused
+    }
+
     async fn registered_by(&self) -> &str {
         &self.inner.registered_by
     }
@@ -92,6 +100,46 @@ impl MediaAsset {
             .await
             .ok()
             .map(|rows| rows.into_iter().map(MediaAssetUsage::from_row).collect())
+    }
+
+    async fn license_terms(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<LicenseTemplateTerms>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        reader
+            .list_license_templates_for_asset(&self.inner.media_asset_id, limit, offset)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(LicenseTemplateTerms::from_row).collect())
+    }
+
+    async fn license_instances(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<MediaAssetLicenseInstance>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        reader
+            .list_license_instances_for_asset(&self.inner.media_asset_id, limit, offset)
+            .await
+            .ok()
+            .map(|rows| {
+                rows.into_iter()
+                    .map(MediaAssetLicenseInstance::from_row)
+                    .collect()
+            })
     }
 
     async fn derivative_graph(
@@ -517,6 +565,87 @@ impl MediaAssetUsage {
 
     async fn position(&self) -> i16 {
         self.inner.position
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct LicenseTemplateTerms {
+    inner: myso_indexer_alt_social_schema::models::LicenseTemplateVersionRow,
+}
+
+impl LicenseTemplateTerms {
+    fn from_row(inner: myso_indexer_alt_social_schema::models::LicenseTemplateVersionRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl LicenseTemplateTerms {
+    async fn template_version_id(&self) -> &str {
+        &self.inner.template_version_id
+    }
+
+    async fn version(&self) -> i64 {
+        self.inner.version
+    }
+
+    async fn legal_terms_uri(&self) -> Option<&str> {
+        self.inner.legal_terms_uri.as_deref()
+    }
+
+    async fn legal_terms_hash(&self) -> Option<String> {
+        self.inner.legal_terms_hash.as_ref().map(|b| {
+            b.iter().map(|byte| format!("{byte:02x}")).collect::<String>()
+        })
+    }
+
+    async fn governing_law(&self) -> Option<String> {
+        self.inner
+            .governing_law
+            .as_ref()
+            .and_then(|b| String::from_utf8(b.clone()).ok())
+    }
+
+    async fn license_schema_version(&self) -> i64 {
+        self.inner.license_schema_version
+    }
+
+    async fn instance_revocable(&self) -> bool {
+        self.inner.instance_revocable
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MediaAssetLicenseInstance {
+    inner: myso_indexer_alt_social_schema::models::LicenseInstanceRow,
+}
+
+impl MediaAssetLicenseInstance {
+    fn from_row(inner: myso_indexer_alt_social_schema::models::LicenseInstanceRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl MediaAssetLicenseInstance {
+    async fn license_instance_id(&self) -> &str {
+        &self.inner.license_instance_id
+    }
+
+    async fn template_version_id(&self) -> &str {
+        &self.inner.template_version_id
+    }
+
+    async fn licensee(&self) -> &str {
+        &self.inner.licensee
+    }
+
+    async fn status(&self) -> i16 {
+        self.inner.status
+    }
+
+    async fn accepted_at(&self) -> i64 {
+        self.inner.accepted_at
     }
 }
 

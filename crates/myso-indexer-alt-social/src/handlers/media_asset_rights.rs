@@ -9,7 +9,7 @@ use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     GOV_LINK_STATUS_ACTIVE, GOV_LINK_STATUS_IMPLEMENTED, GOV_LINK_STATUS_REJECTED,
-    NewMediaAssetGovernanceLink, NewMediaAssetRightsUpdate,
+    NewLicenseInstance, NewMediaAssetGovernanceLink, NewMediaAssetRightsUpdate,
 };
 
 use super::media_asset::{bytes_from_json, chain_time, transaction_id_from_event_id};
@@ -48,8 +48,37 @@ struct MediaAssetRightsUpdatedEvent {
     media_asset_id: serde_json::Value,
     #[serde(deserialize_with = "super::poc::deserialize_u64")]
     rights_version: u64,
+    #[serde(default)]
+    authorization_version: Option<serde_json::Value>,
     #[serde(deserialize_with = "super::poc::deserialize_u64")]
     timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct MediaAssetFutureUsagePausedEvent {
+    media_asset_id: serde_json::Value,
+    paused: bool,
+    #[serde(deserialize_with = "super::poc::deserialize_u64")]
+    authorization_version: u64,
+    #[serde(rename = "timestamp", deserialize_with = "super::poc::deserialize_u64")]
+    _timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct MediaAssetLicenseInstanceRevokedByLicensorEvent {
+    media_asset_id: serde_json::Value,
+    license_instance_id: serde_json::Value,
+    revoked_by: String,
+    #[serde(deserialize_with = "super::poc::deserialize_u64")]
+    authorization_version: u64,
+    #[serde(deserialize_with = "super::poc::deserialize_u64")]
+    timestamp: u64,
+}
+
+fn u64_from_json(value: &serde_json::Value) -> Option<u64> {
+    value
+        .as_u64()
+        .or_else(|| value.as_str().and_then(|s| s.parse().ok()))
 }
 
 pub fn handle_media_asset_rights_poc_event(
@@ -83,14 +112,82 @@ pub fn handle_media_asset_rights_updated_event(
         "media_asset MediaAssetRightsUpdatedEvent JSON did not match",
     )?;
     let media_asset_id = id_from_json(&ev.media_asset_id)?;
+    let authorization_version = ev
+        .authorization_version
+        .as_ref()
+        .and_then(u64_from_json)
+        .unwrap_or(0) as i64;
     let link = NewMediaAssetRightsUpdate {
         media_asset_id: media_asset_id.clone(),
         rights_version: ev.rights_version as i64,
         proposal_id: None,
-        transaction_id: tx_id,
+        transaction_id: tx_id.clone(),
         time: chain_time(ev.timestamp),
     };
-    Some(vec![SocialEventRow::MediaAssetRightsUpdate(link)])
+    let mut rows = vec![SocialEventRow::MediaAssetRightsUpdate(link)];
+    if authorization_version > 0 {
+        rows.push(SocialEventRow::MediaAssetAuthorizationUpdate {
+            media_asset_id,
+            authorization_version,
+            future_usage_paused: None,
+            rights_version: Some(ev.rights_version as i64),
+        });
+    }
+    Some(rows)
+}
+
+pub fn handle_media_asset_future_usage_paused_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: MediaAssetFutureUsagePausedEvent = common::deserialize_social_event_json(
+        "media_asset",
+        "MediaAssetFutureUsagePausedEvent",
+        event_id,
+        data,
+        "media_asset MediaAssetFutureUsagePausedEvent JSON did not match",
+    )?;
+    let media_asset_id = id_from_json(&ev.media_asset_id)?;
+    Some(vec![SocialEventRow::MediaAssetAuthorizationUpdate {
+        media_asset_id,
+        authorization_version: ev.authorization_version as i64,
+        future_usage_paused: Some(ev.paused),
+        rights_version: None,
+    }])
+}
+
+pub fn handle_media_asset_license_revoked_by_licensor_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: MediaAssetLicenseInstanceRevokedByLicensorEvent = common::deserialize_social_event_json(
+        "media_asset",
+        "MediaAssetLicenseInstanceRevokedByLicensorEvent",
+        event_id,
+        data,
+        "media_asset MediaAssetLicenseInstanceRevokedByLicensorEvent JSON did not match",
+    )?;
+    let media_asset_id = id_from_json(&ev.media_asset_id)?;
+    let instance_id = id_from_json(&ev.license_instance_id)?;
+    let tx_id = transaction_id_from_event_id(event_id);
+    Some(vec![
+        SocialEventRow::MediaAssetAuthorizationUpdate {
+            media_asset_id: media_asset_id.clone(),
+            authorization_version: ev.authorization_version as i64,
+            future_usage_paused: None,
+            rights_version: None,
+        },
+        SocialEventRow::LicenseInstance(NewLicenseInstance {
+            license_instance_id: instance_id,
+            template_version_id: String::new(),
+            licensor_asset_id: media_asset_id,
+            licensee: ev.revoked_by,
+            status: 3,
+            accepted_at: ev.timestamp as i64,
+            transaction_id: tx_id,
+            time: chain_time(ev.timestamp),
+        }),
+    ])
 }
 
 fn process_rights_dispute_proposed(

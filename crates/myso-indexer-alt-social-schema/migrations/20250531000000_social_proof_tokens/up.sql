@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS social_proof_token_pools (
     owner TEXT NOT NULL,
     associated_id TEXT NOT NULL,
     circulating_supply BIGINT NOT NULL,
+    launch_supply BIGINT NOT NULL,
     base_price BIGINT NOT NULL,
     quadratic_coefficient BIGINT NOT NULL,
     created_at BIGINT NOT NULL, 

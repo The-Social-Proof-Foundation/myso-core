@@ -8,8 +8,10 @@ use fastcrypto::traits::ToFromBytes;
 use move_core_types::ident_str;
 use myso_types::base_types::{MySoAddress, ObjectRef};
 use myso_types::bridge::{
-    BRIDGE_CREATE_ADD_TOKEN_ON_MYSO_MESSAGE_FUNCTION_NAME,
-    BRIDGE_EXECUTE_SYSTEM_MESSAGE_FUNCTION_NAME, BRIDGE_MESSAGE_MODULE_NAME, BRIDGE_MODULE_NAME,
+    effective_claim_policy, BRIDGE_CLAIM_STABLE_INTO_MYUSD_FUNCTION_NAME,
+    BRIDGE_CREATE_ADD_TOKEN_ON_MYSO_MESSAGE_FUNCTION_NAME, BRIDGE_EXECUTE_SYSTEM_MESSAGE_FUNCTION_NAME,
+    BRIDGE_MESSAGE_MODULE_NAME, BRIDGE_MODULE_NAME, BRIDGE_MYUSD_PEG_MODULE_NAME,
+    CLAIM_POLICY_CONVERT_TO_MYUSD, TOKEN_ID_USDC, TOKEN_ID_USDT, TokenClaimPolicySummary,
 };
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::CallArg;
@@ -18,12 +20,111 @@ use myso_types::{BRIDGE_PACKAGE_ID, Identifier, TypeTag};
 use std::collections::HashMap;
 use std::str::FromStr;
 
+fn should_convert_stable(
+    peg_object_arg: Option<&ObjectArg>,
+    token_type: u8,
+    token_claim_policies: &[(u8, TokenClaimPolicySummary)],
+    source_chain: u8,
+    seq_num: u64,
+) -> bool {
+    peg_object_arg.is_some()
+        && (token_type == TOKEN_ID_USDC || token_type == TOKEN_ID_USDT)
+        && effective_claim_policy(token_claim_policies, token_type, source_chain, seq_num)
+            == CLAIM_POLICY_CONVERT_TO_MYUSD
+}
+
+#[cfg(test)]
+mod convert_policy_tests {
+    use super::*;
+    use myso_types::base_types::{ObjectID, SequenceNumber};
+    use myso_types::bridge::TOKEN_ID_ETH;
+    use myso_types::transaction::SharedObjectMutability;
+
+    fn dummy_peg() -> ObjectArg {
+        ObjectArg::SharedObject {
+            id: ObjectID::ZERO,
+            initial_shared_version: SequenceNumber::from_u64(1),
+            mutability: SharedObjectMutability::Mutable,
+        }
+    }
+
+    fn convert_policy(token_id: u8, boundary_seq: u64) -> Vec<(u8, TokenClaimPolicySummary)> {
+        vec![(
+            token_id,
+            TokenClaimPolicySummary {
+                policy: CLAIM_POLICY_CONVERT_TO_MYUSD,
+                boundary_source_chain: 1,
+                boundary_seq,
+            },
+        )]
+    }
+
+    #[test]
+    fn converts_usdc_when_peg_and_policy_are_set() {
+        assert!(should_convert_stable(
+            Some(&dummy_peg()),
+            TOKEN_ID_USDC,
+            &convert_policy(TOKEN_ID_USDC, 0),
+            1,
+            5,
+        ));
+    }
+
+    #[test]
+    fn keeps_direct_claim_without_peg_or_before_boundary() {
+        assert!(!should_convert_stable(
+            None,
+            TOKEN_ID_USDC,
+            &convert_policy(TOKEN_ID_USDC, 0),
+            1,
+            5,
+        ));
+        assert!(!should_convert_stable(
+            Some(&dummy_peg()),
+            TOKEN_ID_USDC,
+            &convert_policy(TOKEN_ID_USDC, 20),
+            1,
+            5,
+        ));
+        assert!(!should_convert_stable(
+            Some(&dummy_peg()),
+            TOKEN_ID_ETH,
+            &convert_policy(TOKEN_ID_USDC, 0),
+            1,
+            5,
+        ));
+    }
+}
+
 pub fn build_myso_transaction(
     client_address: MySoAddress,
     gas_object_ref: &ObjectRef,
     action: VerifiedCertifiedBridgeAction,
     bridge_object_arg: ObjectArg,
     myso_token_type_tags: &HashMap<u8, TypeTag>,
+    rgp: u64,
+) -> BridgeResult<TransactionData> {
+    build_myso_transaction_ex(
+        client_address,
+        gas_object_ref,
+        action,
+        bridge_object_arg,
+        myso_token_type_tags,
+        None,
+        &[],
+        rgp,
+    )
+}
+
+/// Same as `build_myso_transaction`, but USDC/USDT inbound claims convert into MyUSD when policy says so.
+pub fn build_myso_transaction_ex(
+    client_address: MySoAddress,
+    gas_object_ref: &ObjectRef,
+    action: VerifiedCertifiedBridgeAction,
+    bridge_object_arg: ObjectArg,
+    myso_token_type_tags: &HashMap<u8, TypeTag>,
+    peg_object_arg: Option<ObjectArg>,
+    token_claim_policies: &[(u8, TokenClaimPolicySummary)],
     rgp: u64,
 ) -> BridgeResult<TransactionData> {
     // TODO: Check chain id?
@@ -36,6 +137,8 @@ pub fn build_myso_transaction(
                 true,
                 bridge_object_arg,
                 myso_token_type_tags,
+                peg_object_arg,
+                token_claim_policies,
                 rgp,
             )
         }
@@ -46,6 +149,8 @@ pub fn build_myso_transaction(
             false,
             bridge_object_arg,
             myso_token_type_tags,
+            None,
+            &[],
             rgp,
         ),
         BridgeAction::MySoToEthTokenTransfer(_) | BridgeAction::MySoToEthTokenTransferV2(_) => {
@@ -56,6 +161,8 @@ pub fn build_myso_transaction(
                 false,
                 bridge_object_arg,
                 myso_token_type_tags,
+                None,
+                &[],
                 rgp,
             )
         }
@@ -112,6 +219,8 @@ fn build_token_bridge_approve_transaction(
     claim: bool,
     bridge_object_arg: ObjectArg,
     myso_token_type_tags: &HashMap<u8, TypeTag>,
+    peg_object_arg: Option<ObjectArg>,
+    token_claim_policies: &[(u8, TokenClaimPolicySummary)],
     rgp: u64,
 ) -> BridgeResult<TransactionData> {
     let (bridge_action, sigs) = action.into_inner().into_data_and_sig();
@@ -269,18 +378,41 @@ fn build_token_bridge_approve_transaction(
     );
 
     if claim {
-        builder.programmable_move_call(
-            BRIDGE_PACKAGE_ID,
-            myso_types::bridge::BRIDGE_MODULE_NAME.to_owned(),
-            ident_str!("claim_and_transfer_token").to_owned(),
-            vec![
-                myso_token_type_tags
-                    .get(&token_type)
-                    .ok_or(BridgeError::UnknownTokenId(token_type))?
-                    .clone(),
-            ],
-            vec![arg_bridge, arg_clock, source_chain, seq_num],
+        let token_tag = myso_token_type_tags
+            .get(&token_type)
+            .ok_or(BridgeError::UnknownTokenId(token_type))?
+            .clone();
+        let convert_stable = should_convert_stable(
+            peg_object_arg.as_ref(),
+            token_type,
+            token_claim_policies,
+            source_chain_id as u8,
+            seq_num_value,
         );
+        if convert_stable {
+            let arg_peg = builder
+                .obj(peg_object_arg.expect("peg set when convert_stable"))
+                .map_err(|e| {
+                    BridgeError::BridgeSerializationError(format!(
+                        "Failed to bind MyUsdPeg object: {e:?}"
+                    ))
+                })?;
+            builder.programmable_move_call(
+                BRIDGE_PACKAGE_ID,
+                BRIDGE_MYUSD_PEG_MODULE_NAME.to_owned(),
+                BRIDGE_CLAIM_STABLE_INTO_MYUSD_FUNCTION_NAME.to_owned(),
+                vec![token_tag],
+                vec![arg_bridge, arg_peg, arg_clock, source_chain, seq_num],
+            );
+        } else {
+            builder.programmable_move_call(
+                BRIDGE_PACKAGE_ID,
+                myso_types::bridge::BRIDGE_MODULE_NAME.to_owned(),
+                ident_str!("claim_and_transfer_token").to_owned(),
+                vec![token_tag],
+                vec![arg_bridge, arg_clock, source_chain, seq_num],
+            );
+        }
     }
 
     let pt = builder.finish();

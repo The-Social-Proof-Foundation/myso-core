@@ -109,18 +109,54 @@ orderbook_seed_oracle_prices() {
     rm -f "$out_file"
 }
 
-orderbook_wait_mm_ready() {
-    local attempt max="${1:-45}"
+orderbook_mm_ready_wait_seconds() {
+    printf '%s\n' "${ORDERBOOK_MM_READY_WAIT:-120}"
+}
+
+orderbook_mm_ready_grace_seconds() {
+    printf '%s\n' "${ORDERBOOK_MM_READY_GRACE:-30}"
+}
+
+orderbook_mm_ready_http() {
+    curl -sf --max-time 2 "http://127.0.0.1:${MM_HEALTH_PORT}/ready" 2>/dev/null \
+        | jq -e '.ready == true' >/dev/null 2>&1
+}
+
+orderbook_mm_health_http() {
+    curl -sf --max-time 2 "http://127.0.0.1:${MM_HEALTH_PORT}/health" >/dev/null 2>&1
+}
+
+orderbook_mm_process_alive() {
+    [[ -n "${MM_PID:-}" ]] && kill -0 "$MM_PID" 2>/dev/null
+}
+
+orderbook_poll_mm_ready() {
+    local label="$1" max="$2" attempt
     for ((attempt = 1; attempt <= max; attempt++)); do
-        if curl -sf --max-time 2 "http://127.0.0.1:${MM_HEALTH_PORT}/ready" 2>/dev/null \
-            | jq -e '.ready == true' >/dev/null 2>&1; then
+        if orderbook_mm_ready_http; then
             log_step "Market maker ready (${MM_HEALTH_PORT})"
             return 0
         fi
         [[ "$attempt" == 1 || $((attempt % 5)) -eq 0 ]] \
-            && log_wait_progress "market maker readiness" "$attempt" "$max"
+            && log_wait_progress "$label" "$attempt" "$max"
         sleep 1
     done
+    return 1
+}
+
+orderbook_wait_mm_ready() {
+    local max="${1:-$(orderbook_mm_ready_wait_seconds)}"
+    local grace
+    if orderbook_poll_mm_ready "market maker readiness" "$max"; then
+        return 0
+    fi
+    if orderbook_mm_process_alive && orderbook_mm_health_http; then
+        grace="$(orderbook_mm_ready_grace_seconds)"
+        log_step "MM health up but /ready not true yet — grace ${grace}s"
+        if orderbook_poll_mm_ready "market maker ready grace" "$grace"; then
+            return 0
+        fi
+    fi
     echo "Timed out waiting for market maker on :${MM_HEALTH_PORT}/ready" >&2
     return 1
 }
@@ -326,7 +362,7 @@ orderbook_mm_supervisor_run() {
     ) &
     MM_PID=$!
 
-    orderbook_wait_mm_ready 45 || {
+    orderbook_wait_mm_ready || {
         orderbook_mm_supervisor_cleanup TERM
         return 1
     }

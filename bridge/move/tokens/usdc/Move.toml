@@ -4,9 +4,12 @@ version = "0.0.1"
 edition = "legacy"
 
 [dependencies]
+MoveStdlib = { local = "../../../../crates/myso-framework/packages/move-stdlib" }
+MySo = { local = "../../../../crates/myso-framework/packages/myso-framework/myso-framework" }
 
 [addresses]
 bridged_usdc = "0x0"
 
 [environments]
-localnet = "56a7099f"
+localnet = "7fe1c64b"
+testnet = "56a7099f"

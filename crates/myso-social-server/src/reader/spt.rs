@@ -17,7 +17,7 @@ pub(crate) async fn get_spt_pool(
     let mut conn = db.connect().await?;
     let query = "
         SELECT pool_id, token_type, owner, associated_id, circulating_supply,
-               base_price, quadratic_coefficient, created_at, time, transaction_id
+               launch_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
         FROM spt_pools
         WHERE pool_id = $1
         ORDER BY time DESC
@@ -41,7 +41,7 @@ pub(crate) async fn list_spt_pools(
     let mut conn = db.connect().await?;
     let query = "
         SELECT pool_id, token_type, owner, associated_id, circulating_supply,
-               base_price, quadratic_coefficient, created_at, time, transaction_id
+               launch_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
         FROM (SELECT DISTINCT ON (pool_id) * FROM spt_pools ORDER BY pool_id, time DESC) p
         WHERE ($1::text IS NULL OR owner = $1)
           AND ($2::smallint IS NULL OR token_type = $2)
@@ -1169,7 +1169,7 @@ pub(crate) async fn get_spt_pool_by_associated_id(
     let mut conn = db.connect().await?;
     let query = "
         SELECT pool_id, token_type, owner, associated_id,
-               circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
+               circulating_supply, launch_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
         FROM (SELECT DISTINCT ON (pool_id) * FROM spt_pools WHERE associated_id = $1 ORDER BY pool_id, time DESC) p
     ";
     let result = diesel::sql_query(query)
@@ -1184,7 +1184,7 @@ pub(crate) async fn get_spt_popular(db: &Db, limit: i64) -> Result<Vec<SptPoolRo
     let mut conn = db.connect().await?;
     let query = "
         SELECT pool_id, token_type, owner, associated_id,
-               circulating_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
+               circulating_supply, launch_supply, base_price, quadratic_coefficient, created_at, time, transaction_id
         FROM (SELECT DISTINCT ON (pool_id) * FROM spt_pools ORDER BY pool_id, time DESC) p
         ORDER BY circulating_supply DESC
         LIMIT $1

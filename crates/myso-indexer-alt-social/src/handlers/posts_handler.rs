@@ -21,7 +21,7 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewComment, NewDeletionEvent, NewModerationEvent, NewPocAnalysisResult, NewPocBadge,
+    NewComment, NewDeletionEvent, NewModerationEvent, NewPocAnalysisResult,
     NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
     NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent,
     NewPocVaultClaim, NewPocVaultDeposit, NewPost, NewPostTransfer, NewPromotedPost,
@@ -38,7 +38,7 @@ use myso_indexer_alt_social_schema::schema::{
     comments, ecosystem_treasury,     composition_analysis_records, detected_asset_relationships, fingerprint_observations,
     license_instances, license_template_versions, media_asset_ancestry_snapshots,
     media_asset_derivative_edges, media_asset_governance_links, media_asset_resolved_obligations,
-    media_asset_resolved_policies, media_asset_rights_updates, media_asset_usages, media_assets, poc_analysis_results, poc_badges, poc_config,
+    media_asset_resolved_policies, media_asset_rights_updates, media_asset_usages, media_assets, poc_analysis_results, poc_config,
     poc_creator_identity_links, poc_dispute_votes, poc_disputes, poc_revenue_redirections,
     poc_username_beneficiary_events, poc_vault_claims, poc_vault_deposits, post_config,
     post_usage_decision_events, posts, promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
@@ -204,7 +204,6 @@ pub enum PostRow {
     },
     SubscriptionAccessLog(NewSubscriptionAccessLog),
     UnifiedRevenue(NewUnifiedRevenue),
-    PocBadge(NewPocBadge),
     PocAnalysisResult(NewPocAnalysisResult),
     PocRevenueRedirection(NewPocRevenueRedirection),
     PocDispute(NewPocDispute),
@@ -229,10 +228,6 @@ pub enum PostRow {
         poc_redirection_kind: i16,
         similarity_detected: bool,
         timestamp_ms: i64,
-    },
-    PostPocBadgePointer {
-        post_id: String,
-        poc_badge_object_id: String,
     },
     MediaAsset(NewMediaAsset),
     FingerprintObservation(NewFingerprintObservation),
@@ -266,6 +261,12 @@ pub enum PostRow {
         time: chrono::DateTime<chrono::Utc>,
     },
     MediaAssetRightsUpdate(NewMediaAssetRightsUpdate),
+    MediaAssetAuthorizationUpdate {
+        media_asset_id: String,
+        authorization_version: i64,
+        future_usage_paused: Option<bool>,
+        rights_version: Option<i64>,
+    },
     PostCompositionUpdate {
         post_id: String,
         composition_status: i16,
@@ -570,7 +571,6 @@ impl PostRow {
                 transaction_id,
             }),
             SocialEventRow::UnifiedRevenue(r) => Some(PostRow::UnifiedRevenue(r)),
-            SocialEventRow::PocBadge(p) => Some(PostRow::PocBadge(p)),
             SocialEventRow::PocAnalysisResult(r) => Some(PostRow::PocAnalysisResult(r)),
             SocialEventRow::PocRevenueRedirection(r) => Some(PostRow::PocRevenueRedirection(r)),
             SocialEventRow::PocDispute(d) => Some(PostRow::PocDispute(d)),
@@ -612,13 +612,6 @@ impl PostRow {
                 poc_redirection_kind,
                 similarity_detected,
                 timestamp_ms,
-            }),
-            SocialEventRow::PostPocBadgePointer {
-                post_id,
-                poc_badge_object_id,
-            } => Some(PostRow::PostPocBadgePointer {
-                post_id,
-                poc_badge_object_id,
             }),
             SocialEventRow::MediaAsset(a) => Some(PostRow::MediaAsset(a)),
             SocialEventRow::FingerprintObservation(o) => Some(PostRow::FingerprintObservation(o)),
@@ -680,6 +673,17 @@ impl PostRow {
                 time,
             }),
             SocialEventRow::MediaAssetRightsUpdate(r) => Some(PostRow::MediaAssetRightsUpdate(r)),
+            SocialEventRow::MediaAssetAuthorizationUpdate {
+                media_asset_id,
+                authorization_version,
+                future_usage_paused,
+                rights_version,
+            } => Some(PostRow::MediaAssetAuthorizationUpdate {
+                media_asset_id,
+                authorization_version,
+                future_usage_paused,
+                rights_version,
+            }),
             SocialEventRow::PostCompositionUpdate {
                 post_id,
                 composition_status,
@@ -1969,12 +1973,6 @@ impl Handler for PostsHandler {
                     )
                     .await?;
                 }
-                PostRow::PocBadge(badge) => {
-                    total += diesel::insert_into(poc_badges::table)
-                        .values(badge)
-                        .execute(conn)
-                        .await?;
-                }
                 PostRow::PocAnalysisResult(r) => {
                     let mut row = r.clone();
                     row.similarity_detected = poc::poc_similarity_detected(
@@ -2065,16 +2063,6 @@ impl Handler for PostsHandler {
                             posts::poc_outcome.eq(Some(*poc_outcome)),
                             posts::poc_redirection_kind.eq(Some(*poc_redirection_kind)),
                         ))
-                        .execute(conn)
-                        .await?;
-                }
-                PostRow::PostPocBadgePointer {
-                    post_id,
-                    poc_badge_object_id,
-                } => {
-                    total += diesel::update(posts::table)
-                        .filter(posts::post_id.eq(post_id))
-                        .set(posts::poc_id.eq(Some(poc_badge_object_id.clone())))
                         .execute(conn)
                         .await?;
                 }
@@ -2237,6 +2225,27 @@ impl Handler for PostsHandler {
                 PostRow::MediaAssetRightsUpdate(r) => {
                     total += diesel::insert_into(media_asset_rights_updates::table)
                         .values(r)
+                        .execute(conn)
+                        .await?;
+                }
+                PostRow::MediaAssetAuthorizationUpdate {
+                    media_asset_id,
+                    authorization_version,
+                    future_usage_paused,
+                    rights_version,
+                } => {
+                    let sql = "UPDATE media_assets SET \
+                        authorization_version = $2, \
+                        future_usage_paused = COALESCE($3, future_usage_paused), \
+                        rights_version = COALESCE($4, rights_version) \
+                        WHERE media_asset_id = $1";
+                    total += diesel::sql_query(sql)
+                        .bind::<Text, _>(media_asset_id)
+                        .bind::<BigInt, _>(*authorization_version)
+                        .bind::<diesel::sql_types::Nullable<diesel::sql_types::Bool>, _>(
+                            *future_usage_paused,
+                        )
+                        .bind::<diesel::sql_types::Nullable<BigInt>, _>(*rights_version)
                         .execute(conn)
                         .await?;
                 }
@@ -2742,7 +2751,7 @@ async fn insert_promotion_view_unified_revenue(
 mod post_row_poc_mapping_tests {
     use super::{classify_reaction, PostRow, ReactionApplyKind};
     use crate::handlers::SocialEventRow;
-    use myso_indexer_alt_social_schema::models::{NewPocBadge, NewPocUsernameBeneficiary};
+    use myso_indexer_alt_social_schema::models::NewPocUsernameBeneficiary;
 
     #[test]
     fn classify_reaction_new_when_no_prior() {
@@ -2765,25 +2774,6 @@ mod post_row_poc_mapping_tests {
             classify_reaction(Some("👍"), "👍"),
             ReactionApplyKind::Replay
         );
-    }
-
-    #[test]
-    fn post_row_maps_poc_badge_social_event() {
-        let b = NewPocBadge {
-            badge_id: "0x1".to_string(),
-            post_id: "0x2".to_string(),
-            media_type: 1,
-            issued_by: "0x3".to_string(),
-            beneficiary_address: None,
-            matched_anchor_id: None,
-            media_index: None,
-            issued_at: 0,
-            revoked: false,
-            revoked_at: None,
-            transaction_id: "tx".to_string(),
-        };
-        let r = PostRow::from_social(SocialEventRow::PocBadge(b.clone()));
-        assert!(matches!(r, Some(PostRow::PocBadge(x)) if x.badge_id == b.badge_id));
     }
 
     #[test]

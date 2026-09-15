@@ -12,12 +12,14 @@ use crate::deposit_sig_verification::{
 };
 use crate::error::BridgeError;
 use crate::storage::{
-    BridgeOrchestratorTables, DepositAddressKey, DepositRegistration, RegistrationType,
+    BridgeOrderDirection, BridgeOrderRecord, BridgeOrderStatus, BridgeOrchestratorTables,
+    DepositAddressKey, DepositRegistration, RegistrationType,
 };
 use alloy::primitives::Address as EthAddress;
 use axum::{Json, extract::State, http::StatusCode};
-use fastcrypto::encoding::Encoding;
+use fastcrypto::encoding::{Encoding, Hex};
 use myso_types::base_types::MySoAddress;
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -74,6 +76,8 @@ pub struct GenerateDepositResponse {
     pub destination_chain: String,
     pub destination_address: String,
     pub instructions: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order_id: Option<String>,
 }
 
 /// Request to link addresses with both signatures (Option B)
@@ -224,12 +228,22 @@ async fn generate_for_myso_user(
                     .update_deposit_callback(
                         &DepositAddressKey::from_myso(myso_address),
                         &existing_reg.deposit_address,
-                        callback_url,
-                        callback_api_key,
+                        callback_url.clone(),
+                        callback_api_key.clone(),
                     )
                     .map_err(to_status_error_json)?;
             }
 
+            let order_id = persist_generate_order(
+                &state,
+                BridgeOrderDirection::Out,
+                &format!("{}", myso_address),
+                &existing_deposit_addr,
+                &req.message.destination_chain,
+                &req.message.destination_address,
+                callback_url.clone(),
+                callback_api_key.clone(),
+            )?;
             return Ok(Json(GenerateDepositResponse {
                 deposit_chain: chain_id_to_name(state.myso_chain_id),
                 deposit_address: existing_deposit_addr.clone(),
@@ -239,6 +253,7 @@ async fn generate_for_myso_user(
                     "Send tokens to {} on MySocial chain, they will bridge to {} on {}",
                     existing_deposit_addr, dest_eth_address, req.message.destination_chain
                 ),
+                order_id: Some(order_id),
             }));
         }
     }
@@ -268,8 +283,8 @@ async fn generate_for_myso_user(
             .unwrap()
             .as_millis() as u64,
         last_used: None,
-        deposit_callback_url: callback_url,
-        deposit_callback_api_key: callback_api_key,
+        deposit_callback_url: callback_url.clone(),
+        deposit_callback_api_key: callback_api_key.clone(),
     };
 
     state
@@ -284,15 +299,27 @@ async fn generate_for_myso_user(
         "Generated MySocial deposit address for MySocial user"
     );
 
+    let deposit_address = format!("{}", deposit_myso_address);
+    let order_id = persist_generate_order(
+        &state,
+        BridgeOrderDirection::Out,
+        &format!("{}", myso_address),
+        &deposit_address,
+        &req.message.destination_chain,
+        &req.message.destination_address,
+        callback_url,
+        callback_api_key,
+    )?;
     Ok(Json(GenerateDepositResponse {
         deposit_chain: chain_id_to_name(state.myso_chain_id),
-        deposit_address: format!("{}", deposit_myso_address),
+        deposit_address,
         destination_chain: req.message.destination_chain.clone(),
         destination_address: req.message.destination_address.clone(),
         instructions: format!(
             "Send tokens to {} on MySocial chain, they will bridge to {} on {}",
             deposit_myso_address, dest_eth_address, req.message.destination_chain
         ),
+        order_id: Some(order_id),
     }))
 }
 
@@ -373,15 +400,26 @@ async fn generate_for_eth_user(
                     .update_deposit_callback(
                         &DepositAddressKey::from_myso(dest_myso_address),
                         &existing_reg.deposit_address,
-                        callback_url,
-                        callback_api_key,
+                        callback_url.clone(),
+                        callback_api_key.clone(),
                     )
                     .map_err(to_status_error_json)?;
             }
 
+            let deposit_address = format!("{:?}", existing_deposit_addr);
+            let order_id = persist_generate_order(
+                &state,
+                BridgeOrderDirection::In,
+                &format!("{}", dest_myso_address),
+                &deposit_address,
+                &req.message.destination_chain,
+                &req.message.destination_address,
+                callback_url.clone(),
+                callback_api_key.clone(),
+            )?;
             return Ok(Json(GenerateDepositResponse {
                 deposit_chain: chain_id_to_name(state.eth_chain_id),
-                deposit_address: format!("{:?}", existing_deposit_addr),
+                deposit_address,
                 destination_chain: req.message.destination_chain.clone(),
                 destination_address: req.message.destination_address.clone(),
                 instructions: format!(
@@ -390,6 +428,7 @@ async fn generate_for_eth_user(
                     chain_id_to_name(state.eth_chain_id),
                     dest_myso_address
                 ),
+                order_id: Some(order_id),
             }));
         }
     }
@@ -419,8 +458,8 @@ async fn generate_for_eth_user(
             .unwrap()
             .as_millis() as u64,
         last_used: None,
-        deposit_callback_url: callback_url,
-        deposit_callback_api_key: callback_api_key,
+        deposit_callback_url: callback_url.clone(),
+        deposit_callback_api_key: callback_api_key.clone(),
     };
 
     state
@@ -437,9 +476,20 @@ async fn generate_for_eth_user(
         "Generated EVM deposit address for MySocial user"
     );
 
+    let deposit_address = format!("{:?}", deposit_evm_address);
+    let order_id = persist_generate_order(
+        &state,
+        BridgeOrderDirection::In,
+        &format!("{}", dest_myso_address),
+        &deposit_address,
+        &req.message.destination_chain,
+        &req.message.destination_address,
+        callback_url,
+        callback_api_key,
+    )?;
     Ok(Json(GenerateDepositResponse {
         deposit_chain: chain_id_to_name(state.eth_chain_id),
-        deposit_address: format!("{:?}", deposit_evm_address),
+        deposit_address,
         destination_chain: req.message.destination_chain.clone(),
         destination_address: req.message.destination_address.clone(),
         instructions: format!(
@@ -448,6 +498,7 @@ async fn generate_for_eth_user(
             chain_id_to_name(state.eth_chain_id),
             dest_myso_address
         ),
+        order_id: Some(order_id),
     }))
 }
 
@@ -588,23 +639,7 @@ pub async fn query_deposit_addresses(
             .map_err(to_status_error_json)?
             .unwrap_or_default();
 
-        return Ok(Json(QueryDepositResponse {
-            source_address: address,
-            registrations: registrations
-                .into_iter()
-                .map(|r| RegistrationInfo {
-                    deposit_chain: chain_id_to_name(r.deposit_chain),
-                    deposit_address: format_address(&r.deposit_address, r.deposit_chain),
-                    destination_chain: chain_id_to_name(r.destination_chain),
-                    destination_address: format_address(
-                        &r.destination_address,
-                        r.destination_chain,
-                    ),
-                    registration_type: format!("{:?}", r.registration_type),
-                    created_at: r.created_at,
-                })
-                .collect(),
-        }));
+        return query_response(&address, registrations);
     }
 
     if let Ok(eth_addr) = EthAddress::from_str(&address) {
@@ -614,23 +649,7 @@ pub async fn query_deposit_addresses(
             .map_err(to_status_error_json)?
             .unwrap_or_default();
 
-        return Ok(Json(QueryDepositResponse {
-            source_address: address,
-            registrations: registrations
-                .into_iter()
-                .map(|r| RegistrationInfo {
-                    deposit_chain: chain_id_to_name(r.deposit_chain),
-                    deposit_address: format_address(&r.deposit_address, r.deposit_chain),
-                    destination_chain: chain_id_to_name(r.destination_chain),
-                    destination_address: format_address(
-                        &r.destination_address,
-                        r.destination_chain,
-                    ),
-                    registration_type: format!("{:?}", r.registration_type),
-                    created_at: r.created_at,
-                })
-                .collect(),
-        }));
+        return query_response(&address, registrations);
     }
 
     Err((
@@ -645,10 +664,108 @@ pub async fn query_deposit_addresses(
 #[serde(rename_all = "camelCase")]
 pub struct QueryDepositResponse {
     pub source_address: String,
+    pub myso_wallet: String,
+    pub deposit_address: String,
+    pub deposit_chain: String,
+    pub destination_address: String,
+    pub destination_chain: String,
+    pub created_at: u64,
     pub registrations: Vec<RegistrationInfo>,
 }
 
-#[derive(Debug, Serialize)]
+fn query_response(
+    source_address: &str,
+    registrations: Vec<DepositRegistration>,
+) -> Result<Json<QueryDepositResponse>, (StatusCode, Json<ErrorResponse>)> {
+    if registrations.is_empty() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: "No deposit address registered".to_string(),
+            }),
+        ));
+    }
+    let infos: Vec<RegistrationInfo> = registrations
+        .into_iter()
+        .map(|r| RegistrationInfo {
+            deposit_chain: chain_id_to_name(r.deposit_chain),
+            deposit_address: format_address(&r.deposit_address, r.deposit_chain),
+            destination_chain: chain_id_to_name(r.destination_chain),
+            destination_address: format_address(&r.destination_address, r.destination_chain),
+            registration_type: format!("{:?}", r.registration_type),
+            created_at: r.created_at,
+        })
+        .collect();
+    let primary = infos
+        .iter()
+        .find(|r| r.deposit_address.starts_with("0x") && r.deposit_address.len() == 42)
+        .or_else(|| infos.first())
+        .cloned()
+        .unwrap();
+    Ok(Json(QueryDepositResponse {
+        source_address: source_address.to_string(),
+        myso_wallet: source_address.to_string(),
+        deposit_address: primary.deposit_address,
+        deposit_chain: primary.deposit_chain,
+        destination_address: primary.destination_address,
+        destination_chain: primary.destination_chain,
+        created_at: primary.created_at,
+        registrations: infos,
+    }))
+}
+
+fn persist_generate_order(
+    state: &DepositApiState,
+    direction: BridgeOrderDirection,
+    myso_wallet: &str,
+    deposit_address: &str,
+    destination_chain: &str,
+    destination_address: &str,
+    callback_url: Option<String>,
+    callback_api_key: Option<String>,
+) -> Result<String, (StatusCode, Json<ErrorResponse>)> {
+    if let Some(key) = DepositAddressKey::from_formatted(deposit_address) {
+        if let Ok(Some(existing)) = state.storage.get_order_for_deposit(&key) {
+            return Ok(existing.order_id);
+        }
+    }
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    let order = BridgeOrderRecord {
+        order_id: new_order_id(),
+        direction,
+        status: BridgeOrderStatus::AwaitingDeposit,
+        myso_wallet: myso_wallet.to_string(),
+        deposit_address: deposit_address.to_string(),
+        destination_chain: destination_chain.to_string(),
+        destination_address: destination_address.to_string(),
+        amount: None,
+        deposit_tx_digest: None,
+        bridge_tx_digest: None,
+        evm_tx_hash: None,
+        created_at: now,
+        updated_at: now,
+        callback_url,
+        callback_api_key,
+    };
+    let order_id = order.order_id.clone();
+    state
+        .storage
+        .upsert_bridge_order(order)
+        .map_err(to_status_error_json)?;
+    Ok(order_id)
+}
+
+fn new_order_id() -> String {
+    let mut bytes = [0u8; 16];
+    rand::rngs::OsRng.fill_bytes(&mut bytes);
+    format!("brg_{}", Hex::encode(bytes))
+}
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegistrationInfo {
     pub deposit_chain: String,

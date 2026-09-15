@@ -530,8 +530,8 @@ impl FieldCount for SptRow {
 /// At launch, initial `spt_holdings` rows are derived in SQL from `spt_reservations` using the same
 /// proportional split and owner remainder as `social_proof_tokens::create_social_proof_token`:
 /// each reserver gets `net_myso * circulating_supply / total_reserved_at_launch` (floored), with the
-/// remainder to the owner. `circulating_supply` is the event’s nano-SPT total (post-threshold mint,
-/// scaled by `base_price` on-chain); `total_reserved_at_launch` is net nano-MYSO reserved.
+/// remainder to the owner. `circulating_supply` is the event’s nano-SPT total (1:1 with net reserved
+/// MYSO); `total_reserved_at_launch` is net nano-MYSO reserved.
 pub struct SptHandler;
 
 /// Floored proportional split plus owner remainder; mirrors on-chain launch distribution.
@@ -842,7 +842,7 @@ impl Handler for SptHandler {
                             PositionEvent {
                                 kind: PositionEventKind::Buy,
                                 token_qty: tx.amount,
-                                myso_amount: tx.myso_amount.abs(),
+                                myso_amount: tx.myso_amount.saturating_add(tx.fee_amount).abs(),
                                 inherited_cost_myso: None,
                             },
                             &tx.transaction_id,
@@ -857,7 +857,7 @@ impl Handler for SptHandler {
                             PositionEvent {
                                 kind: PositionEventKind::Sell,
                                 token_qty: tx.amount.abs(),
-                                myso_amount: tx.myso_amount.abs(),
+                                myso_amount: tx.myso_amount.saturating_sub(tx.fee_amount).abs(),
                                 inherited_cost_myso: None,
                             },
                             &tx.transaction_id,

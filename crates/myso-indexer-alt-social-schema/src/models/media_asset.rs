@@ -31,6 +31,10 @@ pub const MONETIZATION_RESTRICTED: i16 = 3;
 pub const CONTAINER_TYPE_POST: i16 = 1;
 pub const CONTAINER_TYPE_PROFILE: i16 = 2;
 
+fn default_authorization_version() -> i64 {
+    1
+}
+
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = media_assets)]
 pub struct NewMediaAsset {
@@ -44,6 +48,10 @@ pub struct NewMediaAsset {
     pub lineage_parent_id: Option<String>,
     pub rights_version: i64,
     pub economics_version: i64,
+    #[serde(default = "default_authorization_version")]
+    pub authorization_version: i64,
+    #[serde(default)]
+    pub future_usage_paused: bool,
     pub registered_by: String,
     pub registered_at: i64,
     pub verified_at: Option<i64>,
@@ -134,8 +142,19 @@ pub struct NewLicenseTemplateVersion {
     pub attribution_required: bool,
     pub royalty_bps: i64,
     pub derivative_royalty_bps: i64,
+    #[serde(default = "default_true")]
+    pub instance_revocable: bool,
+    pub legal_terms_uri: Option<String>,
+    pub legal_terms_hash: Option<Vec<u8>>,
+    pub governing_law: Option<Vec<u8>>,
+    #[serde(default = "default_authorization_version")]
+    pub license_schema_version: i64,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -291,6 +310,10 @@ pub struct MediaAssetRow {
     pub rights_version: i64,
     #[diesel(sql_type = BigInt)]
     pub economics_version: i64,
+    #[diesel(sql_type = BigInt)]
+    pub authorization_version: i64,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub future_usage_paused: bool,
     #[diesel(sql_type = Text)]
     pub registered_by: String,
     #[diesel(sql_type = BigInt)]
@@ -311,6 +334,54 @@ pub struct MediaAssetUsageRow {
     pub usage_class: i16,
     #[diesel(sql_type = SmallInt)]
     pub position: i16,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct LicenseTemplateVersionRow {
+    #[diesel(sql_type = Text)]
+    pub template_version_id: String,
+    #[diesel(sql_type = Text)]
+    pub family_id: String,
+    #[diesel(sql_type = BigInt)]
+    pub version: i64,
+    #[diesel(sql_type = Text)]
+    pub creator: String,
+    #[diesel(sql_type = BigInt)]
+    pub granted_rights: i64,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub allow_derivatives: bool,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub attribution_required: bool,
+    #[diesel(sql_type = BigInt)]
+    pub royalty_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub derivative_royalty_bps: i64,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    pub instance_revocable: bool,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    pub legal_terms_uri: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Bytea>)]
+    pub legal_terms_hash: Option<Vec<u8>>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Bytea>)]
+    pub governing_law: Option<Vec<u8>>,
+    #[diesel(sql_type = BigInt)]
+    pub license_schema_version: i64,
+}
+
+#[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]
+pub struct LicenseInstanceRow {
+    #[diesel(sql_type = Text)]
+    pub license_instance_id: String,
+    #[diesel(sql_type = Text)]
+    pub template_version_id: String,
+    #[diesel(sql_type = Text)]
+    pub licensor_asset_id: String,
+    #[diesel(sql_type = Text)]
+    pub licensee: String,
+    #[diesel(sql_type = SmallInt)]
+    pub status: i16,
+    #[diesel(sql_type = BigInt)]
+    pub accepted_at: i64,
 }
 
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]

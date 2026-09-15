@@ -6,6 +6,8 @@ use serde_json::Value as JsonValue;
 
 const MEDIA_COMPONENT_AUDIO: i64 = 3;
 const MEDIA_COMPONENT_VIDEO: i64 = 2;
+const USAGE_MUSIC_SOUNDTRACK: i64 = 5;
+const USAGE_STREAM: i64 = 9;
 
 #[derive(Clone, Default)]
 pub(crate) struct PlaybackPolicy {
@@ -190,6 +192,7 @@ pub(crate) fn derive_playback_policy(
             continue;
         };
         let media_component = json_u64(binding, "media_component").unwrap_or(0);
+        let usage_class = json_u64(binding, "usage_class").unwrap_or(0);
         let decision = decisions_arr.and_then(|arr| {
             arr.iter()
                 .find(|d| json_u64(d, "binding_id") == Some(binding_id))
@@ -198,10 +201,13 @@ pub(crate) fn derive_playback_policy(
             Some(d) => json_bool(d, "playback_permitted", false),
             None => false,
         };
-        if !playback_permitted && media_component == MEDIA_COMPONENT_AUDIO {
+        let audio_role = media_component == MEDIA_COMPONENT_AUDIO
+            || usage_class == USAGE_MUSIC_SOUNDTRACK
+            || usage_class == USAGE_STREAM;
+        if !playback_permitted && audio_role {
             policy.audio_muted = true;
         }
-        if !playback_permitted && media_component == MEDIA_COMPONENT_VIDEO {
+        if !playback_permitted && media_component == MEDIA_COMPONENT_VIDEO && !audio_role {
             policy.video_restricted = true;
         }
     }

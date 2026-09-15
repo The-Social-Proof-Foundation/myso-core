@@ -37,9 +37,12 @@ impl Observable for EthBridgeStatus {
     async fn observe_and_report(&self) {
         let status = self.bridge_contract.paused().call().await;
         match status {
-            Ok(status) => {
-                self.metric.set(status as i64);
-                info!("Eth Bridge Status: {:?}", status);
+            Ok(paused) => {
+                self.metric.set(paused as i64);
+                info!(
+                    "Eth bridge paused: {paused}{}",
+                    if paused { "" } else { " (ok)" }
+                );
             }
             Err(e) => {
                 error!("Error getting eth bridge status: {:?}", e);
