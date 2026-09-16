@@ -34,6 +34,7 @@ use crate::utils::{
     get_validator_names_by_pub_keys,
 };
 use alloy::primitives::Address as EthAddress;
+use alloy::signers::local::PrivateKeySigner;
 use arc_swap::ArcSwap;
 use fastcrypto::traits::KeyPair;
 use myso_types::Identifier;
@@ -45,6 +46,7 @@ use myso_types::crypto::MySoKeyPair;
 use myso_types::event::EventID;
 use mysten_metrics::spawn_logged_monitored_task;
 use std::collections::{BTreeMap, HashMap};
+use std::str::FromStr;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
@@ -341,6 +343,18 @@ async fn start_client_components(
     );
 
     let myso_token_type_tags = Arc::new(ArcSwap::from(Arc::new(myso_token_type_tags)));
+    let eth_bridge_address = client_config.eth_contracts.first().copied();
+    let relayer_eth_signer = client_config
+        .deposit_config
+        .as_ref()
+        .and_then(|c| c.relayer_eth_private_key.as_deref())
+        .filter(|hex| !hex.is_empty())
+        .map(|hex| {
+            PrivateKeySigner::from_str(hex).map_err(|e| {
+                anyhow::anyhow!("Invalid deposits.relayer-eth-private-key: {e}")
+            })
+        })
+        .transpose()?;
     let bridge_action_executor = BridgeActionExecutor::new(
         myso_client.clone(),
         bridge_auth_agg.clone(),
@@ -351,6 +365,9 @@ async fn start_client_components(
         myso_token_type_tags.clone(),
         bridge_pause_rx,
         metrics.clone(),
+        relayer_eth_signer.clone(),
+        Some(client_config.eth_client.provider()),
+        eth_bridge_address,
     )
     .await;
 
@@ -419,7 +436,7 @@ async fn start_client_components(
         let gas_manager = Arc::new(DepositGasManager::new(
             deposit_key,
             myso_client.clone(),
-            None,
+            relayer_eth_signer,
             Some(client_config.eth_client.provider()),
             Some(eth_chain_id),
         ));

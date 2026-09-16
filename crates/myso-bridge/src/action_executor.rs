@@ -7,7 +7,13 @@
 
 use crate::retry_with_max_elapsed_time;
 use crate::types::IsBridgePaused;
+use crate::utils::EthProvider;
+use alloy::network::EthereumWallet;
+use alloy::primitives::{Address as EthAddress, Bytes};
+use alloy::providers::ProviderBuilder;
+use alloy::signers::local::PrivateKeySigner;
 use arc_swap::ArcSwap;
+use fastcrypto::traits::ToFromBytes;
 use myso_json_rpc_types::MySoExecutionStatus;
 use myso_types::TypeTag;
 use myso_types::transaction::ObjectArg;
@@ -22,6 +28,7 @@ use myso_types::{
 use mysten_metrics::spawn_logged_monitored_task;
 use shared_crypto::intent::{Intent, IntentMessage};
 
+use crate::abi::{EthMySoBridge, eth_myso_bridge};
 use crate::events::{
     TokenTransferAlreadyApproved, TokenTransferAlreadyClaimed, TokenTransferApproved,
     TokenTransferClaimed,
@@ -69,6 +76,12 @@ pub trait BridgeActionExecutorTrait {
     );
 }
 
+struct EthVaultRelease {
+    signer: PrivateKeySigner,
+    provider: EthProvider,
+    bridge_address: EthAddress,
+}
+
 pub struct BridgeActionExecutor<C> {
     myso_client: Arc<MySoClient<C>>,
     bridge_auth_agg: Arc<ArcSwap<BridgeAuthorityAggregator>>,
@@ -80,6 +93,7 @@ pub struct BridgeActionExecutor<C> {
     myso_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
     bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
     metrics: Arc<BridgeMetrics>,
+    eth_vault_release: Option<Arc<EthVaultRelease>>,
 }
 
 impl<C> BridgeActionExecutorTrait for BridgeActionExecutor<C>
@@ -111,10 +125,28 @@ where
         myso_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
         bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
         metrics: Arc<BridgeMetrics>,
+        relayer_eth_signer: Option<PrivateKeySigner>,
+        eth_provider: Option<EthProvider>,
+        eth_bridge_address: Option<EthAddress>,
     ) -> Self {
         let bridge_object_arg = myso_client
             .get_mutable_bridge_object_arg_must_succeed()
             .await;
+        let eth_vault_release = match (relayer_eth_signer, eth_provider, eth_bridge_address) {
+            (Some(signer), Some(provider), Some(bridge_address)) => {
+                Some(Arc::new(EthVaultRelease {
+                    signer,
+                    provider,
+                    bridge_address,
+                }))
+            }
+            _ => {
+                warn!(
+                    "Relayer ETH signer, provider, or proxy missing; MySo-to-EVM vault release will be skipped"
+                );
+                None
+            }
+        };
         Self {
             myso_client,
             bridge_auth_agg,
@@ -126,6 +158,7 @@ where
             myso_token_type_tags,
             bridge_pause_rx,
             metrics,
+            eth_vault_release,
         }
     }
 
@@ -186,6 +219,7 @@ where
                 self.myso_token_type_tags,
                 self.bridge_pause_rx,
                 metrics,
+                self.eth_vault_release,
             )
         ));
         (tasks, sender, execution_tx)
@@ -417,6 +451,7 @@ where
         myso_token_type_tags: Arc<ArcSwap<HashMap<u8, TypeTag>>>,
         bridge_pause_rx: tokio::sync::watch::Receiver<IsBridgePaused>,
         metrics: Arc<BridgeMetrics>,
+        eth_vault_release: Option<Arc<EthVaultRelease>>,
     ) {
         info!("Starting run_onchain_execution_loop");
         while let Some(certificate_wrapper) = execution_queue_receiver.recv().await {
@@ -441,6 +476,7 @@ where
                 &bridge_object_arg,
                 &myso_token_type_tags,
                 &metrics,
+                eth_vault_release.as_ref(),
             )
             .await;
         }
@@ -461,6 +497,7 @@ where
         bridge_object_arg: &ObjectArg,
         myso_token_type_tags: &ArcSwap<HashMap<u8, TypeTag>>,
         metrics: &Arc<BridgeMetrics>,
+        eth_vault_release: Option<&Arc<EthVaultRelease>>,
     ) {
         metrics
             .action_executor_execution_queue_received_actions
@@ -579,7 +616,23 @@ where
             .await
         {
             Ok(resp) => {
-                Self::handle_execution_effects(tx_digest, resp, store, action, metrics).await
+                let committee_sigs: Vec<Vec<u8>> = certificate
+                    .auth_sig()
+                    .signatures
+                    .values()
+                    .map(|sig| sig.as_bytes().to_vec())
+                    .collect();
+                Self::handle_execution_effects(
+                    tx_digest,
+                    resp,
+                    store,
+                    action,
+                    metrics,
+                    myso_client,
+                    eth_vault_release,
+                    &committee_sigs,
+                )
+                .await
             }
 
             // If the transaction did not go through, retry up to a certain times.
@@ -625,6 +678,9 @@ where
         store: &Arc<BridgeOrchestratorTables>,
         action: &BridgeAction,
         metrics: &Arc<BridgeMetrics>,
+        myso_client: &Arc<MySoClient<C>>,
+        eth_vault_release: Option<&Arc<EthVaultRelease>>,
+        committee_sigs: &[Vec<u8>],
     ) {
         match &response.status {
             MySoExecutionStatus::Success => {
@@ -675,6 +731,83 @@ where
                         }
                     }
                 });
+                let approved = relevant_events.iter().any(|e| {
+                    e.type_ == *TokenTransferApproved.get().unwrap()
+                        || e.type_ == *TokenTransferAlreadyApproved.get().unwrap()
+                });
+                if approved {
+                    if let Some((wallet, dest, token_id)) = myso_to_eth_out_parts(action) {
+                        let evm_tx_hash = match eth_vault_release {
+                            Some(release) => {
+                                match release_myso_to_eth_vault(
+                                    myso_client,
+                                    release,
+                                    action,
+                                    committee_sigs,
+                                )
+                                .await
+                                {
+                                    Ok(hash) => {
+                                        info!(
+                                            ?tx_digest,
+                                            evm_tx_hash = %hash,
+                                            "Released vault tokens on EVM"
+                                        );
+                                        Some(hash)
+                                    }
+                                    Err(err) => {
+                                        warn!(
+                                            ?err,
+                                            ?tx_digest,
+                                            "MySo approve landed but EVM vault release failed"
+                                        );
+                                        None
+                                    }
+                                }
+                            }
+                            None => {
+                                warn!(
+                                    ?tx_digest,
+                                    "Relayer ETH signer or provider missing; skipping EVM vault release"
+                                );
+                                None
+                            }
+                        };
+                        if let Some(evm_tx_hash) = evm_tx_hash {
+                            match store.complete_out_bridge_order(
+                                &wallet,
+                                &dest,
+                                Some(token_id),
+                                tx_digest.to_string(),
+                                Some(evm_tx_hash.clone()),
+                            ) {
+                                Ok(Some(order)) => {
+                                    info!(
+                                        order_id = %order.order_id,
+                                        ?tx_digest,
+                                        evm_tx_hash = %evm_tx_hash,
+                                        "Completed out bridge order"
+                                    );
+                                }
+                                Ok(None) => {
+                                    warn!(
+                                        ?tx_digest,
+                                        evm_tx_hash = %evm_tx_hash,
+                                        "No in-flight out order to complete"
+                                    );
+                                }
+                                Err(err) => {
+                                    warn!(
+                                        ?err,
+                                        ?tx_digest,
+                                        evm_tx_hash = %evm_tx_hash,
+                                        "Failed to complete out bridge order"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
                 store
                     .remove_pending_actions(&[action.digest()])
                     .unwrap_or_else(|e| {
@@ -717,6 +850,121 @@ where
             myso_address
         );
         (gas_coin, gas_obj_ref)
+    }
+}
+
+async fn committee_sigs_for_eth_release<C: MySoClientInner>(
+    myso_client: &MySoClient<C>,
+    action: &BridgeAction,
+    cert_sigs: &[Vec<u8>],
+) -> Result<Vec<Vec<u8>>, String> {
+    if !cert_sigs.is_empty() {
+        return Ok(cert_sigs.to_vec());
+    }
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+    loop {
+        match myso_client
+            .get_bridge_record(action.chain_id() as u8, action.seq_number())
+            .await
+        {
+            Ok(Some(record)) => {
+                if let Some(sigs) = record.verified_signatures {
+                    if !sigs.is_empty() {
+                        return Ok(sigs);
+                    }
+                }
+            }
+            Ok(None) => {}
+            Err(err) => {
+                warn!(?err, "Failed to read on-chain committee signatures");
+            }
+        }
+        if tokio::time::Instant::now() >= deadline {
+            return Err("on-chain committee signatures unavailable".to_string());
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+}
+
+async fn release_myso_to_eth_vault<C: MySoClientInner>(
+    myso_client: &MySoClient<C>,
+    release: &EthVaultRelease,
+    action: &BridgeAction,
+    cert_sigs: &[Vec<u8>],
+) -> Result<String, String> {
+    let is_v2 = matches!(action, BridgeAction::MySoToEthTokenTransferV2(_));
+    let message: eth_myso_bridge::BridgeUtils::Message = match action {
+        BridgeAction::MySoToEthTokenTransfer(transfer) => transfer
+            .clone()
+            .try_into()
+            .map_err(|e| format!("Failed to encode V1 EVM message: {e:?}"))?,
+        BridgeAction::MySoToEthTokenTransferV2(transfer) => transfer
+            .clone()
+            .try_into()
+            .map_err(|e| format!("Failed to encode V2 EVM message: {e:?}"))?,
+        BridgeAction::MySoToEthBridgeAction(bridge_action) => bridge_action
+            .clone()
+            .try_into()
+            .map_err(|e| format!("Failed to encode legacy EVM message: {e:?}"))?,
+        _ => {
+            return Err("action is not a MySo-to-ETH token transfer".to_string());
+        }
+    };
+
+    let sigs = committee_sigs_for_eth_release(myso_client, action, cert_sigs).await?;
+    let signatures: Vec<Bytes> = sigs.into_iter().map(Bytes::from).collect();
+
+    let wallet = EthereumWallet::from(release.signer.clone());
+    let signer_provider = ProviderBuilder::new()
+        .wallet(wallet)
+        .connect_provider(release.provider.clone());
+    let contract = EthMySoBridge::new(release.bridge_address, signer_provider);
+
+    let pending = if is_v2 {
+        contract
+            .transferBridgedTokensWithSignaturesV2(signatures, message)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to send transferBridgedTokensWithSignaturesV2: {e:?}"))?
+    } else {
+        contract
+            .transferBridgedTokensWithSignatures(signatures, message)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to send transferBridgedTokensWithSignatures: {e:?}"))?
+    };
+
+    let receipt = pending
+        .get_receipt()
+        .await
+        .map_err(|e| format!("Failed to get ETH vault-release receipt: {e:?}"))?;
+    if !receipt.status() {
+        return Err(format!(
+            "ETH vault release reverted: tx={:?}",
+            receipt.transaction_hash
+        ));
+    }
+    Ok(format!("{:#x}", receipt.transaction_hash))
+}
+
+fn myso_to_eth_out_parts(action: &BridgeAction) -> Option<(String, String, u8)> {
+    match action {
+        BridgeAction::MySoToEthTokenTransfer(transfer) => Some((
+            transfer.myso_address.to_string(),
+            format!("0x{:x}", transfer.eth_address),
+            transfer.token_id,
+        )),
+        BridgeAction::MySoToEthTokenTransferV2(transfer) => Some((
+            transfer.myso_address.to_string(),
+            format!("0x{:x}", transfer.eth_address),
+            transfer.token_id,
+        )),
+        BridgeAction::MySoToEthBridgeAction(action) => Some((
+            action.myso_bridge_event.myso_address.to_string(),
+            format!("0x{:x}", action.myso_bridge_event.eth_address),
+            action.myso_bridge_event.token_id,
+        )),
+        _ => None,
     }
 }
 
@@ -1635,6 +1883,9 @@ mod tests {
             myso_token_type_tags.clone(),
             bridge_pause_rx,
             metrics,
+            None,
+            None,
+            None,
         )
         .await;
 

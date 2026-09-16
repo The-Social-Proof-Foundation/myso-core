@@ -38,7 +38,7 @@ bridge_rpc_json() {
   [2,"0x0e8ba9f351924f9f053dbecb740f6aebed0f4dd38b42914636212a038886f450::eth::ETH"],
   [3,"${MYUSD_TYPE}"],
   [4,"${MYUSD_TYPE}"]
-]}}}
+],"railReserve":[[3,1000],[4,0]]}}}
 JSON
 }
 
@@ -75,6 +75,46 @@ assert_eq 'vector["a::btc::BTC", "b::eth::ETH"]' \
 yaml="$(bridge_yaml_token_struct '0x33ba7869553ea2cb3e7110cdd203c2b663a2969e503e0030fb44d647e1dd8dce::btc::BTC')"
 printf '%s\n' "$yaml" | grep -q '0x33ba7869553ea2cb3e7110cdd203c2b663a2969e503e0030fb44d647e1dd8dce' || {
     echo "approved-action yaml must keep the published BTC package address" >&2
+    exit 1
+}
+
+assert_eq '3=1000 4=0' "$(bridge_rail_reserve_from_rpc)" \
+    "RPC summary railReserve is parsed as id=amount pairs"
+
+deposit_tokens="$(bridge_yaml_deposit_supported_tokens \
+    '0x0000000000000000000000000000000000000000' \
+    '0x5fc748f1FEb28d7b76fa1c6B07D8ba2d5535177c' \
+    '0x38a024C0b412B9d1db8BC398140D00F5Af3093D4' \
+    '0xB82008565FdC7e44609fA118A4a681E92581e680' \
+    '0x2a810409872AfC346F9B5b26571Fd6eC42EA4849')"
+printf '%s\n' "$deposit_tokens" | grep -q '0x5fc748f1FEb28d7b76fa1c6B07D8ba2d5535177c' || {
+    echo "deposit supported-tokens must include BRIDGE_BTC" >&2
+    exit 1
+}
+printf '%s\n' "$deposit_tokens" | grep -q '0x38a024C0b412B9d1db8BC398140D00F5Af3093D4' || {
+    echo "deposit supported-tokens must include BRIDGE_WETH" >&2
+    exit 1
+}
+printf '%s\n' "$deposit_tokens" | grep -q '0xB82008565FdC7e44609fA118A4a681E92581e680' || {
+    echo "deposit supported-tokens must include BRIDGE_USDC" >&2
+    exit 1
+}
+printf '%s\n' "$deposit_tokens" | grep -q '0x2a810409872AfC346F9B5b26571Fd6eC42EA4849' || {
+    echo "deposit supported-tokens must include BRIDGE_USDT" >&2
+    exit 1
+}
+if printf '%s\n' "$deposit_tokens" | grep -qi '0x0000000000000000000000000000000000000000'; then
+    echo "deposit supported-tokens must omit native 0x0" >&2
+    exit 1
+fi
+
+relayer_yaml="$(bridge_yaml_deposit_relayer_eth_key "$BRIDGE_ANVIL_TEST_PK")"
+printf '%s\n' "$relayer_yaml" | grep -q 'relayer-eth-private-key:' || {
+    echo "deposit yaml must include relayer-eth-private-key" >&2
+    exit 1
+}
+printf '%s\n' "$relayer_yaml" | grep -q "$BRIDGE_ANVIL_TEST_PK" || {
+    echo "deposit relayer-eth-private-key must use BRIDGE_EVM_PRIVATE_KEY / Anvil #0" >&2
     exit 1
 }
 

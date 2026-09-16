@@ -221,6 +221,7 @@ impl Default for BridgeSummary {
                 id_token_type_map: vec![],
                 native_myso_locked: 0,
                 native_myso_bootstrapped: false,
+                rail_reserve: vec![],
             },
             bridge_records_id: ObjectID::random(),
             limiter: BridgeLimiterSummary::default(),
@@ -416,6 +417,13 @@ impl BridgeTrait for BridgeInnerV1 {
                 id_token_type_map,
                 native_myso_locked: self.treasury.native_myso_escrow.value(),
                 native_myso_bootstrapped: self.treasury.native_bridge_initialized,
+                rail_reserve: self
+                    .treasury
+                    .rail_reserve
+                    .contents
+                    .into_iter()
+                    .map(|e| (e.key, e.value))
+                    .collect(),
             },
             is_frozen: self.frozen,
             token_claim_policies: self
@@ -506,6 +514,7 @@ pub struct BridgeTreasurySummary {
     #[serde_as(as = "Readable<BigInt<u64>, _>")]
     pub native_myso_locked: u64,
     pub native_myso_bootstrapped: bool,
+    pub rail_reserve: Vec<(u8, u64)>,
 }
 
 /// Rust version of the Move committee::CommitteeMember type.

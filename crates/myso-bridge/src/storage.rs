@@ -5,11 +5,15 @@
 use crate::error::{BridgeError, BridgeResult};
 use crate::types::{BridgeAction, BridgeActionDigest};
 use alloy::primitives::Address as AlloyAddress;
+use fastcrypto::encoding::{Encoding, Hex};
 use myso_types::Identifier;
 use myso_types::base_types::MySoAddress;
 use myso_types::event::EventID;
+use rand::RngCore;
+use serde::de::{self, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
+use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -175,7 +179,7 @@ pub enum BridgeOrderStatus {
 }
 
 /// Platform-facing bridge order (source of truth for lifecycle).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct BridgeOrderRecord {
     pub order_id: String,
     pub direction: BridgeOrderDirection,
@@ -190,10 +194,78 @@ pub struct BridgeOrderRecord {
     pub evm_tx_hash: Option<String>,
     pub created_at: u64,
     pub updated_at: u64,
-    #[serde(default)]
     pub callback_url: Option<String>,
-    #[serde(default)]
     pub callback_api_key: Option<String>,
+    pub token_id: Option<u8>,
+    pub evm_token_address: Option<String>,
+    pub myso_token_type: Option<String>,
+}
+
+const BRIDGE_ORDER_RECORD_FIELDS: usize = 18;
+
+impl<'de> Deserialize<'de> for BridgeOrderRecord {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_tuple(BRIDGE_ORDER_RECORD_FIELDS, BridgeOrderRecordVisitor)
+    }
+}
+
+struct BridgeOrderRecordVisitor;
+
+impl<'de> Visitor<'de> for BridgeOrderRecordVisitor {
+    type Value = BridgeOrderRecord;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("BridgeOrderRecord")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        fn required<'de, A, T>(seq: &mut A, name: &'static str) -> Result<T, A::Error>
+        where
+            A: SeqAccess<'de>,
+            T: Deserialize<'de>,
+        {
+            seq.next_element()?
+                .ok_or_else(|| de::Error::missing_field(name))
+        }
+
+        fn trailing<'de, A, T>(seq: &mut A) -> T
+        where
+            A: SeqAccess<'de>,
+            T: Default + Deserialize<'de>,
+        {
+            match seq.next_element() {
+                Ok(Some(value)) => value,
+                _ => T::default(),
+            }
+        }
+
+        Ok(BridgeOrderRecord {
+            order_id: required(&mut seq, "order_id")?,
+            direction: required(&mut seq, "direction")?,
+            status: required(&mut seq, "status")?,
+            myso_wallet: required(&mut seq, "myso_wallet")?,
+            deposit_address: required(&mut seq, "deposit_address")?,
+            destination_chain: required(&mut seq, "destination_chain")?,
+            destination_address: required(&mut seq, "destination_address")?,
+            amount: required(&mut seq, "amount")?,
+            deposit_tx_digest: required(&mut seq, "deposit_tx_digest")?,
+            bridge_tx_digest: required(&mut seq, "bridge_tx_digest")?,
+            evm_tx_hash: required(&mut seq, "evm_tx_hash")?,
+            created_at: required(&mut seq, "created_at")?,
+            updated_at: required(&mut seq, "updated_at")?,
+            callback_url: trailing(&mut seq),
+            callback_api_key: trailing(&mut seq),
+            token_id: trailing(&mut seq),
+            evm_token_address: trailing(&mut seq),
+            myso_token_type: trailing(&mut seq),
+        })
+    }
 }
 
 /// Status of a relayed transfer
@@ -239,6 +311,9 @@ pub struct BridgeOrderPatch {
     pub deposit_tx_digest: Option<String>,
     pub bridge_tx_digest: Option<String>,
     pub evm_tx_hash: Option<String>,
+    pub token_id: Option<u8>,
+    pub evm_token_address: Option<String>,
+    pub myso_token_type: Option<String>,
 }
 
 fn now_ms() -> u64 {
@@ -248,8 +323,71 @@ fn now_ms() -> u64 {
         .as_millis() as u64
 }
 
+pub(crate) fn new_order_id() -> String {
+    let mut bytes = [0u8; 16];
+    rand::rngs::OsRng.fill_bytes(&mut bytes);
+    format!("brg_{}", Hex::encode(bytes))
+}
+
+fn apply_order_patch(
+    order: &mut BridgeOrderRecord,
+    status: BridgeOrderStatus,
+    patch: BridgeOrderPatch,
+) {
+    order.status = status;
+    order.updated_at = now_ms();
+    if let Some(amount) = patch.amount {
+        order.amount = Some(amount);
+    }
+    if let Some(digest) = patch.deposit_tx_digest {
+        order.deposit_tx_digest = Some(digest);
+    }
+    if let Some(digest) = patch.bridge_tx_digest {
+        order.bridge_tx_digest = Some(digest);
+    }
+    if let Some(hash) = patch.evm_tx_hash {
+        order.evm_tx_hash = Some(hash);
+    }
+    if let Some(token_id) = patch.token_id {
+        order.token_id = Some(token_id);
+    }
+    if let Some(address) = patch.evm_token_address {
+        order.evm_token_address = Some(address);
+    }
+    if let Some(token_type) = patch.myso_token_type {
+        order.myso_token_type = Some(token_type);
+    }
+}
+
+fn should_fork_bridge_order(order: &BridgeOrderRecord, patch: &BridgeOrderPatch) -> bool {
+    let Some(new_digest) = patch.deposit_tx_digest.as_deref() else {
+        return false;
+    };
+    if order.deposit_tx_digest.as_deref() == Some(new_digest) {
+        return false;
+    }
+    order.deposit_tx_digest.is_some()
+        || matches!(
+            order.status,
+            BridgeOrderStatus::Completed | BridgeOrderStatus::Failed
+        )
+}
+
 fn deposit_key_from_formatted(address: &str) -> Option<DepositAddressKey> {
     DepositAddressKey::from_formatted(address)
+}
+
+fn normalize_myso_wallet(wallet: &str) -> String {
+    normalize_hex_address(wallet)
+}
+
+fn normalize_hex_address(address: &str) -> String {
+    let trimmed = address.trim();
+    let without_prefix = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+        .unwrap_or(trimmed);
+    without_prefix.to_ascii_lowercase()
 }
 
 #[derive(DBMapUtils)]
@@ -681,6 +819,34 @@ impl BridgeOrchestratorTables {
         })
     }
 
+    pub(crate) fn list_bridge_orders_for_wallet(
+        &self,
+        wallet: &str,
+    ) -> BridgeResult<Vec<BridgeOrderRecord>> {
+        const MAX_ORDERS: usize = 1000;
+        let needle = normalize_myso_wallet(wallet);
+        if needle.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut orders: Vec<BridgeOrderRecord> = self
+            .bridge_orders
+            .safe_iter()
+            .filter_map(|r| r.ok())
+            .filter_map(|(_, order)| {
+                if normalize_myso_wallet(&order.myso_wallet) == needle {
+                    Some(order)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        orders.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        if orders.len() > MAX_ORDERS {
+            orders.truncate(MAX_ORDERS);
+        }
+        Ok(orders)
+    }
+
     pub(crate) fn get_order_for_deposit(
         &self,
         deposit_key: &DepositAddressKey,
@@ -700,27 +866,85 @@ impl BridgeOrchestratorTables {
         status: BridgeOrderStatus,
         patch: BridgeOrderPatch,
     ) -> BridgeResult<Option<BridgeOrderRecord>> {
-        let Some(mut order) = self.get_order_for_deposit(deposit_key)? else {
+        let Some(order) = self.get_order_for_deposit(deposit_key)? else {
             return Ok(None);
         };
-        order.status = status;
-        order.updated_at = now_ms();
-        if let Some(amount) = patch.amount {
-            order.amount = Some(amount);
+        if should_fork_bridge_order(&order, &patch) {
+            let now = now_ms();
+            let mut forked = BridgeOrderRecord {
+                order_id: new_order_id(),
+                direction: order.direction,
+                status,
+                myso_wallet: order.myso_wallet,
+                deposit_address: order.deposit_address,
+                destination_chain: order.destination_chain,
+                destination_address: order.destination_address,
+                amount: None,
+                deposit_tx_digest: None,
+                bridge_tx_digest: None,
+                evm_tx_hash: None,
+                created_at: now,
+                updated_at: now,
+                callback_url: order.callback_url,
+                callback_api_key: order.callback_api_key,
+                token_id: None,
+                evm_token_address: None,
+                myso_token_type: None,
+            };
+            apply_order_patch(&mut forked, status, patch);
+            self.upsert_bridge_order(forked.clone())?;
+            return Ok(Some(forked));
         }
-        if let Some(digest) = patch.deposit_tx_digest {
-            order.deposit_tx_digest = Some(digest);
-        }
-        if let Some(digest) = patch.bridge_tx_digest {
-            order.bridge_tx_digest = Some(digest);
-        }
-        if let Some(hash) = patch.evm_tx_hash {
-            order.evm_tx_hash = Some(hash);
-        }
+        let mut order = order;
+        apply_order_patch(&mut order, status, patch);
         self.bridge_orders
             .insert(&order.order_id, &order)
             .map_err(|e| {
                 BridgeError::StorageError(format!("Failed to update bridge order: {:?}", e))
+            })?;
+        Ok(Some(order))
+    }
+
+    pub(crate) fn complete_out_bridge_order(
+        &self,
+        myso_wallet: &str,
+        dest_evm: &str,
+        token_id: Option<u8>,
+        bridge_tx_digest: String,
+        evm_tx_hash: Option<String>,
+    ) -> BridgeResult<Option<BridgeOrderRecord>> {
+        let dest = normalize_hex_address(dest_evm);
+        let Some(mut order) = self
+            .list_bridge_orders_for_wallet(myso_wallet)?
+            .into_iter()
+            .find(|order| {
+                order.direction == BridgeOrderDirection::Out
+                    && matches!(
+                        order.status,
+                        BridgeOrderStatus::Bridging | BridgeOrderStatus::DepositReceived
+                    )
+                    && normalize_hex_address(&order.destination_address) == dest
+                    && match (token_id, order.token_id) {
+                        (Some(want), Some(have)) => want == have,
+                        _ => true,
+                    }
+            })
+        else {
+            return Ok(None);
+        };
+        order.status = BridgeOrderStatus::Completed;
+        order.updated_at = now_ms();
+        order.bridge_tx_digest = Some(bridge_tx_digest);
+        if let Some(hash) = evm_tx_hash {
+            order.evm_tx_hash = Some(hash);
+        }
+        if order.token_id.is_none() {
+            order.token_id = token_id;
+        }
+        self.bridge_orders
+            .insert(&order.order_id, &order)
+            .map_err(|e| {
+                BridgeError::StorageError(format!("Failed to complete out bridge order: {:?}", e))
             })?;
         Ok(Some(order))
     }
@@ -946,6 +1170,9 @@ mod tests {
             updated_at: 1,
             callback_url: None,
             callback_api_key: None,
+            token_id: None,
+            evm_token_address: None,
+            myso_token_type: None,
         };
         store.upsert_bridge_order(order.clone()).unwrap();
         let loaded = store.get_bridge_order("brg_test").unwrap().unwrap();
@@ -964,5 +1191,321 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(updated.status, BridgeOrderStatus::Completed);
+    }
+
+    #[tokio::test]
+    async fn test_list_bridge_orders_for_wallet() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let store = BridgeOrchestratorTables::new(temp_dir.path());
+        let wallet_a = "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8";
+        let wallet_b = "0xa8b70a01b8f6ab20ce71723badbdef1499b629fda23085ffb13347fd32342137";
+        let inbound = BridgeOrderRecord {
+            order_id: "brg_in".to_string(),
+            direction: BridgeOrderDirection::In,
+            status: BridgeOrderStatus::Completed,
+            myso_wallet: wallet_a.to_string(),
+            deposit_address: "0x19d1a1d630fef261d1425525487e612679490dd5".to_string(),
+            destination_chain: "mysocial".to_string(),
+            destination_address: wallet_a.to_string(),
+            amount: Some("10000000".to_string()),
+            deposit_tx_digest: None,
+            bridge_tx_digest: None,
+            evm_tx_hash: None,
+            created_at: 1,
+            updated_at: 20,
+            callback_url: None,
+            callback_api_key: None,
+            token_id: None,
+            evm_token_address: None,
+            myso_token_type: None,
+        };
+        let outbound = BridgeOrderRecord {
+            order_id: "brg_out".to_string(),
+            direction: BridgeOrderDirection::Out,
+            status: BridgeOrderStatus::Bridging,
+            myso_wallet: wallet_a.replace("0x", "0X"),
+            deposit_address: wallet_a.to_string(),
+            destination_chain: "base".to_string(),
+            destination_address: "0x0000000000000000000000000000000000000001".to_string(),
+            amount: Some("1.5".to_string()),
+            deposit_tx_digest: Some("digest".to_string()),
+            bridge_tx_digest: None,
+            evm_tx_hash: None,
+            created_at: 2,
+            updated_at: 30,
+            callback_url: None,
+            callback_api_key: None,
+            token_id: None,
+            evm_token_address: None,
+            myso_token_type: None,
+        };
+        let other = BridgeOrderRecord {
+            order_id: "brg_other".to_string(),
+            direction: BridgeOrderDirection::In,
+            status: BridgeOrderStatus::AwaitingDeposit,
+            myso_wallet: wallet_b.to_string(),
+            deposit_address: "0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1".to_string(),
+            destination_chain: "mysocial".to_string(),
+            destination_address: wallet_b.to_string(),
+            amount: None,
+            deposit_tx_digest: None,
+            bridge_tx_digest: None,
+            evm_tx_hash: None,
+            created_at: 3,
+            updated_at: 40,
+            callback_url: None,
+            callback_api_key: None,
+            token_id: None,
+            evm_token_address: None,
+            myso_token_type: None,
+        };
+        store.upsert_bridge_order(inbound).unwrap();
+        store.upsert_bridge_order(outbound).unwrap();
+        store.upsert_bridge_order(other).unwrap();
+
+        let listed = store.list_bridge_orders_for_wallet(&wallet_a[2..]).unwrap();
+        assert_eq!(listed.len(), 2);
+        assert_eq!(listed[0].order_id, "brg_out");
+        assert_eq!(listed[1].order_id, "brg_in");
+        assert_eq!(
+            store.list_bridge_orders_for_wallet(wallet_b).unwrap().len(),
+            1
+        );
+    }
+
+    #[tokio::test]
+    async fn test_update_bridge_order_status_forks_on_new_deposit_tx() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let store = BridgeOrchestratorTables::new(temp_dir.path());
+        let evm = alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
+            .unwrap();
+        let deposit_key = DepositAddressKey::from_evm(evm);
+        let wallet = "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8";
+        store
+            .upsert_bridge_order(BridgeOrderRecord {
+                order_id: "brg_generate".to_string(),
+                direction: BridgeOrderDirection::In,
+                status: BridgeOrderStatus::AwaitingDeposit,
+                myso_wallet: wallet.to_string(),
+                deposit_address: format!("{:?}", evm),
+                destination_chain: "mysocial".to_string(),
+                destination_address: wallet.to_string(),
+                amount: None,
+                deposit_tx_digest: None,
+                bridge_tx_digest: None,
+                evm_tx_hash: None,
+                created_at: 1,
+                updated_at: 1,
+                callback_url: Some("https://example.test/hook".to_string()),
+                callback_api_key: Some("secret".to_string()),
+                token_id: None,
+                evm_token_address: None,
+                myso_token_type: None,
+            })
+            .unwrap();
+
+        let received = store
+            .update_bridge_order_status(
+                &deposit_key,
+                BridgeOrderStatus::DepositReceived,
+                BridgeOrderPatch {
+                    amount: Some("1".to_string()),
+                    deposit_tx_digest: Some("tx_a".to_string()),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(received.order_id, "brg_generate");
+        assert_eq!(received.status, BridgeOrderStatus::DepositReceived);
+
+        let completed = store
+            .update_bridge_order_status(
+                &deposit_key,
+                BridgeOrderStatus::Completed,
+                BridgeOrderPatch {
+                    deposit_tx_digest: Some("tx_a".to_string()),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(completed.order_id, "brg_generate");
+        assert_eq!(completed.status, BridgeOrderStatus::Completed);
+
+        let forked = store
+            .update_bridge_order_status(
+                &deposit_key,
+                BridgeOrderStatus::DepositReceived,
+                BridgeOrderPatch {
+                    amount: Some("2".to_string()),
+                    deposit_tx_digest: Some("tx_b".to_string()),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_ne!(forked.order_id, "brg_generate");
+        assert!(forked.order_id.starts_with("brg_"));
+        assert_eq!(forked.status, BridgeOrderStatus::DepositReceived);
+        assert_eq!(forked.deposit_tx_digest.as_deref(), Some("tx_b"));
+        assert_eq!(forked.amount.as_deref(), Some("2"));
+        assert_eq!(forked.myso_wallet, wallet);
+        assert_eq!(
+            forked.callback_url.as_deref(),
+            Some("https://example.test/hook")
+        );
+
+        let listed = store.list_bridge_orders_for_wallet(wallet).unwrap();
+        assert_eq!(listed.len(), 2);
+        let current = store.get_order_for_deposit(&deposit_key).unwrap().unwrap();
+        assert_eq!(current.order_id, forked.order_id);
+        let original = store.get_bridge_order("brg_generate").unwrap().unwrap();
+        assert_eq!(original.status, BridgeOrderStatus::Completed);
+        assert_eq!(original.deposit_tx_digest.as_deref(), Some("tx_a"));
+    }
+
+    #[tokio::test]
+    async fn test_update_bridge_order_status_persists_token_fields() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let store = BridgeOrchestratorTables::new(temp_dir.path());
+        let evm = alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
+            .unwrap();
+        let deposit_key = DepositAddressKey::from_evm(evm);
+        let wallet = "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8";
+        store
+            .upsert_bridge_order(BridgeOrderRecord {
+                order_id: "brg_token".to_string(),
+                direction: BridgeOrderDirection::In,
+                status: BridgeOrderStatus::AwaitingDeposit,
+                myso_wallet: wallet.to_string(),
+                deposit_address: format!("{:?}", evm),
+                destination_chain: "mysocial".to_string(),
+                destination_address: wallet.to_string(),
+                amount: None,
+                deposit_tx_digest: None,
+                bridge_tx_digest: None,
+                evm_tx_hash: None,
+                created_at: 1,
+                updated_at: 1,
+                callback_url: None,
+                callback_api_key: None,
+                token_id: None,
+                evm_token_address: None,
+                myso_token_type: None,
+            })
+            .unwrap();
+
+        let updated = store
+            .update_bridge_order_status(
+                &deposit_key,
+                BridgeOrderStatus::DepositReceived,
+                BridgeOrderPatch {
+                    amount: Some("100000000".to_string()),
+                    deposit_tx_digest: Some("tx_btc".to_string()),
+                    token_id: Some(1),
+                    evm_token_address: Some(
+                        "0x5fc748f1feb28d7b76fa1c6b07d8ba2d5535177c".to_string(),
+                    ),
+                    myso_token_type: Some(
+                        "0xe621bbe7c5ab61c595da074a598f1fb8db10cbd1ea56e20028815028312b920e::btc::BTC"
+                            .to_string(),
+                    ),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(updated.token_id, Some(1));
+        assert_eq!(
+            updated.evm_token_address.as_deref(),
+            Some("0x5fc748f1feb28d7b76fa1c6b07d8ba2d5535177c")
+        );
+        assert!(
+            updated
+                .myso_token_type
+                .as_deref()
+                .is_some_and(|ty| ty.ends_with("::btc::BTC"))
+        );
+
+        let listed = store.list_bridge_orders_for_wallet(wallet).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].token_id, Some(1));
+        assert_eq!(
+            listed[0].evm_token_address.as_deref(),
+            Some("0x5fc748f1feb28d7b76fa1c6b07d8ba2d5535177c")
+        );
+    }
+
+    #[test]
+    fn test_bridge_order_bcs_reads_pre_token_rows() {
+        #[derive(Serialize)]
+        struct LegacyOrder {
+            order_id: String,
+            direction: BridgeOrderDirection,
+            status: BridgeOrderStatus,
+            myso_wallet: String,
+            deposit_address: String,
+            destination_chain: String,
+            destination_address: String,
+            amount: Option<String>,
+            deposit_tx_digest: Option<String>,
+            bridge_tx_digest: Option<String>,
+            evm_tx_hash: Option<String>,
+            created_at: u64,
+            updated_at: u64,
+            callback_url: Option<String>,
+            callback_api_key: Option<String>,
+        }
+
+        let legacy = LegacyOrder {
+            order_id: "brg_legacy".to_string(),
+            direction: BridgeOrderDirection::In,
+            status: BridgeOrderStatus::Completed,
+            myso_wallet: "0xabc".to_string(),
+            deposit_address: "0x19d1a1d630fef261d1425525487e612679490dd5".to_string(),
+            destination_chain: "mysocial".to_string(),
+            destination_address: "0xabc".to_string(),
+            amount: Some("1".to_string()),
+            deposit_tx_digest: Some("tx".to_string()),
+            bridge_tx_digest: None,
+            evm_tx_hash: None,
+            created_at: 1,
+            updated_at: 2,
+            callback_url: None,
+            callback_api_key: None,
+        };
+        let bytes = bcs::to_bytes(&legacy).unwrap();
+        let loaded: BridgeOrderRecord = bcs::from_bytes(&bytes).unwrap();
+        assert_eq!(loaded.order_id, "brg_legacy");
+        assert_eq!(loaded.status, BridgeOrderStatus::Completed);
+        assert_eq!(loaded.token_id, None);
+        assert_eq!(loaded.evm_token_address, None);
+        assert_eq!(loaded.myso_token_type, None);
+
+        let current = BridgeOrderRecord {
+            order_id: "brg_new".to_string(),
+            direction: BridgeOrderDirection::In,
+            status: BridgeOrderStatus::Completed,
+            myso_wallet: "0xabc".to_string(),
+            deposit_address: "0x19d1".to_string(),
+            destination_chain: "mysocial".to_string(),
+            destination_address: "0xabc".to_string(),
+            amount: Some("1".to_string()),
+            deposit_tx_digest: None,
+            bridge_tx_digest: None,
+            evm_tx_hash: None,
+            created_at: 1,
+            updated_at: 2,
+            callback_url: None,
+            callback_api_key: None,
+            token_id: Some(2),
+            evm_token_address: Some("0x38a0".to_string()),
+            myso_token_type: Some("::eth::ETH".to_string()),
+        };
+        let roundtrip: BridgeOrderRecord =
+            bcs::from_bytes(&bcs::to_bytes(&current).unwrap()).unwrap();
+        assert_eq!(roundtrip.token_id, Some(2));
+        assert_eq!(roundtrip.evm_token_address.as_deref(), Some("0x38a0"));
     }
 }

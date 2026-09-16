@@ -9,7 +9,7 @@ use crate::eth_client::EthClient;
 use crate::metered_eth_provider::new_metered_eth_multi_provider;
 use crate::metrics::BridgeMetrics;
 use crate::myso_client::MySoBridgeClient;
-use crate::types::{BridgeAction, is_route_valid};
+use crate::types::{is_route_valid, BridgeAction};
 use crate::utils::get_eth_contract_addresses;
 use alloy::primitives::Address as EthAddress;
 use alloy::providers::Provider;
@@ -21,7 +21,7 @@ use myso_types::base_types::ObjectRef;
 use myso_types::base_types::{MySoAddress, ObjectID};
 use myso_types::bridge::BridgeChainId;
 use myso_types::crypto::KeypairTraits;
-use myso_types::crypto::{MySoKeyPair, NetworkKeyPair, get_key_pair_from_rng};
+use myso_types::crypto::{get_key_pair_from_rng, MySoKeyPair, NetworkKeyPair};
 use myso_types::digests::{get_mainnet_chain_identifier, get_testnet_chain_identifier};
 use myso_types::event::EventID;
 use myso_types::gas_coin::GasCoin;
@@ -270,6 +270,9 @@ pub struct DepositConfigFile {
     /// Optional node-level fallback when a deposit address has no per-address callback.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deposit_callback_url: Option<String>,
+    /// Hex private key used to fund custodial EVM deposit addresses with gas.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relayer_eth_private_key: Option<String>,
 }
 
 fn default_deposit_poll_interval() -> u64 {
@@ -295,6 +298,7 @@ pub struct DepositConfig {
     pub deposit_callback_url: Option<String>,
     pub deposit_callback_api_key: Option<String>,
     pub deposit_callback_host_allowlist: Vec<String>,
+    pub relayer_eth_private_key: Option<String>,
 }
 
 impl Config for BridgeNodeConfig {}
@@ -443,11 +447,21 @@ impl BridgeNodeConfig {
                     .ok()
                     .or_else(|| std::env::var("INTERNAL_API_KEY").ok())
                     .filter(|s| !s.is_empty()),
-                deposit_callback_host_allowlist: crate::deposit_callback::parse_callback_host_allowlist(
-                    std::env::var("DEPOSIT_CALLBACK_HOST_ALLOWLIST")
-                        .ok()
-                        .as_deref(),
-                ),
+                deposit_callback_host_allowlist:
+                    crate::deposit_callback::parse_callback_host_allowlist(
+                        std::env::var("DEPOSIT_CALLBACK_HOST_ALLOWLIST")
+                            .ok()
+                            .as_deref(),
+                    ),
+                relayer_eth_private_key: std::env::var("DEPOSIT_RELAYER_ETH_PRIVATE_KEY")
+                    .ok()
+                    .filter(|s| !s.is_empty())
+                    .or_else(|| {
+                        deposit_cfg
+                            .relayer_eth_private_key
+                            .clone()
+                            .filter(|s| !s.is_empty())
+                    }),
             }
         });
 

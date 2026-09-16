@@ -28,7 +28,7 @@ use futures::StreamExt;
 use move_core_types::ident_str;
 use move_core_types::language_storage::StructTag;
 use myso_types::base_types::ObjectRef;
-use myso_types::bridge::BRIDGE_MODULE_NAME;
+use myso_types::bridge::{BRIDGE_MODULE_NAME, TOKEN_ID_MYSO};
 use myso_types::coin::Coin;
 use myso_types::digests::TransactionDigest;
 use myso_types::gas_coin::GAS;
@@ -131,15 +131,6 @@ impl DepositBridgeHandler {
             amount = ?event.amount,
             "Processing EVM deposit"
         );
-        self.notify_lifecycle(
-            &deposit_address_key,
-            BridgeOrderStatus::DepositReceived,
-            BridgeOrderPatch {
-                amount: Some(event.amount.to_string()),
-                deposit_tx_digest: Some(format!("{:?}", event.tx_hash)),
-                ..Default::default()
-            },
-        );
 
         let deposit_signer = self
             .address_manager
@@ -147,6 +138,20 @@ impl DepositBridgeHandler {
             .with_chain_id(Some(self.eth_chain_id));
 
         let token_id = self.get_token_id_for_address(event.token_address).await?;
+        let evm_token_address = format!("{:?}", event.token_address);
+        let myso_token_type = self.myso_type_for_token_id(token_id).await;
+        self.notify_lifecycle(
+            &deposit_address_key,
+            BridgeOrderStatus::DepositReceived,
+            BridgeOrderPatch {
+                amount: Some(event.amount.to_string()),
+                deposit_tx_digest: Some(format!("{:?}", event.tx_hash)),
+                token_id: Some(token_id),
+                evm_token_address: Some(evm_token_address.clone()),
+                myso_token_type: myso_token_type.clone(),
+                ..Default::default()
+            },
+        );
 
         let token_contract = EthERC20::new(event.token_address, self.eth_provider.clone());
         let balance_at_block = token_contract
@@ -197,7 +202,9 @@ impl DepositBridgeHandler {
         let gas_price = U256::from(gas_price_raw);
 
         let token_contract_read = EthERC20::new(event.token_address, self.eth_provider.clone());
-        let approve_call = token_contract_read.approve(self.eth_bridge_address, amount_to_bridge);
+        let approve_call = token_contract_read
+            .approve(self.eth_bridge_address, amount_to_bridge)
+            .from(event.to_address);
         let approval_gas_estimate = approve_call.estimate_gas().await.map_err(|e| {
             BridgeError::Generic(format!("Failed to estimate approval gas: {:?}", e))
         })?;
@@ -311,6 +318,9 @@ impl DepositBridgeHandler {
                 amount: Some(amount_to_bridge.to_string()),
                 deposit_tx_digest: Some(format!("{:?}", event.tx_hash)),
                 evm_tx_hash: Some(format!("{:?}", tx_hash)),
+                token_id: Some(token_id),
+                evm_token_address: Some(evm_token_address),
+                myso_token_type,
                 ..Default::default()
             },
         );
@@ -359,15 +369,6 @@ impl DepositBridgeHandler {
             .try_into()
             .map_err(|_| BridgeError::Generic("Invalid destination address length".to_string()))?;
         let hd_index = recipient_info.hd_index;
-        self.notify_lifecycle(
-            &deposit_address_key,
-            BridgeOrderStatus::DepositReceived,
-            BridgeOrderPatch {
-                amount: Some(event.amount.to_string()),
-                deposit_tx_digest: Some(event.tx_digest.to_string()),
-                ..Default::default()
-            },
-        );
 
         let coin_type_tag = parse_myso_type_tag(&event.coin_type).map_err(|e| {
             BridgeError::Generic(format!("Invalid coin type '{}': {:?}", event.coin_type, e))
@@ -385,6 +386,30 @@ impl DepositBridgeHandler {
             }
             _ => (coin_type_tag.clone(), Coin::type_(coin_type_tag.clone())),
         };
+        let token_id = if GAS::is_gas_type(&inner_type_tag) {
+            Some(TOKEN_ID_MYSO)
+        } else if let Ok(map) = self.myso_client.get_token_id_map().await {
+            token_id_for_myso_type(&map, &inner_type_tag, recipient_info.destination_token_id)
+        } else {
+            recipient_info.destination_token_id
+        };
+        let evm_token_address = match token_id {
+            Some(id) => self.evm_address_for_token_id(id).await,
+            None => None,
+        };
+        let myso_token_type = Some(event.coin_type.clone());
+        self.notify_lifecycle(
+            &deposit_address_key,
+            BridgeOrderStatus::DepositReceived,
+            BridgeOrderPatch {
+                amount: Some(event.amount.to_string()),
+                deposit_tx_digest: Some(event.tx_digest.to_string()),
+                token_id,
+                evm_token_address: evm_token_address.clone(),
+                myso_token_type: myso_token_type.clone(),
+                ..Default::default()
+            },
+        );
 
         let coin_obj_ref = self
             .pick_coin_with_balance(event.recipient, coin_object_type, event.amount)
@@ -499,6 +524,9 @@ impl DepositBridgeHandler {
                         amount: Some(event.amount.to_string()),
                         deposit_tx_digest: Some(event.tx_digest.to_string()),
                         bridge_tx_digest: Some(tx_digest.to_string()),
+                        token_id,
+                        evm_token_address,
+                        myso_token_type,
                         ..Default::default()
                     },
                 );
@@ -653,6 +681,26 @@ impl DepositBridgeHandler {
         )))
     }
 
+    async fn myso_type_for_token_id(&self, token_id: u8) -> Option<String> {
+        self.myso_client
+            .get_token_id_map()
+            .await
+            .ok()?
+            .get(&token_id)
+            .map(ToString::to_string)
+    }
+
+    async fn evm_address_for_token_id(&self, token_id: u8) -> Option<String> {
+        let config =
+            EthBridgeConfig::new(self.eth_bridge_config_address, self.eth_provider.clone());
+        config
+            .tokenAddressOf(token_id)
+            .call()
+            .await
+            .ok()
+            .map(|addr| format!("{addr:?}"))
+    }
+
     async fn get_token_id_for_address(&self, token_address: EthAddress) -> BridgeResult<u8> {
         {
             let cache = self.token_address_to_id.read().await;
@@ -684,4 +732,15 @@ impl DepositBridgeHandler {
             token_address
         )))
     }
+}
+
+fn token_id_for_myso_type(
+    map: &HashMap<u8, TypeTag>,
+    ty: &TypeTag,
+    rail_hint: Option<u8>,
+) -> Option<u8> {
+    if let Some(id) = rail_hint {
+        return Some(id);
+    }
+    map.iter().find(|(_, mapped)| *mapped == ty).map(|(id, _)| *id)
 }

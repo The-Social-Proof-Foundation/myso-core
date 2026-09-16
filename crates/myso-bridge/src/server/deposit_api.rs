@@ -13,13 +13,12 @@ use crate::deposit_sig_verification::{
 use crate::error::BridgeError;
 use crate::storage::{
     BridgeOrderDirection, BridgeOrderRecord, BridgeOrderStatus, BridgeOrchestratorTables,
-    DepositAddressKey, DepositRegistration, RegistrationType,
+    DepositAddressKey, DepositRegistration, RegistrationType, new_order_id,
 };
 use alloy::primitives::Address as EthAddress;
 use axum::{Json, extract::State, http::StatusCode};
-use fastcrypto::encoding::{Encoding, Hex};
+use fastcrypto::encoding::Encoding;
 use myso_types::base_types::MySoAddress;
-use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -756,6 +755,9 @@ fn persist_generate_order(
         updated_at: now,
         callback_url,
         callback_api_key,
+        token_id: None,
+        evm_token_address: None,
+        myso_token_type: None,
     };
     let order_id = order.order_id.clone();
     state
@@ -763,12 +765,6 @@ fn persist_generate_order(
         .upsert_bridge_order(order)
         .map_err(to_status_error_json)?;
     Ok(order_id)
-}
-
-fn new_order_id() -> String {
-    let mut bytes = [0u8; 16];
-    rand::rngs::OsRng.fill_bytes(&mut bytes);
-    format!("brg_{}", Hex::encode(bytes))
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -287,12 +287,29 @@ bridge_cli() {
 }
 
 bridge_node_bin() {
-    if command -v myso-bridge-node >/dev/null 2>&1; then
-        printf '%s' 'myso-bridge-node'
+    if [[ -x "$REPO_ROOT/target/debug/myso-bridge-node" ]]; then
+        printf '%s/target/debug/myso-bridge-node' "$REPO_ROOT"
         return 0
     fi
-    printf '%s' ''
+    if [[ -x "$REPO_ROOT/target/release/myso-bridge-node" ]]; then
+        printf '%s/target/release/myso-bridge-node' "$REPO_ROOT"
+        return 0
+    fi
+    if command -v myso-bridge-node >/dev/null 2>&1; then
+        command -v myso-bridge-node
+        return 0
+    fi
     return 1
+}
+
+bridge_resolve_node_launch() {
+    local resolved
+    resolved="$(bridge_node_bin || true)"
+    if [[ -z "$resolved" ]]; then
+        return 1
+    fi
+    launch_bin="$resolved"
+    launch_args=("--config-path" "$BRIDGE_NODE_CONFIG_PATH")
 }
 
 bridge_preflight() {
@@ -1196,6 +1213,24 @@ print(f'''        - Struct:
 PY
 }
 
+# ERC20s the deposit monitor should scan. Skip native 0x0 placeholders.
+bridge_yaml_deposit_supported_tokens() {
+    python3 - "$@" <<'PY'
+import sys
+zero = "0x" + ("0" * 40)
+for addr in sys.argv[1:]:
+    if not addr or addr.lower() == zero:
+        continue
+    print(f'    - "{addr}"')
+PY
+}
+
+bridge_yaml_deposit_relayer_eth_key() {
+    local key="${1:-${BRIDGE_EVM_PRIVATE_KEY:-}}"
+    [[ -n "$key" ]] || return 0
+    printf '  relayer-eth-private-key: "%s"\n' "$key"
+}
+
 bridge_write_configs() {
     local proxy="${BRIDGE_PROXY:-0x0000000000000000000000000000000000000000}"
     local evm0 evm1 evm2 evm3 evm4
@@ -1267,6 +1302,9 @@ eth:
   eth-contracts-start-block-fallback: 0
 deposits:
   enabled: true
+  supported-tokens:
+$(bridge_yaml_deposit_supported_tokens "$evm1" "$evm2" "$evm3" "$evm4")
+$(bridge_yaml_deposit_relayer_eth_key)
 EOF
 
     cat > "$BRIDGE_CLIENT_CONFIG_PATH" <<EOF
@@ -1809,7 +1847,7 @@ bridge_node_reachable() {
 }
 
 bridge_start_node_opt_in() {
-    local bin logf node_bin wait_secs="${BRIDGE_NODE_START_WAIT_SECS:-300}"
+    local logf wait_secs="${BRIDGE_NODE_START_WAIT_SECS:-300}"
     if ! bridge_committee_node_ready; then
         echo "Not starting the node: committee voting power is still below 7500." >&2
         return 1
@@ -1823,30 +1861,14 @@ bridge_start_node_opt_in() {
         echo "Port ${BRIDGE_NODE_PORT}/${BRIDGE_METRICS_PORT} still in use after stale cleanup; not starting another node." >&2
         return 1
     fi
-    bin="$(bridge_node_bin || true)"
-    node_bin="${REPO_ROOT}/target/debug/myso-bridge-node"
-    if [[ -z "$bin" && ! -x "$node_bin" ]]; then
-        log_step "Building myso-bridge-node (one-time)"
-        (cd "$REPO_ROOT" && cargo build -p myso-bridge --bin myso-bridge-node) >>"$BRIDGE_DIR/bridge-node-build.log" 2>&1 \
-            || {
-                echo "Failed to build myso-bridge-node; see $BRIDGE_DIR/bridge-node-build.log" >&2
-                return 1
-            }
+    if ! bridge_resolve_node_launch; then
+        echo "myso-bridge-node binary not found under target/debug, target/release, or PATH." >&2
+        echo "Build once with: cargo build -p myso-bridge --bin myso-bridge-node" >&2
+        return 1
     fi
     mkdir -p "$BRIDGE_DIR" "$BRIDGE_DB_PATH"
     logf="$BRIDGE_DIR/bridge-node.log"
     log_step "Starting bridge node on $BRIDGE_NODE_PORT (log $BRIDGE_DIR/bridge-node.log)"
-    local launch_bin launch_args
-    if [[ -n "$bin" ]]; then
-        launch_bin="$(command -v myso-bridge-node)"
-        launch_args=("--config-path" "$BRIDGE_NODE_CONFIG_PATH")
-    elif [[ -x "$node_bin" ]]; then
-        launch_bin="$node_bin"
-        launch_args=("--config-path" "$BRIDGE_NODE_CONFIG_PATH")
-    else
-        launch_bin="$(command -v cargo)"
-        launch_args=("run" "-p" "myso-bridge" "--bin" "myso-bridge-node" "--" "--config-path" "$BRIDGE_NODE_CONFIG_PATH")
-    fi
     local node_pid
     node_pid="$(python3 - "$launch_bin" "$logf" "${launch_args[@]}" <<'PY'
 import os, subprocess, sys
@@ -1873,6 +1895,25 @@ PY
     echo "Bridge node did not become reachable; see $logf" >&2
     tail -n 30 "$logf" >&2
     return 1
+}
+
+bridge_attach_node_foreground() {
+    if ! bridge_committee_node_ready; then
+        echo "Not attaching the node: committee voting power is still below 7500." >&2
+        return 1
+    fi
+    if ! bridge_resolve_node_launch; then
+        echo "myso-bridge-node binary not found under target/debug, target/release, or PATH." >&2
+        echo "Build once with: cargo build -p myso-bridge --bin myso-bridge-node" >&2
+        return 1
+    fi
+    mkdir -p "$BRIDGE_DIR" "$BRIDGE_DB_PATH"
+    if bridge_node_reachable "$BRIDGE_AUTHORITY_URL" || bridge_port_in_use "$BRIDGE_NODE_PORT"; then
+        log_step "Stopping background myso-bridge-node so this terminal can attach"
+        bridge_stop_running_node
+    fi
+    log_step "Attaching myso-bridge-node in this terminal (Ctrl-C stops it)"
+    exec "$launch_bin" "${launch_args[@]}"
 }
 
 readonly BRIDGE_GQL_ACTIVE_CAPS='query Caps($active: MySoAddress!) {
@@ -2522,7 +2563,33 @@ bridge_demo_transfer() {
         --seq-num 0 --dry-run false || true
 }
 
+bridge_rail_reserve_from_rpc() {
+    local raw
+    raw="$(bridge_rpc_json mysox_getLatestBridge 2>/dev/null || true)"
+    printf '%s' "$raw" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+t = (d.get("result") or {}).get("treasury") or {}
+rows = t.get("railReserve") or t.get("rail_reserve") or []
+parts = []
+for row in rows:
+    if isinstance(row, (list, tuple)) and len(row) >= 2:
+        parts.append(f"{row[0]}={row[1]}")
+    elif isinstance(row, dict):
+        token_id = row.get("id") or row.get("tokenId") or row.get("token_id")
+        amount = row.get("amount") or row.get("reserve") or row.get("value")
+        if token_id is not None and amount is not None:
+            parts.append(f"{token_id}={amount}")
+print(" ".join(parts))
+'
+}
+
 bridge_print_summary() {
+    local rails
+    rails="$(bridge_rail_reserve_from_rpc || true)"
     echo "" >&2
     echo "Bridge attach-only bootstrap summary" >&2
     echo "  session:        $SOCIAL_SESSION_SAVE_PATH" >&2
@@ -2535,4 +2602,5 @@ bridge_print_summary() {
     echo "  native myso:    ${NATIVE_MYSO_BOOTSTRAPPED:-0}" >&2
     echo "  committee:      registered=${COMMITTEE_REGISTERED:-0} finalized=${COMMITTEE_FINALIZED:-0}" >&2
     echo "  myso tokens:    registered=${TOKENS_REGISTERED_MYSO:-0}" >&2
+    echo "  rail reserve:   ${rails:-<rpc unavailable or empty>}" >&2
 }

@@ -4,9 +4,10 @@
 #
 # Attach-only localnet bootstrap for the native MySo bridge.
 #
-# Default: never start, stop, or kill running services. Submits txs, writes
-# configs under network.config/bridge/, waits for committee voting power >= 7500,
-# then starts myso-bridge-node (or prints the cargo command if it cannot).
+# Default: submit txs, write configs under network.config/bridge/, wait for
+# committee voting power >= 7500, then start myso-bridge-node in the background
+# (or print the start command if the binary is missing).
+# --start-bridge-node: after bootstrap, exec the node in this terminal.
 #
 # Prerequisites (you already run these):
 #   - myso fullnode RPC (MYSO_RPC_URL, default http://127.0.0.1:9000)
@@ -25,7 +26,7 @@
 #   ./scripts/bridge-bootstrap.sh --skip-governance
 #   ./scripts/bridge-bootstrap.sh --configs-only
 #   ./scripts/bridge-bootstrap.sh --start-anvil
-#   ./scripts/bridge-bootstrap.sh --start-bridge-node
+#   ./scripts/bridge-bootstrap.sh --start-bridge-node   # attach node in this terminal
 #   ./scripts/bridge-bootstrap.sh --bootstrap-native
 #   ./scripts/bridge-bootstrap.sh --refresh-session
 #   ./scripts/bridge-bootstrap.sh --fresh-chain
@@ -216,3 +217,12 @@ if [[ "$DEMO_TRANSFER" == 1 ]]; then
 fi
 
 bridge_print_summary
+
+if [[ "$START_BRIDGE_NODE" == 1 ]]; then
+    if ! bridge_committee_node_ready; then
+        log_step "--start-bridge-node: committee not seated, not attaching"
+        bridge_print_node_start
+        exit 1
+    fi
+    bridge_attach_node_foreground
+fi
