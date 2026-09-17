@@ -14,7 +14,7 @@ use myso_types::{
     execution_status::CommandArgumentError,
     funds_accumulator::Withdrawal,
     object::Owner,
-    storage::{BackingPackageStore, ChildObjectResolver, StorageView},
+    storage::{BackingPackageStore, ChildObjectResolver, Storage},
     transfer::Receiving,
 };
 use serde::Deserialize;
@@ -33,14 +33,14 @@ where
 }
 
 /// Interface with the store necessary to execute a programmable transaction
-pub trait ExecutionState: StorageView + MySoResolver {
+pub trait ExecutionState: Storage + ChildObjectResolver + MySoResolver {
     fn as_myso_resolver(&self) -> &dyn MySoResolver;
     fn as_child_resolver(&self) -> &dyn ChildObjectResolver;
 }
 
 impl<T> ExecutionState for T
 where
-    T: StorageView,
+    T: Storage + ChildObjectResolver,
     T: MySoResolver,
 {
     fn as_myso_resolver(&self) -> &dyn MySoResolver {
