@@ -20,7 +20,7 @@ const EInvalidDst: u64 = 5;
 const MAX_DST_LENGTH: u64 = 64;
 
 /// Verify a range proof over the Ristretto255 curve that all committed values are in the range [0, 2^bits).
-/// Currently, the only supported version is 0 which corresponds to the original Bulletproofs construction (https://eprint.iacr.org/2017/1066.pdf).
+/// Version 0 is dalek's default Pedersen generators. Version 1 uses Contra's generators: value on H, blinding on G.
 /// In the future, we may add support for newer versions of Bulletproofs, such as Bulletproofs+ or Bulletproofs++.
 ///
 /// The format of the proof follows the specifications from https://github.com/dalek-cryptography/bulletproofs/blob/be67b6d5f5ad1c1f54d5511b52e6d645a1313d07/src/range_proof/mod.rs#L59-L76.
@@ -50,6 +50,12 @@ public fun verify_bulletproofs_with_dst_ristretto255(
             &commitments.map_ref!(|c| *c.bytes()),
             dst,
         ),
+        1 => verify_bulletproofs_with_dst_ristretto255_contra_internal(
+            proof,
+            bits,
+            &commitments.map_ref!(|c| *c.bytes()),
+            dst,
+        ),
         _ => abort EUnsupportedVersion,
     }
 }
@@ -67,6 +73,13 @@ public fun verify_bulletproofs_ristretto255(
 }
 
 native fun verify_bulletproofs_with_dst_ristretto255_internal(
+    proof: &vector<u8>,
+    bits: u8,
+    commitments: &vector<vector<u8>>,
+    dst: &vector<u8>,
+): bool;
+
+native fun verify_bulletproofs_with_dst_ristretto255_contra_internal(
     proof: &vector<u8>,
     bits: u8,
     commitments: &vector<vector<u8>>,

@@ -51,6 +51,9 @@ Manages social media platforms and their timelines
 -  [Function `fund_platform_treasury_from_coin`](#social_contracts_platform_fund_platform_treasury_from_coin)
 -  [Function `mark_platform_governance_proposal_implemented`](#social_contracts_platform_mark_platform_governance_proposal_implemented)
 -  [Function `delegate_vote_on_platform_governance_proposal`](#social_contracts_platform_delegate_vote_on_platform_governance_proposal)
+-  [Function `assert_platform_registry_and_voter`](#social_contracts_platform_assert_platform_registry_and_voter)
+-  [Function `community_vote_on_platform_governance_proposal`](#social_contracts_platform_community_vote_on_platform_governance_proposal)
+-  [Function `community_vote_anonymous_on_platform_governance_proposal`](#social_contracts_platform_community_vote_anonymous_on_platform_governance_proposal)
 -  [Function `finalize_platform_governance_proposal`](#social_contracts_platform_finalize_platform_governance_proposal)
 -  [Function `finalize_platform_governance_proposal_anonymous`](#social_contracts_platform_finalize_platform_governance_proposal_anonymous)
 -  [Function `reject_platform_governance_proposal_manually`](#social_contracts_platform_reject_platform_governance_proposal_manually)
@@ -72,6 +75,8 @@ Manages social media platforms and their timelines
 -  [Function `is_valid_category`](#social_contracts_platform_is_valid_category)
 -  [Function `join_platform`](#social_contracts_platform_join_platform)
 -  [Function `leave_platform`](#social_contracts_platform_leave_platform)
+-  [Function `leave_platforms`](#social_contracts_platform_leave_platforms)
+-  [Function `leave_joined_wallet`](#social_contracts_platform_leave_joined_wallet)
 -  [Function `is_approved`](#social_contracts_platform_is_approved)
 -  [Function `has_joined_platform`](#social_contracts_platform_has_joined_platform)
 -  [Function `is_developer`](#social_contracts_platform_is_developer)
@@ -3259,6 +3264,130 @@ Platform-linked registry: delegate vote; on council rejection, the pool is forfe
 
 </details>
 
+<a name="social_contracts_platform_assert_platform_registry_and_voter"></a>
+
+## Function `assert_platform_registry_and_voter`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry_and_voter">assert_platform_registry_and_voter</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, voter: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry_and_voter">assert_platform_registry_and_voter</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>,
+    voter: <b>address</b>,
+) {
+    <b>let</b> opt = <a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
+    <b>assert</b>!(option::is_some(opt), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(*option::borrow(opt) == object::id(registry), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">governance::registry_type</a>(registry) == <a href="../social_contracts/governance.md#social_contracts_governance_proposal_type_platform_value">governance::proposal_type_platform_value</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_has_joined_platform">has_joined_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, voter), <a href="../social_contracts/platform.md#social_contracts_platform_ENotJoined">ENotJoined</a>);
+    <b>let</b> platform_address = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>assert</b>!(!<a href="../social_contracts/block_list.md#social_contracts_block_list_is_blocked">block_list::is_blocked</a>(block_list_registry, platform_address, voter), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_community_vote_on_platform_governance_proposal"></a>
+
+## Function `community_vote_on_platform_governance_proposal`
+
+Platform-linked registry: quadratic community vote, limited to joined wallets the platform has not blocked.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_community_vote_on_platform_governance_proposal">community_vote_on_platform_governance_proposal</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, vote_count: u64, approve: bool, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_community_vote_on_platform_governance_proposal">community_vote_on_platform_governance_proposal</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>,
+    username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">governance::Proposal</a>,
+    vote_count: u64,
+    approve: bool,
+    coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry_and_voter">assert_platform_registry_and_voter</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, block_list_registry, registry, tx_context::sender(ctx));
+    <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_internal">governance::community_vote_internal</a>(
+        registry,
+        username_registry,
+        proposal,
+        vote_count,
+        approve,
+        coin,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_community_vote_anonymous_on_platform_governance_proposal"></a>
+
+## Function `community_vote_anonymous_on_platform_governance_proposal`
+
+Anonymous variant of [<code><a href="../social_contracts/platform.md#social_contracts_platform_community_vote_on_platform_governance_proposal">community_vote_on_platform_governance_proposal</a></code>]. Non-<code><b>entry</b></code> because
+<code>EncryptedObject</code> is not a valid entry argument.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_community_vote_anonymous_on_platform_governance_proposal">community_vote_anonymous_on_platform_governance_proposal</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, encrypted_vote: <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_EncryptedObject">mydata::bf_hmac_encryption::EncryptedObject</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_community_vote_anonymous_on_platform_governance_proposal">community_vote_anonymous_on_platform_governance_proposal</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>,
+    username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">profile::UsernameRegistry</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">governance::Proposal</a>,
+    encrypted_vote: EncryptedObject,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry_and_voter">assert_platform_registry_and_voter</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, block_list_registry, registry, tx_context::sender(ctx));
+    <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous_internal">governance::community_vote_anonymous_internal</a>(
+        registry,
+        username_registry,
+        proposal,
+        encrypted_vote,
+        clock,
+        ctx,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_platform_finalize_platform_governance_proposal"></a>
 
 ## Function `finalize_platform_governance_proposal`
@@ -4195,18 +4324,80 @@ Leave a platform - removes the connection between wallet and platform
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_leave_joined_wallet">leave_joined_wallet</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, tx_context::sender(ctx), clock::timestamp_ms(clock));
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_leave_platforms"></a>
+
+## Function `leave_platforms`
+
+Leave every platform in <code>platforms</code>. Same membership removal and
+[<code><a href="../social_contracts/platform.md#social_contracts_platform_UserLeftPlatformEvent">UserLeftPlatformEvent</a></code>] as [<code><a href="../social_contracts/platform.md#social_contracts_platform_leave_platform">leave_platform</a></code>]. A platform the sender has not joined aborts with [<code><a href="../social_contracts/platform.md#social_contracts_platform_ENotJoined">ENotJoined</a></code>].
+Developer and moderator permissions are left unchanged.
+
+Move cannot store <code>&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a></code> in a vector, and shared platforms cannot be passed by value
+in a transaction. A delete transaction therefore calls [<code><a href="../social_contracts/platform.md#social_contracts_platform_leave_platform">leave_platform</a></code>] once per joined platform.
+This batch entry is the same removal for platform objects already held by value; each one is shared again.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_leave_platforms">leave_platforms</a>(platforms: vector&lt;<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_leave_platforms">leave_platforms</a>(
+    <b>mut</b> platforms: vector&lt;<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
     <b>let</b> caller = tx_context::sender(ctx);
-    <b>let</b> platform_id = object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
     <b>let</b> current_time = clock::timestamp_ms(clock);
-    // Check <b>if</b> joined wallets set exists
+    <b>while</b> (!vector::is_empty(&platforms)) {
+        <b>let</b> <b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> = vector::pop_back(&<b>mut</b> platforms);
+        <a href="../social_contracts/platform.md#social_contracts_platform_leave_joined_wallet">leave_joined_wallet</a>(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, caller, current_time);
+        transfer::share_object(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
+    };
+    vector::destroy_empty(platforms);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_leave_joined_wallet"></a>
+
+## Function `leave_joined_wallet`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_leave_joined_wallet">leave_joined_wallet</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, caller: <b>address</b>, current_time: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_leave_joined_wallet">leave_joined_wallet</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>, caller: <b>address</b>, current_time: u64) {
+    <b>let</b> platform_id = object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
     <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_JOINED_WALLETS_FIELD">JOINED_WALLETS_FIELD</a>), <a href="../social_contracts/platform.md#social_contracts_platform_ENotJoined">ENotJoined</a>);
-    // Get joined wallets set
-    <b>let</b> joined_wallets = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, <a href="../social_contracts/platform.md#social_contracts_platform_JOINED_WALLETS_FIELD">JOINED_WALLETS_FIELD</a>);
-    // Check <b>if</b> wallet is a member of the <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>
+    <b>let</b> joined_wallets = dynamic_field::borrow_mut&lt;vector&lt;u8&gt;, VecSet&lt;<b>address</b>&gt;&gt;(
+        &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_JOINED_WALLETS_FIELD">JOINED_WALLETS_FIELD</a>,
+    );
     <b>assert</b>!(vec_set::contains(joined_wallets, &caller), <a href="../social_contracts/platform.md#social_contracts_platform_ENotJoined">ENotJoined</a>);
-    // Remove wallet from joined wallets
     vec_set::remove(joined_wallets, &caller);
-    // Emit event
     event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_UserLeftPlatformEvent">UserLeftPlatformEvent</a> {
         wallet_address: caller,
         platform_id,

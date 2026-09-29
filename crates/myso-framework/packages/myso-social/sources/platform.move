@@ -24,7 +24,7 @@ module social_contracts::platform {
         derived_object,
         permissioned_group::{Self, PermissionedGroup, ExtensionPermissionsAdmin},
     };
-    use mydata::bf_hmac_encryption::{PublicKey, VerifiedDerivedKey};
+    use mydata::bf_hmac_encryption::{EncryptedObject, PublicKey, VerifiedDerivedKey};
     
     use social_contracts::profile;
     use social_contracts::governance;
@@ -972,6 +972,70 @@ module social_contracts::platform {
         };
     }
 
+    fun assert_platform_registry_and_voter(
+        platform: &Platform,
+        block_list_registry: &block_list::BlockListRegistry,
+        registry: &governance::GovernanceDAO,
+        voter: address,
+    ) {
+        let opt = governance_registry_id(platform);
+        assert!(option::is_some(opt), EUnauthorized);
+        assert!(*option::borrow(opt) == object::id(registry), EUnauthorized);
+        assert!(governance::registry_type(registry) == governance::proposal_type_platform_value(), EUnauthorized);
+        assert!(has_joined_platform(platform, voter), ENotJoined);
+        let platform_address = object::uid_to_address(&platform.id);
+        assert!(!block_list::is_blocked(block_list_registry, platform_address, voter), EUnauthorized);
+    }
+
+    /// Platform-linked registry: quadratic community vote, limited to joined wallets the platform has not blocked.
+    public entry fun community_vote_on_platform_governance_proposal(
+        platform: &Platform,
+        block_list_registry: &block_list::BlockListRegistry,
+        registry: &mut governance::GovernanceDAO,
+        username_registry: &profile::UsernameRegistry,
+        proposal: &mut governance::Proposal,
+        vote_count: u64,
+        approve: bool,
+        coin: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_platform_registry_and_voter(platform, block_list_registry, registry, tx_context::sender(ctx));
+        governance::community_vote_internal(
+            registry,
+            username_registry,
+            proposal,
+            vote_count,
+            approve,
+            coin,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Anonymous variant of [`community_vote_on_platform_governance_proposal`]. Non-`entry` because
+    /// `EncryptedObject` is not a valid entry argument.
+    public fun community_vote_anonymous_on_platform_governance_proposal(
+        platform: &Platform,
+        block_list_registry: &block_list::BlockListRegistry,
+        registry: &mut governance::GovernanceDAO,
+        username_registry: &profile::UsernameRegistry,
+        proposal: &mut governance::Proposal,
+        encrypted_vote: EncryptedObject,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_platform_registry_and_voter(platform, block_list_registry, registry, tx_context::sender(ctx));
+        governance::community_vote_anonymous_internal(
+            registry,
+            username_registry,
+            proposal,
+            encrypted_vote,
+            clock,
+            ctx,
+        );
+    }
+
     /// After community voting, finalize a platform-governance proposal; on failure, pool to this platform’s treasury.
     public entry fun finalize_platform_governance_proposal(
         platform: &mut Platform,
@@ -1524,23 +1588,40 @@ module social_contracts::platform {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        leave_joined_wallet(platform, tx_context::sender(ctx), clock::timestamp_ms(clock));
+    }
+
+    /// Leave every platform in `platforms`. Same membership removal and
+    /// [`UserLeftPlatformEvent`] as [`leave_platform`]. A platform the sender has not joined aborts with [`ENotJoined`].
+    /// Developer and moderator permissions are left unchanged.
+    ///
+    /// Move cannot store `&mut Platform` in a vector, and shared platforms cannot be passed by value
+    /// in a transaction. A delete transaction therefore calls [`leave_platform`] once per joined platform.
+    /// This batch entry is the same removal for platform objects already held by value; each one is shared again.
+    public entry fun leave_platforms(
+        mut platforms: vector<Platform>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
         let caller = tx_context::sender(ctx);
-        let platform_id = object::id(platform);
         let current_time = clock::timestamp_ms(clock);
-        
-        // Check if joined wallets set exists
+        while (!vector::is_empty(&platforms)) {
+            let mut platform = vector::pop_back(&mut platforms);
+            leave_joined_wallet(&mut platform, caller, current_time);
+            transfer::share_object(platform);
+        };
+        vector::destroy_empty(platforms);
+    }
+
+    fun leave_joined_wallet(platform: &mut Platform, caller: address, current_time: u64) {
+        let platform_id = object::id(platform);
         assert!(dynamic_field::exists_(&platform.id, JOINED_WALLETS_FIELD), ENotJoined);
-        
-        // Get joined wallets set
-        let joined_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(&mut platform.id, JOINED_WALLETS_FIELD);
-        
-        // Check if wallet is a member of the platform
+        let joined_wallets = dynamic_field::borrow_mut<vector<u8>, VecSet<address>>(
+            &mut platform.id,
+            JOINED_WALLETS_FIELD,
+        );
         assert!(vec_set::contains(joined_wallets, &caller), ENotJoined);
-        
-        // Remove wallet from joined wallets
         vec_set::remove(joined_wallets, &caller);
-        
-        // Emit event
         event::emit(UserLeftPlatformEvent {
             wallet_address: caller,
             platform_id,

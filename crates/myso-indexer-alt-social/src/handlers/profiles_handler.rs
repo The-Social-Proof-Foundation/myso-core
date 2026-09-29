@@ -54,6 +54,12 @@ const PROFILE_BOOTSTRAP_MODULES: &[&str] = &["memory", "ai_credit", "profile"];
 pub enum ProfileRow {
     Profile(NewProfile),
     ProfileUpdate(ProfileUpdate),
+    ProfileDeleted {
+        profile_id: String,
+        owner_address: String,
+        username: String,
+        deleted_at: i64,
+    },
     ProfileXUsernameUpdate {
         profile_id: String,
         owner_address: String,
@@ -119,6 +125,17 @@ impl ProfileRow {
         match row {
             crate::handlers::SocialEventRow::Profile(p) => Some(ProfileRow::Profile(p)),
             crate::handlers::SocialEventRow::ProfileUpdate(u) => Some(ProfileRow::ProfileUpdate(u)),
+            crate::handlers::SocialEventRow::ProfileDeleted {
+                profile_id,
+                owner_address,
+                username,
+                deleted_at,
+            } => Some(ProfileRow::ProfileDeleted {
+                profile_id,
+                owner_address,
+                username,
+                deleted_at,
+            }),
             crate::handlers::SocialEventRow::ProfileXUsernameUpdate {
                 profile_id,
                 owner_address,
@@ -223,7 +240,7 @@ impl ProfileRow {
 }
 
 impl FieldCount for ProfileRow {
-    const FIELD_COUNT: usize = 22;
+    const FIELD_COUNT: usize = 23;
 }
 
 pub struct ProfilesHandler;
@@ -589,6 +606,59 @@ async fn load_latest_ecosystem_treasury(
         .map_err(Into::into)
 }
 
+async fn clear_deleted_profile<'a>(
+    profile_id: &str,
+    owner_address: &str,
+    deleted_at_ms: i64,
+    conn: &mut Connection<'a>,
+) -> Result<usize> {
+    let deleted_at = chrono::DateTime::from_timestamp_millis(deleted_at_ms)
+        .map(|t| t.naive_utc())
+        .unwrap_or_else(|| chrono::Utc::now().naive_utc());
+    let profile_id_norm = common::normalize_hex_address(profile_id);
+    let owner_norm = common::normalize_hex_address(owner_address);
+    let mut total = 0;
+    total += diesel::update(profiles::table)
+        .filter(
+            profiles::profile_id
+                .eq(&profile_id_norm)
+                .or(profiles::owner_address.eq(&owner_norm)),
+        )
+        .set((
+            profiles::username.eq(""),
+            profiles::display_name.eq(None::<String>),
+            profiles::bio.eq(None::<String>),
+            profiles::profile_photo.eq(None::<String>),
+            profiles::cover_photo.eq(None::<String>),
+            profiles::website.eq(None::<String>),
+            profiles::birthdate.eq(None::<String>),
+            profiles::location.eq(None::<String>),
+            profiles::x_username.eq(None::<String>),
+            profiles::selected_badge_id.eq(None::<String>),
+            profiles::selected_ecosystem_badge_id.eq(None::<String>),
+            profiles::search_text.eq(None::<String>),
+            profiles::deleted_at.eq(Some(deleted_at)),
+            profiles::updated_at.eq(deleted_at),
+        ))
+        .execute(conn)
+        .await?;
+    total += diesel::update(profile_badges::table)
+        .filter(
+            profile_badges::wallet_address
+                .eq(&owner_norm)
+                .or(profile_badges::profile_id.eq(&profile_id_norm)),
+        )
+        .filter(profile_badges::revoked.eq(false))
+        .set((
+            profile_badges::revoked.eq(true),
+            profile_badges::revoked_at.eq(Some(deleted_at_ms)),
+            profile_badges::revoked_by.eq(Some(owner_norm.clone())),
+        ))
+        .execute(conn)
+        .await?;
+    Ok(total)
+}
+
 async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> Result<usize> {
     let mut total = 0;
     match row {
@@ -610,6 +680,14 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 ))
                 .execute(conn)
                 .await?;
+        }
+        ProfileRow::ProfileDeleted {
+            profile_id,
+            owner_address,
+            username: _,
+            deleted_at,
+        } => {
+            total += clear_deleted_profile(profile_id, owner_address, *deleted_at, conn).await?;
         }
         ProfileRow::UsernameRegistryUpsert(row) => {
             total += diesel::insert_into(username_registry::table)

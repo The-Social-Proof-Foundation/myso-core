@@ -30,7 +30,7 @@ module social_contracts::proof_of_creativity {
     };
     use myso::myso::MYSO;
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
-    use social_contracts::profile::{Self, ProfileConfig, UsernameRegistry, EcosystemTreasury};
+    use social_contracts::profile::{Self, Profile, ProfileConfig, UsernameRegistry, EcosystemTreasury};
     use social_contracts::poc_vault::{Self as poc_vault, PoCBeneficiaryVault, PoCVaultDirectory};
     use social_contracts::poc_username_beneficiary::{
         Self as poc_username_beneficiary,
@@ -49,6 +49,7 @@ module social_contracts::proof_of_creativity {
         UsageGrant,
         MediaAsset,
         PendingDerivativeAsset,
+        RightsResolutionTarget,
     };
     use social_contracts::license_template::{Self as license_template, LicenseInstance, LicenseTemplateVersion};
     use social_contracts::derivative_graph;
@@ -85,6 +86,7 @@ module social_contracts::proof_of_creativity {
     const EInvalidClaimsCommitment: u64 = 30;
     const EInvalidGovernanceRegistry: u64 = 31;
     const EProposalNotApproved: u64 = 32;
+    const EInvalidRightsTarget: u64 = 33;
 
     /// PoC governance proposal kinds (metadata `poc_proposal_kind`).
     const POC_PROPOSAL_KIND_GENERAL: u8 = 0;
@@ -380,6 +382,12 @@ module social_contracts::proof_of_creativity {
         submitter: address,
         claims_commitment: vector<u8>,
         timestamp: u64,
+        target_kind: u8,
+        beneficiary_address: address,
+        vault_id: Option<address>,
+        username: Option<String>,
+        identity_source: Option<u8>,
+        identity_hash: Option<vector<u8>>,
     }
 
     public struct MediaAssetGovernanceProposalLinkedEvent has copy, drop {
@@ -986,8 +994,30 @@ module social_contracts::proof_of_creativity {
         assert!(vector::length(claims_commitment) == CLAIMS_COMMITMENT_BYTES, EInvalidClaimsCommitment);
     }
 
-    /// Submit a media-asset rights dispute to the PoC GovernanceDAO.
-    public entry fun submit_media_asset_rights_dispute_proposal(
+    fun ensure_rights_dispute_metadata(metadata_json: Option<String>): Option<String> {
+        if (option::is_some(&metadata_json)) {
+            metadata_json
+        } else {
+            option::some(string::utf8(b"{\"poc_proposal_kind\":1}"))
+        }
+    }
+
+    fun wallet_rights_target(beneficiary: address): RightsResolutionTarget {
+        media_asset::new_rights_target(
+            media_asset::rights_target_kind_wallet(),
+            beneficiary,
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+        )
+    }
+
+    fun bind_claims_to_beneficiary(claims: &vector<Claim>, beneficiary: address) {
+        media_asset::assert_economics_claimants_bound(claims, beneficiary);
+    }
+
+    fun finish_rights_dispute_submit(
         config: &PoCConfig,
         registry: &mut GovernanceDAO,
         treasury: &EcosystemTreasury,
@@ -995,8 +1025,8 @@ module social_contracts::proof_of_creativity {
         title: String,
         description: String,
         claims_commitment: vector<u8>,
+        target: RightsResolutionTarget,
         evidence_urls: Option<vector<String>>,
-        _related_post_id: Option<address>,
         metadata_json: Option<String>,
         payment: &mut Coin<MYSO>,
         clock: &Clock,
@@ -1022,6 +1052,7 @@ module social_contracts::proof_of_creativity {
 
         let asset_id = object::id(asset);
         let submitter = tx_context::sender(ctx);
+        let metadata_json = ensure_rights_dispute_metadata(metadata_json);
         let proposal_id = governance::submit_poc_proposal_and_return_id(
             registry,
             title,
@@ -1038,6 +1069,7 @@ module social_contracts::proof_of_creativity {
             proposal_id,
             claims_commitment,
             config.max_disputes_per_media_asset,
+            target,
         );
 
         let now = clock::timestamp_ms(clock);
@@ -1047,12 +1079,318 @@ module social_contracts::proof_of_creativity {
             submitter,
             claims_commitment,
             timestamp: now,
+            target_kind: media_asset::rights_target_kind(&target),
+            beneficiary_address: media_asset::rights_target_beneficiary(&target),
+            vault_id: media_asset::rights_target_vault_id(&target),
+            username: media_asset::rights_target_username(&target),
+            identity_source: media_asset::rights_target_identity_source(&target),
+            identity_hash: media_asset::rights_target_identity_hash(&target),
         });
         event::emit(MediaAssetGovernanceProposalLinkedEvent {
             media_asset_id: asset_id,
             proposal_id,
             timestamp: now,
         });
+    }
+
+    fun submit_resolved_rights_dispute(
+        config: &PoCConfig,
+        registry: &mut GovernanceDAO,
+        treasury: &EcosystemTreasury,
+        asset: &mut MediaAsset,
+        title: String,
+        description: String,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        target: RightsResolutionTarget,
+        evidence_urls: Option<vector<String>>,
+        metadata_json: Option<String>,
+        payment: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        bind_claims_to_beneficiary(&claims, media_asset::rights_target_beneficiary(&target));
+        let commitment = media_asset::compute_rights_resolution_commitment(&claims, &usage_grants, &target);
+        finish_rights_dispute_submit(
+            config,
+            registry,
+            treasury,
+            asset,
+            title,
+            description,
+            commitment,
+            target,
+            evidence_urls,
+            metadata_json,
+            payment,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Submit a media-asset rights dispute to the PoC GovernanceDAO.
+    /// Kind 0 (wallet). Commitment must be `RightsResolutionBundle` with `target_kind = 0`
+    /// and `beneficiary_address` equal to the sole claim claimant. Claims are checked at implement.
+    public entry fun submit_media_asset_rights_dispute_proposal(
+        config: &PoCConfig,
+        registry: &mut GovernanceDAO,
+        treasury: &EcosystemTreasury,
+        asset: &mut MediaAsset,
+        title: String,
+        description: String,
+        claims_commitment: vector<u8>,
+        evidence_urls: Option<vector<String>>,
+        _related_post_id: Option<address>,
+        metadata_json: Option<String>,
+        payment: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let target = media_asset::new_rights_target(
+            media_asset::rights_target_kind_wallet(),
+            @0x0,
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+        );
+        finish_rights_dispute_submit(
+            config,
+            registry,
+            treasury,
+            asset,
+            title,
+            description,
+            claims_commitment,
+            target,
+            evidence_urls,
+            metadata_json,
+            payment,
+            clock,
+            ctx,
+        );
+    }
+
+    /// Kind 1: existing `PoCBeneficiaryVault`. Claims must name `beneficiary_address(vault)`.
+    public fun submit_media_asset_rights_dispute_for_beneficiary(
+        config: &PoCConfig,
+        registry: &mut GovernanceDAO,
+        treasury: &EcosystemTreasury,
+        asset: &mut MediaAsset,
+        vault: &poc_vault::PoCBeneficiaryVault,
+        title: String,
+        description: String,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        evidence_urls: Option<vector<String>>,
+        metadata_json: Option<String>,
+        payment: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        poc_vault::assert_vault_version(vault);
+        let beneficiary = poc_vault::beneficiary_address(vault);
+        let target = media_asset::new_rights_target(
+            media_asset::rights_target_kind_vault(),
+            beneficiary,
+            option::some(object::id_to_address(&object::id(vault))),
+            option::none(),
+            option::none(),
+            option::none(),
+        );
+        submit_resolved_rights_dispute(
+            config, registry, treasury, asset, title, description,
+            claims, usage_grants, target, evidence_urls, metadata_json, payment, clock, ctx,
+        );
+    }
+
+    /// Kind 2 via an existing username-beneficiary. Does not lock the profile username.
+    public fun submit_media_asset_rights_dispute_for_onchain_username(
+        config: &PoCConfig,
+        registry: &mut GovernanceDAO,
+        treasury: &EcosystemTreasury,
+        asset: &mut MediaAsset,
+        directory: &PoCUsernameBeneficiaryDirectory,
+        shard: &PoCUsernameBeneficiaryShard,
+        beneficiary: &PoCUsernameBeneficiary,
+        title: String,
+        description: String,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        evidence_urls: Option<vector<String>>,
+        metadata_json: Option<String>,
+        payment: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        poc_username_beneficiary::assert_directory_version(directory);
+        poc_username_beneficiary::assert_shard_version(shard);
+        poc_username_beneficiary::assert_beneficiary_version(beneficiary);
+        let username = poc_username_beneficiary::username_beneficiary_username(beneficiary);
+        poc_username_beneficiary::assert_shard_matches_username(shard, &username);
+        let found = poc_username_beneficiary::lookup_beneficiary_id_by_username(shard, &username);
+        assert!(option::is_some(&found), EInvalidRightsTarget);
+        assert!(
+            *option::borrow(&found) == object::id(beneficiary),
+            EInvalidRightsTarget,
+        );
+        let target = media_asset::new_rights_target(
+            media_asset::rights_target_kind_onchain_username(),
+            poc_username_beneficiary::username_beneficiary_address(beneficiary),
+            option::none(),
+            option::some(username),
+            option::none(),
+            option::none(),
+        );
+        submit_resolved_rights_dispute(
+            config, registry, treasury, asset, title, description,
+            claims, usage_grants, target, evidence_urls, metadata_json, payment, clock, ctx,
+        );
+    }
+
+    /// Kind 2 via a live profile when no username-beneficiary exists. Rejects if neither exists.
+    public fun submit_media_asset_rights_dispute_for_profile_username(
+        config: &PoCConfig,
+        registry: &mut GovernanceDAO,
+        treasury: &EcosystemTreasury,
+        asset: &mut MediaAsset,
+        shard: &PoCUsernameBeneficiaryShard,
+        username_registry: &UsernameRegistry,
+        profile: &Profile,
+        username: vector<u8>,
+        title: String,
+        description: String,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        evidence_urls: Option<vector<String>>,
+        metadata_json: Option<String>,
+        payment: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        poc_username_beneficiary::assert_shard_version(shard);
+        let username = profile::canonical_registry_username_from_bytes(username);
+        poc_username_beneficiary::assert_shard_matches_username(shard, &username);
+        let existing = poc_username_beneficiary::lookup_beneficiary_id_by_username(shard, &username);
+        assert!(option::is_none(&existing), EInvalidRightsTarget);
+        let profile_id = profile::lookup_profile_by_username(username_registry, username);
+        assert!(option::is_some(&profile_id), EInvalidRightsTarget);
+        assert!(
+            *option::borrow(&profile_id) == object::id_to_address(&object::id(profile)),
+            EInvalidRightsTarget,
+        );
+        let target = media_asset::new_rights_target(
+            media_asset::rights_target_kind_onchain_username(),
+            profile::get_owner(profile),
+            option::none(),
+            option::some(username),
+            option::none(),
+            option::none(),
+        );
+        submit_resolved_rights_dispute(
+            config, registry, treasury, asset, title, description,
+            claims, usage_grants, target, evidence_urls, metadata_json, payment, clock, ctx,
+        );
+    }
+
+    /// Kind 3. If the identity already has a username-beneficiary, commit that row.
+    /// Otherwise commit `identity_beneficiary_address` and `x_{handle}` if that name is free.
+    public fun submit_media_asset_rights_dispute_for_offchain_identity(
+        config: &PoCConfig,
+        registry: &mut GovernanceDAO,
+        treasury: &EcosystemTreasury,
+        asset: &mut MediaAsset,
+        directory: &PoCUsernameBeneficiaryDirectory,
+        shard: &PoCUsernameBeneficiaryShard,
+        existing_beneficiary: &PoCUsernameBeneficiary,
+        identity_source: u8,
+        identity_hash: vector<u8>,
+        _handle: vector<u8>,
+        title: String,
+        description: String,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        evidence_urls: Option<vector<String>>,
+        metadata_json: Option<String>,
+        payment: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        poc_username_beneficiary::assert_directory_version(directory);
+        poc_username_beneficiary::assert_shard_version(shard);
+        let found = poc_username_beneficiary::lookup_beneficiary_id_by_identity(
+            directory, identity_source, identity_hash,
+        );
+        assert!(option::is_some(&found), EInvalidRightsTarget);
+        assert!(
+            *option::borrow(&found) == object::id(existing_beneficiary),
+            EInvalidRightsTarget,
+        );
+        let username = poc_username_beneficiary::username_beneficiary_username(existing_beneficiary);
+        poc_username_beneficiary::assert_shard_matches_username(shard, &username);
+        let target = media_asset::new_rights_target(
+            media_asset::rights_target_kind_offchain(),
+            poc_username_beneficiary::username_beneficiary_address(existing_beneficiary),
+            option::none(),
+            option::some(username),
+            option::some(identity_source),
+            option::some(identity_hash),
+        );
+        submit_resolved_rights_dispute(
+            config, registry, treasury, asset, title, description,
+            claims, usage_grants, target, evidence_urls, metadata_json, payment, clock, ctx,
+        );
+    }
+
+    /// Kind 3 when `beneficiary_by_identity` has no row yet.
+    public fun submit_media_asset_rights_dispute_for_new_offchain_identity(
+        config: &PoCConfig,
+        registry: &mut GovernanceDAO,
+        treasury: &EcosystemTreasury,
+        asset: &mut MediaAsset,
+        directory: &PoCUsernameBeneficiaryDirectory,
+        shard: &PoCUsernameBeneficiaryShard,
+        username_registry: &UsernameRegistry,
+        identity_source: u8,
+        identity_hash: vector<u8>,
+        handle: vector<u8>,
+        title: String,
+        description: String,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        evidence_urls: Option<vector<String>>,
+        metadata_json: Option<String>,
+        payment: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        poc_username_beneficiary::assert_directory_version(directory);
+        poc_username_beneficiary::assert_shard_version(shard);
+        let found = poc_username_beneficiary::lookup_beneficiary_id_by_identity(
+            directory, identity_source, identity_hash,
+        );
+        assert!(option::is_none(&found), EInvalidRightsTarget);
+        let username = poc_username_beneficiary::namespaced_offchain_username(handle);
+        poc_username_beneficiary::assert_shard_matches_username(shard, &username);
+        assert!(
+            profile::is_username_available(username_registry, username),
+            EInvalidRightsTarget,
+        );
+        let beneficiary = poc_username_beneficiary::derived_identity_beneficiary_address(
+            identity_source, identity_hash,
+        );
+        let target = media_asset::new_rights_target(
+            media_asset::rights_target_kind_offchain(),
+            beneficiary,
+            option::none(),
+            option::some(username),
+            option::some(identity_source),
+            option::some(identity_hash),
+        );
+        submit_resolved_rights_dispute(
+            config, registry, treasury, asset, title, description,
+            claims, usage_grants, target, evidence_urls, metadata_json, payment, clock, ctx,
+        );
     }
 
     public entry fun clear_media_asset_rights_proposal_on_reject(
@@ -1095,16 +1433,26 @@ module social_contracts::proof_of_creativity {
         };
     }
 
-    public fun implement_media_asset_rights_from_governance(
+    fun assert_rights_resolution_commitment(
+        asset: &MediaAsset,
+        claims: &vector<Claim>,
+        usage_grants: &vector<UsageGrant>,
+        target: &RightsResolutionTarget,
+    ) {
+        let pending = media_asset::pending_claims_commitment(asset);
+        let computed = media_asset::compute_rights_resolution_commitment(claims, usage_grants, target);
+        assert!(pending == computed, EClaimsCommitmentMismatch);
+    }
+
+    fun apply_approved_rights_resolution(
         config: &PoCConfig,
         registry_gov: &mut GovernanceDAO,
         proposal: &mut Proposal,
         asset: &mut MediaAsset,
-        _treasury: &EcosystemTreasury,
+        beneficiary: address,
         claims: vector<Claim>,
         usage_grants: vector<UsageGrant>,
         reasoning: String,
-        evidence_urls: Option<vector<String>>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -1114,16 +1462,19 @@ module social_contracts::proof_of_creativity {
             governance::proposal_status(proposal) == governance::status_approved_value(),
             EProposalNotApproved,
         );
-
-        let proposal_id = object::id(proposal);
-        let pending = media_asset::pending_claims_commitment(asset);
-        let computed = media_asset::compute_claims_bundle_commitment(&claims, &usage_grants);
-        assert!(pending == computed, EClaimsCommitmentMismatch);
-
         let reasoning_len = string::length(&reasoning);
         assert!(reasoning_len <= config.max_reasoning_length, EInvalidReasoning);
+        bind_claims_to_beneficiary(&claims, beneficiary);
 
+        let proposal_id = object::id(proposal);
         oracle_update_media_asset_claims(config, asset, claims, usage_grants, clock, ctx);
+        media_asset::oracle_set_sole_beneficiary_split(
+            config.oracle_address,
+            asset,
+            beneficiary,
+            clock,
+            ctx,
+        );
 
         let submitter = governance::proposal_submitter(proposal);
         let bal = governance::mark_proposal_implemented_take_pool_poc_oracle(
@@ -1151,6 +1502,201 @@ module social_contracts::proof_of_creativity {
         });
     }
 
+    /// Kind 0. Rebuilds the wallet target from the sole claimant and always writes splits.
+    public fun implement_media_asset_rights_from_governance(
+        config: &PoCConfig,
+        registry_gov: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        asset: &mut MediaAsset,
+        _treasury: &EcosystemTreasury,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        reasoning: String,
+        _evidence_urls: Option<vector<String>>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let stored = media_asset::pending_rights_target(asset);
+        assert!(
+            media_asset::rights_target_kind(&stored) == media_asset::rights_target_kind_wallet(),
+            EInvalidRightsTarget,
+        );
+        let beneficiary = media_asset::sole_economics_beneficiary(&claims);
+        let target = wallet_rights_target(beneficiary);
+        assert_rights_resolution_commitment(asset, &claims, &usage_grants, &target);
+        apply_approved_rights_resolution(
+            config, registry_gov, proposal, asset, beneficiary,
+            claims, usage_grants, reasoning, clock, ctx,
+        );
+    }
+
+    /// Kind 1. Verifies the vault object; does not rewrite claims.
+    public fun implement_media_asset_rights_to_beneficiary(
+        config: &PoCConfig,
+        registry_gov: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        asset: &mut MediaAsset,
+        vault: &poc_vault::PoCBeneficiaryVault,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        reasoning: String,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        poc_vault::assert_vault_version(vault);
+        let stored = media_asset::pending_rights_target(asset);
+        assert!(
+            media_asset::rights_target_kind(&stored) == media_asset::rights_target_kind_vault(),
+            EInvalidRightsTarget,
+        );
+        let vault_id = media_asset::rights_target_vault_id(&stored);
+        assert!(option::is_some(&vault_id), EInvalidRightsTarget);
+        assert!(
+            *option::borrow(&vault_id) == object::id_to_address(&object::id(vault)),
+            EInvalidRightsTarget,
+        );
+        let beneficiary = poc_vault::beneficiary_address(vault);
+        assert!(
+            beneficiary == media_asset::rights_target_beneficiary(&stored),
+            EInvalidRightsTarget,
+        );
+        assert_rights_resolution_commitment(asset, &claims, &usage_grants, &stored);
+        apply_approved_rights_resolution(
+            config, registry_gov, proposal, asset, beneficiary,
+            claims, usage_grants, reasoning, clock, ctx,
+        );
+    }
+
+    /// Kind 2 when a username-beneficiary already exists. Looks the address up; does not create one.
+    public fun implement_media_asset_rights_to_onchain_username(
+        config: &PoCConfig,
+        registry_gov: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        asset: &mut MediaAsset,
+        directory: &PoCUsernameBeneficiaryDirectory,
+        shard: &PoCUsernameBeneficiaryShard,
+        beneficiary_obj: &PoCUsernameBeneficiary,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        reasoning: String,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        poc_username_beneficiary::assert_directory_version(directory);
+        poc_username_beneficiary::assert_shard_version(shard);
+        let stored = media_asset::pending_rights_target(asset);
+        assert!(
+            media_asset::rights_target_kind(&stored) == media_asset::rights_target_kind_onchain_username(),
+            EInvalidRightsTarget,
+        );
+        let username = media_asset::rights_target_username(&stored);
+        assert!(option::is_some(&username), EInvalidRightsTarget);
+        let username = *option::borrow(&username);
+        poc_username_beneficiary::assert_shard_matches_username(shard, &username);
+        let found = poc_username_beneficiary::lookup_beneficiary_id_by_username(shard, &username);
+        assert!(option::is_some(&found), EInvalidRightsTarget);
+        assert!(*option::borrow(&found) == object::id(beneficiary_obj), EInvalidRightsTarget);
+        let beneficiary = poc_username_beneficiary::username_beneficiary_address(beneficiary_obj);
+        assert!(beneficiary == media_asset::rights_target_beneficiary(&stored), EInvalidRightsTarget);
+        assert_rights_resolution_commitment(asset, &claims, &usage_grants, &stored);
+        apply_approved_rights_resolution(
+            config, registry_gov, proposal, asset, beneficiary,
+            claims, usage_grants, reasoning, clock, ctx,
+        );
+    }
+
+    /// Kind 2 profile-owner path. Aborts if a username-beneficiary now exists for that name.
+    public fun implement_media_asset_rights_to_profile_username(
+        config: &PoCConfig,
+        registry_gov: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        asset: &mut MediaAsset,
+        shard: &PoCUsernameBeneficiaryShard,
+        username_registry: &UsernameRegistry,
+        profile: &Profile,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        reasoning: String,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        poc_username_beneficiary::assert_shard_version(shard);
+        let stored = media_asset::pending_rights_target(asset);
+        assert!(
+            media_asset::rights_target_kind(&stored) == media_asset::rights_target_kind_onchain_username(),
+            EInvalidRightsTarget,
+        );
+        let username = media_asset::rights_target_username(&stored);
+        assert!(option::is_some(&username), EInvalidRightsTarget);
+        let username = *option::borrow(&username);
+        poc_username_beneficiary::assert_shard_matches_username(shard, &username);
+        let existing = poc_username_beneficiary::lookup_beneficiary_id_by_username(shard, &username);
+        assert!(option::is_none(&existing), EInvalidRightsTarget);
+        let profile_id = profile::lookup_profile_by_username(username_registry, username);
+        assert!(option::is_some(&profile_id), EInvalidRightsTarget);
+        assert!(
+            *option::borrow(&profile_id) == object::id_to_address(&object::id(profile)),
+            EInvalidRightsTarget,
+        );
+        let beneficiary = profile::get_owner(profile);
+        assert!(beneficiary == media_asset::rights_target_beneficiary(&stored), EInvalidRightsTarget);
+        assert_rights_resolution_commitment(asset, &claims, &usage_grants, &stored);
+        apply_approved_rights_resolution(
+            config, registry_gov, proposal, asset, beneficiary,
+            claims, usage_grants, reasoning, clock, ctx,
+        );
+    }
+
+    /// Kind 3. The username-beneficiary must already exist (oracle creates it, then retries).
+    public fun implement_media_asset_rights_to_offchain_identity(
+        config: &PoCConfig,
+        registry_gov: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        asset: &mut MediaAsset,
+        directory: &PoCUsernameBeneficiaryDirectory,
+        shard: &PoCUsernameBeneficiaryShard,
+        beneficiary_obj: &PoCUsernameBeneficiary,
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        reasoning: String,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        poc_username_beneficiary::assert_directory_version(directory);
+        poc_username_beneficiary::assert_shard_version(shard);
+        let stored = media_asset::pending_rights_target(asset);
+        assert!(
+            media_asset::rights_target_kind(&stored) == media_asset::rights_target_kind_offchain(),
+            EInvalidRightsTarget,
+        );
+        let source = media_asset::rights_target_identity_source(&stored);
+        let hash = media_asset::rights_target_identity_hash(&stored);
+        assert!(option::is_some(&source) && option::is_some(&hash), EInvalidRightsTarget);
+        let found = poc_username_beneficiary::lookup_beneficiary_id_by_identity(
+            directory,
+            *option::borrow(&source),
+            *option::borrow(&hash),
+        );
+        assert!(option::is_some(&found), EInvalidRightsTarget);
+        assert!(*option::borrow(&found) == object::id(beneficiary_obj), EInvalidRightsTarget);
+        let username = media_asset::rights_target_username(&stored);
+        assert!(option::is_some(&username), EInvalidRightsTarget);
+        let username = *option::borrow(&username);
+        poc_username_beneficiary::assert_shard_matches_username(shard, &username);
+        assert!(
+            poc_username_beneficiary::username_beneficiary_username(beneficiary_obj) == username,
+            EInvalidRightsTarget,
+        );
+        let beneficiary = poc_username_beneficiary::username_beneficiary_address(beneficiary_obj);
+        assert!(beneficiary == media_asset::rights_target_beneficiary(&stored), EInvalidRightsTarget);
+        assert_rights_resolution_commitment(asset, &claims, &usage_grants, &stored);
+        apply_approved_rights_resolution(
+            config, registry_gov, proposal, asset, beneficiary,
+            claims, usage_grants, reasoning, clock, ctx,
+        );
+    }
+
+    /// Kind 0 entry. Kinds 1–3 must use the matching `implement_media_asset_rights_to_*` function.
     public fun finalize_media_asset_rights_via_dao(
         config: &PoCConfig,
         registry_gov: &mut GovernanceDAO,
@@ -2802,6 +3348,56 @@ module social_contracts::poc_username_beneficiary {
         vector::push_back(&mut data, key.source);
         vector::append(&mut data, key.identity_hash);
         object::id_to_address(&object::id_from_bytes(myso_hash::blake2b256(&data)))
+    }
+
+    public(package) fun derived_identity_beneficiary_address(
+        identity_source: u8,
+        identity_hash: vector<u8>,
+    ): address {
+        identity_beneficiary_address(&identity_key(identity_source, identity_hash))
+    }
+
+    /// `x_{canonical_handle}` — charset is `a-z`, `0-9`, `_`, `.` only.
+    public(package) fun namespaced_offchain_username(handle: vector<u8>): String {
+        let canonical = profile::canonical_registry_username_from_bytes(handle);
+        let mut bytes = vector[120u8, 95u8];
+        vector::append(&mut bytes, *string::as_bytes(&canonical));
+        let name = string::utf8(bytes);
+        let len = vector::length(string::as_bytes(&name));
+        assert!(len >= 2 && len <= 50, EInvalidUsername);
+        name
+    }
+
+    public(package) fun lookup_beneficiary_id_by_identity(
+        directory: &PoCUsernameBeneficiaryDirectory,
+        identity_source: u8,
+        identity_hash: vector<u8>,
+    ): Option<ID> {
+        let key = identity_key(identity_source, identity_hash);
+        if (table::contains(&directory.beneficiary_by_identity, key)) {
+            option::some(*table::borrow(&directory.beneficiary_by_identity, key))
+        } else {
+            option::none()
+        }
+    }
+
+    public(package) fun lookup_beneficiary_id_by_username(
+        shard: &PoCUsernameBeneficiaryShard,
+        username: &String,
+    ): Option<ID> {
+        if (table::contains(&shard.username_to_beneficiary, *username)) {
+            option::some(*table::borrow(&shard.username_to_beneficiary, *username))
+        } else {
+            option::none()
+        }
+    }
+
+    public fun username_beneficiary_address(beneficiary: &PoCUsernameBeneficiary): address {
+        beneficiary.beneficiary_address
+    }
+
+    public fun username_beneficiary_username(beneficiary: &PoCUsernameBeneficiary): String {
+        beneficiary.username
     }
 
     fun canonical_username(username: vector<u8>): String {

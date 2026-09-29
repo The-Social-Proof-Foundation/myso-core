@@ -118,4 +118,21 @@ printf '%s\n' "$relayer_yaml" | grep -q "$BRIDGE_ANVIL_TEST_PK" || {
     exit 1
 }
 
+bridge_should_mint_myusd myusd 1100000000 || {
+    echo "positive myusd amount should mint" >&2
+    exit 1
+}
+if bridge_should_mint_myusd btc 1100000000; then
+    echo "btc must not mint" >&2
+    exit 1
+fi
+if bridge_should_mint_myusd myusd 0; then
+    echo "zero amount must not mint" >&2
+    exit 1
+fi
+if bridge_should_mint_myusd myusd ''; then
+    echo "empty amount must not mint" >&2
+    exit 1
+fi
+
 echo "bridge-bootstrap-common-test ok"

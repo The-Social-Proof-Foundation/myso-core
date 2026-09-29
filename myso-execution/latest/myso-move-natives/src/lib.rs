@@ -1067,6 +1067,11 @@ pub fn all_natives(silent: bool, protocol_config: &ProtocolConfig) -> NativeFunc
             "verify_bulletproofs_with_dst_ristretto255_internal",
             make_native!(rangeproofs::verify_bulletproofs_with_dst_ristretto255_internal),
         ),
+        (
+            "rangeproofs",
+            "verify_bulletproofs_with_dst_ristretto255_contra_internal",
+            make_native!(rangeproofs::verify_bulletproofs_with_dst_ristretto255_contra_internal),
+        ),
         ("hmac", "hmac_sha3_256", make_native!(hmac::hmac_sha3_256)),
         ("hash", "keccak256", make_native!(hash::keccak256)),
         (

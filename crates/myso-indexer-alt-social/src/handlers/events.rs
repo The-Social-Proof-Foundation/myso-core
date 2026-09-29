@@ -455,6 +455,14 @@ pub struct BcsDelegatePanelRefreshedEvent {
     executed_at_epoch: u64,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsDeletedProfileEvent {
+    profile_id: AccountAddress,
+    owner: AccountAddress,
+    username: String,
+    deleted_at: u64,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct BcsProfileUpdatedEvent {
     profile_id: AccountAddress,
@@ -1861,6 +1869,12 @@ pub struct BcsMediaAssetRightsDisputeProposedEvent {
     submitter: AccountAddress,
     claims_commitment: Vec<u8>,
     timestamp: u64,
+    target_kind: u8,
+    beneficiary_address: AccountAddress,
+    vault_id: Option<AccountAddress>,
+    username: Option<String>,
+    identity_source: Option<u8>,
+    identity_hash: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -3259,6 +3273,16 @@ fn parse_profile_event(
                 "cover_photo": ev.cover_photo,
                 "owner_address": addr_to_string(&ev.owner),
                 "created_at": ev.created_at,
+            })))
+        }
+        "DeletedProfileEvent" => {
+            let ev = bcs::from_bytes::<BcsDeletedProfileEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "profile_id": addr_to_string(&ev.profile_id),
+                "owner_address": addr_to_string(&ev.owner),
+                "username": ev.username,
+                "deleted_at": ev.deleted_at,
             })))
         }
         "ProfileUpdatedEvent" => {
@@ -5282,6 +5306,12 @@ fn parse_poc_event(
                 "submitter": addr_to_string(&ev.submitter),
                 "claims_commitment": format!("0x{}", hex::encode(&ev.claims_commitment)),
                 "timestamp": ev.timestamp,
+                "target_kind": ev.target_kind,
+                "beneficiary_address": addr_to_string(&ev.beneficiary_address),
+                "vault_id": ev.vault_id.as_ref().map(addr_to_string),
+                "username": ev.username,
+                "identity_source": ev.identity_source,
+                "identity_hash": ev.identity_hash.as_ref().map(|b| format!("0x{}", hex::encode(b))),
             })))
         }
         "MediaAssetGovernanceProposalLinkedEvent" => {
@@ -6778,6 +6808,56 @@ mod tests {
         assert_eq!(json["bio"], "Web8 developer and crypto enthusiast");
         assert_eq!(json["created_at"], 5);
         assert!(json["owner_address"].as_str().unwrap().starts_with("0x"));
+    }
+
+    #[test]
+    fn deleted_profile_event_bcs_round_trip_and_handler_rows() {
+        let profile_id = AccountAddress::from_hex_literal(
+            "0xd988a8c1f1262d0aa7ab581a78b957fa97cbf53db4d27af2ee7006247a",
+        )
+        .unwrap();
+        let owner = AccountAddress::from_hex_literal(
+            "0x9cc886f94db2b2a41b1f8d7c20c7fc0960e1f9eb34ce2c0c7f309",
+        )
+        .unwrap();
+        let ev = BcsDeletedProfileEvent {
+            profile_id,
+            owner,
+            username: "goneuser".to_string(),
+            deleted_at: 1_717_200_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize DeletedProfileEvent");
+        let decoded: BcsDeletedProfileEvent =
+            bcs::from_bytes(&bytes).expect("deserialize DeletedProfileEvent");
+        assert_eq!(decoded.username, "goneuser");
+        assert_eq!(decoded.deleted_at, 1_717_200_000_000);
+        let json = parse_event_contents("profile", "DeletedProfileEvent", &bytes)
+            .expect("parse DeletedProfileEvent");
+        assert_eq!(json["username"], "goneuser");
+        assert_eq!(json["deleted_at"], 1_717_200_000_000u64);
+        let rows = crate::handlers::profile::handle_profile_event(
+            "DeletedProfileEvent",
+            &json,
+            "evt-deleted",
+            1_717_200_000_000,
+        )
+        .expect("handler should recognize DeletedProfileEvent");
+        assert!(rows.iter().any(|row| matches!(
+            row,
+            crate::handlers::SocialEventRow::UsernameRegistryDelete { username } if username == "goneuser"
+        )));
+        assert!(rows.iter().any(|row| matches!(
+            row,
+            crate::handlers::SocialEventRow::ProfileDeleted {
+                username,
+                deleted_at,
+                ..
+            } if username == "goneuser" && *deleted_at == 1_717_200_000_000
+        )));
+        assert!(rows.iter().any(|row| matches!(
+            row,
+            crate::handlers::SocialEventRow::ProfileEvent(ev) if ev.event_type == "ProfileDeleted"
+        )));
     }
 
     #[test]

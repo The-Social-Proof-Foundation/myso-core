@@ -196,9 +196,19 @@ module social_contracts::media_asset_rights_dispute_tests {
             let mut gov = take_poc_governance_registry(scen);
             let mut proposal = test_scenario::take_shared<Proposal>(scen);
             let clock = test_scenario::take_shared<Clock>(scen);
+            let mut username_registry = test_scenario::take_shared<profile::UsernameRegistry>(scen);
+            profile::register_username(
+                &mut username_registry,
+                string::utf8(b"pocchallenger"),
+                option::none(),
+                option::none(),
+                &clock,
+                test_scenario::ctx(scen),
+            );
             let mut payment = coin::mint_for_testing<MYSO>(10_000 * SCALING, test_scenario::ctx(scen));
             governance::community_vote_on_proposal(
                 &mut gov,
+                &username_registry,
                 &mut proposal,
                 1,
                 true,
@@ -211,6 +221,7 @@ module social_contracts::media_asset_rights_dispute_tests {
             } else {
                 coin::destroy_zero(payment);
             };
+            test_scenario::return_shared(username_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(gov);

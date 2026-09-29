@@ -24,6 +24,10 @@
     {
       "address": "myso",
       "name": "tx_context"
+    },
+    {
+      "address": "social_contracts",
+      "name": "bootstrap"
     }
   ],
   "attributes": [],
@@ -58,50 +62,9 @@
       ],
       "return_": []
     },
-    "create_messaging_admin_cap": {
+    "update_messaging_config": {
       "source_index": 1,
       "index": 1,
-      "doc": " Creates a [`MessagingAdminCap`] for genesis bootstrap.",
-      "attributes": [],
-      "visibility": "Package",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "ctx",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "tx_context"
-                  },
-                  "name": "TxContext",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        {
-          "Datatype": {
-            "module": {
-              "address": "messaging",
-              "name": "messaging_config"
-            },
-            "name": "MessagingAdminCap",
-            "type_arguments": []
-          }
-        }
-      ]
-    },
-    "update_messaging_config": {
-      "source_index": 2,
-      "index": 2,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -116,8 +79,8 @@
               {
                 "Datatype": {
                   "module": {
-                    "address": "messaging",
-                    "name": "messaging_config"
+                    "address": "social_contracts",
+                    "name": "bootstrap"
                   },
                   "name": "MessagingAdminCap",
                   "type_arguments": []
@@ -204,6 +167,38 @@
       "return_": []
     },
     "paid_msg_platform_fee_bps": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "messaging_config"
+                  },
+                  "name": "MessagingConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "paid_msg_treasury_fee_bps": {
       "source_index": 3,
       "index": 3,
       "doc": null,
@@ -235,7 +230,7 @@
         "u64"
       ]
     },
-    "paid_msg_treasury_fee_bps": {
+    "payment_expiration_ms": {
       "source_index": 4,
       "index": 4,
       "doc": null,
@@ -267,41 +262,9 @@
         "u64"
       ]
     },
-    "payment_expiration_ms": {
+    "min_reply_chars": {
       "source_index": 5,
       "index": 5,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "config",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "messaging",
-                    "name": "messaging_config"
-                  },
-                  "name": "MessagingConfig",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        "u64"
-      ]
-    },
-    "min_reply_chars": {
-      "source_index": 6,
-      "index": 6,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -332,8 +295,8 @@
       ]
     },
     "max_dedupe_key_bytes": {
-      "source_index": 7,
-      "index": 7,
+      "source_index": 6,
+      "index": 6,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -364,8 +327,8 @@
       ]
     },
     "new_defaults": {
-      "source_index": 8,
-      "index": 8,
+      "source_index": 7,
+      "index": 7,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -406,37 +369,8 @@
     }
   },
   "structs": {
-    "MessagingAdminCap": {
-      "index": 0,
-      "doc": " Admin capability for updating [`MessagingConfig`].",
-      "attributes": [],
-      "abilities": [
-        "Key",
-        "Store"
-      ],
-      "type_parameters": [],
-      "fields": {
-        "positional_fields": false,
-        "fields": {
-          "id": {
-            "index": 0,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "myso",
-                  "name": "object"
-                },
-                "name": "UID",
-                "type_arguments": []
-              }
-            }
-          }
-        }
-      }
-    },
     "MessagingConfig": {
-      "index": 1,
+      "index": 0,
       "doc": " Shared singleton for paid-messaging parameters.",
       "attributes": [],
       "abilities": [
@@ -489,7 +423,7 @@
       }
     },
     "MessagingConfigUpdatedEvent": {
-      "index": 2,
+      "index": 1,
       "doc": null,
       "attributes": [],
       "abilities": [

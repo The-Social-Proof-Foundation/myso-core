@@ -3,7 +3,7 @@
     "address": "social_contracts",
     "name": "social_proof_of_truth"
   },
-  "doc": " Social Proof of Truth (SPoT)\n Prediction market for post truthfulness. Users bet on custom options (2-10 options per record).\n All bets go directly to escrow. Oracle/DAO resolves the outcome, and winners receive\n pro-rata payouts from the total escrow pool. Users can withdraw bets before resolution\n with the same fee structure as payouts. Time-based resolution windows are optional per record.",
+  "doc": " Social Proof of Truth (SPoT)\n Claim → Market → Post architecture. Semantic claims dedupe off-chain content; markets\n hold escrow and resolution state; posts link to claims for attribution and creator fees.\n Oracle/DAO resolves outcomes; winners and creators claim payouts after resolution.",
   "immediate_dependencies": [
     {
       "address": "myso",
@@ -68,6 +68,10 @@
     {
       "address": "std",
       "name": "string"
+    },
+    {
+      "address": "std",
+      "name": "vector"
     }
   ],
   "attributes": [
@@ -132,7 +136,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -142,7 +146,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -164,7 +168,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -174,7 +178,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -196,7 +200,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -206,7 +210,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -239,7 +243,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -249,7 +253,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -275,7 +279,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -285,7 +289,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -307,7 +311,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -317,7 +321,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -358,7 +362,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -368,7 +372,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -390,7 +394,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -400,7 +404,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -448,7 +452,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -458,7 +462,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -488,7 +492,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -498,7 +502,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -513,14 +517,14 @@
     "total_option_escrow": {
       "source_index": 12,
       "index": 12,
-      "doc": " Sum of per-option escrow (same aggregation as resolve).",
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": false,
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -530,7 +534,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -552,7 +556,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "rec",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -562,7 +566,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -576,9 +580,107 @@
       ],
       "return_": []
     },
-    "is_enabled": {
+    "claim_id": {
       "source_index": 14,
       "index": 14,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "market_key_hash": {
+      "source_index": 15,
+      "index": 15,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": "u8"
+        }
+      ]
+    },
+    "primary_post_id": {
+      "source_index": 16,
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "is_enabled": {
+      "source_index": 17,
+      "index": 17,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -608,9 +710,41 @@
         "bool"
       ]
     },
+    "max_claim_per_post": {
+      "source_index": 18,
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
     "spot_governance_registry_id": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 19,
+      "index": 19,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -650,8 +784,8 @@
       ]
     },
     "active_proposal_id": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 20,
+      "index": 20,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -659,7 +793,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "record",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -669,7 +803,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -710,8 +844,8 @@
       ]
     },
     "proposed_outcome": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 21,
+      "index": 21,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -719,7 +853,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "record",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -729,7 +863,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -761,8 +895,8 @@
       ]
     },
     "oracle_proposed_outcome": {
-      "source_index": 18,
-      "index": 18,
+      "source_index": 22,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -770,7 +904,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "record",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -780,7 +914,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -812,8 +946,8 @@
       ]
     },
     "dao_escalated_at_ms": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 23,
+      "index": 23,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -821,7 +955,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "record",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -831,7 +965,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -843,9 +977,227 @@
         "u64"
       ]
     },
+    "semantic_claim_hash": {
+      "source_index": 24,
+      "index": 24,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": "u8"
+        }
+      ]
+    },
+    "assert_valid_hash": {
+      "source_index": 25,
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "hash",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "new_spot_config": {
+      "source_index": 26,
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "spot_governance_registry_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "social_proof_of_truth"
+            },
+            "name": "SpotConfig",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "new_spot_claim_registry": {
+      "source_index": 27,
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "social_proof_of_truth"
+            },
+            "name": "SpotClaimRegistry",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "emit_config_updated": {
+      "source_index": 28,
+      "index": 28,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "bootstrap_init": {
-      "source_index": 20,
-      "index": 20,
+      "source_index": 29,
+      "index": 29,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -905,9 +1257,9 @@
       "return_": []
     },
     "create_spot_admin_cap": {
-      "source_index": 21,
-      "index": 21,
-      "doc": " Create a SpotAdminCap for bootstrap (package visibility only)",
+      "source_index": 30,
+      "index": 30,
+      "doc": null,
       "attributes": [],
       "visibility": "Package",
       "entry": false,
@@ -946,9 +1298,9 @@
       ]
     },
     "create_spot_oracle_admin_cap": {
-      "source_index": 22,
-      "index": 22,
-      "doc": " Create a SpotOracleAdminCap for bootstrap (package visibility only)",
+      "source_index": 31,
+      "index": 31,
+      "doc": null,
       "attributes": [],
       "visibility": "Package",
       "entry": false,
@@ -986,10 +1338,130 @@
         }
       ]
     },
+    "assert_config_version": {
+      "source_index": 32,
+      "index": 32,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_registry_version": {
+      "source_index": 33,
+      "index": 33,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_claim_version": {
+      "source_index": 34,
+      "index": 34,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_market_version": {
+      "source_index": 35,
+      "index": 35,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "update_spot_config": {
-      "source_index": 23,
-      "index": 23,
-      "doc": " Update SPoT configuration (admin only).\n `max_single_bet` and `max_bets_per_record` use `0` for no limit; positive values enforce caps.",
+      "source_index": 36,
+      "index": 36,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -1032,7 +1504,7 @@
           }
         },
         {
-          "name": "enable_flag",
+          "name": "truth_enabled",
           "type_": "bool"
         },
         {
@@ -1057,6 +1529,18 @@
         },
         {
           "name": "ecosystem_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "creator_fee_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "creator_claim_window_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "expired_creator_ecosystem_bps",
           "type_": "u64"
         },
         {
@@ -1089,6 +1573,10 @@
         },
         {
           "name": "max_bets_per_record",
+          "type_": "u64"
+        },
+        {
+          "name": "max_claim_per_post",
           "type_": "u64"
         },
         {
@@ -1144,9 +1632,9 @@
       "return_": []
     },
     "rescale_spot_config_windows_from_epoch_counts": {
-      "source_index": 24,
-      "index": 24,
-      "doc": " After upgrading from epoch-count semantics, multiply stored window fields by `epoch_duration_ms` so they become wall-clock durations.",
+      "source_index": 37,
+      "index": 37,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -1195,10 +1683,79 @@
       ],
       "return_": []
     },
-    "patch_spot_record_times_for_migration": {
-      "source_index": 25,
-      "index": 25,
-      "doc": " Oracle-only: fix record timestamps/window fields after upgrade (off-chain supplies correct `created_at_ms` and optional windows in ms).",
+    "register_spot_claim": {
+      "source_index": 38,
+      "index": 38,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "semantic_claim_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "created_at_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "social_proof_of_truth"
+            },
+            "name": "SpotClaim",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "create_spot_claim": {
+      "source_index": 39,
+      "index": 39,
+      "doc": " Oracle-only: register a semantic claim (deduped by hash).",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -1223,7 +1780,25 @@
           }
         },
         {
-          "name": "record",
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
           "type_": {
             "Reference": [
               true,
@@ -1233,7 +1808,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotClaimRegistry",
                   "type_arguments": []
                 }
               }
@@ -1241,26 +1816,267 @@
           }
         },
         {
-          "name": "created_at_ms",
+          "name": "semantic_claim_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "register_future_link": {
+      "source_index": 40,
+      "index": 40,
+      "doc": " Record a future-claim link: registers `(post, claim_index)` and `(post, market)`,\n pushes a `SpotPostLink`, and appends to the post's pending analysis vectors.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market_id",
+          "type_": "address"
+        },
+        {
+          "name": "claim_index",
           "type_": "u64"
         },
         {
-          "name": "resolution_window_ms",
+          "name": "resolution_policy_hash",
           "type_": {
-            "Datatype": {
-              "module": {
-                "address": "std",
-                "name": "option"
-              },
-              "name": "Option",
-              "type_arguments": [
-                {
-                  "phantom": false,
-                  "argument": "u64"
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "max_claim_per_post",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "create_spot_market_for_claim": {
+      "source_index": 41,
+      "index": 41,
+      "doc": " Oracle-only: open a market for an existing claim, linking `primary_post` at `claim_index`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotOracleAdminCap",
+                  "type_arguments": []
                 }
-              ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "primary_post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim_index",
+          "type_": "u64"
+        },
+        {
+          "name": "market_key_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "resolution_policy_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "betting_options",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
             }
           }
+        },
+        {
+          "name": "resolution_at_ms",
+          "type_": "u64"
         },
         {
           "name": "max_resolution_window_ms",
@@ -1281,16 +2097,196 @@
           }
         },
         {
-          "name": "last_resolution_at_ms",
-          "type_": "u64"
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         }
       ],
       "return_": []
     },
-    "create_spot_record_for_post": {
-      "source_index": 26,
-      "index": 26,
-      "doc": null,
+    "link_post_to_spot_claim": {
+      "source_index": 42,
+      "index": 42,
+      "doc": " Link an additional post as a future-claim referrer into an existing open market\n (hybrid liquidity reuse). Requires the claim to have a live open market.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotOracleAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim_index",
+          "type_": "u64"
+        },
+        {
+          "name": "resolution_policy_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "finalize_spot_claims_for_post": {
+      "source_index": 43,
+      "index": 43,
+      "doc": " Oracle-only: commit a post's multi-claim analysis. Sets terminal status, counts and\n manifests, and emits the batch projection (future arrays + parallel past verdicts).",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -1351,6 +2347,226 @@
           }
         },
         {
+          "name": "detected_claim_count",
+          "type_": "u64"
+        },
+        {
+          "name": "rejected_claim_count",
+          "type_": "u64"
+        },
+        {
+          "name": "truncated_claim_count",
+          "type_": "u64"
+        },
+        {
+          "name": "past_verified_count",
+          "type_": "u64"
+        },
+        {
+          "name": "claim_manifest_hash",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": "u8"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "veracity_manifest_hash",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": "u8"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "past_claim_indexes",
+          "type_": {
+            "vector": "u64"
+          }
+        },
+        {
+          "name": "past_verdicts",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "past_related_market_ids",
+          "type_": {
+            "vector": "address"
+          }
+        },
+        {
+          "name": "past_evidence_hashes",
+          "type_": {
+            "vector": {
+              "vector": "u8"
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "create_and_finalize_spot_market_for_post": {
+      "source_index": 44,
+      "index": 44,
+      "doc": " Convenience one-shot: register claim + open one future market + finalize (single-claim\n posts and test setup). Emits `SpotMarketCreatedEvent` + `SpotClaimsFinalizedForPost`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "oracle_cap",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotOracleAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "semantic_claim_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "market_key_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "resolution_policy_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
           "name": "betting_options",
           "type_": {
             "vector": {
@@ -1366,22 +2582,8 @@
           }
         },
         {
-          "name": "resolution_window_ms",
-          "type_": {
-            "Datatype": {
-              "module": {
-                "address": "std",
-                "name": "option"
-              },
-              "name": "Option",
-              "type_arguments": [
-                {
-                  "phantom": false,
-                  "argument": "u64"
-                }
-              ]
-            }
-          }
+          "name": "resolution_at_ms",
+          "type_": "u64"
         },
         {
           "name": "max_resolution_window_ms",
@@ -1440,10 +2642,76 @@
       ],
       "return_": []
     },
-    "withdraw_spot_bet": {
-      "source_index": 27,
-      "index": 27,
-      "doc": " Withdraw a bet before resolution\n Applies same fee structure as payouts\n Only allowed when status is OPEN (not DAO_REQUIRED, not RESOLVED, not REFUNDABLE)",
+    "assert_market_open_for_post": {
+      "source_index": 45,
+      "index": 45,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "place_spot_bet_for_post": {
+      "source_index": 46,
+      "index": 46,
+      "doc": " Sole public betting entry — registry validates the market is open for this claim.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -1468,7 +2736,25 @@
           }
         },
         {
-          "name": "record",
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
           "type_": {
             "Reference": [
               true,
@@ -1478,7 +2764,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -1487,6 +2773,357 @@
         },
         {
           "name": "post",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "coin"
+              },
+              "name": "Coin",
+              "type_arguments": [
+                {
+                  "phantom": true,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "myso"
+                      },
+                      "name": "MYSO",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "referrer_post_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "place_spot_bet_internal": {
+      "source_index": 47,
+      "index": 47,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "option_id",
+          "type_": "u8"
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "referrer_post_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "withdraw_spot_bet": {
+      "source_index": 48,
+      "index": 48,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "post",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "post"
+                  },
+                  "name": "Post",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer_post",
           "type_": {
             "Reference": [
               false,
@@ -1582,147 +3219,10 @@
       ],
       "return_": []
     },
-    "place_spot_bet": {
-      "source_index": 28,
-      "index": 28,
-      "doc": " Place bet - all funds go to escrow",
-      "attributes": [],
-      "visibility": "Public",
-      "entry": true,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "spot_config",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "social_proof_of_truth"
-                  },
-                  "name": "SpotConfig",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "record",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "social_proof_of_truth"
-                  },
-                  "name": "SpotRecord",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "post",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "post"
-                  },
-                  "name": "Post",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "payment",
-          "type_": {
-            "Datatype": {
-              "module": {
-                "address": "myso",
-                "name": "coin"
-              },
-              "name": "Coin",
-              "type_arguments": [
-                {
-                  "phantom": true,
-                  "argument": {
-                    "Datatype": {
-                      "module": {
-                        "address": "myso",
-                        "name": "myso"
-                      },
-                      "name": "MYSO",
-                      "type_arguments": []
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "option_id",
-          "type_": "u8"
-        },
-        {
-          "name": "amount",
-          "type_": "u64"
-        },
-        {
-          "name": "clock",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "clock"
-                  },
-                  "name": "Clock",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "ctx",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "tx_context"
-                  },
-                  "name": "TxContext",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": []
-    },
     "oracle_resolve": {
-      "source_index": 29,
-      "index": 29,
-      "doc": " Oracle resolution (option_id, or too close → DAO_REQUIRED)\n Requires reasoning and at least one evidence URL for transparency and accountability",
+      "source_index": 49,
+      "index": 49,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -1765,7 +3265,7 @@
           }
         },
         {
-          "name": "record",
+          "name": "registry",
           "type_": {
             "Reference": [
               true,
@@ -1775,7 +3275,43 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -1912,9 +3448,9 @@
       "return_": []
     },
     "submit_spot_resolution_proposal_to_governance": {
-      "source_index": 30,
-      "index": 30,
-      "doc": " Submit a governance proposal to ratify one outcome for a contested SPoT market.",
+      "source_index": 50,
+      "index": 50,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -1957,7 +3493,7 @@
           }
         },
         {
-          "name": "record",
+          "name": "market",
           "type_": {
             "Reference": [
               true,
@@ -1967,7 +3503,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2121,9 +3657,9 @@
       "return_": []
     },
     "implement_spot_resolution_from_governance": {
-      "source_index": 31,
-      "index": 31,
-      "doc": " After community voting approves a linked proposal, resolve the market and pay winners.",
+      "source_index": 51,
+      "index": 51,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -2148,7 +3684,7 @@
           }
         },
         {
-          "name": "registry",
+          "name": "registry_gov",
           "type_": {
             "Reference": [
               true,
@@ -2184,7 +3720,7 @@
           }
         },
         {
-          "name": "record",
+          "name": "spot_registry",
           "type_": {
             "Reference": [
               true,
@@ -2194,7 +3730,43 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2337,9 +3909,9 @@
       "return_": []
     },
     "clear_spot_proposal_link_on_reject": {
-      "source_index": 32,
-      "index": 32,
-      "doc": " Clear the active proposal link after a rejected or quorum-failed governance outcome.",
+      "source_index": 52,
+      "index": 52,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -2400,7 +3972,7 @@
           }
         },
         {
-          "name": "record",
+          "name": "market",
           "type_": {
             "Reference": [
               true,
@@ -2410,7 +3982,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2439,9 +4011,9 @@
       "return_": []
     },
     "finalize_spot_governance_proposal": {
-      "source_index": 33,
-      "index": 33,
-      "doc": " Finalize linked SPoT governance voting; clears the record link when the proposal is rejected.",
+      "source_index": 53,
+      "index": 53,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -2502,7 +4074,7 @@
           }
         },
         {
-          "name": "record",
+          "name": "market",
           "type_": {
             "Reference": [
               true,
@@ -2512,7 +4084,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2595,9 +4167,9 @@
       "return_": []
     },
     "finalize_via_dao": {
-      "source_index": 34,
-      "index": 34,
-      "doc": " Deprecated direct DAO finalization — requires an approved linked governance proposal.",
+      "source_index": 54,
+      "index": 54,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -2658,7 +4230,7 @@
           }
         },
         {
-          "name": "record",
+          "name": "spot_registry",
           "type_": {
             "Reference": [
               true,
@@ -2668,7 +4240,43 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2825,8 +4433,8 @@
       "return_": []
     },
     "assert_spot_governance_registry": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 55,
+      "index": 55,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2873,8 +4481,8 @@
       "return_": []
     },
     "validate_proposed_outcome": {
-      "source_index": 36,
-      "index": 36,
+      "source_index": 56,
+      "index": 56,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2882,7 +4490,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "record",
+          "name": "market",
           "type_": {
             "Reference": [
               false,
@@ -2892,7 +4500,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2907,9 +4515,9 @@
       "return_": []
     },
     "refund_unresolved": {
-      "source_index": 37,
-      "index": 37,
-      "doc": " Refund all escrow if unresolved beyond max window\n Requires SpotOracleAdminCap authorization\n If max_resolution_window_ms is None, this function cannot be called (must be explicitly set)",
+      "source_index": 57,
+      "index": 57,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -2952,7 +4560,7 @@
           }
         },
         {
-          "name": "record",
+          "name": "registry",
           "type_": {
             "Reference": [
               true,
@@ -2962,7 +4570,25 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -3026,9 +4652,272 @@
       ],
       "return_": []
     },
-    "finalize_resolution_and_payout": {
-      "source_index": 38,
-      "index": 38,
+    "referrer_post_id_for_bet": {
+      "source_index": 58,
+      "index": 58,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "bet",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotBet",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "track_creator_payout_index": {
+      "source_index": 59,
+      "index": 59,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "type_": "address"
+        },
+        {
+          "name": "payout_id",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "untrack_creator_payout_index": {
+      "source_index": 60,
+      "index": 60,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "type_": "address"
+        },
+        {
+          "name": "payout_id",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "creator_for_referrer_post": {
+      "source_index": 61,
+      "index": 61,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer_post_id",
+          "type_": "address"
+        },
+        {
+          "name": "fallback_creator",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "vector_contains_address": {
+      "source_index": 62,
+      "index": 62,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "addrs",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "address"
+              }
+            ]
+          }
+        },
+        {
+          "name": "addr",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "referred_volume_for_post": {
+      "source_index": 63,
+      "index": 63,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "referrer_post_id",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "total_referred_volume": {
+      "source_index": 64,
+      "index": 64,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "accrue_creator_payouts": {
+      "source_index": 65,
+      "index": 65,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3054,7 +4943,25 @@
           }
         },
         {
-          "name": "record",
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
           "type_": {
             "Reference": [
               true,
@@ -3064,7 +4971,99 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator_fee_total",
+          "type_": "u64"
+        },
+        {
+          "name": "resolution_timestamp_ms",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "finalize_resolution_and_payout": {
+      "source_index": 66,
+      "index": 66,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaimRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -3211,9 +5210,9 @@
       "return_": []
     },
     "claim_payout": {
-      "source_index": 39,
-      "index": 39,
-      "doc": " Claim payout after delay period has passed\n Users can claim their winnings after payout_delay_ms has elapsed since resolution",
+      "source_index": 67,
+      "index": 67,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -3238,7 +5237,7 @@
           }
         },
         {
-          "name": "record",
+          "name": "market",
           "type_": {
             "Reference": [
               true,
@@ -3248,7 +5247,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -3312,10 +5311,222 @@
       ],
       "return_": []
     },
+    "claim_creator_payout": {
+      "source_index": 68,
+      "index": 68,
+      "doc": " Single O(1) creator fee claim by `payout_id`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payout_id",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "reclaim_expired_creator_rewards": {
+      "source_index": 69,
+      "index": 69,
+      "doc": " Reclaim expired creator rewards to ecosystem (+ platform remainder).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "spot_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "payout_id",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "migrate_config": {
-      "source_index": 40,
-      "index": 40,
-      "doc": " Migration function for SpotConfig",
+      "source_index": 70,
+      "index": 70,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -3378,17 +5589,17 @@
       ],
       "return_": []
     },
-    "migrate_record": {
-      "source_index": 41,
-      "index": 41,
-      "doc": " Migration function for SpotRecord",
+    "migrate_claim_registry": {
+      "source_index": 71,
+      "index": 71,
+      "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
         {
-          "name": "record",
+          "name": "registry",
           "type_": {
             "Reference": [
               true,
@@ -3398,7 +5609,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotClaimRegistry",
                   "type_arguments": []
                 }
               }
@@ -3443,12 +5654,210 @@
         }
       ],
       "return_": []
+    },
+    "migrate_claim": {
+      "source_index": 72,
+      "index": 72,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "claim",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotClaim",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_market": {
+      "source_index": 73,
+      "index": 73,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_record": {
+      "source_index": 74,
+      "index": 74,
+      "doc": " Deprecated alias for `migrate_market`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "market",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotMarket",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "cap",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
     }
   },
   "structs": {
     "SpotAdminCap": {
       "index": 0,
-      "doc": " Admin capability for SPoT (controls SpotConfig updates)",
+      "doc": null,
       "attributes": [],
       "abilities": [
         "Key",
@@ -3477,7 +5886,7 @@
     },
     "SpotOracleAdminCap": {
       "index": 1,
-      "doc": " Oracle admin capability for SPoT (controls oracle decisions: record creation and resolution)",
+      "doc": null,
       "attributes": [],
       "abilities": [
         "Key",
@@ -3506,7 +5915,7 @@
     },
     "SpotConfig": {
       "index": 2,
-      "doc": " Global configuration for SPoT",
+      "doc": null,
       "attributes": [],
       "abilities": [
         "Key"
@@ -3529,7 +5938,7 @@
               }
             }
           },
-          "enable_flag": {
+          "truth_enabled": {
             "index": 1,
             "doc": null,
             "type_": "bool"
@@ -3564,48 +5973,68 @@
             "doc": null,
             "type_": "u64"
           },
-          "min_betting_options": {
+          "creator_fee_bps": {
             "index": 8,
             "doc": null,
             "type_": "u64"
           },
-          "max_betting_options": {
+          "creator_claim_window_ms": {
             "index": 9,
             "doc": null,
             "type_": "u64"
           },
-          "min_reasoning_length": {
+          "expired_creator_ecosystem_bps": {
             "index": 10,
             "doc": null,
             "type_": "u64"
           },
-          "max_reasoning_length": {
+          "min_betting_options": {
             "index": 11,
             "doc": null,
             "type_": "u64"
           },
-          "max_evidence_urls": {
+          "max_betting_options": {
             "index": 12,
             "doc": null,
             "type_": "u64"
           },
-          "oracle_address": {
+          "min_reasoning_length": {
             "index": 13,
             "doc": null,
-            "type_": "address"
+            "type_": "u64"
           },
-          "max_single_bet": {
+          "max_reasoning_length": {
             "index": 14,
             "doc": null,
             "type_": "u64"
           },
-          "max_bets_per_record": {
+          "max_evidence_urls": {
             "index": 15,
             "doc": null,
             "type_": "u64"
           },
-          "spot_governance_registry_id": {
+          "oracle_address": {
             "index": 16,
+            "doc": null,
+            "type_": "address"
+          },
+          "max_single_bet": {
+            "index": 17,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_bets_per_record": {
+            "index": 18,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_claim_per_post": {
+            "index": 19,
+            "doc": null,
+            "type_": "u64"
+          },
+          "spot_governance_registry_id": {
+            "index": 20,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -3619,7 +6048,758 @@
             }
           },
           "version": {
+            "index": 21,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SpotPostLink": {
+      "index": 3,
+      "doc": " Post linked to a semantic claim at a specific claim index (creator stored for fee routing).",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "post_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "creator": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "claim_index": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PostClaimIndexKey": {
+      "index": 4,
+      "doc": " Registry key: a post's future-claim link at a given claim index.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "post_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "claim_index": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "PostMarketKey": {
+      "index": 5,
+      "doc": " Registry key: a (post, market) future-link — authoritative bet-eligibility check.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "post_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "market_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          }
+        }
+      }
+    },
+    "SpotClaim": {
+      "index": 6,
+      "doc": " Semantic claim object — deduped by `semantic_claim_hash`.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "semantic_claim_hash": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "created_at_ms": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "linked_posts": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotPostLink",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "version": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SpotClaimRegistry": {
+      "index": 7,
+      "doc": " Shared registry mapping hashes and open markets. Multi-claim: a post may hold\n several future-claim links keyed by claim index / market.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "claims_by_semantic_hash": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "markets_by_key_hash": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "open_market_by_claim": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "post_claim_index_to_market": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "social_contracts",
+                          "name": "social_proof_of_truth"
+                        },
+                        "name": "PostClaimIndexKey",
+                        "type_arguments": []
+                      }
+                    }
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "post_market_to_claim": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "social_contracts",
+                          "name": "social_proof_of_truth"
+                        },
+                        "name": "PostMarketKey",
+                        "type_arguments": []
+                      }
+                    }
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          },
+          "version": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SpotCreatorPayout": {
+      "index": 8,
+      "doc": " Pending creator payout (O(1) claim by `payout_id`).",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "creator": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "source_post_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expires_at_ms": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SpotMarket": {
+      "index": 9,
+      "doc": " Prediction market for a claim (evolved from per-post SpotRecord).",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "claim_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "market_key_hash": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "primary_post_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "primary_creator": {
+            "index": 4,
+            "doc": null,
+            "type_": "address"
+          },
+          "created_at_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "status": {
+            "index": 6,
+            "doc": null,
+            "type_": "u8"
+          },
+          "outcome": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u8"
+                  }
+                ]
+              }
+            }
+          },
+          "escrow": {
+            "index": 8,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "balance"
+                },
+                "name": "Balance",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "myso"
+                        },
+                        "name": "MYSO",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "betting_options": {
+            "index": 9,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "option_escrow": {
+            "index": 10,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "u8"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "user_option_amounts": {
+            "index": 11,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "vector": "u64"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "bets": {
+            "index": 12,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_of_truth"
+                  },
+                  "name": "SpotBet",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "resolution_window_ms": {
+            "index": 13,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "max_resolution_window_ms": {
+            "index": 14,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "resolution_at_ms": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          },
+          "last_resolution_at_ms": {
+            "index": 16,
+            "doc": null,
+            "type_": "u64"
+          },
+          "resolution_timestamp_ms": {
             "index": 17,
+            "doc": null,
+            "type_": "u64"
+          },
+          "pending_payouts": {
+            "index": 18,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "pending_creator_payouts": {
+            "index": 19,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "u64"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "social_contracts",
+                          "name": "social_proof_of_truth"
+                        },
+                        "name": "SpotCreatorPayout",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "next_creator_payout_id": {
+            "index": 20,
+            "doc": null,
+            "type_": "u64"
+          },
+          "creator_payout_index": {
+            "index": 21,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "vector": "u64"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "active_proposal_id": {
+            "index": 22,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "oracle_proposed_outcome": {
+            "index": 23,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u8"
+                  }
+                ]
+              }
+            }
+          },
+          "proposed_outcome": {
+            "index": 24,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u8"
+                  }
+                ]
+              }
+            }
+          },
+          "dao_escalated_at_ms": {
+            "index": 25,
+            "doc": null,
+            "type_": "u64"
+          },
+          "version": {
+            "index": 26,
             "doc": null,
             "type_": "u64"
           }
@@ -3627,7 +6807,7 @@
       }
     },
     "SpotBet": {
-      "index": 3,
+      "index": 10,
       "doc": " A single bet",
       "attributes": [],
       "abilities": [
@@ -3656,53 +6836,10 @@
           },
           "timestamp_ms": {
             "index": 3,
-            "doc": " Wall-clock ms from `Clock` when the bet was placed.",
-            "type_": "u64"
-          }
-        }
-      }
-    },
-    "SpotRecord": {
-      "index": 4,
-      "doc": " SPoT record per post",
-      "attributes": [],
-      "abilities": [
-        "Key"
-      ],
-      "type_parameters": [],
-      "fields": {
-        "positional_fields": false,
-        "fields": {
-          "id": {
-            "index": 0,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "myso",
-                  "name": "object"
-                },
-                "name": "UID",
-                "type_arguments": []
-              }
-            }
-          },
-          "post_id": {
-            "index": 1,
-            "doc": null,
-            "type_": "address"
-          },
-          "created_at_ms": {
-            "index": 2,
             "doc": null,
             "type_": "u64"
           },
-          "status": {
-            "index": 3,
-            "doc": null,
-            "type_": "u8"
-          },
-          "outcome": {
+          "referrer_post_id": {
             "index": 4,
             "doc": null,
             "type_": {
@@ -3715,312 +6852,17 @@
                 "type_arguments": [
                   {
                     "phantom": false,
-                    "argument": "u8"
-                  }
-                ]
-              }
-            }
-          },
-          "escrow": {
-            "index": 5,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "myso",
-                  "name": "balance"
-                },
-                "name": "Balance",
-                "type_arguments": [
-                  {
-                    "phantom": true,
-                    "argument": {
-                      "Datatype": {
-                        "module": {
-                          "address": "myso",
-                          "name": "myso"
-                        },
-                        "name": "MYSO",
-                        "type_arguments": []
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          "betting_options": {
-            "index": 6,
-            "doc": null,
-            "type_": {
-              "vector": {
-                "Datatype": {
-                  "module": {
-                    "address": "std",
-                    "name": "string"
-                  },
-                  "name": "String",
-                  "type_arguments": []
-                }
-              }
-            }
-          },
-          "option_escrow": {
-            "index": 7,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "myso",
-                  "name": "table"
-                },
-                "name": "Table",
-                "type_arguments": [
-                  {
-                    "phantom": true,
-                    "argument": "u8"
-                  },
-                  {
-                    "phantom": true,
-                    "argument": "u64"
-                  }
-                ]
-              }
-            }
-          },
-          "user_option_amounts": {
-            "index": 8,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "myso",
-                  "name": "table"
-                },
-                "name": "Table",
-                "type_arguments": [
-                  {
-                    "phantom": true,
                     "argument": "address"
-                  },
-                  {
-                    "phantom": true,
-                    "argument": {
-                      "vector": "u64"
-                    }
                   }
                 ]
               }
             }
-          },
-          "bets": {
-            "index": 9,
-            "doc": null,
-            "type_": {
-              "vector": {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "social_proof_of_truth"
-                  },
-                  "name": "SpotBet",
-                  "type_arguments": []
-                }
-              }
-            }
-          },
-          "resolution_window_ms": {
-            "index": 10,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "u64"
-                  }
-                ]
-              }
-            }
-          },
-          "max_resolution_window_ms": {
-            "index": 11,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "u64"
-                  }
-                ]
-              }
-            }
-          },
-          "last_resolution_at_ms": {
-            "index": 12,
-            "doc": null,
-            "type_": "u64"
-          },
-          "resolution_timestamp_ms": {
-            "index": 13,
-            "doc": null,
-            "type_": "u64"
-          },
-          "pending_payouts": {
-            "index": 14,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "myso",
-                  "name": "table"
-                },
-                "name": "Table",
-                "type_arguments": [
-                  {
-                    "phantom": true,
-                    "argument": "address"
-                  },
-                  {
-                    "phantom": true,
-                    "argument": "u64"
-                  }
-                ]
-              }
-            }
-          },
-          "active_proposal_id": {
-            "index": 15,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": {
-                      "Datatype": {
-                        "module": {
-                          "address": "myso",
-                          "name": "object"
-                        },
-                        "name": "ID",
-                        "type_arguments": []
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          "oracle_proposed_outcome": {
-            "index": 16,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "u8"
-                  }
-                ]
-              }
-            }
-          },
-          "proposed_outcome": {
-            "index": 17,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "u8"
-                  }
-                ]
-              }
-            }
-          },
-          "dao_escalated_at_ms": {
-            "index": 18,
-            "doc": null,
-            "type_": "u64"
-          },
-          "version": {
-            "index": 19,
-            "doc": null,
-            "type_": "u64"
           }
         }
       }
     },
     "SpotBetPlacedEvent": {
-      "index": 5,
-      "doc": " Events",
-      "attributes": [],
-      "abilities": [
-        "Copy",
-        "Drop"
-      ],
-      "type_parameters": [],
-      "fields": {
-        "positional_fields": false,
-        "fields": {
-          "post_id": {
-            "index": 0,
-            "doc": null,
-            "type_": "address"
-          },
-          "user": {
-            "index": 1,
-            "doc": null,
-            "type_": "address"
-          },
-          "option_id": {
-            "index": 2,
-            "doc": null,
-            "type_": "u8"
-          },
-          "amount": {
-            "index": 3,
-            "doc": null,
-            "type_": "u64"
-          },
-          "timestamp_ms": {
-            "index": 4,
-            "doc": null,
-            "type_": "u64"
-          }
-        }
-      }
-    },
-    "SpotResolvedEvent": {
-      "index": 6,
+      "index": 11,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4036,23 +6878,102 @@
             "doc": null,
             "type_": "address"
           },
-          "outcome": {
+          "market_id": {
             "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "user": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "option_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "u8"
+          },
+          "amount": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "referrer_post_id": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "SpotResolvedEvent": {
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "post_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "market_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "claim_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "outcome": {
+            "index": 3,
             "doc": null,
             "type_": "u8"
           },
           "total_escrow": {
-            "index": 2,
+            "index": 4,
             "doc": null,
             "type_": "u64"
           },
           "fee_taken": {
-            "index": 3,
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "creator_fee_total": {
+            "index": 6,
             "doc": null,
             "type_": "u64"
           },
           "reasoning": {
-            "index": 4,
+            "index": 7,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -4066,7 +6987,7 @@
             }
           },
           "evidence_urls": {
-            "index": 5,
+            "index": 8,
             "doc": null,
             "type_": {
               "vector": {
@@ -4085,7 +7006,7 @@
       }
     },
     "SpotDaoRequiredEvent": {
-      "index": 7,
+      "index": 13,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4139,7 +7060,7 @@
       }
     },
     "SpotGovernanceProposalLinkedEvent": {
-      "index": 8,
+      "index": 14,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4183,7 +7104,7 @@
       }
     },
     "SpotGovernanceProposalClearedEvent": {
-      "index": 9,
+      "index": 15,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4222,7 +7143,7 @@
       }
     },
     "SpotPayoutEvent": {
-      "index": 10,
+      "index": 16,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4251,8 +7172,123 @@
         }
       }
     },
+    "SpotCreatorPayoutAccruedEvent": {
+      "index": 17,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "market_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "payout_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "creator": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "referrer_post_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expires_at_ms": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SpotCreatorPayoutClaimedEvent": {
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "market_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "payout_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "creator": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "amount": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SpotCreatorPayoutReclaimedEvent": {
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "market_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "payout_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          },
+          "ecosystem_amount": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "platform_amount": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
     "SpotRefundEvent": {
-      "index": 11,
+      "index": 20,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4282,7 +7318,7 @@
       }
     },
     "SpotConfigUpdatedEvent": {
-      "index": 12,
+      "index": 21,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4298,7 +7334,7 @@
             "doc": null,
             "type_": "address"
           },
-          "enable_flag": {
+          "truth_enabled": {
             "index": 1,
             "doc": null,
             "type_": "bool"
@@ -4333,48 +7369,82 @@
             "doc": null,
             "type_": "u64"
           },
-          "min_betting_options": {
+          "creator_fee_bps": {
             "index": 8,
             "doc": null,
             "type_": "u64"
           },
-          "max_betting_options": {
+          "creator_claim_window_ms": {
             "index": 9,
             "doc": null,
             "type_": "u64"
           },
-          "min_reasoning_length": {
+          "expired_creator_ecosystem_bps": {
             "index": 10,
             "doc": null,
             "type_": "u64"
           },
-          "max_reasoning_length": {
+          "min_betting_options": {
             "index": 11,
             "doc": null,
             "type_": "u64"
           },
-          "max_evidence_urls": {
+          "max_betting_options": {
             "index": 12,
             "doc": null,
             "type_": "u64"
           },
-          "oracle_address": {
+          "min_reasoning_length": {
             "index": 13,
             "doc": null,
-            "type_": "address"
+            "type_": "u64"
           },
-          "max_single_bet": {
+          "max_reasoning_length": {
             "index": 14,
             "doc": null,
             "type_": "u64"
           },
-          "max_bets_per_record": {
+          "max_evidence_urls": {
             "index": 15,
             "doc": null,
             "type_": "u64"
           },
-          "timestamp": {
+          "oracle_address": {
             "index": 16,
+            "doc": null,
+            "type_": "address"
+          },
+          "max_single_bet": {
+            "index": 17,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_bets_per_record": {
+            "index": 18,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_claim_per_post": {
+            "index": 19,
+            "doc": null,
+            "type_": "u64"
+          },
+          "spot_governance_registry_id": {
+            "index": 20,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "timestamp": {
+            "index": 21,
             "doc": null,
             "type_": "u64"
           }
@@ -4382,7 +7452,7 @@
       }
     },
     "SpotBetWithdrawnEvent": {
-      "index": 13,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4421,8 +7491,8 @@
         }
       }
     },
-    "SpotRecordCreatedEvent": {
-      "index": 14,
+    "SpotClaimCreatedEvent": {
+      "index": 23,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -4433,23 +7503,79 @@
       "fields": {
         "positional_fields": false,
         "fields": {
-          "record_id": {
+          "claim_id": {
             "index": 0,
             "doc": null,
             "type_": "address"
           },
-          "post_id": {
+          "semantic_claim_hash": {
             "index": 1,
             "doc": null,
-            "type_": "address"
+            "type_": {
+              "vector": "u8"
+            }
           },
           "created_at_ms": {
             "index": 2,
             "doc": null,
             "type_": "u64"
+          }
+        }
+      }
+    },
+    "SpotMarketCreatedEvent": {
+      "index": 24,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "market_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "claim_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "market_key_hash": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "primary_post_id": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "claim_index": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "resolution_policy_hash": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "created_at_ms": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
           },
           "betting_options": {
-            "index": 3,
+            "index": 7,
             "doc": null,
             "type_": {
               "vector": {
@@ -4464,8 +7590,13 @@
               }
             }
           },
-          "resolution_window_ms": {
-            "index": 4,
+          "resolution_at_ms": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_resolution_window_ms": {
+            "index": 9,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -4478,13 +7609,124 @@
                   {
                     "phantom": false,
                     "argument": "u64"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "SpotPostLinkedEvent": {
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "post_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "claim_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "market_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "address"
                   }
                 ]
               }
             }
           },
-          "max_resolution_window_ms": {
+          "claim_index": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "policy_hash": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          }
+        }
+      }
+    },
+    "SpotClaimsFinalizedForPost": {
+      "index": 26,
+      "doc": " Batch finalize projection for a post's multi-claim analysis. Carries future-link\n arrays (claim_index order) plus parallel past-verdict vectors for the indexer.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "post_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "status": {
+            "index": 1,
+            "doc": null,
+            "type_": "u8"
+          },
+          "detected_claim_count": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "rejected_claim_count": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "truncated_claim_count": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "future_accepted_count": {
             "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "past_verified_count": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_claim_per_post_applied": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "claim_manifest_hash": {
+            "index": 8,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -4496,11 +7738,90 @@
                 "type_arguments": [
                   {
                     "phantom": false,
-                    "argument": "u64"
+                    "argument": {
+                      "vector": "u8"
+                    }
                   }
                 ]
               }
             }
+          },
+          "veracity_manifest_hash": {
+            "index": 9,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "future_claim_indexes": {
+            "index": 10,
+            "doc": null,
+            "type_": {
+              "vector": "u64"
+            }
+          },
+          "future_claim_ids": {
+            "index": 11,
+            "doc": null,
+            "type_": {
+              "vector": "address"
+            }
+          },
+          "future_market_ids": {
+            "index": 12,
+            "doc": null,
+            "type_": {
+              "vector": "address"
+            }
+          },
+          "past_claim_indexes": {
+            "index": 13,
+            "doc": null,
+            "type_": {
+              "vector": "u64"
+            }
+          },
+          "past_verdicts": {
+            "index": 14,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "past_related_market_ids": {
+            "index": 15,
+            "doc": null,
+            "type_": {
+              "vector": "address"
+            }
+          },
+          "past_evidence_hashes": {
+            "index": 16,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "vector": "u8"
+              }
+            }
+          },
+          "finalized_at_ms": {
+            "index": 17,
+            "doc": null,
+            "type_": "u64"
           }
         }
       }

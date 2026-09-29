@@ -25,6 +25,12 @@ title: Module `social_contracts::poc_username_beneficiary`
 -  [Function `shard_index_for_username`](#social_contracts_poc_username_beneficiary_shard_index_for_username)
 -  [Function `assert_shard_matches_username`](#social_contracts_poc_username_beneficiary_assert_shard_matches_username)
 -  [Function `identity_beneficiary_address`](#social_contracts_poc_username_beneficiary_identity_beneficiary_address)
+-  [Function `derived_identity_beneficiary_address`](#social_contracts_poc_username_beneficiary_derived_identity_beneficiary_address)
+-  [Function `namespaced_offchain_username`](#social_contracts_poc_username_beneficiary_namespaced_offchain_username)
+-  [Function `lookup_beneficiary_id_by_identity`](#social_contracts_poc_username_beneficiary_lookup_beneficiary_id_by_identity)
+-  [Function `lookup_beneficiary_id_by_username`](#social_contracts_poc_username_beneficiary_lookup_beneficiary_id_by_username)
+-  [Function `username_beneficiary_address`](#social_contracts_poc_username_beneficiary_username_beneficiary_address)
+-  [Function `username_beneficiary_username`](#social_contracts_poc_username_beneficiary_username_beneficiary_username)
 -  [Function `canonical_username`](#social_contracts_poc_username_beneficiary_canonical_username)
 -  [Function `canonical_x_handle`](#social_contracts_poc_username_beneficiary_canonical_x_handle)
 -  [Function `beneficiary_status`](#social_contracts_poc_username_beneficiary_beneficiary_status)
@@ -1038,6 +1044,176 @@ Admin capability for username beneficiary provisioning lifecycle.
     vector::push_back(&<b>mut</b> data, key.source);
     vector::append(&<b>mut</b> data, key.identity_hash);
     object::id_to_address(&object::id_from_bytes(myso_hash::blake2b256(&data)))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_derived_identity_beneficiary_address"></a>
+
+## Function `derived_identity_beneficiary_address`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_derived_identity_beneficiary_address">derived_identity_beneficiary_address</a>(identity_source: u8, identity_hash: vector&lt;u8&gt;): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_derived_identity_beneficiary_address">derived_identity_beneficiary_address</a>(
+    identity_source: u8,
+    identity_hash: vector&lt;u8&gt;,
+): <b>address</b> {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_identity_beneficiary_address">identity_beneficiary_address</a>(&<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_identity_key">identity_key</a>(identity_source, identity_hash))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_namespaced_offchain_username"></a>
+
+## Function `namespaced_offchain_username`
+
+<code>x_{canonical_handle}</code> — charset is <code>a-z</code>, <code>0-9</code>, <code>_</code>, <code>.</code> only.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_namespaced_offchain_username">namespaced_offchain_username</a>(handle: vector&lt;u8&gt;): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_namespaced_offchain_username">namespaced_offchain_username</a>(handle: vector&lt;u8&gt;): String {
+    <b>let</b> canonical = <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username_from_bytes">profile::canonical_registry_username_from_bytes</a>(handle);
+    <b>let</b> <b>mut</b> bytes = vector[120u8, 95u8];
+    vector::append(&<b>mut</b> bytes, *string::as_bytes(&canonical));
+    <b>let</b> name = string::utf8(bytes);
+    <b>let</b> len = vector::length(string::as_bytes(&name));
+    <b>assert</b>!(len &gt;= 2 && len &lt;= 50, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidUsername">EInvalidUsername</a>);
+    name
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_lookup_beneficiary_id_by_identity"></a>
+
+## Function `lookup_beneficiary_id_by_identity`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_lookup_beneficiary_id_by_identity">lookup_beneficiary_id_by_identity</a>(directory: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryDirectory">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryDirectory</a>, identity_source: u8, identity_hash: vector&lt;u8&gt;): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_lookup_beneficiary_id_by_identity">lookup_beneficiary_id_by_identity</a>(
+    directory: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryDirectory">PoCUsernameBeneficiaryDirectory</a>,
+    identity_source: u8,
+    identity_hash: vector&lt;u8&gt;,
+): Option&lt;ID&gt; {
+    <b>let</b> key = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_identity_key">identity_key</a>(identity_source, identity_hash);
+    <b>if</b> (table::contains(&directory.beneficiary_by_identity, key)) {
+        option::some(*table::borrow(&directory.beneficiary_by_identity, key))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_lookup_beneficiary_id_by_username"></a>
+
+## Function `lookup_beneficiary_id_by_username`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_lookup_beneficiary_id_by_username">lookup_beneficiary_id_by_username</a>(shard: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryShard</a>, username: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_lookup_beneficiary_id_by_username">lookup_beneficiary_id_by_username</a>(
+    shard: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">PoCUsernameBeneficiaryShard</a>,
+    username: &String,
+): Option&lt;ID&gt; {
+    <b>if</b> (table::contains(&shard.username_to_beneficiary, *username)) {
+        option::some(*table::borrow(&shard.username_to_beneficiary, *username))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_username_beneficiary_address"></a>
+
+## Function `username_beneficiary_address`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_username_beneficiary_address">username_beneficiary_address</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_username_beneficiary_address">username_beneficiary_address</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>): <b>address</b> {
+    beneficiary.beneficiary_address
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_username_beneficiary_username"></a>
+
+## Function `username_beneficiary_username`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_username_beneficiary_username">username_beneficiary_username</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_username_beneficiary_username">username_beneficiary_username</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>): String {
+    beneficiary.username
 }
 </code></pre>
 

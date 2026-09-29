@@ -3,7 +3,7 @@
     "address": "social_contracts",
     "name": "ai_credit"
   },
-  "doc": " AI credit escrow — users deposit MYSO; platform oracle settles signed usage receipts\n for sub-agent inference, tools, storage, and workflow costs.\n\n Credits display: `credits = balance_mist / MIST_PER_MYSO` (1 MYSO = 1 credit).",
+  "doc": " MIST-denominated AI spend escrow. Users deposit MYSO and the platform oracle reserves\n the worst-case MIST charge before provider work begins, then captures the actual charge\n or releases the reservation. Legacy signed usage receipts remain available during the\n reserve-and-capture migration.",
   "immediate_dependencies": [
     {
       "address": "myso",
@@ -68,6 +68,10 @@
     {
       "address": "std",
       "name": "option"
+    },
+    {
+      "address": "std",
+      "name": "string"
     }
   ],
   "attributes": [
@@ -272,43 +276,9 @@
         }
       ]
     },
-    "transfer_balance_owner": {
+    "new_balance": {
       "source_index": 3,
       "index": 3,
-      "doc": " Called only from [`profile::transfer_profile_with_memory`].",
-      "attributes": [],
-      "visibility": "Package",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "balance",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "ai_credit"
-                  },
-                  "name": "AiCreditBalance",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "new_owner",
-          "type_": "address"
-        }
-      ],
-      "return_": []
-    },
-    "new_balance": {
-      "source_index": 4,
-      "index": 4,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -387,8 +357,8 @@
       ]
     },
     "deposit": {
-      "source_index": 5,
-      "index": 5,
+      "source_index": 4,
+      "index": 4,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -480,8 +450,8 @@
       "return_": []
     },
     "withdraw": {
-      "source_index": 6,
-      "index": 6,
+      "source_index": 5,
+      "index": 5,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -550,8 +520,8 @@
       "return_": []
     },
     "set_account_caps": {
-      "source_index": 7,
-      "index": 7,
+      "source_index": 6,
+      "index": 6,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -652,8 +622,8 @@
       "return_": []
     },
     "set_agent_budget": {
-      "source_index": 8,
-      "index": 8,
+      "source_index": 7,
+      "index": 7,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -826,8 +796,8 @@
       "return_": []
     },
     "set_agent_budget_as_manager": {
-      "source_index": 9,
-      "index": 9,
+      "source_index": 8,
+      "index": 8,
       "doc": " Org role-gated budget management: a holder of `OrgBudgetManager` on the org's memory\n share group may manage budgets for agents belonging to that org, without the owner key.",
       "attributes": [],
       "visibility": "Public",
@@ -1068,8 +1038,8 @@
       "return_": []
     },
     "disable_agent_budget": {
-      "source_index": 10,
-      "index": 10,
+      "source_index": 9,
+      "index": 9,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1165,8 +1135,8 @@
       "return_": []
     },
     "approve_agent_spend": {
-      "source_index": 11,
-      "index": 11,
+      "source_index": 10,
+      "index": 10,
       "doc": " Owner grants a one-shot allowance: the agent may settle a single usage receipt up to\n `max_amount_mist` above its approval threshold, until `expires_at_ms`. Re-approving\n overwrites any existing allowance for the agent.",
       "attributes": [],
       "visibility": "Public",
@@ -1270,8 +1240,8 @@
       "return_": []
     },
     "approve_agent_spend_as_approver": {
-      "source_index": 12,
-      "index": 12,
+      "source_index": 11,
+      "index": 11,
       "doc": " Org role-gated approval: a holder of `OrgSpendApprover` on the org's memory share\n group may approve spends for agents belonging to that org (Finance Approver flow).",
       "attributes": [],
       "visibility": "Public",
@@ -1448,8 +1418,8 @@
       "return_": []
     },
     "revoke_agent_spend_approval": {
-      "source_index": 13,
-      "index": 13,
+      "source_index": 12,
+      "index": 12,
       "doc": " Owner revokes an agent's live allowance.",
       "attributes": [],
       "visibility": "Public",
@@ -1545,8 +1515,8 @@
       "return_": []
     },
     "set_child_agent_budget": {
-      "source_index": 14,
-      "index": 14,
+      "source_index": 13,
+      "index": 13,
       "doc": " Parent agent (holding `CAP_BUDGET_MANAGE`) sets a descendant's budget. Child limits\n must be at least as strict as the parent's own envelope; the human owner remains the\n unconstrained root.",
       "attributes": [],
       "visibility": "Public",
@@ -1773,8 +1743,8 @@
       "return_": []
     },
     "disable_child_agent_budget": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 14,
+      "index": 14,
       "doc": " Parent kill switch for a descendant's budget.",
       "attributes": [],
       "visibility": "Public",
@@ -1929,8 +1899,8 @@
       "return_": []
     },
     "approve_child_agent_spend": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 15,
+      "index": 15,
       "doc": " Parent approves a descendant's over-threshold spend, but only within the parent's own\n envelope (its threshold and remaining caps). Beyond that, approval escalates up the\n tree — ultimately to the human owner via `approve_agent_spend`.",
       "attributes": [],
       "visibility": "Public",
@@ -2093,6 +2063,72 @@
       "return_": []
     },
     "pause_balance": {
+      "source_index": 16,
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "reactivate_balance": {
       "source_index": 17,
       "index": 17,
       "doc": null,
@@ -2158,13 +2194,13 @@
       ],
       "return_": []
     },
-    "reactivate_balance": {
+    "reserve_signed_spend": {
       "source_index": 18,
       "index": 18,
-      "doc": null,
+      "doc": " Reserve an oracle-authorized, deterministic maximum charge before any provider work.\n The signed intent binds the balance, agent, pricing quote, request/envelope hashes,\n amount, nonce, and both deadlines.",
       "attributes": [],
       "visibility": "Public",
-      "entry": true,
+      "entry": false,
       "type_parameters": [],
       "parameters": [
         {
@@ -2204,10 +2240,315 @@
           }
         },
         {
-          "name": "ctx",
+          "name": "account",
           "type_": {
             "Reference": [
               false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "reservation_nonce",
+          "type_": "u64"
+        },
+        {
+          "name": "max_amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "provider_envelope_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "request_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "fx_quote_id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "myso_usd_e8",
+          "type_": "u64"
+        },
+        {
+          "name": "markup_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "timestamp_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "capture_deadline_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "hard_expiry_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "signature",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "make_spend_reservation_intent_from_objects": {
+      "source_index": 19,
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "reservation_nonce",
+          "type_": "u64"
+        },
+        {
+          "name": "max_amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "provider_envelope_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "request_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "fx_quote_id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "myso_usd_e8",
+          "type_": "u64"
+        },
+        {
+          "name": "markup_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "timestamp_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "capture_deadline_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "hard_expiry_ms",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "ai_credit"
+            },
+            "name": "SpendReservationIntent",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "capture_reserved_spend": {
+      "source_index": 20,
+      "index": 20,
+      "doc": " Capture the actual MIST charge. The oracle signature binds provider cost and the\n provider generation hash to the reservation. Any unused maximum is released.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "reservation_nonce",
+          "type_": "u64"
+        },
+        {
+          "name": "amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "provider_cost_usd_micros",
+          "type_": "u64"
+        },
+        {
+          "name": "provider_generation_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "timestamp_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "signature",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
               {
                 "Datatype": {
                   "module": {
@@ -2224,9 +2565,159 @@
       ],
       "return_": []
     },
+    "cancel_reserved_spend": {
+      "source_index": 21,
+      "index": 21,
+      "doc": " Release a reservation only when the oracle confirms that no billable generation\n exists. Signed cancellation closes at `capture_deadline_ms`; after hard expiry anyone\n may call `expire_reservation` instead.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "reservation_nonce",
+          "type_": "u64"
+        },
+        {
+          "name": "timestamp_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "signature",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "expire_reservation": {
+      "source_index": 22,
+      "index": 22,
+      "doc": " Permissionless safety valve so gateway failure cannot lock funds indefinitely.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "reservation_nonce",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "settle_usage": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 23,
+      "index": 23,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2364,8 +2855,8 @@
       "return_": []
     },
     "settle_usage_batch": {
-      "source_index": 20,
-      "index": 20,
+      "source_index": 24,
+      "index": 24,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2507,8 +2998,8 @@
       "return_": []
     },
     "settle_signed_usage": {
-      "source_index": 21,
-      "index": 21,
+      "source_index": 25,
+      "index": 25,
       "doc": " PTB/oracle entry point: receipt fields are primitives; balance and agent IDs are derived\n from shared objects (not caller-supplied). Authorization is the oracle Ed25519 signature,\n not `AiCreditOracleAdminCap`.",
       "attributes": [],
       "visibility": "Public",
@@ -2653,8 +3144,8 @@
       "return_": []
     },
     "make_usage_receipt_from_objects": {
-      "source_index": 22,
-      "index": 22,
+      "source_index": 26,
+      "index": 26,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2732,8 +3223,8 @@
       ]
     },
     "settle_usage_with_signature": {
-      "source_index": 23,
-      "index": 23,
+      "source_index": 27,
+      "index": 27,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2871,8 +3362,8 @@
       "return_": []
     },
     "execute_settlement": {
-      "source_index": 24,
-      "index": 24,
+      "source_index": 28,
+      "index": 28,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3003,9 +3494,300 @@
       ],
       "return_": []
     },
+    "execute_reservation": {
+      "source_index": 29,
+      "index": 29,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "SubAgent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "intent",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "ai_credit"
+              },
+              "name": "SpendReservationIntent",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "execute_capture": {
+      "source_index": 30,
+      "index": 30,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "intent",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "ai_credit"
+              },
+              "name": "CaptureSpendIntent",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "execute_cancellation": {
+      "source_index": 31,
+      "index": 31,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "intent",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "ai_credit"
+              },
+              "name": "CancelSpendIntent",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "update_oracle_pubkey": {
-      "source_index": 25,
-      "index": 25,
+      "source_index": 32,
+      "index": 32,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3076,8 +3858,8 @@
       "return_": []
     },
     "update_oracle_markup": {
-      "source_index": 26,
-      "index": 26,
+      "source_index": 33,
+      "index": 33,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3146,8 +3928,8 @@
       "return_": []
     },
     "update_min_deposit": {
-      "source_index": 27,
-      "index": 27,
+      "source_index": 34,
+      "index": 34,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3216,8 +3998,8 @@
       "return_": []
     },
     "update_settlement_limits": {
-      "source_index": 28,
-      "index": 28,
+      "source_index": 35,
+      "index": 35,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3290,8 +4072,8 @@
       "return_": []
     },
     "update_treasury": {
-      "source_index": 29,
-      "index": 29,
+      "source_index": 36,
+      "index": 36,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3360,8 +4142,8 @@
       "return_": []
     },
     "balance_mist": {
-      "source_index": 30,
-      "index": 30,
+      "source_index": 37,
+      "index": 37,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3392,8 +4174,8 @@
       ]
     },
     "available_mist": {
-      "source_index": 31,
-      "index": 31,
+      "source_index": 38,
+      "index": 38,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3423,9 +4205,9 @@
         "u64"
       ]
     },
-    "credits_from_mist": {
-      "source_index": 32,
-      "index": 32,
+    "reserved_mist": {
+      "source_index": 39,
+      "index": 39,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3433,17 +4215,31 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "mist",
-          "type_": "u64"
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         }
       ],
       "return_": [
         "u64"
       ]
     },
-    "mist_from_credits": {
-      "source_index": 33,
-      "index": 33,
+    "latest_reservation_nonce": {
+      "source_index": 40,
+      "index": 40,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3451,8 +4247,186 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "credits",
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "reservation_for": {
+      "source_index": 41,
+      "index": 41,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "reservation_nonce",
           "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "social_contracts",
+                      "name": "ai_credit"
+                    },
+                    "name": "SpendReservation",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "reservation_max_amount_mist": {
+      "source_index": 42,
+      "index": 42,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "reservation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendReservation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "reservation_agent_object_id": {
+      "source_index": 43,
+      "index": 43,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "reservation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendReservation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "reservation_hard_expiry_ms": {
+      "source_index": 44,
+      "index": 44,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "reservation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendReservation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         }
       ],
       "return_": [
@@ -3460,8 +4434,8 @@
       ]
     },
     "oracle_markup_bps": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 45,
+      "index": 45,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3492,8 +4466,8 @@
       ]
     },
     "min_deposit_mist": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 46,
+      "index": 46,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3524,8 +4498,8 @@
       ]
     },
     "spend_approval_for": {
-      "source_index": 36,
-      "index": 36,
+      "source_index": 47,
+      "index": 47,
       "doc": " Live allowance for an agent, if any (may be expired — check `approval_expires_at`).",
       "attributes": [],
       "visibility": "Public",
@@ -3592,8 +4566,8 @@
       ]
     },
     "approval_max_amount_mist": {
-      "source_index": 37,
-      "index": 37,
+      "source_index": 48,
+      "index": 48,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3624,8 +4598,8 @@
       ]
     },
     "approval_expires_at_ms": {
-      "source_index": 38,
-      "index": 38,
+      "source_index": 49,
+      "index": 49,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3656,8 +4630,8 @@
       ]
     },
     "approval_approved_by": {
-      "source_index": 39,
-      "index": 39,
+      "source_index": 50,
+      "index": 50,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3688,8 +4662,8 @@
       ]
     },
     "approval_nonce": {
-      "source_index": 40,
-      "index": 40,
+      "source_index": 51,
+      "index": 51,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3720,8 +4694,8 @@
       ]
     },
     "agent_approval_threshold": {
-      "source_index": 41,
-      "index": 41,
+      "source_index": 52,
+      "index": 52,
       "doc": " Approval threshold on the agent's budget entry, if configured.",
       "attributes": [],
       "visibility": "Public",
@@ -3779,8 +4753,8 @@
       ]
     },
     "agent_remaining_mist": {
-      "source_index": 42,
-      "index": 42,
+      "source_index": 53,
+      "index": 53,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3838,8 +4812,8 @@
       ]
     },
     "usage_inference": {
-      "source_index": 43,
-      "index": 43,
+      "source_index": 54,
+      "index": 54,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3851,8 +4825,8 @@
       ]
     },
     "usage_tool": {
-      "source_index": 44,
-      "index": 44,
+      "source_index": 55,
+      "index": 55,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3864,8 +4838,8 @@
       ]
     },
     "usage_embed": {
-      "source_index": 45,
-      "index": 45,
+      "source_index": 56,
+      "index": 56,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3877,8 +4851,8 @@
       ]
     },
     "usage_storage": {
-      "source_index": 46,
-      "index": 46,
+      "source_index": 57,
+      "index": 57,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3890,8 +4864,8 @@
       ]
     },
     "usage_workflow": {
-      "source_index": 47,
-      "index": 47,
+      "source_index": 58,
+      "index": 58,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3903,8 +4877,8 @@
       ]
     },
     "mist_per_myso": {
-      "source_index": 48,
-      "index": 48,
+      "source_index": 59,
+      "index": 59,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3916,8 +4890,8 @@
       ]
     },
     "assert_agent_may_spend": {
-      "source_index": 49,
-      "index": 49,
+      "source_index": 60,
+      "index": 60,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4004,8 +4978,8 @@
       "return_": []
     },
     "assert_version": {
-      "source_index": 50,
-      "index": 50,
+      "source_index": 61,
+      "index": 61,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4051,9 +5025,141 @@
       ],
       "return_": []
     },
+    "migrate_config": {
+      "source_index": 62,
+      "index": 62,
+      "doc": " Migrate AiCreditConfig to the current package version.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_balance": {
+      "source_index": 63,
+      "index": 63,
+      "doc": " Migrate a single AiCreditBalance to the current package version.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "assert_owner": {
-      "source_index": 51,
-      "index": 51,
+      "source_index": 64,
+      "index": 64,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4100,8 +5206,8 @@
       "return_": []
     },
     "assert_active": {
-      "source_index": 52,
-      "index": 52,
+      "source_index": 65,
+      "index": 65,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4130,8 +5236,8 @@
       "return_": []
     },
     "assert_agent_linked": {
-      "source_index": 53,
-      "index": 53,
+      "source_index": 66,
+      "index": 66,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4178,8 +5284,8 @@
       "return_": []
     },
     "assert_org_gate_for_agent": {
-      "source_index": 54,
-      "index": 54,
+      "source_index": 67,
+      "index": 67,
       "doc": " Org role gates require: account matches the balance, org belongs to the account,\n and the target agent belongs to that org.",
       "attributes": [],
       "visibility": "Private",
@@ -4262,8 +5368,8 @@
       "return_": []
     },
     "assert_parent_manages_child": {
-      "source_index": 55,
-      "index": 55,
+      "source_index": 68,
+      "index": 68,
       "doc": " Common authorization for parent-delegated budget operations: sender is the parent's\n derived address, parent is active with `CAP_BUDGET_MANAGE`, both agents are linked to\n this balance, and the child sits strictly below the parent in the agent tree.",
       "attributes": [],
       "visibility": "Private",
@@ -4400,8 +5506,8 @@
       "return_": []
     },
     "assert_child_budget_within_parent_envelope": {
-      "source_index": 56,
-      "index": 56,
+      "source_index": 69,
+      "index": 69,
       "doc": " Child budget limits must be at least as strict as the parent's own entry (when the\n parent has one; an unconstrained parent may set anything).",
       "attributes": [],
       "visibility": "Private",
@@ -4535,8 +5641,8 @@
       "return_": []
     },
     "assert_limit_not_looser": {
-      "source_index": 57,
-      "index": 57,
+      "source_index": 70,
+      "index": 70,
       "doc": " `child` is not looser than `parent`: when the parent limit is set, the child limit\n must be set and must not exceed it.",
       "attributes": [],
       "visibility": "Private",
@@ -4593,8 +5699,8 @@
       "return_": []
     },
     "assert_within_parent_envelope": {
-      "source_index": 58,
-      "index": 58,
+      "source_index": 71,
+      "index": 71,
       "doc": " Parents may only approve amounts they could spend themselves: within their own\n approval threshold (if set) and remaining budget/day/month caps (if set).",
       "attributes": [],
       "visibility": "Private",
@@ -4658,8 +5764,8 @@
       "return_": []
     },
     "upsert_agent_budget": {
-      "source_index": 59,
-      "index": 59,
+      "source_index": 72,
+      "index": 72,
       "doc": " Shared budget upsert used by owner, org-manager, and parent paths. Emits the legacy\n `AiCreditAgentBudgetUpdated` plus the audit-grade `AiCreditAgentBudgetChanged`.",
       "attributes": [],
       "visibility": "Private",
@@ -4854,8 +5960,8 @@
       "return_": []
     },
     "disable_agent_budget_internal": {
-      "source_index": 60,
-      "index": 60,
+      "source_index": 73,
+      "index": 73,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4946,8 +6052,8 @@
       "return_": []
     },
     "store_spend_approval": {
-      "source_index": 61,
-      "index": 61,
+      "source_index": 74,
+      "index": 74,
       "doc": " Store (or overwrite) the agent's one-shot allowance and emit the approval event.",
       "attributes": [],
       "visibility": "Private",
@@ -5073,8 +6179,8 @@
       "return_": []
     },
     "next_approval_nonce": {
-      "source_index": 62,
-      "index": 62,
+      "source_index": 75,
+      "index": 75,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5105,8 +6211,8 @@
       ]
     },
     "maybe_consume_spend_approval": {
-      "source_index": 63,
-      "index": 63,
+      "source_index": 76,
+      "index": 76,
       "doc": " Consume the agent's allowance when the settlement amount exceeds its approval\n threshold. Aborts when no live, sufficient allowance exists — this is the on-chain\n enforcement of `require_approval_above_mist`.",
       "attributes": [],
       "visibility": "Private",
@@ -5170,8 +6276,8 @@
       "return_": []
     },
     "assert_oracle_admin": {
-      "source_index": 64,
-      "index": 64,
+      "source_index": 77,
+      "index": 77,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5218,8 +6324,8 @@
       "return_": []
     },
     "verify_receipt_signature": {
-      "source_index": 65,
-      "index": 65,
+      "source_index": 78,
+      "index": 78,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5276,9 +6382,186 @@
       ],
       "return_": []
     },
+    "verify_reservation_signature": {
+      "source_index": 79,
+      "index": 79,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "intent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendReservationIntent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "signature",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "verify_capture_signature": {
+      "source_index": 80,
+      "index": 80,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "intent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "CaptureSpendIntent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "signature",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "verify_cancel_signature": {
+      "source_index": 81,
+      "index": 81,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "intent",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "CancelSpendIntent",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "signature",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "assert_receipt_fresh": {
-      "source_index": 66,
-      "index": 66,
+      "source_index": 82,
+      "index": 82,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5342,9 +6625,47 @@
       ],
       "return_": []
     },
+    "assert_signed_timestamp_fresh": {
+      "source_index": 83,
+      "index": 83,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "timestamp_ms",
+          "type_": "u64"
+        },
+        {
+          "name": "now",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
     "roll_account_windows": {
-      "source_index": 67,
-      "index": 67,
+      "source_index": 84,
+      "index": 84,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5377,8 +6698,8 @@
       "return_": []
     },
     "roll_agent_windows": {
-      "source_index": 68,
-      "index": 68,
+      "source_index": 85,
+      "index": 85,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5411,8 +6732,8 @@
       "return_": []
     },
     "assert_account_caps": {
-      "source_index": 69,
-      "index": 69,
+      "source_index": 86,
+      "index": 86,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5445,8 +6766,8 @@
       "return_": []
     },
     "assert_agent_caps": {
-      "source_index": 70,
-      "index": 70,
+      "source_index": 87,
+      "index": 87,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5473,6 +6794,114 @@
         },
         {
           "name": "amount_mist",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "release_reservation_counters": {
+      "source_index": 88,
+      "index": 88,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "reservation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendReservation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "now",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "capture_reservation_counters": {
+      "source_index": 89,
+      "index": 89,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "balance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "AiCreditBalance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "reservation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "ai_credit"
+                  },
+                  "name": "SpendReservation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "amount_mist",
+          "type_": "u64"
+        },
+        {
+          "name": "now",
           "type_": "u64"
         }
       ],
@@ -5676,26 +7105,12 @@
             "doc": null,
             "type_": "u64"
           },
-          "daily_cap_mist": {
+          "reserved_mist": {
             "index": 5,
             "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "u64"
-                  }
-                ]
-              }
-            }
+            "type_": "u64"
           },
-          "monthly_cap_mist": {
+          "daily_cap_mist": {
             "index": 6,
             "doc": null,
             "type_": {
@@ -5714,28 +7129,57 @@
               }
             }
           },
-          "spent_day_mist": {
+          "monthly_cap_mist": {
             "index": 7,
             "doc": null,
-            "type_": "u64"
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
           },
-          "spent_month_mist": {
+          "spent_day_mist": {
             "index": 8,
             "doc": null,
             "type_": "u64"
           },
-          "day_anchor_ms": {
+          "reserved_day_mist": {
             "index": 9,
             "doc": null,
             "type_": "u64"
           },
-          "month_anchor_ms": {
+          "spent_month_mist": {
             "index": 10,
             "doc": null,
             "type_": "u64"
           },
-          "require_approval_above_mist": {
+          "reserved_month_mist": {
             "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "day_anchor_ms": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "month_anchor_ms": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          },
+          "require_approval_above_mist": {
+            "index": 14,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -5924,28 +7368,43 @@
             "doc": null,
             "type_": "u64"
           },
-          "spent_day_mist": {
+          "reserved_mist": {
             "index": 6,
             "doc": null,
             "type_": "u64"
           },
-          "spent_month_mist": {
+          "spent_day_mist": {
             "index": 7,
             "doc": null,
             "type_": "u64"
           },
-          "day_anchor_ms": {
+          "reserved_day_mist": {
             "index": 8,
             "doc": null,
             "type_": "u64"
           },
-          "month_anchor_ms": {
+          "spent_month_mist": {
             "index": 9,
             "doc": null,
             "type_": "u64"
           },
-          "daily_cap_mist": {
+          "reserved_month_mist": {
             "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "day_anchor_ms": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "month_anchor_ms": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "daily_cap_mist": {
+            "index": 13,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -5964,7 +7423,7 @@
             }
           },
           "monthly_cap_mist": {
-            "index": 11,
+            "index": 14,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -5983,12 +7442,49 @@
             }
           },
           "settlement_nonce": {
-            "index": 12,
+            "index": 15,
             "doc": null,
             "type_": "u64"
           },
+          "reservation_nonce": {
+            "index": 16,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reservations": {
+            "index": 17,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "u64"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "social_contracts",
+                          "name": "ai_credit"
+                        },
+                        "name": "SpendReservation",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
           "agent_budgets": {
-            "index": 13,
+            "index": 18,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -6029,12 +7525,12 @@
             }
           },
           "active": {
-            "index": 14,
+            "index": 19,
             "doc": null,
             "type_": "bool"
           },
           "version": {
-            "index": 15,
+            "index": 20,
             "doc": null,
             "type_": "u64"
           }
@@ -6149,8 +7645,341 @@
         }
       }
     },
-    "AiCreditBalanceCreated": {
+    "SpendReservationIntent": {
       "index": 9,
+      "doc": " Oracle-signed authorization to lock a deterministic worst-case MIST charge.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "reservation_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_amount_mist": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "provider_envelope_hash": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "request_hash": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "fx_quote_id": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "myso_usd_e8": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "markup_bps": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp_ms": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "capture_deadline_ms": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "hard_expiry_ms": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SpendReservation": {
+      "index": 10,
+      "doc": " Canonical live reservation stored directly in the greenfield account object.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "reservation_nonce": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "max_amount_mist": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "provider_envelope_hash": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "request_hash": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "fx_quote_id": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "myso_usd_e8": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "markup_bps": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "created_at_ms": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "capture_deadline_ms": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "hard_expiry_ms": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "account_day_anchor_ms": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "account_month_anchor_ms": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "agent_budget_reserved": {
+            "index": 13,
+            "doc": null,
+            "type_": "bool"
+          },
+          "agent_day_anchor_ms": {
+            "index": 14,
+            "doc": null,
+            "type_": "u64"
+          },
+          "agent_month_anchor_ms": {
+            "index": 15,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "CaptureSpendIntent": {
+      "index": 11,
+      "doc": " Oracle-signed final provider charge for an existing reservation.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "reservation_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "amount_mist": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "provider_cost_usd_micros": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "provider_generation_hash": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "timestamp_ms": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "CancelSpendIntent": {
+      "index": 12,
+      "doc": " Oracle-signed release when the provider confirms that no billable generation exists.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "reservation_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp_ms": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "AiCreditBalanceCreated": {
+      "index": 13,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6203,7 +8032,7 @@
       }
     },
     "AiCreditDeposited": {
-      "index": 10,
+      "index": 14,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6237,17 +8066,12 @@
             "index": 2,
             "doc": null,
             "type_": "u64"
-          },
-          "credits": {
-            "index": 3,
-            "doc": null,
-            "type_": "u64"
           }
         }
       }
     },
     "AiCreditWithdrawn": {
-      "index": 11,
+      "index": 15,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6286,7 +8110,7 @@
       }
     },
     "AiCreditAccountCapsUpdated": {
-      "index": 12,
+      "index": 16,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6353,7 +8177,7 @@
       }
     },
     "AiCreditAgentBudgetUpdated": {
-      "index": 13,
+      "index": 17,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6472,7 +8296,7 @@
       }
     },
     "AiCreditAgentBudgetDisabled": {
-      "index": 14,
+      "index": 18,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6515,7 +8339,7 @@
       }
     },
     "AiCreditAgentBudgetChanged": {
-      "index": 15,
+      "index": 19,
       "doc": " Audit-grade budget change event carrying previous and new values plus the actor.\n Emitted alongside the legacy `AiCreditAgentBudgetUpdated`/`Disabled` events.",
       "attributes": [],
       "abilities": [
@@ -6791,7 +8615,7 @@
       }
     },
     "AiCreditSpendApproved": {
-      "index": 16,
+      "index": 20,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6915,7 +8739,7 @@
       }
     },
     "AiCreditSpendApprovalRevoked": {
-      "index": 17,
+      "index": 21,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -6973,7 +8797,7 @@
       }
     },
     "AiCreditSpendApprovalConsumed": {
-      "index": 18,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7036,7 +8860,7 @@
       }
     },
     "AiCreditUsageSettled": {
-      "index": 19,
+      "index": 23,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7099,9 +8923,336 @@
             "index": 6,
             "doc": null,
             "type_": "u64"
+          }
+        }
+      }
+    },
+    "AiSpendReserved": {
+      "index": 24,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
           },
-          "credits_remaining": {
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "reservation_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_amount_mist": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "provider_envelope_hash": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "request_hash": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "fx_quote_id": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "myso_usd_e8": {
             "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "markup_bps": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "capture_deadline_ms": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "hard_expiry_ms": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "available_mist": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "AiSpendCaptured": {
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "reservation_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reserved_mist": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "captured_mist": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "released_mist": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "provider_cost_usd_micros": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "provider_generation_hash": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "fx_quote_id": {
+            "index": 8,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "myso_usd_e8": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "markup_bps": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "captured_at_ms": {
+            "index": 11,
+            "doc": null,
+            "type_": "u64"
+          },
+          "remaining_mist": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          },
+          "available_mist": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "AiSpendCancelled": {
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "reservation_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "released_mist": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "cancelled_at_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "available_mist": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "AiSpendExpired": {
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "balance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "agent_object_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "reservation_nonce": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "released_mist": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "expired_at_ms": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "available_mist": {
+            "index": 5,
             "doc": null,
             "type_": "u64"
           }
@@ -7109,7 +9260,7 @@
       }
     },
     "AiCreditBalanceDepleted": {
-      "index": 20,
+      "index": 28,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7138,7 +9289,7 @@
       }
     },
     "AiCreditBalancePaused": {
-      "index": 21,
+      "index": 29,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7167,7 +9318,7 @@
       }
     },
     "AiCreditBalanceReactivated": {
-      "index": 22,
+      "index": 30,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7196,7 +9347,7 @@
       }
     },
     "AiCreditOraclePubkeyUpdated": {
-      "index": 23,
+      "index": 31,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7223,7 +9374,7 @@
       }
     },
     "AiCreditSettlementLimitsUpdated": {
-      "index": 24,
+      "index": 32,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7248,7 +9399,7 @@
       }
     },
     "AiCreditMarkupUpdated": {
-      "index": 25,
+      "index": 33,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7273,7 +9424,7 @@
       }
     },
     "AiCreditMinDepositUpdated": {
-      "index": 26,
+      "index": 34,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -7298,7 +9449,7 @@
       }
     },
     "AiCreditConfigInitialized": {
-      "index": 27,
+      "index": 35,
       "doc": null,
       "attributes": [],
       "abilities": [

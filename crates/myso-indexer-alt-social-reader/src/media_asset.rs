@@ -111,6 +111,35 @@ pub(crate) async fn get_media_asset_id_for_rights_proposal(
     Ok(result.map(|r| r.media_asset_id))
 }
 
+pub(crate) async fn get_latest_governance_link_for_proposal(
+    conn: &mut Connection<'_>,
+    proposal_id: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<MediaAssetGovernanceLinkRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+
+    let query = "
+        SELECT media_asset_id, proposal_id, submitter, claims_commitment, status,
+               related_post_id, rights_disputes_submitted, transaction_id, time,
+               target_kind, beneficiary_address, target_vault_id, target_username,
+               identity_source, identity_hash
+        FROM media_asset_governance_links
+        WHERE proposal_id = $1
+        ORDER BY time DESC
+        LIMIT 1
+    ";
+
+    let result = diesel::sql_query(query)
+        .bind::<Text, _>(proposal_id)
+        .get_result::<MediaAssetGovernanceLinkRow>(conn)
+        .await
+        .optional()?;
+
+    metrics.requests_succeeded.inc();
+    Ok(result)
+}
+
 pub(crate) async fn count_rights_disputes_submitted(
     conn: &mut Connection<'_>,
     media_asset_id: &str,
@@ -152,7 +181,9 @@ pub(crate) async fn list_media_asset_governance_links(
 
     let query = "
         SELECT media_asset_id, proposal_id, submitter, claims_commitment, status,
-               related_post_id, rights_disputes_submitted, transaction_id, time
+               related_post_id, rights_disputes_submitted, transaction_id, time,
+               target_kind, beneficiary_address, target_vault_id, target_username,
+               identity_source, identity_hash
         FROM (
             SELECT DISTINCT ON (proposal_id) *
             FROM media_asset_governance_links

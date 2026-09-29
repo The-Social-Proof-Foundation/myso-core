@@ -104,6 +104,7 @@ pub struct ProfileByAddressResponse {
     pub selected_badge_id: Option<String>,
     pub selected_ecosystem_badge_id: Option<String>,
     pub contract_version: i64,
+    pub deleted_at: Option<i64>,
 }
 
 async fn enrich_users_with_universal_data(
@@ -520,6 +521,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     selected_badge_id: None,
                     selected_ecosystem_badge_id: None,
                     contract_version: 0,
+                    deleted_at: None,
                 },
                 Err(_) => ProfileByAddressResponse {
                     id: None,
@@ -548,6 +550,7 @@ pub(crate) async fn get_profile_or_wallet_by_address(
                     selected_badge_id: None,
                     selected_ecosystem_badge_id: None,
                     contract_version: 0,
+                    deleted_at: None,
                 },
             };
             Ok(wallet_only)
@@ -584,6 +587,7 @@ fn profile_to_response(p: Profile) -> ProfileByAddressResponse {
         selected_badge_id: p.selected_badge_id,
         selected_ecosystem_badge_id: p.selected_ecosystem_badge_id,
         contract_version: p.contract_version,
+        deleted_at: p.deleted_at.map(|t| t.and_utc().timestamp_millis()),
     }
 }
 
@@ -596,6 +600,7 @@ pub(crate) async fn get_profiles(
     metrics.requests_received.inc();
     let _guard = metrics.latency.start_timer();
     let results = profiles::table
+        .filter(profiles::deleted_at.is_null())
         .order_by(profiles::id.desc())
         .limit(limit)
         .offset(offset)

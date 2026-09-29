@@ -904,6 +904,12 @@ diesel::table! {
         rights_disputes_submitted -> Int2,
         transaction_id -> Text,
         time -> Timestamptz,
+        target_kind -> Int2,
+        beneficiary_address -> Text,
+        target_vault_id -> Nullable<Text>,
+        target_username -> Nullable<Text>,
+        identity_source -> Nullable<Int2>,
+        identity_hash -> Nullable<Text>,
     }
 }
 
@@ -1851,6 +1857,7 @@ diesel::table! {
         memory_account_id -> Nullable<Text>,
         ai_credit_balance_id -> Nullable<Text>,
         contract_version -> Int8,
+        deleted_at -> Nullable<Timestamp>,
     }
 }
 

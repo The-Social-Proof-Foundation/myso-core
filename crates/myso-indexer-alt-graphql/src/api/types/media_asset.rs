@@ -285,6 +285,154 @@ impl MediaAsset {
                     .collect()
             })
     }
+
+    /// Active rights dispute including the committed beneficiary target.
+    async fn active_rights_proposal_link(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<MediaAssetRightsProposalLink> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let proposal_id = reader
+            .get_active_rights_proposal_for_asset(&self.inner.media_asset_id)
+            .await
+            .ok()??;
+        MediaAssetRightsProposalLink::load(reader, &proposal_id).await
+    }
+
+    /// Rights disputes for this asset, including the committed beneficiary target.
+    async fn rights_proposal_links(
+        &self,
+        ctx: &Context<'_>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<MediaAssetRightsProposalLink>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let links = reader
+            .list_media_asset_rights_proposals(&self.inner.media_asset_id, limit, offset)
+            .await
+            .ok()?;
+        let mut out = Vec::with_capacity(links.len());
+        for link in links {
+            if let Some(item) = MediaAssetRightsProposalLink::from_row(reader, link).await {
+                out.push(item);
+            }
+        }
+        Some(out)
+    }
+}
+
+fn bytes_hex(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(2 + bytes.len() * 2);
+    out.push_str("0x");
+    for byte in bytes {
+        out.push_str(&format!("{byte:02x}"));
+    }
+    out
+}
+
+/// Beneficiary a rights dispute committed at submit. Not a field on generic `Proposal`.
+#[derive(Clone)]
+pub(crate) struct MediaAssetRightsTarget {
+    kind: i16,
+    beneficiary_address: String,
+    vault_id: Option<String>,
+    username: Option<String>,
+    identity_hash: Option<String>,
+    identity_source: Option<i16>,
+}
+
+#[Object]
+impl MediaAssetRightsTarget {
+    async fn kind(&self) -> i32 {
+        self.kind as i32
+    }
+
+    async fn beneficiary_address(&self) -> &str {
+        &self.beneficiary_address
+    }
+
+    async fn vault_id(&self) -> Option<&str> {
+        self.vault_id.as_deref()
+    }
+
+    async fn username(&self) -> Option<&str> {
+        self.username.as_deref()
+    }
+
+    async fn identity_hash(&self) -> Option<&str> {
+        self.identity_hash.as_deref()
+    }
+
+    async fn identity_source(&self) -> Option<i32> {
+        self.identity_source.map(|value| value as i32)
+    }
+}
+
+/// Governance proposal plus the beneficiary target stored on the media-asset link.
+#[derive(Clone)]
+pub(crate) struct MediaAssetRightsProposalLink {
+    proposal: Proposal,
+    target: MediaAssetRightsTarget,
+    status: i16,
+    claims_commitment: String,
+}
+
+impl MediaAssetRightsProposalLink {
+    pub(crate) async fn load(
+        reader: &myso_indexer_alt_social_reader::SocialPgReader,
+        proposal_id: &str,
+    ) -> Option<Self> {
+        let link = reader
+            .get_latest_governance_link_for_proposal(proposal_id)
+            .await
+            .ok()??;
+        Self::from_row(reader, link).await
+    }
+
+    pub(crate) async fn from_row(
+        reader: &myso_indexer_alt_social_reader::SocialPgReader,
+        link: myso_indexer_alt_social_schema::models::MediaAssetGovernanceLinkRow,
+    ) -> Option<Self> {
+        let row = reader.get_proposal_by_id(&link.proposal_id).await.ok()??;
+        Some(Self {
+            proposal: Proposal::from_row(row),
+            target: MediaAssetRightsTarget {
+                kind: link.target_kind,
+                beneficiary_address: link.beneficiary_address,
+                vault_id: link.target_vault_id,
+                username: link.target_username,
+                identity_hash: link.identity_hash,
+                identity_source: link.identity_source,
+            },
+            status: link.status,
+            claims_commitment: bytes_hex(&link.claims_commitment),
+        })
+    }
+}
+
+#[Object]
+impl MediaAssetRightsProposalLink {
+    async fn proposal(&self) -> &Proposal {
+        &self.proposal
+    }
+
+    async fn target(&self) -> &MediaAssetRightsTarget {
+        &self.target
+    }
+
+    async fn status(&self) -> i32 {
+        self.status as i32
+    }
+
+    async fn claims_commitment(&self) -> &str {
+        &self.claims_commitment
+    }
 }
 
 #[derive(Clone)]

@@ -9,10 +9,13 @@ use std::str::FromStr;
 use anyhow::{anyhow, bail};
 use fastcrypto::encoding::{Encoding, Hex};
 use move_binary_format::CompiledModule;
-use move_binary_format::{binary_config::BinaryConfig, file_format::SignatureToken};
+use move_binary_format::{
+    binary_config::BinaryConfig,
+    file_format::{AbilitySet, DatatypeHandleIndex, SignatureToken, StructFieldInformation},
+};
 use move_bytecode_utils::resolve_struct;
 pub use move_core_types::annotated_value::MoveTypeLayout;
-use move_core_types::annotated_value::{MoveFieldLayout, MoveVariant};
+use move_core_types::annotated_value::{MoveFieldLayout, MoveStructLayout, MoveVariant};
 use move_core_types::u256::U256;
 use move_core_types::{
     annotated_value::{MoveStruct, MoveValue},
@@ -32,6 +35,8 @@ use myso_types::base_types::{
     move_ascii_str_layout, move_utf8_str_layout,
 };
 use myso_types::id::{self, ID, RESOLVED_MYSO_ID};
+use myso_types::is_object;
+use myso_types::is_object_vector;
 use myso_types::move_package::MovePackage;
 use myso_types::object::bounded_visitor::BoundedVisitor;
 use myso_types::transfer::RESOLVED_RECEIVING_STRUCT;
@@ -714,56 +719,232 @@ fn resolve_object_vec_arg(idx: usize, arg: &MySoJsonValue) -> Result<Vec<ObjectI
 }
 
 fn resolve_call_arg(
+    package: &MovePackage,
     view: &CompiledModule,
     type_args: &[TypeTag],
+    type_param_abilities: &[AbilitySet],
     idx: usize,
     arg: &MySoJsonValue,
     param: &SignatureToken,
 ) -> Result<ResolvedCallArg, anyhow::Error> {
     if let Some(layout) = primitive_type(view, type_args, param) {
-        return Ok(ResolvedCallArg::Pure(arg.to_bcs_bytes(&layout).map_err(
-            |e| {
-                anyhow!(
-                    "Could not serialize argument of type {:?} at {} into {}. Got error: {:?}",
-                    param,
-                    idx,
-                    layout,
-                    e
-                )
-            },
-        )?));
+        return serialize_pure_arg(arg, param, idx, layout);
     }
 
-    // in terms of non-primitives we only currently support objects and "flat" (depth == 1) vectors
-    // of objects (but not, for example, vectors of references)
-    match param {
-        SignatureToken::Datatype(_)
-        | SignatureToken::DatatypeInstantiation(_)
-        | SignatureToken::TypeParameter(_)
-        | SignatureToken::Reference(_)
-        | SignatureToken::MutableReference(_) => Ok(ResolvedCallArg::Object(resolve_object_arg(
+    if is_object(view, type_param_abilities, param).unwrap_or(false) {
+        return Ok(ResolvedCallArg::Object(resolve_object_arg(
             idx,
             &arg.to_json_value(),
-        )?)),
-        SignatureToken::Vector(inner) => match &**inner {
-            SignatureToken::Datatype(_) | SignatureToken::DatatypeInstantiation(_) => {
-                Ok(ResolvedCallArg::ObjVec(resolve_object_vec_arg(idx, arg)?))
-            }
-            _ => {
-                bail!(
-                    "Unexpected non-primitive vector arg {:?} at {} with value {:?}",
-                    param,
-                    idx,
-                    arg
-                );
-            }
+        )?));
+    }
+    if is_object_vector(view, type_param_abilities, param).unwrap_or(false) {
+        return Ok(ResolvedCallArg::ObjVec(resolve_object_vec_arg(idx, arg)?));
+    }
+
+    if let Some(layout) = pure_type_layout(package, view, type_args, param)? {
+        return serialize_pure_arg(arg, param, idx, layout);
+    }
+
+    bail!(
+        "Unexpected non-primitive arg {:?} at {} with value {:?}",
+        param,
+        idx,
+        arg
+    )
+}
+
+fn serialize_pure_arg(
+    arg: &MySoJsonValue,
+    param: &SignatureToken,
+    idx: usize,
+    layout: MoveTypeLayout,
+) -> Result<ResolvedCallArg, anyhow::Error> {
+    Ok(ResolvedCallArg::Pure(arg.to_bcs_bytes(&layout).map_err(
+        |e| {
+            anyhow!(
+                "Could not serialize argument of type {:?} at {} into {}. Got error: {:?}",
+                param,
+                idx,
+                layout,
+                e
+            )
         },
-        _ => bail!(
-            "Unexpected non-primitive arg {:?} at {} with value {:?}",
-            param,
-            idx,
-            arg
-        ),
+    )?))
+}
+
+fn substitute_type_params(token: &SignatureToken, inst_args: &[SignatureToken]) -> SignatureToken {
+    match token {
+        SignatureToken::TypeParameter(idx) => inst_args
+            .get(*idx as usize)
+            .cloned()
+            .unwrap_or_else(|| token.clone()),
+        SignatureToken::Vector(inner) => {
+            SignatureToken::Vector(Box::new(substitute_type_params(inner, inst_args)))
+        }
+        SignatureToken::DatatypeInstantiation(inst) => {
+            let (handle, targs) = &**inst;
+            SignatureToken::DatatypeInstantiation(Box::new((
+                *handle,
+                targs
+                    .iter()
+                    .map(|t| substitute_type_params(t, inst_args))
+                    .collect(),
+            )))
+        }
+        other => other.clone(),
+    }
+}
+
+fn pure_type_layout(
+    package: &MovePackage,
+    view: &CompiledModule,
+    type_args: &[TypeTag],
+    param: &SignatureToken,
+) -> Result<Option<MoveTypeLayout>, anyhow::Error> {
+    if let Some(layout) = primitive_type(view, type_args, param) {
+        return Ok(Some(layout));
+    }
+    match param {
+        SignatureToken::Vector(inner) => Ok(pure_type_layout(package, view, type_args, inner)?
+            .map(|layout| MoveTypeLayout::Vector(Box::new(layout)))),
+        SignatureToken::Datatype(idx) => layout_for_struct(package, view, type_args, *idx, &[]),
+        SignatureToken::DatatypeInstantiation(inst) => {
+            let (idx, targs) = &**inst;
+            let resolved = resolve_struct(view, *idx);
+            if resolved == RESOLVED_STD_OPTION && targs.len() == 1 {
+                return Ok(pure_type_layout(package, view, type_args, &targs[0])?
+                    .map(|layout| MoveTypeLayout::Vector(Box::new(layout))));
+            }
+            layout_for_struct(package, view, type_args, *idx, targs)
+        }
+        _ => Ok(None),
+    }
+}
+
+fn layout_for_struct(
+    package: &MovePackage,
+    view: &CompiledModule,
+    type_args: &[TypeTag],
+    handle_idx: DatatypeHandleIndex,
+    inst_args: &[SignatureToken],
+) -> Result<Option<MoveTypeLayout>, anyhow::Error> {
+    let (addr, module_name, struct_name) = resolve_struct(view, handle_idx);
+    let handle = view.datatype_handle_at(handle_idx);
+    if handle.abilities.has_key() {
+        return Ok(None);
+    }
+
+    let owned;
+    let defining = if view.self_id().address() == addr && view.name() == module_name {
+        view
+    } else if package
+        .serialized_module_map()
+        .contains_key(module_name.as_str())
+    {
+        owned = package.deserialize_module_by_str(module_name.as_str(), &BinaryConfig::standard())?;
+        &owned
+    } else {
+        return Ok(None);
+    };
+
+    let struct_def = defining
+        .struct_defs()
+        .iter()
+        .find(|def| {
+            let sh = defining.datatype_handle_at(def.struct_handle);
+            defining.identifier_at(sh.name) == struct_name
+        })
+        .ok_or_else(|| {
+            anyhow!(
+                "Could not find struct {}::{} in package module {}",
+                addr,
+                struct_name,
+                module_name
+            )
+        })?;
+
+    let declared = match &struct_def.field_information {
+        StructFieldInformation::Declared(fields) => fields,
+        StructFieldInformation::Native => {
+            bail!("Cannot build Pure layout for native struct {struct_name}")
+        }
+    };
+
+    let mut fields = Vec::with_capacity(declared.len());
+    for field in declared {
+        let name = defining.identifier_at(field.name).to_owned();
+        let token = substitute_type_params(&field.signature.0, inst_args);
+        let Some(layout) = pure_type_layout(package, defining, type_args, &token)? else {
+            return Ok(None);
+        };
+        fields.push(MoveFieldLayout::new(name, layout));
+    }
+
+    let type_params = inst_args
+        .iter()
+        .map(|token| signature_token_to_type_tag(defining, type_args, token))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Some(MoveTypeLayout::Struct(Box::new(MoveStructLayout {
+        type_: StructTag {
+            address: *addr,
+            module: module_name.to_owned(),
+            name: struct_name.to_owned(),
+            type_params,
+        },
+        fields,
+    }))))
+}
+
+fn signature_token_to_type_tag(
+    view: &CompiledModule,
+    type_args: &[TypeTag],
+    token: &SignatureToken,
+) -> Result<TypeTag, anyhow::Error> {
+    Ok(match token {
+        SignatureToken::Bool => TypeTag::Bool,
+        SignatureToken::U8 => TypeTag::U8,
+        SignatureToken::U16 => TypeTag::U16,
+        SignatureToken::U32 => TypeTag::U32,
+        SignatureToken::U64 => TypeTag::U64,
+        SignatureToken::U128 => TypeTag::U128,
+        SignatureToken::U256 => TypeTag::U256,
+        SignatureToken::Address => TypeTag::Address,
+        SignatureToken::Signer => TypeTag::Signer,
+        SignatureToken::Vector(inner) => {
+            TypeTag::Vector(Box::new(signature_token_to_type_tag(view, type_args, inner)?))
+        }
+        SignatureToken::TypeParameter(idx) => type_args
+            .get(*idx as usize)
+            .cloned()
+            .ok_or_else(|| anyhow!("missing type argument {idx}"))?,
+        SignatureToken::Datatype(idx) => {
+            TypeTag::Struct(Box::new(struct_tag_from_handle(view, *idx, vec![])))
+        }
+        SignatureToken::DatatypeInstantiation(inst) => {
+            let (idx, targs) = &**inst;
+            let params = targs
+                .iter()
+                .map(|t| signature_token_to_type_tag(view, type_args, t))
+                .collect::<Result<Vec<_>, _>>()?;
+            TypeTag::Struct(Box::new(struct_tag_from_handle(view, *idx, params)))
+        }
+        SignatureToken::Reference(_) | SignatureToken::MutableReference(_) => {
+            bail!("references cannot appear in Pure type tags")
+        }
+    })
+}
+
+fn struct_tag_from_handle(
+    view: &CompiledModule,
+    handle_idx: DatatypeHandleIndex,
+    type_params: Vec<TypeTag>,
+) -> StructTag {
+    let (address, module, name) = resolve_struct(view, handle_idx);
+    StructTag {
+        address: *address,
+        module: module.to_owned(),
+        name: name.to_owned(),
+        type_params,
     }
 }
 
@@ -784,8 +965,10 @@ pub fn is_receiving_argument(view: &CompiledModule, arg_type: &SignatureToken) -
 }
 
 fn resolve_call_args(
+    package: &MovePackage,
     view: &CompiledModule,
     type_args: &[TypeTag],
+    type_param_abilities: &[AbilitySet],
     json_args: &[MySoJsonValue],
     parameter_types: &[SignatureToken],
 ) -> Result<Vec<ResolvedCallArg>, anyhow::Error> {
@@ -793,7 +976,17 @@ fn resolve_call_args(
         .iter()
         .zip(parameter_types)
         .enumerate()
-        .map(|(idx, (arg, param))| resolve_call_arg(view, type_args, idx, arg, param))
+        .map(|(idx, (arg, param))| {
+            resolve_call_arg(
+                package,
+                view,
+                type_args,
+                type_param_abilities,
+                idx,
+                arg,
+                param,
+            )
+        })
         .collect()
 }
 
@@ -840,7 +1033,14 @@ pub fn resolve_move_function_args(
         );
     }
     // Check that the args are valid and convert to the correct format
-    let call_args = resolve_call_args(&module, type_args, &combined_args_json, parameters)?;
+    let call_args = resolve_call_args(
+        package,
+        &module,
+        type_args,
+        &function_signature.type_parameters,
+        &combined_args_json,
+        parameters,
+    )?;
     let tupled_call_args = call_args
         .into_iter()
         .zip(parameters.iter())

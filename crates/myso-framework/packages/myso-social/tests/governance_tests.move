@@ -14,6 +14,7 @@ module social_contracts::governance_tests {
     use myso::coin::{Self};
     use myso::myso::MYSO;
     use myso::table::{Self, Table};
+    use social_contracts::profile::{Self, UsernameRegistry};
     
     // Test constants
     const PROPOSAL_DESCRIPTION: vector<u8> = b"This is a test proposal";
@@ -28,6 +29,32 @@ module social_contracts::governance_tests {
     const VOTE_YES: u8 = 0;
     const VOTE_NO: u8 = 1;
     const VOTE_ABSTAIN: u8 = 2;
+
+    /// Shares a `UsernameRegistry` on first use and gives `owner` a profile, which the governance
+    /// profile gate requires. Expects a shared `Clock`.
+    fun give_profile(scenario: &mut test_scenario::Scenario, owner: address, username: vector<u8>) {
+        test_scenario::next_tx(scenario, ADMIN);
+        if (!test_scenario::has_most_recent_shared<UsernameRegistry>()) {
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            profile::test_init(&clock, test_scenario::ctx(scenario));
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::next_tx(scenario, owner);
+        {
+            let mut username_registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            profile::register_username(
+                &mut username_registry,
+                string::utf8(username),
+                option::none(),
+                option::none(),
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(username_registry);
+        };
+    }
     
     /// Test creating a basic governance proposal
     #[test]
@@ -797,11 +824,15 @@ module social_contracts::governance_tests {
             object::delete(platform_uid);
         };
 
+        give_profile(&mut scenario, USER1, b"voteruser1");
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let ctx = test_scenario::ctx(&mut scenario);
-            governance::vote_for_delegate(&mut registry, ADMIN, true, ctx);
+            governance::vote_for_delegate(&mut registry, &username_registry, ADMIN, true, ctx);
+            test_scenario::return_shared(username_registry);
             test_scenario::return_shared(registry);
         };
 
@@ -870,11 +901,15 @@ module social_contracts::governance_tests {
             object::delete(platform_uid);
         };
 
+        give_profile(&mut scenario, USER1, b"voteruser1");
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let ctx = test_scenario::ctx(&mut scenario);
-            governance::vote_for_delegate(&mut registry, ADMIN, false, ctx);
+            governance::vote_for_delegate(&mut registry, &username_registry, ADMIN, false, ctx);
+            test_scenario::return_shared(username_registry);
             test_scenario::return_shared(registry);
         };
 
@@ -984,11 +1019,15 @@ module social_contracts::governance_tests {
 
         test_scenario::skip_to_epoch(&mut scenario, 5);
 
+        give_profile(&mut scenario, USER1, b"voteruser1");
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let ctx = test_scenario::ctx(&mut scenario);
-            governance::vote_for_delegate(&mut registry, ADMIN, true, ctx);
+            governance::vote_for_delegate(&mut registry, &username_registry, ADMIN, true, ctx);
+            test_scenario::return_shared(username_registry);
             test_scenario::return_shared(registry);
         };
 
@@ -1042,11 +1081,15 @@ module social_contracts::governance_tests {
 
         test_scenario::skip_to_epoch(&mut scenario, 3);
 
+        give_profile(&mut scenario, USER1, b"voteruser1");
+
         test_scenario::next_tx(&mut scenario, USER1);
         {
             let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&mut scenario);
+            let username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
             let ctx = test_scenario::ctx(&mut scenario);
-            governance::vote_for_delegate(&mut registry, ADMIN, true, ctx);
+            governance::vote_for_delegate(&mut registry, &username_registry, ADMIN, true, ctx);
+            test_scenario::return_shared(username_registry);
             test_scenario::return_shared(registry);
         };
 
@@ -1232,6 +1275,100 @@ module social_contracts::governance_tests {
             test_scenario::return_shared(reg_c);
         };
 
+        test_scenario::end(scenario);
+    }
+
+    /// Shares a clock and one platform `GovernanceDAO` whose founding delegate is ADMIN.
+    fun setup_platform_dao(scenario: &mut test_scenario::Scenario) {
+        use social_contracts::governance;
+
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let c = clock::create_for_testing(test_scenario::ctx(scenario));
+            clock::share_for_testing(c);
+        };
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            let _registry_id = governance::create_platform_governance(
+                7, 30, 50000000, 5, 5000000, 3, 15, &clock, test_scenario::ctx(scenario)
+            );
+            test_scenario::return_shared(clock);
+        };
+    }
+
+    fun nominate(scenario: &mut test_scenario::Scenario, nominee: address) {
+        use social_contracts::governance;
+
+        test_scenario::next_tx(scenario, nominee);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(scenario);
+            let username_registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            governance::nominate_delegate(&mut registry, &username_registry, test_scenario::ctx(scenario));
+            test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(registry);
+        };
+    }
+
+    #[test]
+    fun test_profile_owner_can_nominate_and_be_rated() {
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+        setup_platform_dao(&mut scenario);
+        give_profile(&mut scenario, USER1, b"nomineeuser1");
+        give_profile(&mut scenario, USER2, b"voteruser2");
+        nominate(&mut scenario, USER1);
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&scenario);
+            let username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            governance::vote_for_delegate(
+                &mut registry,
+                &username_registry,
+                USER1,
+                true,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(registry);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = social_contracts::governance::EProfileRequired)]
+    fun test_nominate_without_profile_aborts() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        setup_platform_dao(&mut scenario);
+        // Shares the UsernameRegistry without giving USER1 a profile.
+        give_profile(&mut scenario, USER2, b"otheruser2");
+        nominate(&mut scenario, USER1);
+        test_scenario::end(scenario);
+    }
+
+    #[test, expected_failure(abort_code = social_contracts::governance::EProfileRequired)]
+    fun test_rate_delegate_without_profile_aborts() {
+        use social_contracts::governance;
+
+        let mut scenario = test_scenario::begin(ADMIN);
+        setup_platform_dao(&mut scenario);
+        give_profile(&mut scenario, USER2, b"otheruser2");
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<governance::GovernanceDAO>(&scenario);
+            let username_registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            governance::vote_for_delegate(
+                &mut registry,
+                &username_registry,
+                ADMIN,
+                true,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(registry);
+        };
         test_scenario::end(scenario);
     }
 }

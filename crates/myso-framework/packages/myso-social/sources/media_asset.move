@@ -179,6 +179,11 @@ module social_contracts::media_asset {
     public fun claim_type_license_authority(): u8 { 4 }
     public fun claim_type_beneficiary(): u8 { 5 }
 
+    public fun rights_target_kind_wallet(): u8 { 0 }
+    public fun rights_target_kind_vault(): u8 { 1 }
+    public fun rights_target_kind_onchain_username(): u8 { 2 }
+    public fun rights_target_kind_offchain(): u8 { 3 }
+
     // === Claim verification status ===
     public fun claim_unverified(): u8 { 0 }
     public fun claim_asserted(): u8 { 1 }
@@ -423,11 +428,29 @@ module social_contracts::media_asset {
         timestamp: u64,
     }
 
+    /// Bound at dispute submit. Kind 0 stores `beneficiary_address = @0x0` because the legacy
+    /// submit ABI only carries the commitment; implement rebuilds the wallet target from claims.
+    public struct RightsResolutionTarget has store, copy, drop {
+        target_kind: u8,
+        beneficiary_address: address,
+        vault_id: Option<address>,
+        username: Option<String>,
+        identity_source: Option<u8>,
+        identity_hash: Option<vector<u8>>,
+    }
+
+    public struct RightsResolutionBundle has copy, drop {
+        claims: vector<Claim>,
+        usage_grants: vector<UsageGrant>,
+        target: RightsResolutionTarget,
+    }
+
     public struct MediaAssetRightsDisputeState has store, drop {
         active_proposal_id: Option<ID>,
         rights_disputes_submitted: u8,
         pending_claims_commitment: Option<vector<u8>>,
         claims_snapshot: vector<Claim>,
+        target: RightsResolutionTarget,
     }
 
     public struct ClaimsBundle has copy, drop {
@@ -1366,11 +1389,54 @@ module social_contracts::media_asset {
         assert!(option::is_none(&state.active_proposal_id), EActiveRightsProposal);
     }
 
+    public(package) fun new_rights_target(
+        target_kind: u8,
+        beneficiary_address: address,
+        vault_id: Option<address>,
+        username: Option<String>,
+        identity_source: Option<u8>,
+        identity_hash: Option<vector<u8>>,
+    ): RightsResolutionTarget {
+        RightsResolutionTarget {
+            target_kind,
+            beneficiary_address,
+            vault_id,
+            username,
+            identity_source,
+            identity_hash,
+        }
+    }
+
+    public(package) fun rights_target_kind(target: &RightsResolutionTarget): u8 { target.target_kind }
+    public(package) fun rights_target_beneficiary(target: &RightsResolutionTarget): address { target.beneficiary_address }
+    public(package) fun rights_target_vault_id(target: &RightsResolutionTarget): Option<address> { target.vault_id }
+    public(package) fun rights_target_username(target: &RightsResolutionTarget): Option<String> { target.username }
+    public(package) fun rights_target_identity_source(target: &RightsResolutionTarget): Option<u8> { target.identity_source }
+    public(package) fun rights_target_identity_hash(target: &RightsResolutionTarget): Option<vector<u8>> { target.identity_hash }
+
+    /// Every verified claim feeds `can_update_economics`. All claimants must be this address.
+    public(package) fun sole_economics_beneficiary(claims: &vector<Claim>): address {
+        let len = vector::length(claims);
+        assert!(len > 0, EInvalidClaim);
+        let expected = vector::borrow(claims, 0).claimant;
+        let mut i = 1;
+        while (i < len) {
+            assert!(vector::borrow(claims, i).claimant == expected, EInvalidClaim);
+            i = i + 1;
+        };
+        expected
+    }
+
+    public(package) fun assert_economics_claimants_bound(claims: &vector<Claim>, beneficiary: address) {
+        assert!(sole_economics_beneficiary(claims) == beneficiary, EInvalidClaim);
+    }
+
     public(package) fun link_rights_proposal(
         asset: &mut MediaAsset,
         proposal_id: ID,
         claims_commitment: vector<u8>,
         max_disputes: u8,
+        target: RightsResolutionTarget,
     ) {
         assert!(asset.rights_version >= 1, EUnauthorized);
         assert_no_active_rights_proposal(asset);
@@ -1389,6 +1455,7 @@ module social_contracts::media_asset {
                     rights_disputes_submitted: submitted + 1,
                     pending_claims_commitment: option::some(claims_commitment),
                     claims_snapshot: snapshot,
+                    target,
                 },
             );
         } else {
@@ -1397,6 +1464,7 @@ module social_contracts::media_asset {
             state.rights_disputes_submitted = submitted + 1;
             state.pending_claims_commitment = option::some(claims_commitment);
             state.claims_snapshot = snapshot;
+            state.target = target;
         };
     }
 
@@ -1427,6 +1495,10 @@ module social_contracts::media_asset {
         *option::borrow(&state.pending_claims_commitment)
     }
 
+    public(package) fun pending_rights_target(asset: &MediaAsset): RightsResolutionTarget {
+        borrow_rights_dispute_state(asset).target
+    }
+
     public(package) fun assert_registered_asset(asset: &MediaAsset) {
         assert!(asset.rights_version >= 1, EUnauthorized);
     }
@@ -1437,6 +1509,41 @@ module social_contracts::media_asset {
     ): vector<u8> {
         let bundle = ClaimsBundle { claims: *claims, usage_grants: *usage_grants };
         hash::sha3_256(std::bcs::to_bytes(&bundle))
+    }
+
+    public(package) fun compute_rights_resolution_commitment(
+        claims: &vector<Claim>,
+        usage_grants: &vector<UsageGrant>,
+        target: &RightsResolutionTarget,
+    ): vector<u8> {
+        let bundle = RightsResolutionBundle {
+            claims: *claims,
+            usage_grants: *usage_grants,
+            target: *target,
+        };
+        hash::sha3_256(std::bcs::to_bytes(&bundle))
+    }
+
+    /// Oracle-only: point 100% of asset economics at `beneficiary` after a DAO rights resolution.
+    public(package) fun oracle_set_sole_beneficiary_split(
+        oracle_address: address,
+        asset: &mut MediaAsset,
+        beneficiary: address,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_oracle(oracle_address, ctx);
+        assert_media_asset_version(asset);
+        let splits = vector[BeneficiarySplit { beneficiary, share_bps: MANIFEST_BPS_TOTAL }];
+        assert_beneficiary_splits_sum_to_total(&splits);
+        asset.beneficiaries = beneficiaries_from_splits(&splits);
+        asset.beneficiary_splits = splits;
+        asset.economics_version = asset.economics_version + 1;
+        event::emit(MediaAssetEconomicsUpdatedEvent {
+            media_asset_id: object::id(asset),
+            economics_version: asset.economics_version,
+            timestamp: clock::timestamp_ms(clock),
+        });
     }
 
     /// Rights controller, license authority, verified beneficiary, or creator: update economics.
@@ -2883,7 +2990,16 @@ module social_contracts::media_asset {
         claims: &vector<Claim>,
         usage_grants: &vector<UsageGrant>,
     ): vector<u8> {
-        compute_claims_bundle_commitment(claims, usage_grants)
+        let beneficiary = sole_economics_beneficiary(claims);
+        let target = new_rights_target(
+            rights_target_kind_wallet(),
+            beneficiary,
+            option::none(),
+            option::none(),
+            option::none(),
+            option::none(),
+        );
+        compute_rights_resolution_commitment(claims, usage_grants, &target)
     }
 
     #[test_only]

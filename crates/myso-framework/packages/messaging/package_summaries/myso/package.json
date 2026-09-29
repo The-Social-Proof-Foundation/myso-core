@@ -46,7 +46,7 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "_bootstrap_key",
+          "name": "key",
           "type_": {
             "Reference": [
               false,

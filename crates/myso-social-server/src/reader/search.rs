@@ -125,7 +125,8 @@ async fn search_profiles_with_conn(
     let exact_sql = r#"
         SELECT id
         FROM profiles
-        WHERE owner_address = $1 OR lower(username) = lower($1)
+        WHERE (owner_address = $1 OR lower(username) = lower($1))
+          AND deleted_at IS NULL
         LIMIT $2
     "#;
     let exact_ids: Vec<IdRow> = diesel::sql_query(exact_sql)
@@ -150,10 +151,13 @@ async fn search_profiles_with_conn(
     let like_sql = r#"
         SELECT id
         FROM profiles
-        WHERE owner_address ILIKE $1 ESCAPE '\'
-           OR coalesce(username, '') ILIKE $1 ESCAPE '\'
-           OR coalesce(display_name, '') ILIKE $1 ESCAPE '\'
-           OR coalesce(bio, '') ILIKE $1 ESCAPE '\'
+        WHERE deleted_at IS NULL
+          AND (
+            owner_address ILIKE $1 ESCAPE '\'
+            OR coalesce(username, '') ILIKE $1 ESCAPE '\'
+            OR coalesce(display_name, '') ILIKE $1 ESCAPE '\'
+            OR coalesce(bio, '') ILIKE $1 ESCAPE '\'
+          )
         ORDER BY username ASC NULLS LAST
         LIMIT $2
     "#;

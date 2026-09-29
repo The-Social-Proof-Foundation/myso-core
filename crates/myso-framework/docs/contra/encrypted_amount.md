@@ -217,7 +217,7 @@ Bulletproof construction version. <code>0</code> is the original Bulletproofs co
 <code><a href="../myso/rangeproofs.md#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255">myso::rangeproofs::verify_bulletproofs_with_dst_ristretto255</a></code>.
 
 
-<pre><code><b>const</b> <a href="../contra/encrypted_amount.md#contra_encrypted_amount_BULLETPROOFS_VERSION">BULLETPROOFS_VERSION</a>: u8 = 0;
+<pre><code><b>const</b> <a href="../contra/encrypted_amount.md#contra_encrypted_amount_BULLETPROOFS_VERSION">BULLETPROOFS_VERSION</a>: u8 = 1;
 </code></pre>
 
 

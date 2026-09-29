@@ -35,7 +35,8 @@
 #
 # No flags opens an arrow-key start menu (↑/↓, numbers, q). Flags skip the menu.
 #
-# MYSO/MYUSD localnet mid is live from MYSO HTTP oracle + Pyth (no static seed by default).
+# A MYSO/MYUSD-only MM run posts dripdrop MYSO + $1 MYUSD and does not call Hermes.
+# BTC, ETH, and all-pool runs still use live Pyth. No static seed by default.
 # MYSO/MYUSD MM defaults: tick 1, 30 levels/side, 100 MYSO + 1000 MYUSD deposits (override via MM_MYSO_MYUSD_* / TICK_SIZE_MYSO).
 # ORDERBOOK_ORACLE_SEED_STATIC=1 + MM_ALLOW_FALLBACK=1 = offline fake prices only.
 # ORDERBOOK_MYSO_RESEED=1 (default) cancels leftover MYSO/MYUSD book orders before MM start.
@@ -325,6 +326,58 @@ run_mm_only() {
     orderbook_run_mm_stack "$SKIP_ORACLE" 0 || return 1
 }
 
+orderbook_apply_myso_bid_depth() {
+    local levels="$1"
+    levels="$(orderbook_myso_posted_levels "$levels")"
+    MM_MYSO_MYUSD_LEVELS_PER_SIDE="$levels"
+    if [[ "${MM_MYUSD_HAVE_RAW:-}" =~ ^[0-9]+$ && "$MM_MYUSD_HAVE_RAW" -gt 0 ]]; then
+        MM_MYSO_MYUSD_QUOTE_DEPOSIT="$MM_MYUSD_HAVE_RAW"
+    fi
+    if [[ "${MM_MYSO_HAVE_RAW:-}" =~ ^[0-9]+$ && "$MM_MYSO_HAVE_RAW" -gt 0 ]]; then
+        MM_MYSO_MYUSD_BASE_DEPOSIT="$MM_MYSO_HAVE_RAW"
+    fi
+    export MM_MYSO_MYUSD_LEVELS_PER_SIDE MM_MYSO_MYUSD_QUOTE_DEPOSIT \
+        MM_MYSO_MYUSD_BASE_DEPOSIT
+}
+
+orderbook_prompt_myso_bid_depth() {
+    local have="" choice levels custom
+    orderbook_load_session || true
+    if ! have="$(orderbook_current_myusd_raw)"; then
+        have=""
+    fi
+    MM_MYUSD_HAVE_RAW="$have"
+    if ! MM_MYSO_HAVE_RAW="$(orderbook_current_myso_raw)"; then
+        MM_MYSO_HAVE_RAW=""
+    fi
+    orderbook_fetch_myso_usd_price_1e8
+    export MM_MYSO_USD_PRICE_1E8
+    log_step "MYSO price $(orderbook_format_myso_usd_price "$MM_MYSO_USD_PRICE_1E8") (${MM_MYSO_USD_PRICE_SOURCE:-default})"
+    while true; do
+        INTERACTIVE_SELECT_RESULT=
+        if ! interactive_select INTERACTIVE_SELECT_RESULT "MYSO/MYUSD bids per side" \
+            "30|30 each side|$(orderbook_myso_depth_title 30 "$have")" \
+            "60|60 each side|$(orderbook_myso_depth_title 60 "$have")" \
+            "90|90 each side|$(orderbook_myso_depth_title 90 "$have")" \
+            "custom|Custom amount|Custom level count · largest size at the nearest price"; then
+            return 1
+        fi
+        choice="$INTERACTIVE_SELECT_RESULT"
+        if [[ "$choice" == custom ]]; then
+            read -r -p "Bids per side: " custom || return 1
+            if [[ ! "$custom" =~ ^[1-9][0-9]*$ ]] || [[ "$custom" -gt 500 ]]; then
+                echo "Enter a whole number from 1 to 500." >&2
+                continue
+            fi
+            levels="$custom"
+        else
+            levels="$choice"
+        fi
+        orderbook_apply_myso_bid_depth "$levels"
+        return 0
+    done
+}
+
 run_menu_action() {
     local action="$1"
     case "$action" in
@@ -389,6 +442,13 @@ show_start_menu() {
         case "$choice" in
             quit|'')
                 return 0
+                ;;
+            mm_myso)
+                echo "" >&2
+                if ! orderbook_prompt_myso_bid_depth; then
+                    echo "" >&2
+                    continue
+                fi
                 ;;
         esac
         echo "" >&2

@@ -48,7 +48,7 @@ use crate::api::types::insurance::{
     InsuranceCoverageRoute, InsuranceModuleEvent, InsurancePolicy, InsuranceRouteFill,
     InsuranceVault,
 };
-use crate::api::types::media_asset::MediaAsset;
+use crate::api::types::media_asset::{MediaAsset, MediaAssetRightsProposalLink};
 use crate::api::types::messaging::{MessagingAgentGroup, PaidMessageEscrow};
 use crate::api::types::move_object::MoveObject;
 use crate::api::types::move_package;
@@ -118,6 +118,15 @@ use crate::pagination::Page;
 use crate::pagination::PaginationConfig;
 use crate::scope::Scope;
 use crate::task::chain_identifier::ChainIdentifier;
+
+fn normalize_identity_hash(raw: &str) -> String {
+    let trimmed = raw.trim();
+    let hex = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+        .unwrap_or(trimmed);
+    format!("0x{}", hex.to_ascii_lowercase())
+}
 
 #[derive(Default)]
 pub struct Query {
@@ -362,6 +371,27 @@ impl Query {
                 .map_err(Into::into)
                 .map(|opt| opt.map(MediaAsset::from_row)),
         )
+    }
+
+    /// Rights dispute link for one proposal, including the committed beneficiary target.
+    async fn media_asset_rights_proposal(
+        &self,
+        ctx: &Context<'_>,
+        proposal_id: async_graphql::ID,
+    ) -> Option<Result<Option<MediaAssetRightsProposalLink>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        match reader
+            .get_latest_governance_link_for_proposal(proposal_id.as_str())
+            .await
+        {
+            Ok(None) => Some(Ok(None)),
+            Ok(Some(link)) => {
+                Some(Ok(MediaAssetRightsProposalLink::from_row(reader, link).await))
+            }
+            Err(e) => Some(Err(e.into())),
+        }
     }
 
     /// List governance proposals linked to a media asset rights dispute.
@@ -2332,6 +2362,26 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(PocBeneficiaryVault::from_row)),
+        )
+    }
+
+    /// PoC username beneficiary provision by off-chain identity.
+    async fn poc_username_beneficiary_by_identity(
+        &self,
+        ctx: &Context<'_>,
+        identity_source: i16,
+        identity_hash: String,
+    ) -> Option<Result<Option<PocUsernameBeneficiary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let hash = normalize_identity_hash(&identity_hash);
+        Some(
+            reader
+                .get_poc_username_beneficiary_by_identity(identity_source, &hash)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(PocUsernameBeneficiary::from_row)),
         )
     }
 

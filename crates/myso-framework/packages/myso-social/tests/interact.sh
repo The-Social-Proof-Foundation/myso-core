@@ -1408,14 +1408,16 @@ gov_rescind() {
 
 gov_community_vote() {
     print_header "governance::community_vote_on_proposal"
-    print_info "proposal must be in STATUS_COMMUNITY_VOTING; coin pays quadratic vote cost when vote_count is greater than 1"
+    print_info "proposal must be in STATUS_COMMUNITY_VOTING; the sender must own a profile; coin pays quadratic vote cost when vote_count is greater than 1"
     read -r -p "GovernanceDAO registry ID: " rid
+    read -r -p "UsernameRegistry [${USERNAME_REGISTRY_ID:-}]: " ur
+    ur="${ur:-$USERNAME_REGISTRY_ID}"
     read -r -p "Proposal shared object ID: " pid
     read -r -p "vote_count (u64, typically 1+): " vc
     read -r -p "approve true or false: " ap
     read -r -p "MYSO Coin object ID for quadratic vote fees: " coin_id
     myso client call --package "$PACKAGE_ID" --module governance --function community_vote_on_proposal \
-        --args "@${rid}" "@${pid}" "$vc" "$ap" "@${coin_id}" "$CLOCK_ID" \
+        --args "@${rid}" "@${ur}" "@${pid}" "$vc" "$ap" "@${coin_id}" "$CLOCK_ID" \
         --gas-budget "$GAS_BUDGET"
     print_success "Submitted."
     press_enter

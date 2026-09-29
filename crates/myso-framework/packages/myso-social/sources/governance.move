@@ -35,7 +35,7 @@ module social_contracts::governance {
 
     use mydata::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
     
-    use social_contracts::profile::{Self as profile, EcosystemTreasury};
+    use social_contracts::profile::{Self as profile, EcosystemTreasury, UsernameRegistry};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     /// Error codes
@@ -59,6 +59,8 @@ module social_contracts::governance {
     const EOverflow: u64 = 19;
     const ENoExistingVote: u64 = 20;
     const EWrongRegistryForTreasuryRoute: u64 = 21;
+    const EUsePlatformVoteEntry: u64 = 22;
+    const EProfileRequired: u64 = 23;
 
     /// Forfeiture reason (indexer) — same values as old refund reason codes.
     const FORFEIT_REASON_QUORUM_NOT_MET: u8 = 0;
@@ -563,6 +565,10 @@ module social_contracts::governance {
         });
     }
 
+    fun assert_has_profile(username_registry: &UsernameRegistry, addr: address) {
+        assert!(option::is_some(&profile::lookup_profile_by_owner(username_registry, addr)), EProfileRequired);
+    }
+
     fun initialize_registry_tables(registry: &mut GovernanceDAO, _ctx: &mut TxContext) {
         table::add(&mut registry.proposals_by_status, STATUS_SUBMITTED, vector::empty<ID>());
         table::add(&mut registry.proposals_by_status, STATUS_DELEGATE_REVIEW, vector::empty<ID>());
@@ -694,16 +700,17 @@ module social_contracts::governance {
         );
     }
 
-    /// Nominate self as a delegate
-    /// Uses wallet-level architecture - no profile required
+    /// Nominate self as a delegate. The sender must own a profile.
     public entry fun nominate_delegate(
         registry: &mut GovernanceDAO,
+        username_registry: &UsernameRegistry,
         ctx: &mut TxContext
     ) {
         // Check version compatibility
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
         let caller = tx_context::sender(ctx);
+        assert_has_profile(username_registry, caller);
         let current_epoch = tx_context::epoch(ctx);
         
         // Check if already a delegate or nominee delegate
@@ -735,9 +742,10 @@ module social_contracts::governance {
 
     /// Vote for or against a delegate or nominee delegate
     /// Positive votes support the delegate, negative votes express disapproval
-    /// Users can change their vote at any time
+    /// Users can change their vote at any time. The sender must own a profile.
     public entry fun vote_for_delegate(
         registry: &mut GovernanceDAO,
+        username_registry: &UsernameRegistry,
         target_address: address,
         upvote: bool,
         ctx: &mut TxContext
@@ -746,6 +754,7 @@ module social_contracts::governance {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
         let caller = tx_context::sender(ctx);
+        assert_has_profile(username_registry, caller);
         
         // Don't allow self-voting
         assert!(caller != target_address, EUnauthorized);
@@ -1591,9 +1600,27 @@ module social_contracts::governance {
     }
 
     /// Community vote on a proposal with quadratic voting
-    /// Users can cast multiple votes by paying a quadratically increasing cost
+    /// Users can cast multiple votes by paying a quadratically increasing cost. The sender must own a profile.
+    /// Platform registries must use `platform::community_vote_on_platform_governance_proposal`.
     public entry fun community_vote_on_proposal(
         registry: &mut GovernanceDAO,
+        username_registry: &UsernameRegistry,
+        proposal: &mut Proposal,
+        vote_count: u64,
+        approve: bool,
+        coin: &mut Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(registry.registry_type != PROPOSAL_TYPE_PLATFORM, EUsePlatformVoteEntry);
+        community_vote_internal(registry, username_registry, proposal, vote_count, approve, coin, clock, ctx)
+    }
+
+    /// Enforces the profile requirement; callers must enforce any registry-specific voter
+    /// eligibility (platform membership / blocks).
+    public(package) fun community_vote_internal(
+        registry: &GovernanceDAO,
+        username_registry: &UsernameRegistry,
         proposal: &mut Proposal,
         vote_count: u64,
         approve: bool,
@@ -1605,6 +1632,7 @@ module social_contracts::governance {
         assert!(registry.version == upgrade::current_version(), EWrongVersion);
         
         let caller = tx_context::sender(ctx);
+        assert_has_profile(username_registry, caller);
         let current_time_ms = clock::timestamp_ms(clock);
         let proposal_id = object::id(proposal);
         
@@ -1662,15 +1690,33 @@ module social_contracts::governance {
         });
     }
 
-    /// Submit an anonymous encrypted vote on a proposal
+    /// Submit an anonymous encrypted vote on a proposal. The sender must own a profile.
+    /// Platform registries must use `platform::community_vote_anonymous_on_platform_governance_proposal`.
     public fun community_vote_anonymous(
         registry: &mut GovernanceDAO,
+        username_registry: &UsernameRegistry,
         proposal: &mut Proposal,
         encrypted_vote: EncryptedObject,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        assert!(registry.registry_type != PROPOSAL_TYPE_PLATFORM, EUsePlatformVoteEntry);
+        community_vote_anonymous_internal(registry, username_registry, proposal, encrypted_vote, clock, ctx)
+    }
+
+    /// Enforces the profile requirement; callers must enforce any registry-specific voter
+    /// eligibility (platform membership / blocks).
+    public(package) fun community_vote_anonymous_internal(
+        registry: &GovernanceDAO,
+        username_registry: &UsernameRegistry,
+        proposal: &mut Proposal,
+        encrypted_vote: EncryptedObject,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
         let caller = tx_context::sender(ctx);
+        assert_has_profile(username_registry, caller);
         let current_time_ms = clock::timestamp_ms(clock);
         let proposal_id = object::id(proposal);
 

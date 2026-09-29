@@ -288,6 +288,11 @@ orderbook_print_runtime_endpoints() {
     echo "" >&2
 }
 
+# MYSO/MYUSD-only runs do not need Hermes. BTC, ETH, and all-pool runs do.
+orderbook_mm_is_myso_only() {
+    [[ "$(orderbook_normalize_mm_pool_filter "${MM_POOL_FILTER:-}")" == MYSO_MYUSD ]]
+}
+
 orderbook_mm_supervisor_run() {
     local skip_oracle="${1:-0}" run_test="${2:-0}" background="${ORDERBOOK_MM_BACKGROUND:-0}"
     SUPERVISOR_SHUTDOWN=0
@@ -305,22 +310,36 @@ orderbook_mm_supervisor_run() {
         if [[ "${ORDERBOOK_ORACLE_SEED_STATIC:-0}" == 1 ]]; then
             orderbook_seed_oracle_prices || return 1
         else
-            orderbook_load_pyth_api_key || return 1
+            if orderbook_mm_is_myso_only; then
+                log_step "MYSO/MYUSD only — not calling Pyth"
+            else
+                orderbook_load_pyth_api_key || return 1
+            fi
             # Cancel leftover grids before oracle+MM share the deployer gas coin.
             orderbook_clear_stale_mm_book_orders || true
             sleep 1
         fi
-        log_step "Starting oracle-service (background, live HTTP updates)"
+        if orderbook_mm_is_myso_only; then
+            log_step "Starting oracle-service without Pyth (MYSO dripdrop + \$1 MYUSD)"
+        else
+            log_step "Starting oracle-service (background, live HTTP updates)"
+        fi
         (
             cd "$ORDERBOOK_SANDBOX_DIR"
+            if orderbook_mm_is_myso_only; then
+                unset PYTH_API_KEY
+            fi
             export PYTH_PACKAGE_ID MYUSD_PRICE_INFO_OBJECT_ID MYSO_PRICE_INFO_OBJECT_ID \
                 BTC_PRICE_INFO_OBJECT_ID ETH_PRICE_INFO_OBJECT_ID ORACLE_PRIVATE_KEY \
             ORACLE_STATUS_PORT \
             ORDERBOOK_ORACLE_HTTP_UPDATES="${ORDERBOOK_ORACLE_HTTP_UPDATES:-1}" \
             ORACLE_UPDATE_INTERVAL_MS="${ORACLE_UPDATE_INTERVAL_MS:-15000}" \
-            PYTH_API_KEY \
+            MM_POOL_FILTER="${MM_POOL_FILTER:-}" \
                 MYSO_ORACLE_SOURCE_URL="${MYSO_ORACLE_SOURCE_URL:-}" \
                 RPC_URL="${RPC_URL:-http://127.0.0.1:9000}"
+            if ! orderbook_mm_is_myso_only; then
+                export PYTH_API_KEY
+            fi
             exec pnpm exec tsx scripts/oracle-service/index.ts
         ) &
         ORACLE_PID=$!

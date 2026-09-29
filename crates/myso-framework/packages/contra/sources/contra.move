@@ -97,6 +97,8 @@ const ETooManyReceivers: u64 = 9;
 /// Recovery: transfer or update active balance.
 const EBalancesFull: u64 = 10;
 const EIdentityPublicKey: u64 = 11;
+/// Sender is not @0x0 the system address.
+const ENotSystemAddress: u64 = 12;
 
 // === Constants ===
 
@@ -202,12 +204,15 @@ public struct ManagementCap<phantom T> has key, store { id: UID }
 
 // === Init ===
 
-/// On initialization, we create and share the `AccountRegistry` and `TokenRegistry` objects.
-fun init(ctx: &mut TxContext) {
-    let account_registry = AccountRegistry { id: object::new(ctx) };
-    let token_registry = TokenRegistry { id: object::new(ctx) };
-    transfer::share_object(account_registry);
-    transfer::share_object(token_registry);
+/// Registries are shared from genesis via `create_registries`, not package init.
+fun init(_ctx: &mut TxContext) {}
+
+/// Create and share `AccountRegistry` and `TokenRegistry`. Called once from genesis.
+/// A normal user transaction aborts because the sender is not `@0x0`.
+public fun create_registries(ctx: &mut TxContext) {
+    assert!(ctx.sender() == @0x0, ENotSystemAddress);
+    transfer::share_object(AccountRegistry { id: object::new(ctx) });
+    transfer::share_object(TokenRegistry { id: object::new(ctx) });
 }
 
 // === Authorization ===

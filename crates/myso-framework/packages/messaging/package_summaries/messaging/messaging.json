@@ -2658,9 +2658,248 @@
       ],
       "return_": []
     },
-    "send_paid_message_digest": {
+    "send_agent_message_digest": {
       "source_index": 19,
       "index": 19,
+      "doc": " Send a free encrypted message pointer as an authorized sub-agent. Message\n ciphertext stays in the off-chain messaging store; only its digest and URI\n are committed on-chain.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "version",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "version"
+                  },
+                  "name": "Version",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "messaging_config"
+                  },
+                  "name": "MessagingConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "messaging",
+                            "name": "messaging"
+                          },
+                          "name": "Messaging",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "log",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "memory_account",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "type_": "address"
+        },
+        {
+          "name": "content_digest",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "content_uri",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "dedupe_key",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "nonce",
+          "type_": "u128"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "send_paid_message_digest": {
+      "source_index": 20,
+      "index": 20,
       "doc": " Escrow `escrow_amount` from `payment` for a paid message. Requires `MessagingSender`.\n Excess coin returns to the sender.",
       "attributes": [],
       "visibility": "Public",
@@ -2910,8 +3149,8 @@
       "return_": []
     },
     "send_agent_paid_message_digest": {
-      "source_index": 20,
-      "index": 20,
+      "source_index": 21,
+      "index": 21,
       "doc": " Agent variant of [`send_paid_message_digest`]. Resolves the sub-agent actor and\n evaluates paid-DM / social-graph rules against the human `principal_owner`.",
       "attributes": [],
       "visibility": "Public",
@@ -3215,8 +3454,8 @@
       "return_": []
     },
     "reply_to_paid_message_claim_coin": {
-      "source_index": 21,
-      "index": 21,
+      "source_index": 22,
+      "index": 22,
       "doc": " Reply to a paid message and take full escrow as coin. Caller may split fees (e.g. via\n [`reply_to_paid_message_claim_settled`]) or use this entry for custom routing.",
       "attributes": [],
       "visibility": "Public",
@@ -3410,8 +3649,8 @@
       ]
     },
     "reply_to_paid_message_claim_settled": {
-      "source_index": 22,
-      "index": 22,
+      "source_index": 23,
+      "index": 23,
       "doc": " Reply and settle: same validation as [`reply_to_paid_message_claim_coin`], then split escrow per\n paid-message BPS to `platform_fee_recipient` and the ecosystem treasury address from\n `ecosystem_treasury` (via [`profile::get_treasury_address`]), with net to the paid-message recipient.",
       "attributes": [],
       "visibility": "Public",
@@ -3601,9 +3840,215 @@
       ],
       "return_": []
     },
+    "reply_to_paid_message_claim_settled_with_platform": {
+      "source_index": 24,
+      "index": 24,
+      "doc": " Reply and settle with platform treasury: platform fee is deposited into `Platform.treasury`.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "version",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "version"
+                  },
+                  "name": "Version",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "messaging_config"
+                  },
+                  "name": "MessagingConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "messaging",
+                            "name": "messaging"
+                          },
+                          "name": "Messaging",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "log",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "messaging",
+                    "name": "message_log"
+                  },
+                  "name": "MessageLog",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "paid_msg_seq",
+          "type_": "u64"
+        },
+        {
+          "name": "char_count",
+          "type_": "u32"
+        },
+        {
+          "name": "dedupe_key",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "nonce",
+          "type_": "u128"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ecosystem_treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "refund_paid_escrow": {
-      "source_index": 23,
-      "index": 23,
+      "source_index": 25,
+      "index": 25,
       "doc": " Refund expired paid escrow to the payer. Requires `MessagingSender` (payer must be a member).",
       "attributes": [],
       "visibility": "Public",
@@ -3758,8 +4203,8 @@
       "return_": []
     },
     "grant_all_messaging_permissions": {
-      "source_index": 24,
-      "index": 24,
+      "source_index": 26,
+      "index": 26,
       "doc": " Grants all messaging permissions to a member.\n `MessagingDeleter`, `EncryptionKeyRotator`, `GroupHandleAdmin`, `MetadataAdmin`.",
       "attributes": [],
       "visibility": "Private",
@@ -3824,8 +4269,8 @@
       "return_": []
     },
     "grant_agent_messaging_permissions": {
-      "source_index": 25,
-      "index": 25,
+      "source_index": 27,
+      "index": 27,
       "doc": " Messaging permissions for sub-agent creators and agent peers (no admin caps).",
       "attributes": [],
       "visibility": "Private",
@@ -3890,8 +4335,8 @@
       "return_": []
     },
     "grant_principal_oversight": {
-      "source_index": 26,
-      "index": 26,
+      "source_index": 28,
+      "index": 28,
       "doc": " Principal human oversight: read-only membership plus group admin control.",
       "attributes": [],
       "visibility": "Private",
@@ -3956,8 +4401,8 @@
       "return_": []
     },
     "grant_human_peer_permissions": {
-      "source_index": 27,
-      "index": 27,
+      "source_index": 29,
+      "index": 29,
       "doc": " Default permissions for human peers joining an agent-created group.",
       "attributes": [],
       "visibility": "Private",
@@ -4022,8 +4467,8 @@
       "return_": []
     },
     "assert_human_group_creator": {
-      "source_index": 28,
-      "index": 28,
+      "source_index": 30,
+      "index": 30,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4070,8 +4515,8 @@
       "return_": []
     },
     "resolve_messaging_actor": {
-      "source_index": 29,
-      "index": 29,
+      "source_index": 31,
+      "index": 31,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4209,8 +4654,8 @@
       ]
     },
     "attach_agent_creator_metadata": {
-      "source_index": 30,
-      "index": 30,
+      "source_index": 32,
+      "index": 32,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4289,8 +4734,8 @@
       "return_": []
     },
     "grant_agent_initial_members": {
-      "source_index": 31,
-      "index": 31,
+      "source_index": 33,
+      "index": 33,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4414,8 +4859,8 @@
       "return_": []
     },
     "assert_agent_peers_not_blocked": {
-      "source_index": 32,
-      "index": 32,
+      "source_index": 34,
+      "index": 34,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4489,8 +4934,8 @@
       "return_": []
     },
     "address_to_metadata_string": {
-      "source_index": 33,
-      "index": 33,
+      "source_index": 35,
+      "index": 35,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4516,8 +4961,8 @@
       ]
     },
     "id_to_metadata_string": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 36,
+      "index": 36,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4552,8 +4997,8 @@
       ]
     },
     "u64_to_metadata_string": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 37,
+      "index": 37,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4579,8 +5024,8 @@
       ]
     },
     "assert_peers_not_blocked": {
-      "source_index": 36,
-      "index": 36,
+      "source_index": 38,
+      "index": 38,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4636,8 +5081,8 @@
       "return_": []
     },
     "count_non_creator_peers": {
-      "source_index": 37,
-      "index": 37,
+      "source_index": 39,
+      "index": 39,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4677,8 +5122,8 @@
       ]
     },
     "is_direct_message_group": {
-      "source_index": 38,
-      "index": 38,
+      "source_index": 40,
+      "index": 40,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4741,8 +5186,8 @@
       ]
     },
     "assert_paid_open_allowed": {
-      "source_index": 39,
-      "index": 39,
+      "source_index": 41,
+      "index": 41,
       "doc": " Paid-DM gate for new 1:1 conversations. `sender` is the transaction actor; `social_identity`\n is the human whose follow graph and paid policy apply (sender for humans, principal for agents).",
       "attributes": [],
       "visibility": "Private",
@@ -4891,8 +5336,8 @@
       "return_": []
     },
     "assert_paid_parties_not_blocked": {
-      "source_index": 40,
-      "index": 40,
+      "source_index": 42,
+      "index": 42,
       "doc": null,
       "attributes": [],
       "visibility": "Private",

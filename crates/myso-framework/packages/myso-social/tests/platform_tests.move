@@ -9,11 +9,12 @@ module social_contracts::platform_tests {
     use std::vector;
     
     use myso::test_scenario;
-    use myso::object;
+    use myso::object::{Self, ID};
     use myso::transfer;
     use myso::clock::{Self, Clock};
     use myso::coin::{Self, Coin};
     use myso::myso::MYSO;
+    use myso::event;
     use myso::permissioned_group::PermissionedGroup;
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry,
@@ -1687,6 +1688,129 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             test_scenario::return_to_address(PLATFORM_USER, user_profile);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ledger);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    fun create_named_platform(scenario: &mut test_scenario::Scenario, name: vector<u8>): ID {
+        test_scenario::next_tx(scenario, PLATFORM_ADMIN);
+        {
+            let platform_config = test_scenario::take_shared<PlatformConfig>(scenario);
+            let mut registry = test_scenario::take_shared<PlatformRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            platform::create_platform(
+                &mut registry,
+                &platform_config,
+                string::utf8(name),
+                string::utf8(b"A test platform"),
+                string::utf8(b"This is a test platform for badge testing"),
+                string::utf8(b"https://example.com/logo.png"),
+                string::utf8(b"https://example.com/terms"),
+                string::utf8(b"https://example.com/privacy"),
+                vector[string::utf8(b"web")],
+                vector[string::utf8(b"https://example.com")],
+                string::utf8(b"Social Network"),
+                option::none(),
+                2,
+                string::utf8(b"2023-01-01"),
+                true,
+                option::some(7),
+                option::some(30),
+                option::some(50_000_000),
+                option::some(5),
+                option::some(5_000_000),
+                option::some(3),
+                option::some(15),
+                option::none(),
+                option::none(),
+                option::none(),
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(platform_config);
+        };
+        test_scenario::next_tx(scenario, PLATFORM_ADMIN);
+        let platform_id = test_scenario::most_recent_id_shared<Platform>().destroy_some();
+        {
+            let platform = test_scenario::take_shared_by_id<Platform>(scenario, platform_id);
+            let mut registry = test_scenario::take_shared<PlatformRegistry>(scenario);
+            platform::test_set_approval(&mut registry, object::id_to_address(&platform_id), true);
+            test_scenario::return_shared(platform);
+            test_scenario::return_shared(registry);
+        };
+        platform_id
+    }
+
+    #[test]
+    fun test_leave_platforms_emits_left_event_and_keeps_developer() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            platform::test_init(&clock, test_scenario::ctx(&mut scenario));
+            block_list::test_init(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+        };
+
+        let first_id = create_named_platform(&mut scenario, b"First Platform");
+        let second_id = create_named_platform(&mut scenario, b"Second Platform");
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_USER);
+        {
+            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
+            let block_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let mut first = test_scenario::take_shared_by_id<Platform>(&scenario, first_id);
+            let mut second = test_scenario::take_shared_by_id<Platform>(&scenario, second_id);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            platform::join_platform(
+                &registry,
+                &block_registry,
+                &mut first,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            platform::join_platform(
+                &registry,
+                &block_registry,
+                &mut second,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(second);
+            test_scenario::return_shared(first);
+            test_scenario::return_shared(block_registry);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_USER);
+        {
+            let first = test_scenario::take_shared_by_id<Platform>(&scenario, first_id);
+            let second = test_scenario::take_shared_by_id<Platform>(&scenario, second_id);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            platform::leave_platforms(
+                vector[first, second],
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            let left = event::events_by_type<platform::UserLeftPlatformEvent>();
+            assert!(vector::length(&left) == 2, 0);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
+        {
+            let first = test_scenario::take_shared_by_id<Platform>(&scenario, first_id);
+            let second = test_scenario::take_shared_by_id<Platform>(&scenario, second_id);
+            assert!(!platform::has_joined_platform(&first, PLATFORM_USER), 0);
+            assert!(!platform::has_joined_platform(&second, PLATFORM_USER), 1);
+            assert!(platform::developer(&first) == PLATFORM_ADMIN, 2);
+            assert!(platform::developer(&second) == PLATFORM_ADMIN, 3);
+            test_scenario::return_shared(second);
+            test_scenario::return_shared(first);
         };
 
         test_scenario::end(scenario);

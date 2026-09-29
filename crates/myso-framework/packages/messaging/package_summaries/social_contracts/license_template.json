@@ -1,0 +1,2235 @@
+{
+  "id": {
+    "address": "social_contracts",
+    "name": "license_template"
+  },
+  "doc": " **Revocation semantics:** disabling an offer stops new instances; instance revoke\n affects one agreement only when pinned template permits it. Lineage is never erased.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "clock"
+    },
+    {
+      "address": "myso",
+      "name": "event"
+    },
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "myso",
+      "name": "transfer"
+    },
+    {
+      "address": "myso",
+      "name": "tx_context"
+    },
+    {
+      "address": "myso",
+      "name": "url"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    },
+    {
+      "address": "std",
+      "name": "string"
+    }
+  ],
+  "attributes": [
+    {
+      "Parameterized": [
+        "allow",
+        [
+          {
+            "Name": "duplicate_alias"
+          }
+        ]
+      ]
+    }
+  ],
+  "functions": {
+    "license_instance_active": {
+      "source_index": 0,
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "license_instance_expired": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "license_instance_revoked": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "template_version_id": {
+      "source_index": 3,
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "license_instance_id": {
+      "source_index": 4,
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "instance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "instance_template_version_id": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "instance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "instance_status": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "instance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "instance_licensee": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "instance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "instance_licensor_asset_id": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "instance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "template_allow_derivatives": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "template_granted_rights": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "template_attribution_required": {
+      "source_index": 11,
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "template_version": {
+      "source_index": 12,
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "template_instance_revocable": {
+      "source_index": 13,
+      "index": 13,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "template_legal_terms_uri": {
+      "source_index": 14,
+      "index": 14,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "url"
+                },
+                "name": "Url",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "template_legal_terms_hash": {
+      "source_index": 15,
+      "index": 15,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": "u8"
+            }
+          ]
+        }
+      ]
+    },
+    "template_governing_law": {
+      "source_index": 16,
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": "u8"
+            }
+          ]
+        }
+      ]
+    },
+    "template_license_schema_version": {
+      "source_index": 17,
+      "index": 17,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "instance_is_active": {
+      "source_index": 18,
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "instance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "assert_instance_matches_template": {
+      "source_index": 19,
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "instance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_instance_active": {
+      "source_index": 20,
+      "index": 20,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "instance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "derive_parent_share_bps": {
+      "source_index": 21,
+      "index": 21,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "relationship_type",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "asset_license_template_id": {
+      "source_index": 22,
+      "index": 22,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "offer",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "AssetLicense",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "asset_license_usage_class": {
+      "source_index": 23,
+      "index": 23,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "offer",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "AssetLicense",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "set_asset_license_enabled": {
+      "source_index": 24,
+      "index": 24,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "offer",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "AssetLicense",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "enabled",
+          "type_": "bool"
+        }
+      ],
+      "return_": []
+    },
+    "disable_matching_asset_license": {
+      "source_index": 25,
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "offers",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "social_contracts",
+                      "name": "license_template"
+                    },
+                    "name": "AssetLicense",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "template_version_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "usage_class",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "publish_license_template_version": {
+      "source_index": 26,
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "family_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "version",
+          "type_": "u64"
+        },
+        {
+          "name": "supersedes",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "granted_rights",
+          "type_": "u64"
+        },
+        {
+          "name": "allow_derivatives",
+          "type_": "bool"
+        },
+        {
+          "name": "attribution_required",
+          "type_": "bool"
+        },
+        {
+          "name": "derivative_reciprocal_terms",
+          "type_": "bool"
+        },
+        {
+          "name": "royalty_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "derivative_royalty_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "transferable",
+          "type_": "bool"
+        },
+        {
+          "name": "sublicensable",
+          "type_": "bool"
+        },
+        {
+          "name": "effective_from",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "expires_at",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "scope",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "legal_terms_uri_bytes",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "legal_terms_hash",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "governing_law",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "license_schema_version",
+          "type_": "u64"
+        },
+        {
+          "name": "instance_revocable",
+          "type_": "bool"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "accept_license_instance": {
+      "source_index": 27,
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "licensor_asset_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "expires_at",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "acceptance_evidence",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": "u8"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "license_template"
+            },
+            "name": "LicenseInstance",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "revoke_license_instance": {
+      "source_index": 28,
+      "index": 28,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "instance",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "template",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "new_asset_license": {
+      "source_index": 29,
+      "index": 29,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "template_version_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "usage_class",
+          "type_": "u8"
+        },
+        {
+          "name": "enabled",
+          "type_": "bool"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "license_template"
+            },
+            "name": "AssetLicense",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "assert_asset_license_enabled": {
+      "source_index": 30,
+      "index": 30,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "offer",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "AssetLicense",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "new_direct_usage_grant": {
+      "source_index": 31,
+      "index": 31,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "grantee",
+          "type_": "address"
+        },
+        {
+          "name": "usage_class",
+          "type_": "u8"
+        },
+        {
+          "name": "expires_at",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "granted_rights",
+          "type_": "u64"
+        },
+        {
+          "name": "reason",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "license_template"
+            },
+            "name": "DirectUsageGrant",
+            "type_arguments": []
+          }
+        }
+      ]
+    }
+  },
+  "structs": {
+    "LicenseTemplateVersion": {
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "family_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "version": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "supersedes": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "creator": {
+            "index": 4,
+            "doc": null,
+            "type_": "address"
+          },
+          "granted_rights": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "allow_derivatives": {
+            "index": 6,
+            "doc": null,
+            "type_": "bool"
+          },
+          "attribution_required": {
+            "index": 7,
+            "doc": null,
+            "type_": "bool"
+          },
+          "derivative_reciprocal_terms": {
+            "index": 8,
+            "doc": null,
+            "type_": "bool"
+          },
+          "royalty_bps": {
+            "index": 9,
+            "doc": null,
+            "type_": "u64"
+          },
+          "derivative_royalty_bps": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "transferable": {
+            "index": 11,
+            "doc": null,
+            "type_": "bool"
+          },
+          "sublicensable": {
+            "index": 12,
+            "doc": null,
+            "type_": "bool"
+          },
+          "effective_from": {
+            "index": 13,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "expires_at": {
+            "index": 14,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "scope": {
+            "index": 15,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "legal_terms_uri": {
+            "index": 16,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "url"
+                },
+                "name": "Url",
+                "type_arguments": []
+              }
+            }
+          },
+          "legal_terms_hash": {
+            "index": 17,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "governing_law": {
+            "index": 18,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "license_schema_version": {
+            "index": 19,
+            "doc": null,
+            "type_": "u64"
+          },
+          "instance_revocable": {
+            "index": 20,
+            "doc": null,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "AssetLicense": {
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "template_version_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "usage_class": {
+            "index": 1,
+            "doc": null,
+            "type_": "u8"
+          },
+          "enabled": {
+            "index": 2,
+            "doc": null,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "LicenseInstance": {
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "template_version_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "licensor_asset_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "licensee": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "child_asset_id": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "accepted_at": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "acceptance_evidence": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "expires_at": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "status": {
+            "index": 8,
+            "doc": null,
+            "type_": "u8"
+          }
+        }
+      }
+    },
+    "DirectUsageGrant": {
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "grantee": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "usage_class": {
+            "index": 1,
+            "doc": null,
+            "type_": "u8"
+          },
+          "expires_at": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "granted_rights": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "reason": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "LicenseTemplatePublishedEvent": {
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "template_version_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "family_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "version": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "creator": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "granted_rights": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "allow_derivatives": {
+            "index": 5,
+            "doc": null,
+            "type_": "bool"
+          },
+          "attribution_required": {
+            "index": 6,
+            "doc": null,
+            "type_": "bool"
+          },
+          "royalty_bps": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "derivative_royalty_bps": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          },
+          "instance_revocable": {
+            "index": 9,
+            "doc": null,
+            "type_": "bool"
+          },
+          "legal_terms_uri_bytes": {
+            "index": 10,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "legal_terms_hash": {
+            "index": 11,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "governing_law": {
+            "index": 12,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "license_schema_version": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 14,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "LicenseInstanceAcceptedEvent": {
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "license_instance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "template_version_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "licensor_asset_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "licensee": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "LicenseInstanceRevokedEvent": {
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "license_instance_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "template_version_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "revoked_by": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

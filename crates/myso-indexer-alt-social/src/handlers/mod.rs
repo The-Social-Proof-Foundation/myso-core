@@ -112,6 +112,12 @@ pub use upgrade_handler::UpgradeHandler;
 pub enum SocialEventRow {
     Profile(NewProfile),
     ProfileUpdate(ProfileUpdate),
+    ProfileDeleted {
+        profile_id: String,
+        owner_address: String,
+        username: String,
+        deleted_at: i64,
+    },
     ProfileXUsernameUpdate {
         profile_id: String,
         owner_address: String,
@@ -1193,7 +1199,7 @@ pub struct ProfileUpdate {
 }
 
 impl FieldCount for SocialEventRow {
-    const FIELD_COUNT: usize = 164;
+    const FIELD_COUNT: usize = 165;
 }
 
 // SocialEvents pipeline removed: profile and post events now handled by ProfilesHandler and PostsHandler.

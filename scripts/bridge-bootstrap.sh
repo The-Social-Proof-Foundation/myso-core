@@ -16,11 +16,14 @@
 #   - optional bridge node for governance / --demo-transfer
 #   - tools: myso, myso-bridge, jq, curl, python3 (+ forge/cast/anvil for EVM)
 #   - --bootstrap-native locks exactly 50M MYSO (opt-in; skipped by default)
+#   - --mint-myusd mints 1100 MYUSD to the active wallet before TreasuryCap
+#     is locked on the bridge (first publish only)
 #
 # Session: network.config/bridge/bridge-session.env
 # Foreign BTC/ETH types here are canonical — orderbook-bootstrap.sh reuses them.
 #
 # Usage:
+#   ./scripts/bridge-bootstrap.sh --mint-myusd
 #   ./scripts/bridge-bootstrap.sh
 #   ./scripts/bridge-bootstrap.sh --skip-evm
 #   ./scripts/bridge-bootstrap.sh --skip-governance
@@ -31,6 +34,7 @@
 #   ./scripts/bridge-bootstrap.sh --refresh-session
 #   ./scripts/bridge-bootstrap.sh --fresh-chain
 #   ./scripts/bridge-bootstrap.sh --demo-transfer
+#   ./scripts/bridge-bootstrap.sh --mint-myusd 3000000000 --mint-myusd-to 0x...
 #   ASSUME_YES=1 ./scripts/bridge-bootstrap.sh
 #
 # Opt-in helpers bind 18545 (anvil) and 19291 (bridge node), not 8545/8080.
@@ -58,7 +62,7 @@ DO_BOOTSTRAP_NATIVE=0
 DEMO_TRANSFER=0
 
 usage() {
-    sed -n '2,36p' "$0" | sed 's/^# \?//'
+    sed -n '2,40p' "$0" | sed 's/^# \?//'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -104,6 +108,23 @@ while [[ $# -gt 0 ]]; do
             DEMO_TRANSFER=1
             shift
             ;;
+        --mint-myusd)
+            if [[ $# -ge 2 && "$2" =~ ^[0-9]+$ ]]; then
+                BRIDGE_MYUSD_MINT_AMOUNT="$2"
+                shift 2
+            else
+                BRIDGE_MYUSD_MINT_AMOUNT="$BRIDGE_MYUSD_MINT_AMOUNT_DEFAULT"
+                shift
+            fi
+            ;;
+        --mint-myusd-to)
+            if [[ $# -lt 2 || "$2" == --* ]]; then
+                echo "--mint-myusd-to requires an address" >&2
+                exit 1
+            fi
+            BRIDGE_MYUSD_MINT_RECIPIENT="$2"
+            shift 2
+            ;;
         -y|--yes)
             ASSUME_YES=1
             shift
@@ -118,6 +139,10 @@ done
 
 mkdir -p "$BRIDGE_DIR"
 bridge_apply_defaults
+
+if bridge_should_mint_myusd myusd "${BRIDGE_MYUSD_MINT_AMOUNT:-0}"; then
+    log_step "Will mint $((BRIDGE_MYUSD_MINT_AMOUNT / 1000000)) MYUSD to the active wallet before locking TreasuryCap"
+fi
 
 if [[ "$DO_FRESH_CHAIN" == 1 ]]; then
     bridge_reset_fresh_chain_state

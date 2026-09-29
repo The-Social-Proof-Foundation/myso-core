@@ -155,10 +155,10 @@
       ],
       "return_": []
     },
-    "calculate_p2p_fees": {
+    "calculate_p2p_fees_no_platform": {
       "source_index": 1,
       "index": 1,
-      "doc": null,
+      "doc": " No-platform purchases do not assess a platform fee: only the ecosystem slice is deducted.",
       "attributes": [],
       "visibility": "Private",
       "entry": false,
@@ -193,10 +193,10 @@
         "u64"
       ]
     },
-    "calculate_mydata_marketplace_fees": {
+    "calculate_p2p_fees_with_platform": {
       "source_index": 2,
       "index": 2,
-      "doc": null,
+      "doc": " With-platform purchases deduct both the configured platform and ecosystem fee slices.",
       "attributes": [],
       "visibility": "Private",
       "entry": false,
@@ -231,10 +231,10 @@
         "u64"
       ]
     },
-    "route_non_platform_platform_fee": {
+    "calculate_mydata_marketplace_fees_no_platform": {
       "source_index": 3,
       "index": 3,
-      "doc": null,
+      "doc": " No-platform marketplace claims do not assess a platform fee.",
       "attributes": [],
       "visibility": "Private",
       "entry": false,
@@ -259,7 +259,27 @@
           }
         },
         {
-          "name": "treasury",
+          "name": "gross",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "u64",
+        "u64",
+        "u64"
+      ]
+    },
+    "calculate_mydata_marketplace_fees_with_platform": {
+      "source_index": 4,
+      "index": 4,
+      "doc": " With-platform marketplace claims deduct both the configured platform and ecosystem fee slices.",
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
           "type_": {
             "Reference": [
               false,
@@ -267,9 +287,9 @@
                 "Datatype": {
                   "module": {
                     "address": "social_contracts",
-                    "name": "profile"
+                    "name": "mydata"
                   },
-                  "name": "EcosystemTreasury",
+                  "name": "MyDataConfig",
                   "type_arguments": []
                 }
               }
@@ -277,71 +297,19 @@
           }
         },
         {
-          "name": "platform_fee",
+          "name": "gross",
           "type_": "u64"
-        },
-        {
-          "name": "recipient_amount",
-          "type_": "u64"
-        },
-        {
-          "name": "payment",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "coin"
-                  },
-                  "name": "Coin",
-                  "type_arguments": [
-                    {
-                      "phantom": true,
-                      "argument": {
-                        "Datatype": {
-                          "module": {
-                            "address": "myso",
-                            "name": "myso"
-                          },
-                          "name": "MYSO",
-                          "type_arguments": []
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "ctx",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "tx_context"
-                  },
-                  "name": "TxContext",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
         }
       ],
       "return_": [
+        "u64",
+        "u64",
         "u64"
       ]
     },
     "distribute_p2p_fees_no_platform": {
-      "source_index": 4,
-      "index": 4,
+      "source_index": 5,
+      "index": 5,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -441,8 +409,8 @@
       ]
     },
     "distribute_p2p_fees_with_platform": {
-      "source_index": 5,
-      "index": 5,
+      "source_index": 6,
+      "index": 6,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -578,8 +546,8 @@
       ]
     },
     "assert_platform_matches_listing": {
-      "source_index": 6,
-      "index": 6,
+      "source_index": 7,
+      "index": 7,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -626,8 +594,8 @@
       "return_": []
     },
     "emit_mydata_config_updated": {
-      "source_index": 7,
-      "index": 7,
+      "source_index": 8,
+      "index": 8,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -664,8 +632,8 @@
       "return_": []
     },
     "create_mydata_admin_cap": {
-      "source_index": 8,
-      "index": 8,
+      "source_index": 9,
+      "index": 9,
       "doc": " Create a MyDataAdminCap for bootstrap (package visibility only)",
       "attributes": [],
       "visibility": "Package",
@@ -704,10 +672,160 @@
         }
       ]
     },
+    "assert_config_version": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_pool_registry_version": {
+      "source_index": 11,
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataPoolRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_snapshot_anchor_registry_version": {
+      "source_index": 12,
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "SnapshotAnchorRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_claim_vault_version": {
+      "source_index": 13,
+      "index": 13,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataClaimVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_distribution_registry_version": {
+      "source_index": 14,
+      "index": 14,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "DistributionRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "update_mydata_config": {
-      "source_index": 9,
-      "index": 9,
-      "doc": " Update MyData configuration (admin only)",
+      "source_index": 15,
+      "index": 15,
+      "doc": " Update MyData configuration (admin only).\n `marketplace_enabled` controls only new query/pool marketplace snapshots.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -865,9 +983,9 @@
       "return_": []
     },
     "marketplace_enabled": {
-      "source_index": 10,
-      "index": 10,
-      "doc": null,
+      "source_index": 16,
+      "index": 16,
+      "doc": " Whether buyers may start new query/pool marketplace snapshots.",
       "attributes": [],
       "visibility": "Public",
       "entry": false,
@@ -897,8 +1015,8 @@
       ]
     },
     "share_mydata_system_objects": {
-      "source_index": 11,
-      "index": 11,
+      "source_index": 17,
+      "index": 17,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -949,8 +1067,8 @@
       "return_": []
     },
     "bootstrap_init": {
-      "source_index": 12,
-      "index": 12,
+      "source_index": 18,
+      "index": 18,
       "doc": " Bootstrap: shared config, ownership registry, and query-marketplace objects (pools, anchors, vault).",
       "attributes": [],
       "visibility": "Package",
@@ -997,8 +1115,8 @@
       "return_": []
     },
     "create_mydata_pool_admin_cap": {
-      "source_index": 13,
-      "index": 13,
+      "source_index": 19,
+      "index": 19,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -1038,8 +1156,8 @@
       ]
     },
     "gen_pool_id": {
-      "source_index": 14,
-      "index": 14,
+      "source_index": 20,
+      "index": 20,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1083,8 +1201,8 @@
       ]
     },
     "create_broad_pool_internal": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 21,
+      "index": 21,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1211,8 +1329,8 @@
       "return_": []
     },
     "create_broad_pool": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 22,
+      "index": 22,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1321,8 +1439,8 @@
       "return_": []
     },
     "create_broad_pool_with_platform": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 23,
+      "index": 23,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1449,8 +1567,8 @@
       "return_": []
     },
     "create_sub_pool": {
-      "source_index": 18,
-      "index": 18,
+      "source_index": 24,
+      "index": 24,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1592,8 +1710,8 @@
       "return_": []
     },
     "assign_mydata_to_sub_pools": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 25,
+      "index": 25,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1677,8 +1795,8 @@
       "return_": []
     },
     "remove_mydata_from_sub_pool": {
-      "source_index": 20,
-      "index": 20,
+      "source_index": 26,
+      "index": 26,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1724,8 +1842,8 @@
       "return_": []
     },
     "gen_snapshot_id": {
-      "source_index": 21,
-      "index": 21,
+      "source_index": 27,
+      "index": 27,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1769,8 +1887,8 @@
       ]
     },
     "record_snapshot_anchor": {
-      "source_index": 22,
-      "index": 22,
+      "source_index": 28,
+      "index": 28,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1954,8 +2072,8 @@
       "return_": []
     },
     "get_snapshot_anchor": {
-      "source_index": 23,
-      "index": 23,
+      "source_index": 29,
+      "index": 29,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2022,8 +2140,8 @@
       ]
     },
     "deposit_snapshot_escrow": {
-      "source_index": 24,
-      "index": 24,
+      "source_index": 30,
+      "index": 30,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2164,8 +2282,8 @@
       "return_": []
     },
     "publish_distribution": {
-      "source_index": 25,
-      "index": 25,
+      "source_index": 31,
+      "index": 31,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -2311,8 +2429,8 @@
       "return_": []
     },
     "distribute_mydata_marketplace_claim_fees_no_platform": {
-      "source_index": 26,
-      "index": 26,
+      "source_index": 32,
+      "index": 32,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2421,8 +2539,8 @@
       ]
     },
     "distribute_mydata_marketplace_claim_fees_with_platform": {
-      "source_index": 27,
-      "index": 27,
+      "source_index": 33,
+      "index": 33,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2567,8 +2685,8 @@
       ]
     },
     "claim_internal_no_platform": {
-      "source_index": 28,
-      "index": 28,
+      "source_index": 34,
+      "index": 34,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2716,8 +2834,8 @@
       "return_": []
     },
     "claim_internal_with_platform": {
-      "source_index": 29,
-      "index": 29,
+      "source_index": 35,
+      "index": 35,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2883,8 +3001,8 @@
       "return_": []
     },
     "claim": {
-      "source_index": 30,
-      "index": 30,
+      "source_index": 36,
+      "index": 36,
       "doc": " Claim MyData marketplace pool payout from vault escrow (no platform).",
       "attributes": [],
       "visibility": "Public",
@@ -3032,8 +3150,8 @@
       "return_": []
     },
     "claim_with_platform": {
-      "source_index": 31,
-      "index": 31,
+      "source_index": 37,
+      "index": 37,
       "doc": " Claim MyData marketplace pool payout with platform treasury routing.",
       "attributes": [],
       "visibility": "Public",
@@ -3199,8 +3317,8 @@
       "return_": []
     },
     "reclaim_expired_snapshot_escrow": {
-      "source_index": 32,
-      "index": 32,
+      "source_index": 38,
+      "index": 38,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3314,8 +3432,8 @@
       "return_": []
     },
     "get_broad_pool": {
-      "source_index": 33,
-      "index": 33,
+      "source_index": 39,
+      "index": 39,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3382,8 +3500,8 @@
       ]
     },
     "get_sub_pool": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 40,
+      "index": 40,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3450,8 +3568,8 @@
       ]
     },
     "get_mydata_sub_pools": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 41,
+      "index": 41,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3511,8 +3629,8 @@
       ]
     },
     "get_distribution_round": {
-      "source_index": 36,
-      "index": 36,
+      "source_index": 42,
+      "index": 42,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3579,8 +3697,8 @@
       ]
     },
     "broad_pool_id": {
-      "source_index": 37,
-      "index": 37,
+      "source_index": 43,
+      "index": 43,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3620,8 +3738,8 @@
       ]
     },
     "sub_pool_id": {
-      "source_index": 38,
-      "index": 38,
+      "source_index": 44,
+      "index": 44,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3661,8 +3779,8 @@
       ]
     },
     "access_configuration": {
-      "source_index": 39,
-      "index": 39,
+      "source_index": 45,
+      "index": 45,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3707,8 +3825,8 @@
       ]
     },
     "requires_profile_subscription_access": {
-      "source_index": 40,
-      "index": 40,
+      "source_index": 46,
+      "index": 46,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3739,8 +3857,8 @@
       ]
     },
     "requires_marketplace_purchase": {
-      "source_index": 41,
-      "index": 41,
+      "source_index": 47,
+      "index": 47,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3771,8 +3889,8 @@
       ]
     },
     "requires_marketplace_subscription": {
-      "source_index": 42,
-      "index": 42,
+      "source_index": 48,
+      "index": 48,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3803,8 +3921,8 @@
       ]
     },
     "linked_one_time_price": {
-      "source_index": 43,
-      "index": 43,
+      "source_index": 49,
+      "index": 49,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3849,8 +3967,8 @@
       ]
     },
     "access_configuration_kind": {
-      "source_index": 44,
-      "index": 44,
+      "source_index": 50,
+      "index": 50,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3881,8 +3999,8 @@
       ]
     },
     "validate_marketplace_price": {
-      "source_index": 45,
-      "index": 45,
+      "source_index": 51,
+      "index": 51,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3897,8 +4015,8 @@
       "return_": []
     },
     "validate_recurring_duration": {
-      "source_index": 46,
-      "index": 46,
+      "source_index": 52,
+      "index": 52,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3933,8 +4051,8 @@
       ]
     },
     "validate_access_configuration": {
-      "source_index": 47,
-      "index": 47,
+      "source_index": 53,
+      "index": 53,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3981,8 +4099,8 @@
       "return_": []
     },
     "validate_optional_metadata": {
-      "source_index": 48,
-      "index": 48,
+      "source_index": 54,
+      "index": 54,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4043,8 +4161,8 @@
       "return_": []
     },
     "validate_tags": {
-      "source_index": 49,
-      "index": 49,
+      "source_index": 55,
+      "index": 55,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4093,8 +4211,8 @@
       "return_": []
     },
     "emit_mydata_created_event": {
-      "source_index": 50,
-      "index": 50,
+      "source_index": 56,
+      "index": 56,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4127,8 +4245,8 @@
       "return_": []
     },
     "create": {
-      "source_index": 51,
-      "index": 51,
+      "source_index": 57,
+      "index": 57,
       "doc": " Create new MyData data with proper MyData encryption",
       "attributes": [],
       "visibility": "Public",
@@ -4427,8 +4545,8 @@
       ]
     },
     "share_created_mydata": {
-      "source_index": 52,
-      "index": 52,
+      "source_index": 58,
+      "index": 58,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4470,8 +4588,8 @@
       "return_": []
     },
     "create_and_share_internal": {
-      "source_index": 53,
-      "index": 53,
+      "source_index": 59,
+      "index": 59,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -4777,8 +4895,8 @@
       "return_": []
     },
     "create_and_share_profile_subscription_mydata": {
-      "source_index": 54,
-      "index": 54,
+      "source_index": 60,
+      "index": 60,
       "doc": " Create and share profile-subscription-gated MyData (no marketplace pricing).",
       "attributes": [
         {
@@ -5089,8 +5207,8 @@
       "return_": []
     },
     "create_and_share_marketplace_one_time_mydata": {
-      "source_index": 55,
-      "index": 55,
+      "source_index": 61,
+      "index": 61,
       "doc": " Create and share marketplace one-time purchase MyData.",
       "attributes": [
         {
@@ -5405,8 +5523,8 @@
       "return_": []
     },
     "create_and_share_marketplace_recurring_mydata": {
-      "source_index": 56,
-      "index": 56,
+      "source_index": 62,
+      "index": 62,
       "doc": " Create and share marketplace recurring subscription MyData.",
       "attributes": [
         {
@@ -5725,8 +5843,8 @@
       "return_": []
     },
     "purchase_one_time_no_platform": {
-      "source_index": 57,
-      "index": 57,
+      "source_index": 63,
+      "index": 63,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -5913,8 +6031,8 @@
       "return_": []
     },
     "purchase_one_time_with_platform_internal": {
-      "source_index": 58,
-      "index": 58,
+      "source_index": 64,
+      "index": 64,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6119,8 +6237,8 @@
       "return_": []
     },
     "purchase_one_time": {
-      "source_index": 59,
-      "index": 59,
+      "source_index": 65,
+      "index": 65,
       "doc": " Purchase one-time access to MyData data.",
       "attributes": [],
       "visibility": "Public",
@@ -6307,8 +6425,8 @@
       "return_": []
     },
     "purchase_one_time_with_platform": {
-      "source_index": 60,
-      "index": 60,
+      "source_index": 66,
+      "index": 66,
       "doc": " Purchase one-time access with platform treasury routing.",
       "attributes": [],
       "visibility": "Public",
@@ -6513,8 +6631,8 @@
       "return_": []
     },
     "purchase_subscription_no_platform": {
-      "source_index": 61,
-      "index": 61,
+      "source_index": 67,
+      "index": 67,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6701,8 +6819,8 @@
       "return_": []
     },
     "purchase_subscription_with_platform_internal": {
-      "source_index": 62,
-      "index": 62,
+      "source_index": 68,
+      "index": 68,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -6907,8 +7025,8 @@
       "return_": []
     },
     "purchase_subscription": {
-      "source_index": 63,
-      "index": 63,
+      "source_index": 69,
+      "index": 69,
       "doc": " Purchase subscription access to MyData data.",
       "attributes": [],
       "visibility": "Public",
@@ -7095,8 +7213,8 @@
       "return_": []
     },
     "purchase_subscription_with_platform": {
-      "source_index": 64,
-      "index": 64,
+      "source_index": 70,
+      "index": 70,
       "doc": " Purchase subscription access with platform treasury routing.",
       "attributes": [],
       "visibility": "Public",
@@ -7301,8 +7419,8 @@
       "return_": []
     },
     "update_pricing": {
-      "source_index": 65,
-      "index": 65,
+      "source_index": 71,
+      "index": 71,
       "doc": " Update pricing (owner only; marketplace listings only).",
       "attributes": [],
       "visibility": "Public",
@@ -7439,8 +7557,8 @@
       "return_": []
     },
     "update_content": {
-      "source_index": 66,
-      "index": 66,
+      "source_index": 72,
+      "index": 72,
       "doc": " Update MyData content and metadata (owner only)",
       "attributes": [],
       "visibility": "Public",
@@ -7592,8 +7710,8 @@
       "return_": []
     },
     "assign_mydata_to_pools": {
-      "source_index": 67,
-      "index": 67,
+      "source_index": 73,
+      "index": 73,
       "doc": " Assign MyData to sub-pools (owner only).",
       "attributes": [],
       "visibility": "Public",
@@ -7709,8 +7827,8 @@
       "return_": []
     },
     "remove_mydata_from_sub_pools": {
-      "source_index": 68,
-      "index": 68,
+      "source_index": 74,
+      "index": 74,
       "doc": " Remove this listing from a sub-pool (owner only).",
       "attributes": [],
       "visibility": "Public",
@@ -7788,8 +7906,8 @@
       "return_": []
     },
     "has_access": {
-      "source_index": 69,
-      "index": 69,
+      "source_index": 75,
+      "index": 75,
       "doc": " Check if user has access to MyData data",
       "attributes": [],
       "visibility": "Public",
@@ -7842,8 +7960,8 @@
       ]
     },
     "encryption_id_matches": {
-      "source_index": 70,
-      "index": 70,
+      "source_index": 76,
+      "index": 76,
       "doc": " True if `candidate` matches this listing’s `encryption_id` (the MyData policy `id` bytes).",
       "attributes": [],
       "visibility": "Public",
@@ -7885,14 +8003,20 @@
       ]
     },
     "mydata_approve": {
-      "source_index": 71,
-      "index": 71,
+      "source_index": 77,
+      "index": 77,
       "doc": " Key-server policy hook for `fetch_key`: marketplace listings only.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
         {
           "name": "block_list_registry",
           "type_": {
@@ -7927,12 +8051,6 @@
                 }
               }
             ]
-          }
-        },
-        {
-          "name": "id",
-          "type_": {
-            "vector": "u8"
           }
         },
         {
@@ -8011,14 +8129,20 @@
       "return_": []
     },
     "mydata_approve_profile_subscription": {
-      "source_index": 72,
-      "index": 72,
+      "source_index": 78,
+      "index": 78,
       "doc": " Key-server policy hook for profile-subscription-gated MyData linked to a post.\n `id` is first so key-server `ValidPtb` can extract the encryption identity from arg 0.\n `post_service_id` / `post_linked_mydata_id` come from the linked post's [`PostAccess`] fields.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
+        {
+          "name": "id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
         {
           "name": "block_list_registry",
           "type_": {
@@ -8035,12 +8159,6 @@
                 }
               }
             ]
-          }
-        },
-        {
-          "name": "id",
-          "type_": {
-            "vector": "u8"
           }
         },
         {
@@ -8217,8 +8335,8 @@
       "return_": []
     },
     "bytes_equal_u8": {
-      "source_index": 73,
-      "index": 73,
+      "source_index": 79,
+      "index": 79,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -8253,8 +8371,8 @@
       ]
     },
     "grant_access": {
-      "source_index": 74,
-      "index": 74,
+      "source_index": 80,
+      "index": 80,
       "doc": " Grant free access (owner only) - useful for samples or promotions",
       "attributes": [],
       "visibility": "Public",
@@ -8363,8 +8481,8 @@
       "return_": []
     },
     "revoke_access": {
-      "source_index": 75,
-      "index": 75,
+      "source_index": 81,
+      "index": 81,
       "doc": " Revoke a buyer's access (owner only). Removes the user from marketplace access tables.\n `access_type`: 0 = one-time, 1 = subscription, 2 = both.",
       "attributes": [],
       "visibility": "Public",
@@ -8437,8 +8555,8 @@
       "return_": []
     },
     "owner": {
-      "source_index": 76,
-      "index": 76,
+      "source_index": 82,
+      "index": 82,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -8469,8 +8587,8 @@
       ]
     },
     "object_address": {
-      "source_index": 77,
-      "index": 77,
+      "source_index": 83,
+      "index": 83,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -8501,8 +8619,8 @@
       ]
     },
     "listing_id": {
-      "source_index": 78,
-      "index": 78,
+      "source_index": 84,
+      "index": 84,
       "doc": " Listing object address for PTB binding in `fetch_key` policy transactions.",
       "attributes": [],
       "visibility": "Public",
@@ -8533,8 +8651,8 @@
       ]
     },
     "encryption_identity": {
-      "source_index": 79,
-      "index": 79,
+      "source_index": 85,
+      "index": 85,
       "doc": " Encryption identity bytes; must match `EncryptedObject.id` and the `id` arg to `mydata_approve`.",
       "attributes": [],
       "visibility": "Public",
@@ -8567,8 +8685,8 @@
       ]
     },
     "media_type": {
-      "source_index": 80,
-      "index": 80,
+      "source_index": 86,
+      "index": 86,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -8608,8 +8726,8 @@
       ]
     },
     "tags": {
-      "source_index": 81,
-      "index": 81,
+      "source_index": 87,
+      "index": 87,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -8651,8 +8769,8 @@
       ]
     },
     "platform_id": {
-      "source_index": 82,
-      "index": 82,
+      "source_index": 88,
+      "index": 88,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -8697,226 +8815,6 @@
       ]
     },
     "one_time_price": {
-      "source_index": 83,
-      "index": 83,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "mydata",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "mydata"
-                  },
-                  "name": "MyData",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        {
-          "Datatype": {
-            "module": {
-              "address": "std",
-              "name": "option"
-            },
-            "name": "Option",
-            "type_arguments": [
-              {
-                "phantom": false,
-                "argument": "u64"
-              }
-            ]
-          }
-        }
-      ]
-    },
-    "subscription_price": {
-      "source_index": 84,
-      "index": 84,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "mydata",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "mydata"
-                  },
-                  "name": "MyData",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        {
-          "Datatype": {
-            "module": {
-              "address": "std",
-              "name": "option"
-            },
-            "name": "Option",
-            "type_arguments": [
-              {
-                "phantom": false,
-                "argument": "u64"
-              }
-            ]
-          }
-        }
-      ]
-    },
-    "subscription_duration_days": {
-      "source_index": 85,
-      "index": 85,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "mydata",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "mydata"
-                  },
-                  "name": "MyData",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        "u64"
-      ]
-    },
-    "created_at": {
-      "source_index": 86,
-      "index": 86,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "mydata",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "mydata"
-                  },
-                  "name": "MyData",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        "u64"
-      ]
-    },
-    "last_updated": {
-      "source_index": 87,
-      "index": 87,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "mydata",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "mydata"
-                  },
-                  "name": "MyData",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        "u64"
-      ]
-    },
-    "timestamp_start": {
-      "source_index": 88,
-      "index": 88,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "mydata",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "mydata"
-                  },
-                  "name": "MyData",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        "u64"
-      ]
-    },
-    "timestamp_end": {
       "source_index": 89,
       "index": 89,
       "doc": null,
@@ -8962,9 +8860,229 @@
         }
       ]
     },
-    "geographic_region": {
+    "subscription_price": {
       "source_index": 90,
       "index": 90,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "u64"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "subscription_duration_days": {
+      "source_index": 91,
+      "index": 91,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "created_at": {
+      "source_index": 92,
+      "index": 92,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "last_updated": {
+      "source_index": 93,
+      "index": 93,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "timestamp_start": {
+      "source_index": 94,
+      "index": 94,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "timestamp_end": {
+      "source_index": 95,
+      "index": 95,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "mydata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyData",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "u64"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "geographic_region": {
+      "source_index": 96,
+      "index": 96,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9018,8 +9136,8 @@
       ]
     },
     "data_quality": {
-      "source_index": 91,
-      "index": 91,
+      "source_index": 97,
+      "index": 97,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9073,8 +9191,8 @@
       ]
     },
     "sample_size": {
-      "source_index": 92,
-      "index": 92,
+      "source_index": 98,
+      "index": 98,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9119,8 +9237,8 @@
       ]
     },
     "collection_method": {
-      "source_index": 93,
-      "index": 93,
+      "source_index": 99,
+      "index": 99,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9174,8 +9292,8 @@
       ]
     },
     "is_updating": {
-      "source_index": 94,
-      "index": 94,
+      "source_index": 100,
+      "index": 100,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9206,8 +9324,8 @@
       ]
     },
     "update_frequency": {
-      "source_index": 95,
-      "index": 95,
+      "source_index": 101,
+      "index": 101,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9261,8 +9379,8 @@
       ]
     },
     "purchaser_count": {
-      "source_index": 96,
-      "index": 96,
+      "source_index": 102,
+      "index": 102,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9293,8 +9411,8 @@
       ]
     },
     "subscriber_count": {
-      "source_index": 97,
-      "index": 97,
+      "source_index": 103,
+      "index": 103,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9325,8 +9443,8 @@
       ]
     },
     "is_one_time_for_sale": {
-      "source_index": 98,
-      "index": 98,
+      "source_index": 104,
+      "index": 104,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9357,8 +9475,8 @@
       ]
     },
     "is_subscription_available": {
-      "source_index": 99,
-      "index": 99,
+      "source_index": 105,
+      "index": 105,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9389,8 +9507,8 @@
       ]
     },
     "has_active_subscription": {
-      "source_index": 100,
-      "index": 100,
+      "source_index": 106,
+      "index": 106,
       "doc": " Check if a user has an active subscription",
       "attributes": [],
       "visibility": "Public",
@@ -9443,8 +9561,8 @@
       ]
     },
     "get_subscription_expiry": {
-      "source_index": 101,
-      "index": 101,
+      "source_index": 107,
+      "index": 107,
       "doc": " Get subscription expiry time for a user",
       "attributes": [],
       "visibility": "Public",
@@ -9493,8 +9611,8 @@
       ]
     },
     "get_revenue_potential": {
-      "source_index": 102,
-      "index": 102,
+      "source_index": 108,
+      "index": 108,
       "doc": " Get total revenue potential (for analytics) with overflow protection",
       "attributes": [],
       "visibility": "Public",
@@ -9525,8 +9643,8 @@
       ]
     },
     "has_any_sales": {
-      "source_index": 103,
-      "index": 103,
+      "source_index": 109,
+      "index": 109,
       "doc": " Check if MyData has any sales (one-time or subscription)",
       "attributes": [],
       "visibility": "Public",
@@ -9557,8 +9675,8 @@
       ]
     },
     "registry_get_owner": {
-      "source_index": 104,
-      "index": 104,
+      "source_index": 110,
+      "index": 110,
       "doc": " Get owner of a MyData by ID",
       "attributes": [],
       "visibility": "Public",
@@ -9607,8 +9725,8 @@
       ]
     },
     "is_registered": {
-      "source_index": 105,
-      "index": 105,
+      "source_index": 111,
+      "index": 111,
       "doc": " Check if a MyData is registered",
       "attributes": [],
       "visibility": "Public",
@@ -9643,8 +9761,8 @@
       ]
     },
     "register_in_registry": {
-      "source_index": 106,
-      "index": 106,
+      "source_index": 112,
+      "index": 112,
       "doc": " Register a MyData in the registry",
       "attributes": [],
       "visibility": "Public",
@@ -9727,8 +9845,8 @@
       "return_": []
     },
     "unregister_from_registry": {
-      "source_index": 107,
-      "index": 107,
+      "source_index": 113,
+      "index": 113,
       "doc": " Remove a MyData from the registry",
       "attributes": [],
       "visibility": "Public",
@@ -9797,8 +9915,8 @@
       "return_": []
     },
     "version": {
-      "source_index": 108,
-      "index": 108,
+      "source_index": 114,
+      "index": 114,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9829,8 +9947,8 @@
       ]
     },
     "borrow_version_mut": {
-      "source_index": 109,
-      "index": 109,
+      "source_index": 115,
+      "index": 115,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -9866,8 +9984,8 @@
       ]
     },
     "registry_version": {
-      "source_index": 110,
-      "index": 110,
+      "source_index": 116,
+      "index": 116,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -9898,8 +10016,8 @@
       ]
     },
     "borrow_registry_version_mut": {
-      "source_index": 111,
-      "index": 111,
+      "source_index": 117,
+      "index": 117,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -9935,8 +10053,8 @@
       ]
     },
     "migrate_mydata": {
-      "source_index": 112,
-      "index": 112,
+      "source_index": 118,
+      "index": 118,
       "doc": " Migration function for MyData",
       "attributes": [],
       "visibility": "Public",
@@ -10001,8 +10119,8 @@
       "return_": []
     },
     "migrate_registry": {
-      "source_index": 113,
-      "index": 113,
+      "source_index": 119,
+      "index": 119,
       "doc": " Migration function for MyDataRegistry",
       "attributes": [],
       "visibility": "Public",
@@ -10067,8 +10185,8 @@
       "return_": []
     },
     "migrate_config": {
-      "source_index": 114,
-      "index": 114,
+      "source_index": 120,
+      "index": 120,
       "doc": " Migration function for MyDataConfig",
       "attributes": [],
       "visibility": "Public",
@@ -10087,6 +10205,270 @@
                     "name": "mydata"
                   },
                   "name": "MyDataConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_pool_registry": {
+      "source_index": 121,
+      "index": 121,
+      "doc": " Migration function for MyDataPoolRegistry",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataPoolRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_snapshot_anchor_registry": {
+      "source_index": 122,
+      "index": 122,
+      "doc": " Migration function for SnapshotAnchorRegistry",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "SnapshotAnchorRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_claim_vault": {
+      "source_index": 123,
+      "index": 123,
+      "doc": " Migration function for MyDataClaimVault",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "MyDataClaimVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_distribution_registry": {
+      "source_index": 124,
+      "index": 124,
+      "doc": " Migration function for DistributionRegistry",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "mydata"
+                  },
+                  "name": "DistributionRegistry",
                   "type_arguments": []
                 }
               }
@@ -10450,7 +10832,7 @@
     },
     "MyDataConfig": {
       "index": 2,
-      "doc": " Global configuration for MyData system",
+      "doc": " Global configuration for MyData system.",
       "attributes": [],
       "abilities": [
         "Key"
@@ -10475,7 +10857,7 @@
           },
           "marketplace_enabled": {
             "index": 1,
-            "doc": null,
+            "doc": " Whether buyers may start new query/pool marketplace snapshots.",
             "type_": "bool"
           },
           "max_tags": {
@@ -12694,7 +13076,7 @@
           },
           "marketplace_enabled": {
             "index": 1,
-            "doc": null,
+            "doc": " Query/pool marketplace availability; does not gate direct MyData listings or purchases.",
             "type_": "bool"
           },
           "max_tags": {

@@ -233,6 +233,9 @@ pub fn handle_profile_event(
         "ProfileCreatedEvent" => {
             process_profile_created_event(data, event_id, checkpoint_timestamp_ms)
         }
+        "DeletedProfileEvent" => {
+            process_deleted_profile_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "ProfileUpdatedEvent" => {
             process_profile_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
@@ -338,6 +341,66 @@ fn process_profile_created_event(
         SocialEventRow::Profile(profile),
         SocialEventRow::ProfileEvent(audit_event),
     ])
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct DeletedProfileEvent {
+    #[serde(rename = "profile_id", alias = "id", default)]
+    profile_id: String,
+    #[serde(rename = "owner_address", alias = "owner", default)]
+    owner_address: String,
+    #[serde(default)]
+    username: String,
+    #[serde(
+        rename = "deleted_at",
+        default = "default_timestamp",
+        deserialize_with = "deserialize_number_from_string"
+    )]
+    deleted_at: u64,
+}
+
+fn process_deleted_profile_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: DeletedProfileEvent = common::deserialize_social_event_json(
+        "profile",
+        "DeletedProfileEvent",
+        event_id,
+        data,
+        "profile DeletedProfileEvent JSON did not match DeletedProfileEvent",
+    )?;
+    let ms = common::chain_timestamp_ms(Some(ev.deleted_at as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms).naive_utc();
+    let profile_id = common::normalize_hex_address(&ev.profile_id);
+    let owner_address = common::normalize_hex_address(&ev.owner_address);
+    let audit_event = NewProfileEvent {
+        event_type: "ProfileDeleted".to_string(),
+        profile_id: profile_id.clone(),
+        event_data: serde_json::json!({
+            "owner_address": owner_address,
+            "username": ev.username,
+            "deleted_at": ev.deleted_at,
+        }),
+        event_id: Some(event_id.to_string()),
+        created_at: now,
+        updated_at: now,
+    };
+    let mut rows = Vec::new();
+    if !ev.username.is_empty() {
+        rows.push(SocialEventRow::UsernameRegistryDelete {
+            username: ev.username.clone(),
+        });
+    }
+    rows.push(SocialEventRow::ProfileDeleted {
+        profile_id,
+        owner_address,
+        username: ev.username,
+        deleted_at: ev.deleted_at as i64,
+    });
+    rows.push(SocialEventRow::ProfileEvent(audit_event));
+    Some(rows)
 }
 
 fn process_profile_updated_event(

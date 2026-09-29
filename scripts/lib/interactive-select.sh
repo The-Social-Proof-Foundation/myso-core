@@ -43,11 +43,12 @@ _interactive_select_draw() {
 
 # interactive_select DEST_VAR TITLE ITEM [ITEM...]
 # DEST_VAR is ignored for assignment; read INTERACTIVE_SELECT_RESULT after a 0 return.
-# ITEM format: value|label
+# ITEM format: value|label  or  value|label|title
+# When a title is present, the highlighted row's title replaces the menu title.
 interactive_select() {
     local _dest_unused="$1" title="$2"
     shift 2
-    local items=("$@") values=() labels=() item value label
+    local items=("$@") values=() labels=() item value label draw_title
     local idx=0 n choice key key2 key3 i
 
     [[ "$#" -ge 1 ]] || {
@@ -55,11 +56,20 @@ interactive_select() {
         return 1
     }
 
+    local item_titles=() rest
     for item in "${items[@]}"; do
         value="${item%%|*}"
-        label="${item#*|}"
-        if [[ "$label" == "$item" ]]; then
+        rest="${item#*|}"
+        if [[ "$rest" == "$item" ]]; then
             label="$item"
+            item_titles+=("")
+        else
+            label="${rest%%|*}"
+            if [[ "$rest" == *"|"* ]]; then
+                item_titles+=("${rest#*|}")
+            else
+                item_titles+=("")
+            fi
         fi
         values+=("$value")
         labels+=("$label")
@@ -70,7 +80,11 @@ interactive_select() {
     if [[ ! -t 0 || ! -t 2 ]]; then
         printf '%s\n' "$title" >&2
         for i in "${!labels[@]}"; do
-            printf '  %s\n' "${labels[$i]}" >&2
+            if [[ -n "${item_titles[$i]:-}" ]]; then
+                printf '  %s) %s\n    %s\n' "$((i + 1))" "${labels[$i]}" "${item_titles[$i]}" >&2
+            else
+                printf '  %s\n' "${labels[$i]}" >&2
+            fi
         done
         read -r -p "Choice: " choice || choice='q'
         case "$choice" in
@@ -93,7 +107,9 @@ interactive_select() {
 
     stty -echo -icanon min 1 time 0 2>/dev/null || true
     printf '\033[?25l' >&2
-    _interactive_select_draw "$title" "$idx" "${labels[@]}"
+    draw_title="$title"
+    [[ -n "${item_titles[$idx]:-}" ]] && draw_title="${item_titles[$idx]}"
+    _interactive_select_draw "$draw_title" "$idx" "${labels[@]}"
 
     while true; do
         IFS= read -rsn1 key || key='q'
@@ -104,11 +120,15 @@ interactive_select() {
                 case "$key3" in
                     A)
                         idx=$(((idx - 1 + n) % n))
-                        _interactive_select_draw "$title" "$idx" "${labels[@]}"
+                        draw_title="$title"
+                        [[ -n "${item_titles[$idx]:-}" ]] && draw_title="${item_titles[$idx]}"
+                        _interactive_select_draw "$draw_title" "$idx" "${labels[@]}"
                         ;;
                     B)
                         idx=$(((idx + 1) % n))
-                        _interactive_select_draw "$title" "$idx" "${labels[@]}"
+                        draw_title="$title"
+                        [[ -n "${item_titles[$idx]:-}" ]] && draw_title="${item_titles[$idx]}"
+                        _interactive_select_draw "$draw_title" "$idx" "${labels[@]}"
                         ;;
                 esac
             fi
@@ -138,11 +158,15 @@ interactive_select() {
                 ;;
             k)
                 idx=$(((idx - 1 + n) % n))
-                _interactive_select_draw "$title" "$idx" "${labels[@]}"
+                draw_title="$title"
+                [[ -n "${item_titles[$idx]:-}" ]] && draw_title="${item_titles[$idx]}"
+                _interactive_select_draw "$draw_title" "$idx" "${labels[@]}"
                 ;;
             j)
                 idx=$(((idx + 1) % n))
-                _interactive_select_draw "$title" "$idx" "${labels[@]}"
+                draw_title="$title"
+                [[ -n "${item_titles[$idx]:-}" ]] && draw_title="${item_titles[$idx]}"
+                _interactive_select_draw "$draw_title" "$idx" "${labels[@]}"
                 ;;
         esac
     done

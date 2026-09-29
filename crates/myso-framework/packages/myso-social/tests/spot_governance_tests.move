@@ -348,9 +348,19 @@ module social_contracts::spot_governance_tests {
             let mut spot_registry = take_spot_governance_registry(&scen);
             let mut proposal = test_scenario::take_shared<Proposal>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
+            let mut username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&scen);
+            profile::register_username(
+                &mut username_registry,
+                string::utf8(b"spotvoter2"),
+                option::none(),
+                option::none(),
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
             let mut payment = coin::mint_for_testing<MYSO>(1 * SCALING, test_scenario::ctx(&mut scen));
             governance::community_vote_on_proposal(
                 &mut spot_registry,
+                &username_registry,
                 &mut proposal,
                 1,
                 false,
@@ -363,6 +373,7 @@ module social_contracts::spot_governance_tests {
             } else {
                 coin::destroy_zero(payment);
             };
+            test_scenario::return_shared(username_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(spot_registry);
@@ -482,6 +493,60 @@ module social_contracts::spot_governance_tests {
         create_spot_market_and_escalate(&mut scen);
         submit_draw_proposal(&mut scen);
         submit_draw_proposal(&mut scen);
+        test_scenario::end(scen);
+    }
+
+    #[test, expected_failure(abort_code = governance::EProfileRequired)]
+    fun test_community_vote_without_profile_aborts() {
+        let mut scen = setup_env();
+        tune_spot_governance_for_tests(&mut scen);
+        create_spot_market_and_escalate(&mut scen);
+        submit_draw_proposal(&mut scen);
+
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let mut spot_registry = take_spot_governance_registry(&scen);
+            let mut proposal = test_scenario::take_shared<Proposal>(&scen);
+            let treasury = test_scenario::take_shared<EcosystemTreasury>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            governance::delegate_vote_on_proposal(
+                &mut spot_registry,
+                &mut proposal,
+                &treasury,
+                true,
+                option::none(),
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(treasury);
+            test_scenario::return_shared(proposal);
+            test_scenario::return_shared(spot_registry);
+        };
+
+        test_scenario::next_tx(&mut scen, USER2);
+        {
+            let mut spot_registry = take_spot_governance_registry(&scen);
+            let mut proposal = test_scenario::take_shared<Proposal>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            let username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&scen);
+            let mut payment = coin::zero<MYSO>(test_scenario::ctx(&mut scen));
+            governance::community_vote_on_proposal(
+                &mut spot_registry,
+                &username_registry,
+                &mut proposal,
+                1,
+                true,
+                &mut payment,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            coin::destroy_zero(payment);
+            test_scenario::return_shared(username_registry);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(proposal);
+            test_scenario::return_shared(spot_registry);
+        };
         test_scenario::end(scen);
     }
 }

@@ -11,7 +11,7 @@ use contra::{
 use myso::{group_ops::Element, rangeproofs, ristretto255::{G, g_identity}};
 
 /// Bulletproof construction version (Bünz et al., 2018).
-const BULLETPROOFS_VERSION: u8 = 0;
+const BULLETPROOFS_VERSION: u8 = 1;
 
 /// Bit-length of each private-key limb committed in the viewing-key encryption.
 const LIMB_BITS: u8 = 32;

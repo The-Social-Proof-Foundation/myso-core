@@ -334,6 +334,91 @@ impl Proposal {
                 .collect(),
         )
     }
+
+    /// Whether `address` may cast a community vote under the on-chain voter rules. Every registry
+    /// requires the voter to own a profile; platform proposals (registry_type=3) also require an
+    /// active platform membership and no platform block. Does not check lifecycle status or whether
+    /// `address` already voted. Returns null when the social DB is not configured.
+    async fn community_vote_eligibility(
+        &self,
+        ctx: &Context<'_>,
+        address: MySoAddress,
+    ) -> Option<CommunityVoteEligibility> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let address = address.to_string();
+        if reader.get_profile_by_address(&address).await.ok()?.is_none() {
+            return Some(CommunityVoteEligibility::denied(
+                CommunityVoteIneligibleReason::NoProfile,
+            ));
+        }
+        if self.inner.proposal_type != PROPOSAL_TYPE_PLATFORM {
+            return Some(CommunityVoteEligibility::allowed());
+        }
+        let Some(platform) = reader
+            .get_platform_by_registry_id(&self.inner.governance_registry_id)
+            .await
+            .ok()?
+        else {
+            return Some(CommunityVoteEligibility::denied(
+                CommunityVoteIneligibleReason::PlatformNotFound,
+            ));
+        };
+        let access = reader
+            .get_platform_user_access(&platform.platform_id, &address)
+            .await
+            .ok()?;
+        Some(if access.is_blocked {
+            CommunityVoteEligibility::denied(CommunityVoteIneligibleReason::Blocked)
+        } else if !access.is_member {
+            CommunityVoteEligibility::denied(CommunityVoteIneligibleReason::NotMember)
+        } else {
+            CommunityVoteEligibility::allowed()
+        })
+    }
+}
+
+#[derive(Enum, Copy, Clone, Eq, PartialEq)]
+#[graphql(rename_items = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum CommunityVoteIneligibleReason {
+    /// Wallet does not own a MySocial profile.
+    NoProfile,
+    /// Wallet has not joined (or has left) the platform that owns the registry.
+    NotMember,
+    /// The platform has blocked this wallet.
+    Blocked,
+    /// No indexed platform owns this platform registry.
+    PlatformNotFound,
+}
+
+#[derive(Clone)]
+pub(crate) struct CommunityVoteEligibility {
+    reason: Option<CommunityVoteIneligibleReason>,
+}
+
+impl CommunityVoteEligibility {
+    fn allowed() -> Self {
+        Self { reason: None }
+    }
+
+    fn denied(reason: CommunityVoteIneligibleReason) -> Self {
+        Self {
+            reason: Some(reason),
+        }
+    }
+}
+
+#[Object]
+impl CommunityVoteEligibility {
+    /// True when the chain would accept a community vote from this wallet on this registry.
+    async fn eligible(&self) -> bool {
+        self.reason.is_none()
+    }
+
+    /// Why the wallet cannot vote; null when eligible.
+    async fn reason(&self) -> Option<CommunityVoteIneligibleReason> {
+        self.reason
+    }
 }
 
 #[Object]

@@ -1055,6 +1055,32 @@ type CommunityVote {
 	voterAddress: MySoAddress!
 }
 
+type CommunityVoteEligibility {
+	"""
+	True when the chain would accept a community vote from this wallet on this registry.
+	"""
+	eligible: Boolean!
+	"""
+	Why the wallet cannot vote; null when eligible.
+	"""
+	reason: CommunityVoteIneligibleReason
+}
+
+enum CommunityVoteIneligibleReason {
+	"""
+	Wallet has not joined (or has left) the platform that owns the registry.
+	"""
+	NOT_MEMBER
+	"""
+	The platform has blocked this wallet.
+	"""
+	BLOCKED
+	"""
+	No indexed platform owns this platform registry.
+	"""
+	PLATFORM_NOT_FOUND
+}
+
 type CompositionAnalysis {
 	analysisJson: JSON
 	analyzedAt: Int!
@@ -2814,6 +2840,16 @@ Arbitrary JSON data.
 """
 scalar JSON
 
+type LicenseTemplateTerms {
+	governingLaw: String
+	instanceRevocable: Boolean!
+	legalTermsHash: String
+	legalTermsUri: String
+	licenseSchemaVersion: Int!
+	templateVersionId: String!
+	version: Int!
+}
+
 """
 Information used by a package to link to a specific version of its dependency.
 """
@@ -2848,12 +2884,13 @@ type MakeMoveVecCommand {
 
 type MediaAsset {
 	activeRightsProposal: Proposal
+	activeRightsProposalLink: MediaAssetRightsProposalLink
 	ancestry: AncestrySnapshot
 	assetKind: MediaAssetKind!
+	authorizationVersion: Int!
 	derivativeGraph(limit: Int, offset: Int): DerivativeGraph
 	detectedRelationships(limit: Int, offset: Int): [DetectedAssetRelationship!]
 	economicsVersion: Int!
-	authorizationVersion: Int!
 	futureUsagePaused: Boolean!
 	licenseInstances(limit: Int, offset: Int): [MediaAssetLicenseInstance!]
 	licenseTerms(limit: Int, offset: Int): [LicenseTemplateTerms!]
@@ -2866,6 +2903,7 @@ type MediaAsset {
 	registeredBy: String!
 	resolvedPolicy: ResolvedPolicy
 	rightsDisputesSubmitted: Int
+	rightsProposalLinks(limit: Int, offset: Int): [MediaAssetRightsProposalLink!]
 	rightsProposals(limit: Int, offset: Int): [Proposal!]
 	rightsUpdates(limit: Int, offset: Int): [MediaAssetRightsUpdate!]
 	rightsVersion: Int!
@@ -2881,6 +2919,14 @@ enum MediaAssetKind {
 	VISUAL_WORK
 	MUSICAL_COMPOSITION
 	SOUND_RECORDING
+}
+
+type MediaAssetLicenseInstance {
+	acceptedAt: Int!
+	licenseInstanceId: String!
+	licensee: String!
+	status: Int!
+	templateVersionId: String!
 }
 
 """
@@ -2910,30 +2956,28 @@ enum MediaAssetProvenanceStatus {
 	VERIFIED
 }
 
+type MediaAssetRightsProposalLink {
+	claimsCommitment: String!
+	proposal: Proposal!
+	status: Int!
+	target: MediaAssetRightsTarget!
+}
+
+type MediaAssetRightsTarget {
+	beneficiaryAddress: String!
+	identityHash: String
+	identitySource: Int
+	kind: Int!
+	username: String
+	vaultId: String
+}
+
 type MediaAssetRightsUpdate {
 	mediaAssetId: String!
 	proposalId: String
 	rightsVersion: Int!
 	time: DateTime!
 	transactionId: String!
-}
-
-type LicenseTemplateTerms {
-	governingLaw: String
-	instanceRevocable: Boolean!
-	legalTermsHash: String
-	legalTermsUri: String
-	licenseSchemaVersion: Int!
-	templateVersionId: String!
-	version: Int!
-}
-
-type MediaAssetLicenseInstance {
-	acceptedAt: Int!
-	licenseInstanceId: String!
-	licensee: String!
-	status: Int!
-	templateVersionId: String!
 }
 
 type MediaAssetUsage {
@@ -6556,6 +6600,10 @@ type Profile implements Node {
 	"""
 	createdAt: Int
 	"""
+	When the owner deleted this profile (Unix ms from chain Clock at 0x6). Null while the profile is live.
+	"""
+	deletedAt: Int
+	"""
 	The profile's display name.
 	"""
 	displayName: String
@@ -7193,6 +7241,13 @@ type Proposal {
 	"""
 	anonymousVotes(limit: Int, offset: Int): [AnonymousVote!]
 	"""
+	Whether `address` may cast a community vote under the on-chain voter rules. Platform proposals
+	(registry_type=3) require an active platform membership and no platform block; other registries
+	are open to any wallet. Does not check lifecycle status or whether `address` already voted.
+	Returns null when the social DB is not configured.
+	"""
+	communityVoteEligibility(address: MySoAddress!): CommunityVoteEligibility
+	"""
 	Community votes on this proposal (paginated).
 	"""
 	communityVotes(limit: Int, offset: Int): [CommunityVote!]
@@ -7538,6 +7593,7 @@ type Query {
 	"""
 	List governance proposals linked to a media asset rights dispute.
 	"""
+	mediaAssetRightsProposal(proposalId: ID!): MediaAssetRightsProposalLink
 	mediaAssetRightsProposals(mediaAssetId: ID!, limit: Int, offset: Int): [Proposal!]
 	"""
 	Memory configuration. Returns null when social DB not configured or no config.
@@ -7775,6 +7831,10 @@ type Query {
 	PoC username beneficiary provision by on-chain beneficiary object id.
 	"""
 	pocUsernameBeneficiaryById(id: ID!): PocUsernameBeneficiary
+	"""
+	PoC username beneficiary provision by off-chain identity source and hash.
+	"""
+	pocUsernameBeneficiaryByIdentity(identitySource: Int!, identityHash: String!): PocUsernameBeneficiary
 	"""
 	PoC username beneficiary provision by username.
 	"""

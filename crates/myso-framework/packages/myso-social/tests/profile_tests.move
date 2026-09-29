@@ -25,6 +25,7 @@ module social_contracts::profile_tests {
     use myso::url;
     use myso::coin::{Self, Coin};
     use myso::myso::MYSO;
+    use std::vector;
     use myso::clock::{Self, Clock};
     use myso::event;
     use myso::transfer;
@@ -2653,6 +2654,325 @@ module social_contracts::profile_tests {
             let vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
             profile::delete_vesting_wallet(vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    fun setup_profile_sender(scenario: &mut test_scenario::Scenario, owner: address) {
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+            clock::share_for_testing(clock);
+            let cap = profile::create_ecosystem_badge_admin_cap(test_scenario::ctx(scenario));
+            transfer::public_transfer(cap, ADMIN);
+        };
+        test_scenario::next_tx(scenario, owner);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"User One"),
+                string::utf8(b"goneuser"),
+                string::utf8(b"This is my bio"),
+                b"https://example.com/image.png",
+                b"https://example.com/cover.png",
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(profile_config);
+        };
+    }
+
+    #[test]
+    fun test_delete_profile_releases_username_and_clears_fields() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        setup_profile_sender(&mut scenario, USER1);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::update_profile(
+                &mut profile,
+                string::utf8(b"Updated Name"),
+                string::utf8(b"Updated bio"),
+                b"https://example.com/image.png",
+                b"https://example.com/cover.png",
+                option::some(string::utf8(b"https://example.com")),
+                option::some(string::utf8(b"2000-01-01")),
+                option::some(string::utf8(b"Austin")),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            profile::add_badge_to_profile(
+                &mut profile,
+                string::utf8(b"badge1"),
+                string::utf8(b"Badge"),
+                string::utf8(b"desc"),
+                string::utf8(b"https://example.com/m.png"),
+                string::utf8(b"https://example.com/i.png"),
+                @0xBEEF,
+                1,
+                USER1,
+                1,
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(&scenario);
+            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::admin_set_profile_x_username(
+                &cap,
+                &mut profile,
+                option::some(string::utf8(b"xhandle")),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_address(USER1, profile);
+            test_scenario::return_to_sender(&scenario, cap);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let profile_id = object::uid_to_address(profile::id(&profile));
+            profile::delete_profile(
+                &mut registry,
+                &mut profile,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            assert!(option::is_none(&profile::display_name(&profile)), 0);
+            assert!(profile::bio(&profile) == string::utf8(b""), 1);
+            assert!(option::is_none(profile::profile_picture(&profile)), 2);
+            assert!(option::is_none(profile::cover_photo(&profile)), 3);
+            assert!(option::is_none(&profile::profile_picture_asset_id(&profile)), 4);
+            assert!(option::is_none(&profile::cover_photo_asset_id(&profile)), 5);
+            assert!(option::is_none(&profile::website(&profile)), 6);
+            assert!(option::is_none(&profile::birthdate(&profile)), 7);
+            assert!(option::is_none(&profile::location(&profile)), 8);
+            assert!(option::is_none(profile::x_username(&profile)), 9);
+            assert!(profile::badge_count(&profile) == 0, 10);
+            assert!(option::is_none(&profile::get_selected_badge_id(&profile)), 11);
+            assert!(option::is_none(&profile::get_selected_ecosystem_badge_id(&profile)), 12);
+            assert!(profile::owner(&profile) == USER1, 13);
+            assert!(object::uid_to_address(profile::id(&profile)) == profile_id, 14);
+            assert!(profile::is_username_available(&registry, string::utf8(b"goneuser")), 15);
+            assert!(option::is_none(&profile::lookup_profile_by_username(&registry, string::utf8(b"goneuser"))), 16);
+            let owner_profile = profile::lookup_profile_by_owner(&registry, USER1);
+            assert!(option::is_some(&owner_profile), 17);
+            assert!(*option::borrow(&owner_profile) == profile_id, 18);
+            let deleted = event::events_by_type<profile::DeletedProfileEvent>();
+            assert!(vector::length(&deleted) == 1, 19);
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"User Two"),
+                string::utf8(b"goneuser"),
+                string::utf8(b"new bio"),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            let claimed = profile::lookup_profile_by_username(&registry, string::utf8(b"goneuser"));
+            assert!(option::is_some(&claimed), 0);
+            let owner_still = profile::lookup_profile_by_owner(&registry, USER1);
+            assert!(option::is_some(&owner_still), 1);
+            assert!(*option::borrow(&claimed) != *option::borrow(&owner_still), 2);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EProfileAlreadyExists, location = social_contracts::profile)]
+    fun test_delete_profile_owner_cannot_create_another() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        setup_profile_sender(&mut scenario, USER1);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::delete_profile(
+                &mut registry,
+                &mut profile,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(&scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"Again"),
+                string::utf8(b"another"),
+                string::utf8(b""),
+                b"",
+                b"",
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EUnauthorized, location = social_contracts::profile)]
+    fun test_delete_profile_unauthorized() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        setup_profile_sender(&mut scenario, USER1);
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut profile = test_scenario::take_from_address<Profile>(&scenario, USER1);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::delete_profile(
+                &mut registry,
+                &mut profile,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_address(USER1, profile);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EUsernameLocked, location = social_contracts::profile)]
+    fun test_delete_profile_locked_username_aborts() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        setup_profile_sender(&mut scenario, USER1);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut marketplace = test_scenario::take_shared<UsernameMarketplace>(&scenario);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::create_username_listing(
+                &mut marketplace,
+                &mut registry,
+                &profile,
+                string::utf8(b"goneuser"),
+                5_000_000_000,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(marketplace);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::delete_profile(
+                &mut registry,
+                &mut profile,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(registry);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EUsernameNotFound, location = social_contracts::profile)]
+    fun test_delete_profile_second_delete_aborts() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        setup_profile_sender(&mut scenario, USER1);
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scenario);
+            let mut profile = test_scenario::take_from_sender<Profile>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            profile::delete_profile(
+                &mut registry,
+                &mut profile,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            profile::delete_profile(
+                &mut registry,
+                &mut profile,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, profile);
+            test_scenario::return_shared(registry);
         };
 
         test_scenario::end(scenario);

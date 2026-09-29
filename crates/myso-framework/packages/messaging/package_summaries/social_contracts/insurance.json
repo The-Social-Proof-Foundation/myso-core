@@ -414,7 +414,7 @@
       ],
       "return_": []
     },
-    "set_enable_flag": {
+    "set_insurance_enabled": {
       "source_index": 3,
       "index": 3,
       "doc": " Emergency enable/disable toggle (admin only)",
@@ -460,7 +460,7 @@
           }
         },
         {
-          "name": "enable_flag",
+          "name": "insurance_enabled",
           "type_": "bool"
         },
         {
@@ -715,7 +715,7 @@
       ],
       "return_": []
     },
-    "set_router_flags": {
+    "update_router_config": {
       "source_index": 8,
       "index": 8,
       "doc": null,
@@ -761,96 +761,8 @@
           }
         },
         {
-          "name": "router_enabled",
+          "name": "paused",
           "type_": "bool"
-        },
-        {
-          "name": "router_paused",
-          "type_": "bool"
-        },
-        {
-          "name": "clock",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "clock"
-                  },
-                  "name": "Clock",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "ctx",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "tx_context"
-                  },
-                  "name": "TxContext",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": []
-    },
-    "set_router_limits": {
-      "source_index": 9,
-      "index": 9,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": true,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "_",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "insurance"
-                  },
-                  "name": "InsuranceAdminCap",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "router_cfg",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "insurance"
-                  },
-                  "name": "InsuranceRouterConfig",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
         },
         {
           "name": "max_route_reserve_market",
@@ -916,8 +828,8 @@
       "return_": []
     },
     "set_market_pause": {
-      "source_index": 10,
-      "index": 10,
+      "source_index": 9,
+      "index": 9,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -990,8 +902,8 @@
       "return_": []
     },
     "set_backstop_caps": {
-      "source_index": 11,
-      "index": 11,
+      "source_index": 10,
+      "index": 10,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1076,8 +988,8 @@
       "return_": []
     },
     "set_tail_mode": {
-      "source_index": 12,
-      "index": 12,
+      "source_index": 11,
+      "index": 11,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1145,9 +1057,9 @@
       ],
       "return_": []
     },
-    "set_backstop_paused": {
-      "source_index": 13,
-      "index": 13,
+    "set_backstop_pool_enabled": {
+      "source_index": 12,
+      "index": 12,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1191,7 +1103,7 @@
           }
         },
         {
-          "name": "paused",
+          "name": "enabled",
           "type_": "bool"
         },
         {
@@ -1216,8 +1128,8 @@
       "return_": []
     },
     "deposit_backstop_treasury": {
-      "source_index": 14,
-      "index": 14,
+      "source_index": 13,
+      "index": 13,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1309,8 +1221,8 @@
       "return_": []
     },
     "tail_pay_shortfall": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 14,
+      "index": 14,
       "doc": " Tail shortfall payout only (`tail_mode_enabled` + caps). Does not interact with `claim`.",
       "attributes": [],
       "visibility": "Public",
@@ -1423,8 +1335,8 @@
       "return_": []
     },
     "min_cap_sub": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 15,
+      "index": 15,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1445,8 +1357,8 @@
       ]
     },
     "min_u64": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 16,
+      "index": 16,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1467,8 +1379,8 @@
       ]
     },
     "copy_id_vec": {
-      "source_index": 18,
-      "index": 18,
+      "source_index": 17,
+      "index": 17,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1512,8 +1424,8 @@
       ]
     },
     "new_router_config_defaults": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 18,
+      "index": 18,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -1551,6 +1463,44 @@
           }
         }
       ]
+    },
+    "emit_router_config_updated": {
+      "source_index": 19,
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "updated_by",
+          "type_": "address"
+        },
+        {
+          "name": "timestamp",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
     },
     "new_backstop_pool_defaults": {
       "source_index": 20,
@@ -2154,7 +2104,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2255,7 +2205,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2375,7 +2325,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2499,7 +2449,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2682,7 +2632,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -2947,7 +2897,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -3128,7 +3078,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -3405,7 +3355,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -3543,7 +3493,7 @@
                     "address": "social_contracts",
                     "name": "social_proof_of_truth"
                   },
-                  "name": "SpotRecord",
+                  "name": "SpotMarket",
                   "type_arguments": []
                 }
               }
@@ -4085,9 +4035,233 @@
       ],
       "return_": []
     },
-    "migrate_config": {
+    "assert_config_version": {
       "source_index": 54,
       "index": 54,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_router_version": {
+      "source_index": 55,
+      "index": 55,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_backstop_version": {
+      "source_index": 56,
+      "index": 56,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_vault_version": {
+      "source_index": 57,
+      "index": 57,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_policy_version": {
+      "source_index": 58,
+      "index": 58,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "CoveragePolicy",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "borrow_config_version_mut": {
+      "source_index": 59,
+      "index": 59,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            "u64"
+          ]
+        }
+      ]
+    },
+    "borrow_vault_version_mut": {
+      "source_index": 60,
+      "index": 60,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            "u64"
+          ]
+        }
+      ]
+    },
+    "migrate_config": {
+      "source_index": 61,
+      "index": 61,
       "doc": " Migration function for InsuranceConfig",
       "attributes": [],
       "visibility": "Public",
@@ -4152,8 +4326,8 @@
       "return_": []
     },
     "migrate_vault": {
-      "source_index": 55,
-      "index": 55,
+      "source_index": 62,
+      "index": 62,
       "doc": " Migration function for UnderwriterVault",
       "attributes": [],
       "visibility": "Public",
@@ -4172,6 +4346,270 @@
                     "name": "insurance"
                   },
                   "name": "UnderwriterVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_router_config": {
+      "source_index": 63,
+      "index": 63,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "router_cfg",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceRouterConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_backstop_pool": {
+      "source_index": 64,
+      "index": 64,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "pool",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "InsuranceBackstopPool",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_coverage_route": {
+      "source_index": 65,
+      "index": 65,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "route",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "CoverageRoute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_policy": {
+      "source_index": 66,
+      "index": 66,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "policy",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "insurance"
+                  },
+                  "name": "CoveragePolicy",
                   "type_arguments": []
                 }
               }
@@ -4273,7 +4711,7 @@
               }
             }
           },
-          "enable_flag": {
+          "insurance_enabled": {
             "index": 1,
             "doc": null,
             "type_": "bool"
@@ -4396,48 +4834,43 @@
               }
             }
           },
-          "router_enabled": {
+          "paused": {
             "index": 1,
             "doc": null,
             "type_": "bool"
           },
-          "router_paused": {
-            "index": 2,
-            "doc": null,
-            "type_": "bool"
-          },
           "max_route_reserve_market": {
-            "index": 3,
+            "index": 2,
             "doc": null,
             "type_": "u64"
           },
           "max_route_reserve_user": {
-            "index": 4,
+            "index": 3,
             "doc": null,
             "type_": "u64"
           },
           "max_route_reserve_option": {
-            "index": 5,
+            "index": 4,
             "doc": null,
             "type_": "u64"
           },
           "max_vault_concentration_bps": {
-            "index": 6,
+            "index": 5,
             "doc": null,
             "type_": "u64"
           },
           "min_vault_health_factor_bps": {
-            "index": 7,
+            "index": 6,
             "doc": null,
             "type_": "u64"
           },
           "max_route_legs": {
-            "index": 8,
+            "index": 7,
             "doc": null,
             "type_": "u64"
           },
           "market_pause": {
-            "index": 9,
+            "index": 8,
             "doc": null,
             "type_": {
               "Datatype": {
@@ -4460,7 +4893,7 @@
             }
           },
           "version": {
-            "index": 10,
+            "index": 9,
             "doc": null,
             "type_": "u64"
           }
@@ -4568,7 +5001,7 @@
             "doc": null,
             "type_": "bool"
           },
-          "paused": {
+          "insurance_backstop_pool_enabled": {
             "index": 8,
             "doc": null,
             "type_": "bool"
@@ -5030,6 +5463,11 @@
             "index": 12,
             "doc": null,
             "type_": "u8"
+          },
+          "version": {
+            "index": 13,
+            "doc": null,
+            "type_": "u64"
           }
         }
       }
@@ -6004,7 +6442,7 @@
             "doc": null,
             "type_": "address"
           },
-          "enable_flag": {
+          "insurance_enabled": {
             "index": 1,
             "doc": null,
             "type_": "bool"
@@ -6042,7 +6480,7 @@
         }
       }
     },
-    "RouterLimitsUpdatedEvent": {
+    "RouterConfigUpdatedEvent": {
       "index": 24,
       "doc": null,
       "attributes": [],
@@ -6059,38 +6497,43 @@
             "doc": null,
             "type_": "address"
           },
-          "max_route_reserve_market": {
+          "paused": {
             "index": 1,
             "doc": null,
-            "type_": "u64"
+            "type_": "bool"
           },
-          "max_route_reserve_user": {
+          "max_route_reserve_market": {
             "index": 2,
             "doc": null,
             "type_": "u64"
           },
-          "max_route_reserve_option": {
+          "max_route_reserve_user": {
             "index": 3,
             "doc": null,
             "type_": "u64"
           },
-          "max_vault_concentration_bps": {
+          "max_route_reserve_option": {
             "index": 4,
             "doc": null,
             "type_": "u64"
           },
-          "min_vault_health_factor_bps": {
+          "max_vault_concentration_bps": {
             "index": 5,
             "doc": null,
             "type_": "u64"
           },
-          "max_route_legs": {
+          "min_vault_health_factor_bps": {
             "index": 6,
             "doc": null,
             "type_": "u64"
           },
-          "timestamp": {
+          "max_route_legs": {
             "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "timestamp": {
+            "index": 8,
             "doc": null,
             "type_": "u64"
           }

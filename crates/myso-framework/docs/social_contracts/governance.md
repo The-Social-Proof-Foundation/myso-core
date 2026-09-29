@@ -49,6 +49,7 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `spot_governance_registry_id`](#social_contracts_governance_spot_governance_registry_id)
 -  [Function `bootstrap_init`](#social_contracts_governance_bootstrap_init)
 -  [Function `seed_founding_delegate`](#social_contracts_governance_seed_founding_delegate)
+-  [Function `assert_has_profile`](#social_contracts_governance_assert_has_profile)
 -  [Function `initialize_registry_tables`](#social_contracts_governance_initialize_registry_tables)
 -  [Function `update_governance_parameters_internal`](#social_contracts_governance_update_governance_parameters_internal)
 -  [Function `update_platform_governance_parameters`](#social_contracts_governance_update_platform_governance_parameters)
@@ -68,7 +69,9 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `rescind_proposal`](#social_contracts_governance_rescind_proposal)
 -  [Function `move_to_community_voting`](#social_contracts_governance_move_to_community_voting)
 -  [Function `community_vote_on_proposal`](#social_contracts_governance_community_vote_on_proposal)
+-  [Function `community_vote_internal`](#social_contracts_governance_community_vote_internal)
 -  [Function `community_vote_anonymous`](#social_contracts_governance_community_vote_anonymous)
+-  [Function `community_vote_anonymous_internal`](#social_contracts_governance_community_vote_anonymous_internal)
 -  [Function `community_finalize_voting_approved_value`](#social_contracts_governance_community_finalize_voting_approved_value)
 -  [Function `community_finalize_voting_reject_community_value`](#social_contracts_governance_community_finalize_voting_reject_community_value)
 -  [Function `community_finalize_voting_reject_quorum_value`](#social_contracts_governance_community_finalize_voting_reject_quorum_value)
@@ -1766,6 +1769,24 @@ Error codes
 
 
 
+<a name="social_contracts_governance_EUsePlatformVoteEntry"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EUsePlatformVoteEntry">EUsePlatformVoteEntry</a>: u64 = 22;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EProfileRequired"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EProfileRequired">EProfileRequired</a>: u64 = 23;
+</code></pre>
+
+
+
 <a name="social_contracts_governance_FORFEIT_REASON_QUORUM_NOT_MET"></a>
 
 Forfeiture reason (indexer) — same values as old refund reason codes.
@@ -2291,6 +2312,30 @@ Install the founding delegate without going through nomination (bootstrap / plat
 
 </details>
 
+<a name="social_contracts_governance_assert_has_profile"></a>
+
+## Function `assert_has_profile`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_assert_has_profile">assert_has_profile</a>(username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, addr: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_assert_has_profile">assert_has_profile</a>(username_registry: &UsernameRegistry, addr: <b>address</b>) {
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(username_registry, addr)), <a href="../social_contracts/governance.md#social_contracts_governance_EProfileRequired">EProfileRequired</a>);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_initialize_registry_tables"></a>
 
 ## Function `initialize_registry_tables`
@@ -2500,11 +2545,10 @@ Can only be called by governance admin
 
 ## Function `nominate_delegate`
 
-Nominate self as a delegate
-Uses wallet-level architecture - no profile required
+Nominate self as a delegate. The sender must own a profile.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_nominate_delegate">nominate_delegate</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_nominate_delegate">nominate_delegate</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2515,11 +2559,13 @@ Uses wallet-level architecture - no profile required
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_nominate_delegate">nominate_delegate</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    username_registry: &UsernameRegistry,
     ctx: &<b>mut</b> TxContext
 ) {
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_has_profile">assert_has_profile</a>(username_registry, caller);
     <b>let</b> current_epoch = tx_context::epoch(ctx);
     // Check <b>if</b> already a delegate or nominee delegate
     <b>assert</b>!(!table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyDelegate">EAlreadyDelegate</a>);
@@ -2554,10 +2600,10 @@ Uses wallet-level architecture - no profile required
 
 Vote for or against a delegate or nominee delegate
 Positive votes support the delegate, negative votes express disapproval
-Users can change their vote at any time
+Users can change their vote at any time. The sender must own a profile.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_for_delegate">vote_for_delegate</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, target_address: <b>address</b>, upvote: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_for_delegate">vote_for_delegate</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, target_address: <b>address</b>, upvote: bool, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2568,6 +2614,7 @@ Users can change their vote at any time
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_for_delegate">vote_for_delegate</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    username_registry: &UsernameRegistry,
     target_address: <b>address</b>,
     upvote: bool,
     ctx: &<b>mut</b> TxContext
@@ -2575,6 +2622,7 @@ Users can change their vote at any time
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_has_profile">assert_has_profile</a>(username_registry, caller);
     // Don't allow self-voting
     <b>assert</b>!(caller != target_address, <a href="../social_contracts/governance.md#social_contracts_governance_EUnauthorized">EUnauthorized</a>);
     // Variables <b>for</b> event emission
@@ -3576,10 +3624,11 @@ Move a proposal to community voting phase
 ## Function `community_vote_on_proposal`
 
 Community vote on a proposal with quadratic voting
-Users can cast multiple votes by paying a quadratically increasing cost
+Users can cast multiple votes by paying a quadratically increasing cost. The sender must own a profile.
+Platform registries must use <code><a href="../social_contracts/platform.md#social_contracts_platform_community_vote_on_platform_governance_proposal">platform::community_vote_on_platform_governance_proposal</a></code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_on_proposal">community_vote_on_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, vote_count: u64, approve: bool, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_on_proposal">community_vote_on_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, vote_count: u64, approve: bool, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3590,6 +3639,43 @@ Users can cast multiple votes by paying a quadratically increasing cost
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_on_proposal">community_vote_on_proposal</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    username_registry: &UsernameRegistry,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    vote_count: u64,
+    approve: bool,
+    coin: &<b>mut</b> Coin&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> != <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EUsePlatformVoteEntry">EUsePlatformVoteEntry</a>);
+    <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_internal">community_vote_internal</a>(registry, username_registry, proposal, vote_count, approve, coin, clock, ctx)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_community_vote_internal"></a>
+
+## Function `community_vote_internal`
+
+Enforces the profile requirement; callers must enforce any registry-specific voter
+eligibility (platform membership / blocks).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_internal">community_vote_internal</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, vote_count: u64, approve: bool, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_internal">community_vote_internal</a>(
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    username_registry: &UsernameRegistry,
     proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     vote_count: u64,
     approve: bool,
@@ -3600,6 +3686,7 @@ Users can cast multiple votes by paying a quadratically increasing cost
     // Check <a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> compatibility
     <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_has_profile">assert_has_profile</a>(username_registry, caller);
     <b>let</b> current_time_ms = clock::timestamp_ms(clock);
     <b>let</b> proposal_id = object::id(proposal);
     // Calculate vote cost before borrowing from registry
@@ -3656,10 +3743,11 @@ Users can cast multiple votes by paying a quadratically increasing cost
 
 ## Function `community_vote_anonymous`
 
-Submit an anonymous encrypted vote on a proposal
+Submit an anonymous encrypted vote on a proposal. The sender must own a profile.
+Platform registries must use <code><a href="../social_contracts/platform.md#social_contracts_platform_community_vote_anonymous_on_platform_governance_proposal">platform::community_vote_anonymous_on_platform_governance_proposal</a></code>.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, encrypted_vote: <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_EncryptedObject">mydata::bf_hmac_encryption::EncryptedObject</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, encrypted_vote: <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_EncryptedObject">mydata::bf_hmac_encryption::EncryptedObject</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3670,12 +3758,49 @@ Submit an anonymous encrypted vote on a proposal
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous">community_vote_anonymous</a>(
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    username_registry: &UsernameRegistry,
     proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     encrypted_vote: EncryptedObject,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> != <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EUsePlatformVoteEntry">EUsePlatformVoteEntry</a>);
+    <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous_internal">community_vote_anonymous_internal</a>(registry, username_registry, proposal, encrypted_vote, clock, ctx)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_community_vote_anonymous_internal"></a>
+
+## Function `community_vote_anonymous_internal`
+
+Enforces the profile requirement; callers must enforce any registry-specific voter
+eligibility (platform membership / blocks).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous_internal">community_vote_anonymous_internal</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, username_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, encrypted_vote: <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption_EncryptedObject">mydata::bf_hmac_encryption::EncryptedObject</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_vote_anonymous_internal">community_vote_anonymous_internal</a>(
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    username_registry: &UsernameRegistry,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    encrypted_vote: EncryptedObject,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
     <b>let</b> caller = tx_context::sender(ctx);
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_has_profile">assert_has_profile</a>(username_registry, caller);
     <b>let</b> current_time_ms = clock::timestamp_ms(clock);
     <b>let</b> proposal_id = object::id(proposal);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);

@@ -15,6 +15,10 @@
     },
     {
       "address": "myso",
+      "name": "bag"
+    },
+    {
+      "address": "myso",
       "name": "balance"
     },
     {
@@ -76,10 +80,6 @@
     {
       "address": "social_contracts",
       "name": "profile"
-    },
-    {
-      "address": "social_contracts",
-      "name": "social_graph"
     },
     {
       "address": "social_contracts",
@@ -573,6 +573,33 @@
           }
         },
         {
+          "name": "redirect_uri",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -905,6 +932,33 @@
           }
         },
         {
+          "name": "new_redirect_uri",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -1081,9 +1135,109 @@
         }
       ]
     },
-    "add_to_treasury": {
+    "deposit_to_treasury": {
       "source_index": 7,
       "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "add_to_treasury": {
+      "source_index": 8,
+      "index": 8,
       "doc": " Add MYSO tokens to platform treasury",
       "attributes": [],
       "visibility": "Package",
@@ -1183,9 +1337,109 @@
       ],
       "return_": []
     },
+    "fund_platform_treasury_from_coin": {
+      "source_index": 9,
+      "index": 9,
+      "doc": " Fund platform treasury from an external module (e.g. messaging paid DMs).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "NamedTypeParameter": "T"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "mark_platform_governance_proposal_implemented": {
-      "source_index": 8,
-      "index": 8,
+      "source_index": 10,
+      "index": 10,
       "doc": " Mark a platform-linked governance proposal as implemented; pay the proposer the implementation pool.",
       "attributes": [],
       "visibility": "Public",
@@ -1313,8 +1567,8 @@
       "return_": []
     },
     "delegate_vote_on_platform_governance_proposal": {
-      "source_index": 9,
-      "index": 9,
+      "source_index": 11,
+      "index": 11,
       "doc": " Platform-linked registry: delegate vote; on council rejection, the pool is forfeited to this platform’s treasury.",
       "attributes": [],
       "visibility": "Public",
@@ -1445,9 +1699,372 @@
       ],
       "return_": []
     },
+    "assert_platform_registry_and_voter": {
+      "source_index": 12,
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "voter",
+          "type_": "address"
+        }
+      ],
+      "return_": []
+    },
+    "community_vote_on_platform_governance_proposal": {
+      "source_index": 13,
+      "index": 13,
+      "doc": " Platform-linked registry: quadratic community vote, limited to joined wallets the platform has not blocked.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "Proposal",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vote_count",
+          "type_": "u64"
+        },
+        {
+          "name": "approve",
+          "type_": "bool"
+        },
+        {
+          "name": "coin",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "community_vote_anonymous_on_platform_governance_proposal": {
+      "source_index": 14,
+      "index": 14,
+      "doc": " Anonymous variant of [`community_vote_on_platform_governance_proposal`]. Non-`entry` because\n `EncryptedObject` is not a valid entry argument.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "block_list_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "block_list"
+                  },
+                  "name": "BlockListRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "Proposal",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "encrypted_vote",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "mydata",
+                "name": "bf_hmac_encryption"
+              },
+              "name": "EncryptedObject",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "finalize_platform_governance_proposal": {
-      "source_index": 10,
-      "index": 10,
+      "source_index": 15,
+      "index": 15,
       "doc": " After community voting, finalize a platform-governance proposal; on failure, pool to this platform’s treasury.",
       "attributes": [],
       "visibility": "Public",
@@ -1548,8 +2165,8 @@
       "return_": []
     },
     "finalize_platform_governance_proposal_anonymous": {
-      "source_index": 11,
-      "index": 11,
+      "source_index": 16,
+      "index": 16,
       "doc": " Same constraints as [`governance::finalize_proposal_anonymous`]: non-`entry` so decryption key vectors are valid arguments.",
       "attributes": [],
       "visibility": "Public",
@@ -1690,8 +2307,8 @@
       "return_": []
     },
     "reject_platform_governance_proposal_manually": {
-      "source_index": 12,
-      "index": 12,
+      "source_index": 17,
+      "index": 17,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1792,8 +2409,8 @@
       "return_": []
     },
     "grant_moderator_permission": {
-      "source_index": 13,
-      "index": 13,
+      "source_index": 18,
+      "index": 18,
       "doc": " Grant a single extension permission to a platform moderator",
       "attributes": [],
       "visibility": "Public",
@@ -1883,8 +2500,8 @@
       "return_": []
     },
     "grant_all_moderator_permissions": {
-      "source_index": 14,
-      "index": 14,
+      "source_index": 19,
+      "index": 19,
       "doc": " Grant all extension permissions to a member (full platform moderator)",
       "attributes": [],
       "visibility": "Public",
@@ -1967,8 +2584,8 @@
       "return_": []
     },
     "revoke_moderator_permission": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 20,
+      "index": 20,
       "doc": " Revoke a single extension permission from a platform moderator",
       "attributes": [],
       "visibility": "Public",
@@ -2058,8 +2675,8 @@
       "return_": []
     },
     "add_moderator": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 21,
+      "index": 21,
       "doc": " Add a moderator with all extension permissions (developer-only convenience wrapper)",
       "attributes": [],
       "visibility": "Public",
@@ -2142,8 +2759,8 @@
       "return_": []
     },
     "remove_moderator": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 22,
+      "index": 22,
       "doc": " Remove a moderator entirely from the platform moderators group",
       "attributes": [],
       "visibility": "Public",
@@ -2225,56 +2842,20 @@
       ],
       "return_": []
     },
-    "block_wallet": {
-      "source_index": 18,
-      "index": 18,
-      "doc": " Block a wallet address from the platform\n Allows platform developers/moderators to block wallets using the platform address as the blocker\n This enables platforms (shared objects) to block user wallets",
+    "assert_block_wallet_permission": {
+      "source_index": 23,
+      "index": 23,
+      "doc": " Verify platform moderator permission and return the platform address\n used as the block-list principal. Graph mutation is coordinated by\n `social_graph` to keep module dependencies acyclic.",
       "attributes": [],
-      "visibility": "Public",
+      "visibility": "Package",
       "entry": false,
       "type_parameters": [],
       "parameters": [
         {
-          "name": "block_list_registry",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "block_list"
-                  },
-                  "name": "BlockListRegistry",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "social_graph",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "social_graph"
-                  },
-                  "name": "SocialGraph",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
           "name": "platform",
           "type_": {
             "Reference": [
-              true,
+              false,
               {
                 "Datatype": {
                   "module": {
@@ -2321,14 +2902,10 @@
           }
         },
         {
-          "name": "blocked_wallet_address",
-          "type_": "address"
-        },
-        {
           "name": "ctx",
           "type_": {
             "Reference": [
-              true,
+              false,
               {
                 "Datatype": {
                   "module": {
@@ -2343,11 +2920,13 @@
           }
         }
       ],
-      "return_": []
+      "return_": [
+        "address"
+      ]
     },
     "unblock_wallet": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 24,
+      "index": 24,
       "doc": " Unblock a wallet address from the platform\n Allows platform developers/moderators to unblock wallets using the platform address as the blocker",
       "attributes": [],
       "visibility": "Public",
@@ -2448,8 +3027,8 @@
       "return_": []
     },
     "toggle_platform_approval": {
-      "source_index": 20,
-      "index": 20,
+      "source_index": 25,
+      "index": 25,
       "doc": " Toggle platform approval status (requires PlatformAdminCap only)\n Optional reasoning can be provided to explain the decision",
       "attributes": [],
       "visibility": "Public",
@@ -2563,8 +3142,8 @@
       "return_": []
     },
     "delete_platform": {
-      "source_index": 21,
-      "index": 21,
+      "source_index": 26,
+      "index": 26,
       "doc": " Delete a platform (requires PlatformAdminCap only)\n Can only delete platforms that are NOT approved\n Optional reasoning can be provided to explain the deletion",
       "attributes": [],
       "visibility": "Public",
@@ -2710,8 +3289,8 @@
       "return_": []
     },
     "new_status": {
-      "source_index": 22,
-      "index": 22,
+      "source_index": 27,
+      "index": 27,
       "doc": " Create a new platform status",
       "attributes": [],
       "visibility": "Public",
@@ -2737,8 +3316,8 @@
       ]
     },
     "status_value": {
-      "source_index": 23,
-      "index": 23,
+      "source_index": 28,
+      "index": 28,
       "doc": " Get the status value",
       "attributes": [],
       "visibility": "Public",
@@ -2769,8 +3348,8 @@
       ]
     },
     "validate_cover_photo": {
-      "source_index": 24,
-      "index": 24,
+      "source_index": 29,
+      "index": 29,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2831,8 +3410,8 @@
       "return_": []
     },
     "validate_media_previews": {
-      "source_index": 25,
-      "index": 25,
+      "source_index": 30,
+      "index": 30,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2894,9 +3473,87 @@
       ],
       "return_": []
     },
+    "validate_media_preview_url": {
+      "source_index": 31,
+      "index": 31,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "url",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "validate_badge_urls": {
+      "source_index": 32,
+      "index": 32,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "badge_media_url",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "badge_icon_url",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "is_valid_category": {
-      "source_index": 26,
-      "index": 26,
+      "source_index": 33,
+      "index": 33,
       "doc": " Validate that a category string matches one of the allowed categories",
       "attributes": [
         {
@@ -2938,8 +3595,8 @@
       ]
     },
     "join_platform": {
-      "source_index": 27,
-      "index": 27,
+      "source_index": 34,
+      "index": 34,
       "doc": " Join a platform - establishes initial connection between wallet and platform\n Checks for blocks before allowing the join and verifies platform is approved\n Works with wallet addresses only, no profile required",
       "attributes": [],
       "visibility": "Public",
@@ -3040,8 +3697,8 @@
       "return_": []
     },
     "leave_platform": {
-      "source_index": 28,
-      "index": 28,
+      "source_index": 35,
+      "index": 35,
       "doc": " Leave a platform - removes the connection between wallet and platform",
       "attributes": [],
       "visibility": "Public",
@@ -3106,8 +3763,8 @@
       "return_": []
     },
     "is_approved": {
-      "source_index": 29,
-      "index": 29,
+      "source_index": 36,
+      "index": 36,
       "doc": " Get platform approval status from registry",
       "attributes": [],
       "visibility": "Public",
@@ -3142,8 +3799,8 @@
       ]
     },
     "has_joined_platform": {
-      "source_index": 30,
-      "index": 30,
+      "source_index": 37,
+      "index": 37,
       "doc": " Check if a wallet address has joined a platform",
       "attributes": [],
       "visibility": "Public",
@@ -3178,8 +3835,8 @@
       ]
     },
     "is_developer": {
-      "source_index": 31,
-      "index": 31,
+      "source_index": 38,
+      "index": 38,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3214,8 +3871,8 @@
       ]
     },
     "has_moderator_permission": {
-      "source_index": 32,
-      "index": 32,
+      "source_index": 39,
+      "index": 39,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3289,8 +3946,8 @@
       ]
     },
     "is_moderator": {
-      "source_index": 33,
-      "index": 33,
+      "source_index": 40,
+      "index": 40,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3357,8 +4014,8 @@
       ]
     },
     "is_developer_or_moderator": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 41,
+      "index": 41,
       "doc": " Backward-compatible helper: true if developer or has any extension permission",
       "attributes": [],
       "visibility": "Public",
@@ -3425,8 +4082,8 @@
       ]
     },
     "moderators_group_id": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 42,
+      "index": 42,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -3466,8 +4123,8 @@
       ]
     },
     "assert_moderator_permission": {
-      "source_index": 36,
-      "index": 36,
+      "source_index": 43,
+      "index": 43,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3539,8 +4196,8 @@
       "return_": []
     },
     "grant_all_extension_permissions": {
-      "source_index": 37,
-      "index": 37,
+      "source_index": 44,
+      "index": 44,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3605,8 +4262,8 @@
       "return_": []
     },
     "all_extension_permission_names": {
-      "source_index": 38,
-      "index": 38,
+      "source_index": 45,
+      "index": 45,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3629,8 +4286,8 @@
       ]
     },
     "permission_name": {
-      "source_index": 39,
-      "index": 39,
+      "source_index": 46,
+      "index": 46,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3658,8 +4315,8 @@
       ]
     },
     "has_any_extension_permission": {
-      "source_index": 40,
-      "index": 40,
+      "source_index": 47,
+      "index": 47,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3708,8 +4365,8 @@
       ]
     },
     "emit_permissions_granted": {
-      "source_index": 41,
-      "index": 41,
+      "source_index": 48,
+      "index": 48,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3774,8 +4431,8 @@
       "return_": []
     },
     "emit_permissions_revoked": {
-      "source_index": 42,
-      "index": 42,
+      "source_index": 49,
+      "index": 49,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3840,8 +4497,8 @@
       "return_": []
     },
     "maybe_emit_moderator_removed": {
-      "source_index": 43,
-      "index": 43,
+      "source_index": 50,
+      "index": 50,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -3910,8 +4567,8 @@
       "return_": []
     },
     "name": {
-      "source_index": 44,
-      "index": 44,
+      "source_index": 51,
+      "index": 51,
       "doc": " Get platform name",
       "attributes": [],
       "visibility": "Public",
@@ -3951,8 +4608,8 @@
       ]
     },
     "tagline": {
-      "source_index": 45,
-      "index": 45,
+      "source_index": 52,
+      "index": 52,
       "doc": " Get platform tagline",
       "attributes": [],
       "visibility": "Public",
@@ -3992,8 +4649,8 @@
       ]
     },
     "description": {
-      "source_index": 46,
-      "index": 46,
+      "source_index": 53,
+      "index": 53,
       "doc": " Get platform description",
       "attributes": [],
       "visibility": "Public",
@@ -4033,8 +4690,8 @@
       ]
     },
     "logo": {
-      "source_index": 47,
-      "index": 47,
+      "source_index": 54,
+      "index": 54,
       "doc": " Get platform logo URL",
       "attributes": [],
       "visibility": "Public",
@@ -4079,8 +4736,8 @@
       ]
     },
     "cover_photo": {
-      "source_index": 48,
-      "index": 48,
+      "source_index": 55,
+      "index": 55,
       "doc": " Get platform cover photo URL",
       "attributes": [],
       "visibility": "Public",
@@ -4139,8 +4796,8 @@
       ]
     },
     "media_previews": {
-      "source_index": 49,
-      "index": 49,
+      "source_index": 56,
+      "index": 56,
       "doc": " Get platform media preview URLs",
       "attributes": [],
       "visibility": "Public",
@@ -4200,9 +4857,69 @@
         }
       ]
     },
+    "redirect_uri": {
+      "source_index": 57,
+      "index": 57,
+      "doc": " Get platform OAuth redirect URI",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
     "developer": {
-      "source_index": 50,
-      "index": 50,
+      "source_index": 58,
+      "index": 58,
       "doc": " Get platform developer",
       "attributes": [],
       "visibility": "Public",
@@ -4233,8 +4950,8 @@
       ]
     },
     "terms_of_service": {
-      "source_index": 51,
-      "index": 51,
+      "source_index": 59,
+      "index": 59,
       "doc": " Get platform terms of service",
       "attributes": [],
       "visibility": "Public",
@@ -4274,8 +4991,8 @@
       ]
     },
     "privacy_policy": {
-      "source_index": 52,
-      "index": 52,
+      "source_index": 60,
+      "index": 60,
       "doc": " Get platform privacy policy",
       "attributes": [],
       "visibility": "Public",
@@ -4315,8 +5032,8 @@
       ]
     },
     "get_platforms": {
-      "source_index": 53,
-      "index": 53,
+      "source_index": 61,
+      "index": 61,
       "doc": " Get platform platforms",
       "attributes": [],
       "visibility": "Public",
@@ -4363,8 +5080,8 @@
       ]
     },
     "get_links": {
-      "source_index": 54,
-      "index": 54,
+      "source_index": 62,
+      "index": 62,
       "doc": " Get platform links",
       "attributes": [],
       "visibility": "Public",
@@ -4411,8 +5128,8 @@
       ]
     },
     "primary_category": {
-      "source_index": 55,
-      "index": 55,
+      "source_index": 63,
+      "index": 63,
       "doc": " Get platform primary category",
       "attributes": [],
       "visibility": "Public",
@@ -4452,8 +5169,8 @@
       ]
     },
     "secondary_category": {
-      "source_index": 56,
-      "index": 56,
+      "source_index": 64,
+      "index": 64,
       "doc": " Get platform secondary category",
       "attributes": [],
       "visibility": "Public",
@@ -4512,8 +5229,8 @@
       ]
     },
     "status": {
-      "source_index": 57,
-      "index": 57,
+      "source_index": 65,
+      "index": 65,
       "doc": " Get platform status",
       "attributes": [],
       "visibility": "Public",
@@ -4544,8 +5261,8 @@
       ]
     },
     "release_date": {
-      "source_index": 58,
-      "index": 58,
+      "source_index": 66,
+      "index": 66,
       "doc": " Get platform release date",
       "attributes": [],
       "visibility": "Public",
@@ -4585,8 +5302,8 @@
       ]
     },
     "shutdown_date": {
-      "source_index": 59,
-      "index": 59,
+      "source_index": 67,
+      "index": 67,
       "doc": " Get platform shutdown date",
       "attributes": [],
       "visibility": "Public",
@@ -4645,8 +5362,8 @@
       ]
     },
     "created_at": {
-      "source_index": 60,
-      "index": 60,
+      "source_index": 68,
+      "index": 68,
       "doc": " Get platform creation timestamp",
       "attributes": [],
       "visibility": "Public",
@@ -4677,13 +5394,18 @@
       ]
     },
     "treasury_balance": {
-      "source_index": 61,
-      "index": 61,
-      "doc": " Get platform treasury balance",
+      "source_index": 69,
+      "index": 69,
+      "doc": " Get platform treasury balance for coin type `T`",
       "attributes": [],
       "visibility": "Public",
       "entry": false,
-      "type_parameters": [],
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
       "parameters": [
         {
           "name": "platform",
@@ -4708,9 +5430,46 @@
         "u64"
       ]
     },
+    "treasury_has_balance": {
+      "source_index": 70,
+      "index": 70,
+      "doc": " Whether the platform treasury has a bag slot for coin type `T`",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "parameters": [
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
     "id": {
-      "source_index": 62,
-      "index": 62,
+      "source_index": 71,
+      "index": 71,
       "doc": " Get platform ID",
       "attributes": [],
       "visibility": "Public",
@@ -4755,8 +5514,8 @@
       ]
     },
     "get_platform_by_name": {
-      "source_index": 63,
-      "index": 63,
+      "source_index": 72,
+      "index": 72,
       "doc": " Get platform by name from registry",
       "attributes": [],
       "visibility": "Public",
@@ -4814,8 +5573,8 @@
       ]
     },
     "get_platforms_by_developer": {
-      "source_index": 64,
-      "index": 64,
+      "source_index": 73,
+      "index": 73,
       "doc": " Get platforms owned by a developer",
       "attributes": [],
       "visibility": "Public",
@@ -4852,8 +5611,8 @@
       ]
     },
     "wants_dao_governance": {
-      "source_index": 65,
-      "index": 65,
+      "source_index": 74,
+      "index": 74,
       "doc": " Check if platform wants DAO governance",
       "attributes": [],
       "visibility": "Public",
@@ -4884,8 +5643,8 @@
       ]
     },
     "governance_registry_id": {
-      "source_index": 66,
-      "index": 66,
+      "source_index": 75,
+      "index": 75,
       "doc": " Get platform's governance registry ID if available",
       "attributes": [],
       "visibility": "Public",
@@ -4944,8 +5703,8 @@
       ]
     },
     "governance_parameters": {
-      "source_index": 67,
-      "index": 67,
+      "source_index": 76,
+      "index": 76,
       "doc": " Get platform's governance parameters",
       "attributes": [],
       "visibility": "Public",
@@ -5080,8 +5839,8 @@
       ]
     },
     "update_platform_governance": {
-      "source_index": 68,
-      "index": 68,
+      "source_index": 77,
+      "index": 77,
       "doc": " Update governance parameters for this platform's governance registry\n Can only be called by the platform developer",
       "attributes": [],
       "visibility": "Public",
@@ -5191,14 +5950,19 @@
       ],
       "return_": []
     },
-    "airdrop_from_treasury": {
-      "source_index": 69,
-      "index": 69,
-      "doc": " Airdrop tokens to multiple recipients from the platform treasury\n Can only be called by platform developer or moderator with treasury permission",
+    "withdraw_from_platform_treasury": {
+      "source_index": 78,
+      "index": 78,
+      "doc": " Withdraw tokens to multiple recipients from the platform treasury.\n Callable by the platform developer or a moderator with treasury permission.",
       "attributes": [],
       "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
+      "entry": true,
+      "type_parameters": [
+        {
+          "name": "T",
+          "constraints": []
+        }
+      ],
       "parameters": [
         {
           "name": "platform",
@@ -5303,9 +6067,1518 @@
       ],
       "return_": []
     },
+    "share_badge_ledger": {
+      "source_index": 79,
+      "index": 79,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform_id",
+          "type_": "address"
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "copy_string": {
+      "source_index": 80,
+      "index": 80,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "s",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "string"
+            },
+            "name": "String",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "compute_platform_badge_id": {
+      "source_index": 81,
+      "index": 81,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform_id",
+          "type_": "address"
+        },
+        {
+          "name": "badge_name",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "string"
+            },
+            "name": "String",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "expires_at_or_zero": {
+      "source_index": 82,
+      "index": 82,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "expires_at",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "option"
+                  },
+                  "name": "Option",
+                  "type_arguments": [
+                    {
+                      "phantom": false,
+                      "argument": "u64"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "grant_is_active": {
+      "source_index": 83,
+      "index": 83,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "grant",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadge",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "now",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "assert_ledger_matches": {
+      "source_index": 84,
+      "index": 84,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "borrow_grant_mut": {
+      "source_index": 85,
+      "index": 85,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        },
+        {
+          "name": "badge_id",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            true,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "platform"
+                },
+                "name": "PlatformBadge",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "borrow_grant": {
+      "source_index": 86,
+      "index": 86,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        },
+        {
+          "name": "badge_id",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "platform"
+                },
+                "name": "PlatformBadge",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "badge_ledger_id": {
+      "source_index": 87,
+      "index": 87,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "ledger_platform_id": {
+      "source_index": 88,
+      "index": 88,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "has_active_platform_badge": {
+      "source_index": 89,
+      "index": 89,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        },
+        {
+          "name": "badge_id",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "std",
+                    "name": "string"
+                  },
+                  "name": "String",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "selected_platform_badge_id": {
+      "source_index": 90,
+      "index": 90,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "std",
+                      "name": "string"
+                    },
+                    "name": "String",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "selected_ecosystem_badge_id": {
+      "source_index": 91,
+      "index": 91,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "type_": "address"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "std",
+                      "name": "string"
+                    },
+                    "name": "String",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "assign_shared_badge": {
+      "source_index": 92,
+      "index": 92,
+      "doc": " Assign a wallet-keyed platform badge. No Profile required.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "platform"
+                          },
+                          "name": "PlatformPackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "type_": "address"
+        },
+        {
+          "name": "badge_name",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "badge_description",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "badge_media_url",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "badge_icon_url",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "badge_type",
+          "type_": "u8"
+        },
+        {
+          "name": "expires_at",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "revoke_shared_badge": {
+      "source_index": 93,
+      "index": 93,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "platform"
+                          },
+                          "name": "PlatformPackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "type_": "address"
+        },
+        {
+          "name": "badge_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "extend_shared_badge": {
+      "source_index": 94,
+      "index": 94,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "platform_registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "platform",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "Platform",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "group",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "permissioned_group"
+                  },
+                  "name": "PermissionedGroup",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "social_contracts",
+                            "name": "platform"
+                          },
+                          "name": "PlatformPackage",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "type_": "address"
+        },
+        {
+          "name": "badge_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "expires_at",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "select_shared_badge": {
+      "source_index": 95,
+      "index": 95,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "badge_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "clear_shared_badge_selection": {
+      "source_index": 96,
+      "index": 96,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "select_ecosystem_badge": {
+      "source_index": 97,
+      "index": 97,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "profile",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "Profile",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "badge_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "clear_ecosystem_badge_selection": {
+      "source_index": 98,
+      "index": 98,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ledger",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "platform"
+                  },
+                  "name": "PlatformBadgeLedger",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "assign_badge": {
-      "source_index": 70,
-      "index": 70,
+      "source_index": 99,
+      "index": 99,
       "doc": " Assign a badge to a profile - can only be called by platform admin/moderator\n This is the primary entry point for badge assignment",
       "attributes": [],
       "visibility": "Public",
@@ -5512,8 +7785,8 @@
       "return_": []
     },
     "revoke_badge": {
-      "source_index": 71,
-      "index": 71,
+      "source_index": 100,
+      "index": 100,
       "doc": " Revoke a badge from a profile - can only be called by platform admin/moderator\n This is the primary entry point for badge revocation",
       "attributes": [],
       "visibility": "Public",
@@ -5659,8 +7932,8 @@
       "return_": []
     },
     "add_moderator_register": {
-      "source_index": 72,
-      "index": 72,
+      "source_index": 101,
+      "index": 101,
       "doc": " When adding a moderator to a platform, register them with the profile module",
       "attributes": [],
       "visibility": "Package",
@@ -5743,8 +8016,8 @@
       "return_": []
     },
     "remove_moderator_unregister": {
-      "source_index": 73,
-      "index": 73,
+      "source_index": 102,
+      "index": 102,
       "doc": " When removing a moderator from a platform",
       "attributes": [],
       "visibility": "Package",
@@ -5827,8 +8100,8 @@
       "return_": []
     },
     "update_platform_config": {
-      "source_index": 74,
-      "index": 74,
+      "source_index": 103,
+      "index": 103,
       "doc": " Update platform configuration (admin only)",
       "attributes": [],
       "visibility": "Public",
@@ -5884,23 +8157,11 @@
           "type_": "u64"
         },
         {
-          "name": "max_media_preview_url_length",
-          "type_": "u64"
-        },
-        {
           "name": "max_badge_name_length",
           "type_": "u64"
         },
         {
           "name": "max_badge_description_length",
-          "type_": "u64"
-        },
-        {
-          "name": "max_badge_media_url_length",
-          "type_": "u64"
-        },
-        {
-          "name": "max_badge_icon_url_length",
           "type_": "u64"
         },
         {
@@ -5943,8 +8204,8 @@
       "return_": []
     },
     "create_platform_admin_cap": {
-      "source_index": 75,
-      "index": 75,
+      "source_index": 104,
+      "index": 104,
       "doc": " Create a PlatformAdminCap for bootstrap (package visibility only)\n This function is only callable by other modules in the same package",
       "attributes": [],
       "visibility": "Package",
@@ -5984,8 +8245,8 @@
       ]
     },
     "migrate_platform": {
-      "source_index": 76,
-      "index": 76,
+      "source_index": 105,
+      "index": 105,
       "doc": " Migration function for Platform",
       "attributes": [],
       "visibility": "Public",
@@ -6050,8 +8311,8 @@
       "return_": []
     },
     "migrate_registry": {
-      "source_index": 77,
-      "index": 77,
+      "source_index": 106,
+      "index": 106,
       "doc": " Migration function for PlatformRegistry",
       "attributes": [],
       "visibility": "Public",
@@ -6157,33 +8418,18 @@
             "doc": null,
             "type_": "u64"
           },
-          "max_media_preview_url_length": {
+          "max_badge_name_length": {
             "index": 4,
             "doc": null,
             "type_": "u64"
           },
-          "max_badge_name_length": {
+          "max_badge_description_length": {
             "index": 5,
             "doc": null,
             "type_": "u64"
           },
-          "max_badge_description_length": {
-            "index": 6,
-            "doc": null,
-            "type_": "u64"
-          },
-          "max_badge_media_url_length": {
-            "index": 7,
-            "doc": null,
-            "type_": "u64"
-          },
-          "max_badge_icon_url_length": {
-            "index": 8,
-            "doc": null,
-            "type_": "u64"
-          },
           "version": {
-            "index": 9,
+            "index": 6,
             "doc": null,
             "type_": "u64"
           }
@@ -6222,33 +8468,18 @@
             "doc": null,
             "type_": "u64"
           },
-          "max_media_preview_url_length": {
+          "max_badge_name_length": {
             "index": 4,
             "doc": null,
             "type_": "u64"
           },
-          "max_badge_name_length": {
+          "max_badge_description_length": {
             "index": 5,
             "doc": null,
             "type_": "u64"
           },
-          "max_badge_description_length": {
-            "index": 6,
-            "doc": null,
-            "type_": "u64"
-          },
-          "max_badge_media_url_length": {
-            "index": 7,
-            "doc": null,
-            "type_": "u64"
-          },
-          "max_badge_icon_url_length": {
-            "index": 8,
-            "doc": null,
-            "type_": "u64"
-          },
           "timestamp": {
-            "index": 9,
+            "index": 6,
             "doc": null,
             "type_": "u64"
           }
@@ -6381,7 +8612,7 @@
     },
     "PlatformTreasuryAdmin": {
       "index": 8,
-      "doc": " Permission to airdrop from the platform treasury",
+      "doc": " Permission to withdraw from the platform treasury",
       "attributes": [],
       "abilities": [
         "Drop"
@@ -6433,8 +8664,34 @@
         }
       }
     },
-    "Platform": {
+    "PlatformTreasuryKey": {
       "index": 11,
+      "doc": " Bag key for a `Balance<T>` treasury slot.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [
+        {
+          "phantom": true,
+          "name": "T",
+          "constraints": []
+        }
+      ],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "dummy_field": {
+            "index": 0,
+            "type_": "bool"
+          }
+        }
+      }
+    },
+    "Platform": {
+      "index": 12,
       "doc": " Platform object that contains information about a social media platform",
       "attributes": [],
       "abilities": [
@@ -6740,31 +8997,17 @@
             "doc": " Creation timestamp",
             "type_": "u64"
           },
-          "treasury": {
+          "treasury_balances": {
             "index": 18,
-            "doc": " Platform-specific MYSO tokens treasury",
+            "doc": " Per-coin treasury balances keyed by `PlatformTreasuryKey<T>`",
             "type_": {
               "Datatype": {
                 "module": {
                   "address": "myso",
-                  "name": "balance"
+                  "name": "bag"
                 },
-                "name": "Balance",
-                "type_arguments": [
-                  {
-                    "phantom": true,
-                    "argument": {
-                      "Datatype": {
-                        "module": {
-                          "address": "myso",
-                          "name": "myso"
-                        },
-                        "name": "MYSO",
-                        "type_arguments": []
-                      }
-                    }
-                  }
-                ]
+                "name": "Bag",
+                "type_arguments": []
               }
             }
           },
@@ -6934,16 +9177,348 @@
               }
             }
           },
-          "version": {
+          "redirect_uri": {
             "index": 28,
+            "doc": " Optional OAuth redirect URI for the platform",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "badge_ledger_id": {
+            "index": 29,
+            "doc": " Shared wallet-keyed platform badge ledger created with this platform",
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "version": {
+            "index": 30,
             "doc": " Version for upgrades",
             "type_": "u64"
           }
         }
       }
     },
+    "PlatformBadgeLedger": {
+      "index": 13,
+      "doc": " Shared ledger of admin-managed platform badges, keyed by wallet then badge_id.",
+      "attributes": [],
+      "abilities": [
+        "Key"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "platform_id": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "version": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "grants": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "table"
+                        },
+                        "name": "Table",
+                        "type_arguments": [
+                          {
+                            "phantom": true,
+                            "argument": {
+                              "Datatype": {
+                                "module": {
+                                  "address": "std",
+                                  "name": "string"
+                                },
+                                "name": "String",
+                                "type_arguments": []
+                              }
+                            }
+                          },
+                          {
+                            "phantom": true,
+                            "argument": {
+                              "Datatype": {
+                                "module": {
+                                  "address": "social_contracts",
+                                  "name": "platform"
+                                },
+                                "name": "PlatformBadge",
+                                "type_arguments": []
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "selections": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ecosystem_selections": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "table"
+                },
+                "name": "Table",
+                "type_arguments": [
+                  {
+                    "phantom": true,
+                    "argument": "address"
+                  },
+                  {
+                    "phantom": true,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "PlatformBadge": {
+      "index": 14,
+      "doc": " Admin-managed status badge (Premium+, Verified, Moderator, etc.).",
+      "attributes": [],
+      "abilities": [
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "badge_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "name": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "description": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "media_url": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "icon_url": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "platform_id": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "issued_at": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "issued_by": {
+            "index": 7,
+            "doc": null,
+            "type_": "address"
+          },
+          "badge_type": {
+            "index": 8,
+            "doc": null,
+            "type_": "u8"
+          },
+          "expires_at": {
+            "index": 9,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "revoked": {
+            "index": 10,
+            "doc": null,
+            "type_": "bool"
+          }
+        }
+      }
+    },
     "PlatformRegistry": {
-      "index": 12,
+      "index": 15,
       "doc": " Platform registry that keeps track of all platforms",
       "attributes": [],
       "abilities": [
@@ -7056,7 +9631,7 @@
       }
     },
     "PlatformCreatedEvent": {
-      "index": 13,
+      "index": 16,
       "doc": " Platform created event",
       "attributes": [],
       "abilities": [
@@ -7500,12 +10075,355 @@
                 "type_arguments": []
               }
             }
+          },
+          "redirect_uri": {
+            "index": 26,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "badge_ledger_id": {
+            "index": 27,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "SharedBadgeAssignedEvent": {
+      "index": 17,
+      "doc": " Emitted when a wallet-keyed platform badge is assigned or re-assigned",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "owner": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "badge_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "name": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "description": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "media_url": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "icon_url": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "platform_id": {
+            "index": 6,
+            "doc": null,
+            "type_": "address"
+          },
+          "issued_at": {
+            "index": 7,
+            "doc": null,
+            "type_": "u64"
+          },
+          "issued_by": {
+            "index": 8,
+            "doc": null,
+            "type_": "address"
+          },
+          "badge_type": {
+            "index": 9,
+            "doc": null,
+            "type_": "u8"
+          },
+          "expires_at": {
+            "index": 10,
+            "doc": null,
+            "type_": "u64"
+          },
+          "assigned_by": {
+            "index": 11,
+            "doc": null,
+            "type_": "address"
+          },
+          "assigned_at": {
+            "index": 12,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SharedBadgeRevokedEvent": {
+      "index": 18,
+      "doc": " Emitted when a wallet-keyed platform badge is revoked",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "owner": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "badge_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "platform_id": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "revoked_by": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "revoked_at": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SharedBadgeExtendedEvent": {
+      "index": 19,
+      "doc": " Emitted when only expiry is updated on a wallet-keyed platform badge",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "owner": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "badge_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "expires_at": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "extended_by": {
+            "index": 3,
+            "doc": null,
+            "type_": "address"
+          },
+          "extended_at": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "SharedBadgeSelectedEvent": {
+      "index": 20,
+      "doc": " Emitted when the wallet owner selects or clears a platform badge",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "owner": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "badge_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "selected_at": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "EcosystemBadgeLedgerSelectedEvent": {
+      "index": 21,
+      "doc": " Emitted when the wallet owner selects or clears an ecosystem badge display pick",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "owner": {
+            "index": 0,
+            "doc": null,
+            "type_": "address"
+          },
+          "badge_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "string"
+                },
+                "name": "String",
+                "type_arguments": []
+              }
+            }
+          },
+          "selected_at": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
           }
         }
       }
     },
     "PlatformUpdatedEvent": {
-      "index": 14,
+      "index": 22,
       "doc": " Platform updated event",
       "attributes": [],
       "abilities": [
@@ -7793,8 +10711,36 @@
               }
             }
           },
-          "updated_at": {
+          "redirect_uri": {
             "index": 16,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "updated_at": {
+            "index": 17,
             "doc": null,
             "type_": "u64"
           }
@@ -7802,7 +10748,7 @@
       }
     },
     "ModeratorPermissionsGrantedEvent": {
-      "index": 15,
+      "index": 23,
       "doc": " Emitted when one or more moderator permissions are granted",
       "attributes": [],
       "abilities": [
@@ -7862,7 +10808,7 @@
       }
     },
     "ModeratorPermissionsRevokedEvent": {
-      "index": 16,
+      "index": 24,
       "doc": " Emitted when one or more moderator permissions are revoked",
       "attributes": [],
       "abilities": [
@@ -7922,7 +10868,7 @@
       }
     },
     "ModeratorRemovedEvent": {
-      "index": 17,
+      "index": 25,
       "doc": " Emitted when a member is fully removed from the moderators group",
       "attributes": [],
       "abilities": [
@@ -7966,7 +10912,7 @@
       }
     },
     "PlatformApprovalChangedEvent": {
-      "index": 18,
+      "index": 26,
       "doc": " Platform approval status changed event",
       "attributes": [],
       "abilities": [
@@ -8024,7 +10970,7 @@
       }
     },
     "PlatformDeletedEvent": {
-      "index": 19,
+      "index": 27,
       "doc": " Platform deleted event",
       "attributes": [],
       "abilities": [
@@ -8101,7 +11047,7 @@
       }
     },
     "UserJoinedPlatformEvent": {
-      "index": 20,
+      "index": 28,
       "doc": " Event emitted when a user joins a platform",
       "attributes": [],
       "abilities": [
@@ -8140,7 +11086,7 @@
       }
     },
     "UserLeftPlatformEvent": {
-      "index": 21,
+      "index": 29,
       "doc": " Event emitted when a user leaves a platform",
       "attributes": [],
       "abilities": [
@@ -8178,9 +11124,9 @@
         }
       }
     },
-    "TokenAirdropEvent": {
-      "index": 22,
-      "doc": " Event emitted when tokens are airdropped from the platform treasury",
+    "PlatformTreasuryWithdrawalEvent": {
+      "index": 30,
+      "doc": " Event emitted when tokens are withdrawn from the platform treasury",
       "attributes": [],
       "abilities": [
         "Copy",
@@ -8215,17 +11161,31 @@
             "doc": null,
             "type_": "address"
           },
-          "timestamp": {
+          "coin_type": {
             "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "type_name"
+                },
+                "name": "TypeName",
+                "type_arguments": []
+              }
+            }
+          },
+          "timestamp": {
+            "index": 6,
             "doc": null,
             "type_": "u64"
           }
         }
       }
     },
-    "TreasuryFundedEvent": {
-      "index": 23,
-      "doc": " Event emitted when tokens are added to platform treasury",
+    "PlatformTreasuryFundedEvent": {
+      "index": 31,
+      "doc": " Event emitted when tokens are deposited into the platform treasury",
       "attributes": [],
       "abilities": [
         "Copy",
@@ -8255,8 +11215,22 @@
             "doc": null,
             "type_": "u64"
           },
-          "timestamp": {
+          "coin_type": {
             "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "type_name"
+                },
+                "name": "TypeName",
+                "type_arguments": []
+              }
+            }
+          },
+          "timestamp": {
+            "index": 5,
             "doc": null,
             "type_": "u64"
           }

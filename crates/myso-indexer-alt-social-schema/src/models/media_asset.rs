@@ -242,6 +242,12 @@ pub struct NewMediaAssetGovernanceLink {
     pub rights_disputes_submitted: i16,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+    pub target_kind: i16,
+    pub beneficiary_address: String,
+    pub target_vault_id: Option<String>,
+    pub target_username: Option<String>,
+    pub identity_source: Option<i16>,
+    pub identity_hash: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -274,6 +280,18 @@ pub struct MediaAssetGovernanceLinkRow {
     pub transaction_id: String,
     #[diesel(sql_type = diesel::sql_types::Timestamptz)]
     pub time: chrono::DateTime<chrono::Utc>,
+    #[diesel(sql_type = SmallInt)]
+    pub target_kind: i16,
+    #[diesel(sql_type = Text)]
+    pub beneficiary_address: String,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    pub target_vault_id: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    pub target_username: Option<String>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<SmallInt>)]
+    pub identity_source: Option<i16>,
+    #[diesel(sql_type = diesel::sql_types::Nullable<Text>)]
+    pub identity_hash: Option<String>,
 }
 
 #[derive(Debug, Clone, QueryableByName, Serialize, Deserialize)]

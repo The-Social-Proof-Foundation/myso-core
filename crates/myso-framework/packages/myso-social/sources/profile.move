@@ -410,6 +410,14 @@ module social_contracts::profile {
         created_at: u64,
     }
 
+    /// Emitted when the owner deletes their profile. The object remains; `username` is freed.
+    public struct DeletedProfileEvent has copy, drop {
+        profile_id: address,
+        owner: address,
+        username: String,
+        deleted_at: u64,
+    }
+
     /// Profile updated event with all profile details (username lives in registry)
     public struct ProfileUpdatedEvent has copy, drop {
         profile_id: address,
@@ -1275,6 +1283,47 @@ module social_contracts::profile {
         apply_optional_string_update(&mut profile.location, new_location);
 
         emit_profile_updated_event(profile, clock, ctx);
+    }
+
+    /// Owner-only deletion. Frees the claimed username and clears personal fields.
+    /// The profile object, owner, and `address_profiles` row stay, so this wallet cannot create another profile.
+    /// Aborts with [`EUsernameLocked`] when the name is reserved for a marketplace listing or PoC beneficiary.
+    public entry fun delete_profile(
+        registry: &mut UsernameRegistry,
+        profile: &mut Profile,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(profile.owner == sender, EUnauthorized);
+        assert!(profile.version == upgrade::current_version(), 1);
+        assert!(registry.version == upgrade::current_version(), 1);
+
+        let profile_id = object::uid_to_address(&profile.id);
+        assert!(table::contains(&registry.profile_username, profile_id), EUsernameNotFound);
+        let username = *table::borrow(&registry.profile_username, profile_id);
+        revoke_username(registry, copy username);
+
+        profile.display_name = option::none();
+        profile.bio = string::utf8(b"");
+        profile.profile_picture = option::none();
+        profile.cover_photo = option::none();
+        profile.profile_picture_asset_id = option::none();
+        profile.cover_photo_asset_id = option::none();
+        profile.website = option::none();
+        profile.birthdate = option::none();
+        profile.location = option::none();
+        profile.x_username = option::none();
+        profile.badges = vector::empty();
+        profile.selected_badge_id = option::none();
+        profile.selected_ecosystem_badge_id = option::none();
+
+        event::emit(DeletedProfileEvent {
+            profile_id,
+            owner: profile.owner,
+            username,
+            deleted_at: clock::timestamp_ms(clock),
+        });
     }
 
     /// Set profile picture from a PoC-resolved MediaAsset (usage class must permit PROFILE_PICTURE).

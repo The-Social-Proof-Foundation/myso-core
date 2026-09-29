@@ -15,6 +15,10 @@
     },
     {
       "address": "std",
+      "name": "option"
+    },
+    {
+      "address": "std",
       "name": "vector"
     }
   ],
@@ -122,6 +126,54 @@
           "name": "snapshot_id",
           "type_": {
             "vector": "u8"
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": "u8"
+        }
+      ]
+    },
+    "leaf_hash_with_platform": {
+      "source_index": 3,
+      "index": 3,
+      "doc": " Construct a MyData marketplace leaf that also commits to the fee-routing platform.\n `platform_id = none` identifies the non-platform settlement path.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "addr",
+          "type_": "address"
+        },
+        {
+          "name": "amount",
+          "type_": "u64"
+        },
+        {
+          "name": "snapshot_id",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "platform_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "address"
+                }
+              ]
+            }
           }
         }
       ],

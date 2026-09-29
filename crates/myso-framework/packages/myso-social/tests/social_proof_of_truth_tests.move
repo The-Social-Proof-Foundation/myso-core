@@ -502,9 +502,19 @@ module social_contracts::social_proof_of_truth_tests {
             let mut spot_registry = take_spot_governance_registry(&scen);
             let mut proposal = test_scenario::take_shared<Proposal>(&scen);
             let clock = test_scenario::take_shared<Clock>(&scen);
+            let mut username_registry = test_scenario::take_shared<profile::UsernameRegistry>(&scen);
+            profile::register_username(
+                &mut username_registry,
+                string::utf8(b"spotvoter2"),
+                option::none(),
+                option::none(),
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
             let mut payment = coin::mint_for_testing<MYSO>(1 * SCALING, test_scenario::ctx(&mut scen));
             governance::community_vote_on_proposal(
                 &mut spot_registry,
+                &username_registry,
                 &mut proposal,
                 1,
                 true,
@@ -517,6 +527,7 @@ module social_contracts::social_proof_of_truth_tests {
             } else {
                 coin::destroy_zero(payment);
             };
+            test_scenario::return_shared(username_registry);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(spot_registry);

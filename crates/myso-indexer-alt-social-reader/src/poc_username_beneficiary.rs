@@ -35,6 +35,25 @@ pub async fn get_by_username(
     Ok(row)
 }
 
+pub async fn get_by_identity(
+    conn: &mut Connection<'_>,
+    creator_identity_source: i16,
+    creator_identity_hash: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Option<PocUsernameBeneficiaryRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let row = poc_username_beneficiaries::table
+        .filter(poc_username_beneficiaries::creator_identity_source.eq(creator_identity_source))
+        .filter(poc_username_beneficiaries::creator_identity_hash.eq(creator_identity_hash))
+        .select(PocUsernameBeneficiaryRow::as_select())
+        .first(conn)
+        .await
+        .optional()?;
+    metrics.requests_succeeded.inc();
+    Ok(row)
+}
+
 pub async fn get_by_id(
     conn: &mut Connection<'_>,
     beneficiary_id: &str,

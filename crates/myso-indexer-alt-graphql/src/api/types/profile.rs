@@ -84,6 +84,9 @@ impl Profile {
             selected_badge_id: inner.selected_badge_id,
             selected_ecosystem_badge_id: inner.selected_ecosystem_badge_id,
             contract_version: inner.contract_version,
+            deleted_at: inner
+                .deleted_at
+                .map(|t| t.and_utc().timestamp_millis()),
         };
         Self { inner: response }
     }
@@ -141,6 +144,11 @@ impl Profile {
     /// When the profile was created (Unix ms from chain Clock at 0x6).
     async fn created_at(&self) -> Option<i64> {
         self.inner.created_at
+    }
+
+    /// When the owner deleted this profile (Unix ms from chain Clock at 0x6). Null while the profile is live.
+    async fn deleted_at(&self) -> Option<i64> {
+        self.inner.deleted_at
     }
 
     /// On-chain contract version for this profile object.

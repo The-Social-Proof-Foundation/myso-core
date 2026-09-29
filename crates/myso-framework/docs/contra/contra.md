@@ -91,6 +91,7 @@ requested operation.
 -  [Enum `TransferBatch`](#contra_contra_TransferBatch)
 -  [Constants](#@Constants_3)
 -  [Function `init`](#contra_contra_init)
+-  [Function `create_registries`](#contra_contra_create_registries)
 -  [Function `authorize_as_sender`](#contra_contra_authorize_as_sender)
 -  [Function `authorize_with_witness`](#contra_contra_authorize_with_witness)
 -  [Function `authorize_as_object`](#contra_contra_authorize_as_object)
@@ -725,6 +726,16 @@ Recovery: transfer or update active balance.
 
 
 
+<a name="contra_contra_ENotSystemAddress"></a>
+
+Sender is not @0x0 the system address.
+
+
+<pre><code><b>const</b> <a href="../contra/contra.md#contra_contra_ENotSystemAddress">ENotSystemAddress</a>: u64 = 12;
+</code></pre>
+
+
+
 <a name="contra_contra_PERMISSIONED_REGISTER"></a>
 
 (Potentially) permissioned operations.
@@ -786,10 +797,10 @@ Protocol-id <code>100</code> is also reserved by the ts-sdk for <code>PROTOCOL_V
 
 ## Function `init`
 
-On initialization, we create and share the <code><a href="../contra/contra.md#contra_contra_AccountRegistry">AccountRegistry</a></code> and <code><a href="../contra/contra.md#contra_contra_TokenRegistry">TokenRegistry</a></code> objects.
+Registries are shared from genesis via <code><a href="../contra/contra.md#contra_contra_create_registries">create_registries</a></code>, not package init.
 
 
-<pre><code><b>fun</b> <a href="../contra/contra.md#contra_contra_init">init</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../contra/contra.md#contra_contra_init">init</a>(_ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -798,11 +809,34 @@ On initialization, we create and share the <code><a href="../contra/contra.md#co
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../contra/contra.md#contra_contra_init">init</a>(ctx: &<b>mut</b> TxContext) {
-    <b>let</b> account_registry = <a href="../contra/contra.md#contra_contra_AccountRegistry">AccountRegistry</a> { id: object::new(ctx) };
-    <b>let</b> token_registry = <a href="../contra/contra.md#contra_contra_TokenRegistry">TokenRegistry</a> { id: object::new(ctx) };
-    transfer::share_object(account_registry);
-    transfer::share_object(token_registry);
+<pre><code><b>fun</b> <a href="../contra/contra.md#contra_contra_init">init</a>(_ctx: &<b>mut</b> TxContext) {}
+</code></pre>
+
+
+
+</details>
+
+<a name="contra_contra_create_registries"></a>
+
+## Function `create_registries`
+
+Create and share <code><a href="../contra/contra.md#contra_contra_AccountRegistry">AccountRegistry</a></code> and <code><a href="../contra/contra.md#contra_contra_TokenRegistry">TokenRegistry</a></code>. Called once from genesis.
+A normal user transaction aborts because the sender is not <code>@0x0</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../contra/contra.md#contra_contra_create_registries">create_registries</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../contra/contra.md#contra_contra_create_registries">create_registries</a>(ctx: &<b>mut</b> TxContext) {
+    <b>assert</b>!(ctx.sender() == @0x0, <a href="../contra/contra.md#contra_contra_ENotSystemAddress">ENotSystemAddress</a>);
+    transfer::share_object(<a href="../contra/contra.md#contra_contra_AccountRegistry">AccountRegistry</a> { id: object::new(ctx) });
+    transfer::share_object(<a href="../contra/contra.md#contra_contra_TokenRegistry">TokenRegistry</a> { id: object::new(ctx) });
 }
 </code></pre>
 

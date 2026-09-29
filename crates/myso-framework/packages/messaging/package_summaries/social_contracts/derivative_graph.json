@@ -1,0 +1,2555 @@
+{
+  "id": {
+    "address": "social_contracts",
+    "name": "derivative_graph"
+  },
+  "doc": " **Bounded DAG:** Version 1 enforces `MAX_ANCESTORS` as an intentional protocol constraint.\n **Cycle prevention:** Each `MediaAsset` commits transitive `AncestryMetadata`.",
+  "immediate_dependencies": [
+    {
+      "address": "myso",
+      "name": "object"
+    },
+    {
+      "address": "std",
+      "name": "option"
+    },
+    {
+      "address": "std",
+      "name": "vector"
+    }
+  ],
+  "attributes": [
+    {
+      "Parameterized": [
+        "allow",
+        [
+          {
+            "Name": "duplicate_alias"
+          }
+        ]
+      ]
+    }
+  ],
+  "functions": {
+    "max_ancestors": {
+      "source_index": 0,
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u64"
+      ]
+    },
+    "relationship_remix": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "relationship_sample": {
+      "source_index": 2,
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "relationship_cover": {
+      "source_index": 3,
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "relationship_mashup": {
+      "source_index": 4,
+      "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "obligation_kind_edge": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "obligation_kind_inherited": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "obligation_kind_template": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "empty_compose_accumulator": {
+      "source_index": 8,
+      "index": 8,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "derivative_graph"
+            },
+            "name": "PendingComposeAccumulator",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "compose_total_edge_share_bps": {
+      "source_index": 9,
+      "index": 9,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "compose_accumulated_obligations": {
+      "source_index": 10,
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "ResolvedRoyaltyObligation",
+                  "type_arguments": []
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "compose_parent_asset_ids": {
+      "source_index": 11,
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "compose_license_instance_ids": {
+      "source_index": 12,
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "compose_template_version_ids": {
+      "source_index": 13,
+      "index": 13,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "compose_parent_policy_versions": {
+      "source_index": 14,
+      "index": 14,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": "u64"
+            }
+          ]
+        }
+      ]
+    },
+    "compose_effective_rights": {
+      "source_index": 15,
+      "index": 15,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "compose_derivatives_allowed": {
+      "source_index": 16,
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "compose_commercial_allowed": {
+      "source_index": 17,
+      "index": 17,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "compose_attribution_required": {
+      "source_index": 18,
+      "index": 18,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "find_parent_index": {
+      "source_index": 19,
+      "index": 19,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parent_asset_ids",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent_id",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "insert_parent_into_lineage_vectors": {
+      "source_index": 20,
+      "index": 20,
+      "doc": " Keeps parallel lineage vectors index-aligned when parent_asset_ids is canonically sorted.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parent_asset_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "license_instance_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "template_version_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "parent_policy_version",
+          "type_": "u64"
+        },
+        {
+          "name": "parent_asset_ids",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "license_instance_ids",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "template_version_ids",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent_policy_versions",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": "u64"
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "merge_compose_accumulator": {
+      "source_index": 21,
+      "index": 21,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "acc",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "PendingComposeAccumulator",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent_effective_rights",
+          "type_": "u64"
+        },
+        {
+          "name": "parent_derivatives_allowed",
+          "type_": "bool"
+        },
+        {
+          "name": "parent_commercial_allowed",
+          "type_": "bool"
+        },
+        {
+          "name": "parent_attribution_required",
+          "type_": "bool"
+        },
+        {
+          "name": "parent_share_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "parent_obligations",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "derivative_graph"
+                },
+                "name": "ResolvedRoyaltyObligation",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "edge_obligation",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "derivative_graph"
+              },
+              "name": "ResolvedRoyaltyObligation",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "parent_asset_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "license_instance_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "template_version_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "parent_policy_version",
+          "type_": "u64"
+        }
+      ],
+      "return_": []
+    },
+    "find_edge_by_relationship_id": {
+      "source_index": 22,
+      "index": 22,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "edges",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "social_contracts",
+                      "name": "derivative_graph"
+                    },
+                    "name": "DerivativeRelationship",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "relationship_id",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "derivative_graph"
+                },
+                "name": "DerivativeRelationship",
+                "type_arguments": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "set_child_asset_id_on_edges": {
+      "source_index": 23,
+      "index": 23,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "edges",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "social_contracts",
+                      "name": "derivative_graph"
+                    },
+                    "name": "DerivativeRelationship",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "child_asset_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "empty_ancestry": {
+      "source_index": 24,
+      "index": 24,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "derivative_graph"
+            },
+            "name": "AncestryMetadata",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "ancestry_version": {
+      "source_index": 25,
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "metadata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "AncestryMetadata",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "ancestor_ids": {
+      "source_index": 26,
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "metadata",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "AncestryMetadata",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "new_derivative_relationship": {
+      "source_index": 27,
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "relationship_id",
+          "type_": "u64"
+        },
+        {
+          "name": "parent_asset_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "child_asset_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "relationship_type",
+          "type_": "u8"
+        },
+        {
+          "name": "license_instance_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "template_version_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "parent_share_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "evidence_commitment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": "u8"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "created_at",
+          "type_": "u64"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "derivative_graph"
+            },
+            "name": "DerivativeRelationship",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "edge_parent_asset_id": {
+      "source_index": 28,
+      "index": 28,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "edge",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "DerivativeRelationship",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "edge_relationship_id": {
+      "source_index": 29,
+      "index": 29,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "edge",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "DerivativeRelationship",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "edge_license_instance_id": {
+      "source_index": 30,
+      "index": 30,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "edge",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "DerivativeRelationship",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "edge_template_version_id": {
+      "source_index": 31,
+      "index": 31,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "edge",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "DerivativeRelationship",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "edge_parent_share_bps": {
+      "source_index": 32,
+      "index": 32,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "edge",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "DerivativeRelationship",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "new_resolved_royalty_obligation": {
+      "source_index": 33,
+      "index": 33,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "beneficiary_asset_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "beneficiary_address",
+          "type_": "address"
+        },
+        {
+          "name": "share_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "source_relationship_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": "u64"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "source_license_instance_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "obligation_kind",
+          "type_": "u8"
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "derivative_graph"
+            },
+            "name": "ResolvedRoyaltyObligation",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "obligation_beneficiary_asset_id": {
+      "source_index": 34,
+      "index": 34,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "obligation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "ResolvedRoyaltyObligation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "obligation_beneficiary_address": {
+      "source_index": 35,
+      "index": 35,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "obligation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "ResolvedRoyaltyObligation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "address"
+      ]
+    },
+    "obligation_share_bps": {
+      "source_index": 36,
+      "index": 36,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "obligation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "ResolvedRoyaltyObligation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "obligation_source_relationship_id": {
+      "source_index": 37,
+      "index": 37,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "obligation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "ResolvedRoyaltyObligation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": "u64"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "obligation_source_license_instance_id": {
+      "source_index": 38,
+      "index": 38,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "obligation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "ResolvedRoyaltyObligation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "std",
+              "name": "option"
+            },
+            "name": "Option",
+            "type_arguments": [
+              {
+                "phantom": false,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "obligation_obligation_kind": {
+      "source_index": 39,
+      "index": 39,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "obligation",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "ResolvedRoyaltyObligation",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "id_vector_contains": {
+      "source_index": 40,
+      "index": 40,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "haystack",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "needle",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "id_less_than": {
+      "source_index": 41,
+      "index": 41,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "a",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "b",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "bool"
+      ]
+    },
+    "sort_ids_ascending": {
+      "source_index": 42,
+      "index": 42,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ids",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "push_id_if_absent": {
+      "source_index": 43,
+      "index": 43,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ids",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    },
+    "canonical_union": {
+      "source_index": 44,
+      "index": 44,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "a",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "b",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "extra",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "return_": [
+        {
+          "vector": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ]
+    },
+    "assert_valid_parent_child_edge": {
+      "source_index": 45,
+      "index": 45,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "parent_id",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "child_id",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent_ancestors",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "merge_ancestry_for_edge": {
+      "source_index": 46,
+      "index": 46,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "child",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "AncestryMetadata",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "parent_ancestors",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "object"
+                    },
+                    "name": "ID",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_relationship_unique": {
+      "source_index": 47,
+      "index": 47,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "existing",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": {
+                  "Datatype": {
+                    "module": {
+                      "address": "social_contracts",
+                      "name": "derivative_graph"
+                    },
+                    "name": "DerivativeRelationship",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "parent_asset_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "child_asset_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "relationship_type",
+          "type_": "u8"
+        },
+        {
+          "name": "license_instance_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        }
+      ],
+      "return_": []
+    }
+  },
+  "structs": {
+    "AncestryMetadata": {
+      "index": 0,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "ancestor_ids": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "ancestry_version": {
+            "index": 1,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "DerivativeRelationship": {
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "relationship_id": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          },
+          "parent_asset_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "child_asset_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "relationship_type": {
+            "index": 3,
+            "doc": null,
+            "type_": "u8"
+          },
+          "license_instance_id": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "template_version_id": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "parent_share_bps": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "evidence_commitment": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "created_at": {
+            "index": 8,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "ResolvedRoyaltyObligation": {
+      "index": 2,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "beneficiary_asset_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "beneficiary_address": {
+            "index": 1,
+            "doc": null,
+            "type_": "address"
+          },
+          "share_bps": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          },
+          "source_relationship_id": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": "u64"
+                  }
+                ]
+              }
+            }
+          },
+          "source_license_instance_id": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "myso",
+                          "name": "object"
+                        },
+                        "name": "ID",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "obligation_kind": {
+            "index": 5,
+            "doc": null,
+            "type_": "u8"
+          }
+        }
+      }
+    },
+    "PendingComposeAccumulator": {
+      "index": 3,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "effective_rights": {
+            "index": 0,
+            "doc": null,
+            "type_": "u64"
+          },
+          "derivatives_allowed": {
+            "index": 1,
+            "doc": null,
+            "type_": "bool"
+          },
+          "commercial_allowed": {
+            "index": 2,
+            "doc": null,
+            "type_": "bool"
+          },
+          "attribution_required": {
+            "index": 3,
+            "doc": null,
+            "type_": "bool"
+          },
+          "total_edge_share_bps": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          },
+          "accumulated_obligations": {
+            "index": 5,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "derivative_graph"
+                  },
+                  "name": "ResolvedRoyaltyObligation",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "parent_asset_ids": {
+            "index": 6,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "license_instance_ids": {
+            "index": 7,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "template_version_ids": {
+            "index": 8,
+            "doc": null,
+            "type_": {
+              "vector": {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "object"
+                  },
+                  "name": "ID",
+                  "type_arguments": []
+                }
+              }
+            }
+          },
+          "parent_policy_versions": {
+            "index": 9,
+            "doc": null,
+            "type_": {
+              "vector": "u64"
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {}
+}

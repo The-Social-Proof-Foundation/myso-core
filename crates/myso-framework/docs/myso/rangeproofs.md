@@ -8,6 +8,7 @@ title: Module `myso::rangeproofs`
 -  [Function `verify_bulletproofs_with_dst_ristretto255`](#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255)
 -  [Function `verify_bulletproofs_ristretto255`](#myso_rangeproofs_verify_bulletproofs_ristretto255)
 -  [Function `verify_bulletproofs_with_dst_ristretto255_internal`](#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255_internal)
+-  [Function `verify_bulletproofs_with_dst_ristretto255_contra_internal`](#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255_contra_internal)
 
 
 <pre><code><b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
@@ -97,7 +98,7 @@ title: Module `myso::rangeproofs`
 ## Function `verify_bulletproofs_with_dst_ristretto255`
 
 Verify a range proof over the Ristretto255 curve that all committed values are in the range [0, 2^bits).
-Currently, the only supported version is 0 which corresponds to the original Bulletproofs construction (https://eprint.iacr.org/2017/1066.pdf).
+Version 0 is dalek's default Pedersen generators. Version 1 uses Contra's generators: value on H, blinding on G.
 In the future, we may add support for newer versions of Bulletproofs, such as Bulletproofs+ or Bulletproofs++.
 
 The format of the proof follows the specifications from https://github.com/dalek-cryptography/bulletproofs/blob/be67b6d5f5ad1c1f54d5511b52e6d645a1313d07/src/range_proof/mod.rs#L59-L76.
@@ -133,6 +134,12 @@ Available when protocol version enables <code>enable_verify_bulletproofs_ristret
     <b>assert</b>!(dst.length() &lt;= <a href="../myso/rangeproofs.md#myso_rangeproofs_MAX_DST_LENGTH">MAX_DST_LENGTH</a>, <a href="../myso/rangeproofs.md#myso_rangeproofs_EInvalidDst">EInvalidDst</a>);
     match (version) {
         0 =&gt; <a href="../myso/rangeproofs.md#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255_internal">verify_bulletproofs_with_dst_ristretto255_internal</a>(
+            proof,
+            bits,
+            &commitments.map_ref!(|c| *c.bytes()),
+            dst,
+        ),
+        1 =&gt; <a href="../myso/rangeproofs.md#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255_contra_internal">verify_bulletproofs_with_dst_ristretto255_contra_internal</a>(
             proof,
             bits,
             &commitments.map_ref!(|c| *c.bytes()),
@@ -194,6 +201,33 @@ instead.
 
 
 <pre><code><b>native</b> <b>fun</b> <a href="../myso/rangeproofs.md#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255_internal">verify_bulletproofs_with_dst_ristretto255_internal</a>(
+    proof: &vector&lt;u8&gt;,
+    bits: u8,
+    commitments: &vector&lt;vector&lt;u8&gt;&gt;,
+    dst: &vector&lt;u8&gt;,
+): bool;
+</code></pre>
+
+
+
+</details>
+
+<a name="myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255_contra_internal"></a>
+
+## Function `verify_bulletproofs_with_dst_ristretto255_contra_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../myso/rangeproofs.md#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255_contra_internal">verify_bulletproofs_with_dst_ristretto255_contra_internal</a>(proof: &vector&lt;u8&gt;, bits: u8, commitments: &vector&lt;vector&lt;u8&gt;&gt;, dst: &vector&lt;u8&gt;): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>native</b> <b>fun</b> <a href="../myso/rangeproofs.md#myso_rangeproofs_verify_bulletproofs_with_dst_ristretto255_contra_internal">verify_bulletproofs_with_dst_ristretto255_contra_internal</a>(
     proof: &vector&lt;u8&gt;,
     bits: u8,
     commitments: &vector&lt;vector&lt;u8&gt;&gt;,

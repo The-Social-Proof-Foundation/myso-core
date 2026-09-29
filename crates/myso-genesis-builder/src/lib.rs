@@ -50,7 +50,7 @@ use myso_types::transaction::{
     CallArg, CheckedInputObjects, Command, InputObjectKind, ObjectReadResult, Transaction,
 };
 use myso_types::{
-    BRIDGE_ADDRESS, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS,
+    BRIDGE_ADDRESS, CONTRA_PACKAGE_ID, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS,
     MYSO_ORDERBOOK_REGISTRY_OBJECT_ID, MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS,
 };
 use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
@@ -1149,6 +1149,15 @@ pub fn generate_genesis_system_object(
             MYSO_FRAMEWORK_ADDRESS.into(),
             ident_str!("bootstrap_key").to_owned(),
             ident_str!("bootstrap_init").to_owned(),
+            vec![],
+            vec![],
+        )?;
+
+        // Share AccountRegistry and TokenRegistry. Package init does not.
+        builder.move_call(
+            CONTRA_PACKAGE_ID,
+            ident_str!("contra").to_owned(),
+            ident_str!("create_registries").to_owned(),
             vec![],
             vec![],
         )?;

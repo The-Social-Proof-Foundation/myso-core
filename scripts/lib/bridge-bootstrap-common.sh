@@ -807,10 +807,12 @@ bridge_clear_on_chain_session_flags() {
     BRIDGE_KA=''
     PKG_BRIDGE_BTC=''
     PKG_BRIDGE_ETH=''
+    PKG_BRIDGE_MYUSD=''
     PKG_BRIDGE_USDC=''
     PKG_BRIDGE_USDT=''
     BRIDGE_BTC_TYPE=''
     BRIDGE_ETH_TYPE=''
+    BRIDGE_MYUSD_TYPE=''
     BRIDGE_USDC_TYPE=''
     BRIDGE_USDT_TYPE=''
     COIN_CREATION_ADMIN_CAP_ID=''
@@ -2289,6 +2291,138 @@ bridge_publish_token() {
     return 1
 }
 
+# Default raw amount for `./scripts/bridge-bootstrap.sh --mint-myusd` (1100 MYUSD, 6 decimals).
+readonly BRIDGE_MYUSD_MINT_AMOUNT_DEFAULT=1100000000
+
+bridge_should_mint_myusd() {
+    local module="$1" amount="${2:-0}"
+    [[ "$module" == "myusd" && "$amount" =~ ^[1-9][0-9]*$ ]]
+}
+
+bridge_mint_myusd_locked_error() {
+    echo "MYUSD TreasuryCap is already on the bridge. --mint-myusd only works before the cap is locked. Wipe localnet and rerun ./scripts/bridge-bootstrap.sh --fresh-chain --mint-myusd, or fund via inbound USDC/USDT claims." >&2
+}
+
+# Mint while TreasuryCap is still owned by the active wallet. No-op when the flag is off.
+bridge_mint_myusd_if_requested() {
+    local treasury="$1" type_name="$2" recipient="$3"
+    local amount="${BRIDGE_MYUSD_MINT_AMOUNT:-0}" signer out
+    bridge_should_mint_myusd myusd "$amount" || return 0
+    [[ "${BRIDGE_MYUSD_MINT_DONE:-0}" == 1 ]] && return 0
+    signer="$(resolve_myso_active_address)" || {
+        echo "--mint-myusd requires an active myso address" >&2
+        return 1
+    }
+    recipient="${BRIDGE_MYUSD_MINT_RECIPIENT:-$recipient}"
+    recipient="$(normalize_hex_id "$recipient")" || return 1
+    treasury="$(normalize_hex_id "$treasury")" || return 1
+    if ! bridge_cap_owned_by "$treasury" "$signer"; then
+        bridge_mint_myusd_locked_error
+        return 1
+    fi
+    log_step "Minting $((amount / 1000000)) MYUSD ($amount raw) to $recipient before locking TreasuryCap"
+    out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$signer" \
+        --move-call "0x2::coin::mint_and_transfer<${type_name}>" \
+        "@${treasury}" \
+        "$amount" \
+        "@${recipient}")" || {
+        echo "mint_and_transfer MYUSD failed" >&2
+        return 1
+    }
+    assert_tx_success "$out" || {
+        echo "mint_and_transfer MYUSD failed" >&2
+        return 1
+    }
+    BRIDGE_MYUSD_MINT_DONE=1
+}
+
+# Prefer the active wallet's latest myusd::MYUSD TreasuryCap over a stale session type.
+bridge_resolve_wallet_myusd_type() {
+    local active json type_name pkg current
+    graphql_is_reachable "$GRAPHQL_URL" || return 0
+    active="$(resolve_myso_active_address 2>/dev/null || true)"
+    [[ -n "$active" ]] || return 0
+    active="$(normalize_hex_id "$active")" || return 0
+    json="$(graphql_post 'query MyUsdCaps($owner: MySoAddress!) {
+      objects(filter: { type: "0x2::coin::TreasuryCap", ownerKind: ADDRESS, owner: $owner }, last: 10) {
+        nodes { version asMoveObject { contents { type { repr } } } }
+      }
+    }' "$(jq -nc --arg owner "$active" '{owner: $owner}')" 2>/dev/null)" || return 0
+    type_name="$(printf '%s' "$json" | python3 -c '
+import json, re, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+nodes = (((data.get("data") or {}).get("objects") or {}).get("nodes") or [])
+best = ""
+best_version = -1
+for node in nodes:
+    contents = ((node.get("asMoveObject") or {}).get("contents") or {})
+    repr_ = ((contents.get("type") or {}).get("repr") or "")
+    if "::myusd::MYUSD" not in repr_:
+        continue
+    try:
+        version = int(node.get("version") or 0)
+    except (TypeError, ValueError):
+        version = 0
+    if version < best_version:
+        continue
+    match = re.search(r"TreasuryCap<(.+)>$", repr_)
+    inner = match.group(1) if match else ""
+    if not inner:
+        continue
+    best = inner
+    best_version = version
+if best:
+    print(best)
+')"
+    [[ -n "$type_name" ]] || return 0
+    type_name="$(bridge_normalize_type_name "$type_name")" || return 0
+    current="$(bridge_normalize_type_name "${BRIDGE_MYUSD_TYPE:-}" 2>/dev/null || true)"
+    [[ "$type_name" == "$current" ]] && return 0
+    pkg="${type_name%%::*}"
+    log_step "Adopting wallet MYUSD type $type_name"
+    BRIDGE_MYUSD_TYPE="$type_name"
+    PKG_BRIDGE_MYUSD="$pkg"
+    BRIDGE_USDC_TYPE="$type_name"
+    BRIDGE_USDT_TYPE="$type_name"
+    bridge_save_session
+}
+
+bridge_persist_myusd_session() {
+    local pkg="$1" type_name="$2"
+    PKG_BRIDGE_MYUSD="$pkg"
+    BRIDGE_MYUSD_TYPE="$type_name"
+    BRIDGE_USDC_TYPE="$type_name"
+    BRIDGE_USDT_TYPE="$type_name"
+    bridge_save_session
+}
+
+# Called when this run will not publish a fresh MYUSD package. Mint if the cap
+# is still in the wallet; otherwise fail instead of pretending --mint-myusd ran.
+bridge_mint_myusd_or_fail_if_skipped() {
+    local amount="${BRIDGE_MYUSD_MINT_AMOUNT:-0}"
+    local active type_name tc
+    bridge_should_mint_myusd myusd "$amount" || return 0
+    [[ "${BRIDGE_MYUSD_MINT_DONE:-0}" == 1 ]] && return 0
+    bridge_resolve_wallet_myusd_type || true
+    active="$(resolve_myso_active_address)" || {
+        echo "--mint-myusd requires an active myso address" >&2
+        return 1
+    }
+    type_name="${BRIDGE_MYUSD_TYPE:-${BRIDGE_USDC_TYPE:-}}"
+    if [[ -n "$type_name" ]]; then
+        tc="$(bridge_find_object_by_type "0x2::coin::TreasuryCap<${type_name}>" "$active" || true)"
+        if [[ -n "$tc" ]]; then
+            bridge_mint_myusd_if_requested "$tc" "$type_name" "$active" || return 1
+            return 0
+        fi
+    fi
+    bridge_mint_myusd_locked_error
+    return 1
+}
+
 bridge_init_and_register_token() {
     local pkg="$1" module="$2" type_name upgrade_cap treasury metadata out digest active publish_digest
     local attempt max="${MYSO_TX_RETRIES:-8}" rc=0
@@ -2349,6 +2483,10 @@ bridge_init_and_register_token() {
         usdt) type_name="${pkg}::usdt::USDT" ;;
         myusd) type_name="${pkg}::myusd::MYUSD" ;;
     esac
+    if [[ "$module" == "myusd" ]]; then
+        type_name="$(bridge_normalize_type_name "$type_name")" || return 1
+        bridge_persist_myusd_session "${type_name%%::*}" "$type_name"
+    fi
     log_step "register_foreign_token $type_name"
     for ((attempt = 1; attempt <= max; attempt++)); do
         upgrade_cap="$(bridge_resolve_upgrade_cap_for_package "$pkg" "$active" 2>/dev/null || true)"
@@ -2365,11 +2503,17 @@ bridge_init_and_register_token() {
             "@$(normalize_hex_id "$upgrade_cap")" \
             "@$(normalize_hex_id "$metadata")")" || rc=$?
         if assert_tx_success "$out"; then
+            if [[ "$module" == "myusd" ]]; then
+                bridge_mint_myusd_if_requested "$treasury" "$type_name" "$active" || return 1
+            fi
             printf '%s' "$type_name"
             return 0
         fi
         if echo "$out" | grep -qiE 'already|EUnsupportedTokenType|waiting'; then
             log_step "register_foreign_token $type_name already applied"
+            if [[ "$module" == "myusd" ]]; then
+                bridge_mint_myusd_if_requested "$treasury" "$type_name" "$active" || return 1
+            fi
             printf '%s' "$type_name"
             return 0
         fi
@@ -2388,15 +2532,43 @@ bridge_init_and_register_token() {
 
 bridge_register_myso_tokens() {
     local dest pkg kind type_name saved_config="${MYSO_CONFIG_DIR:-}"
+    bridge_resolve_wallet_myusd_type || true
     if bridge_foreign_tokens_supported_on_chain; then
         log_step "Foreign tokens already in supported_tokens"
         TOKENS_REGISTERED_MYSO=1
+        bridge_mint_myusd_or_fail_if_skipped || return 1
         return 0
     fi
+    for kind in btc eth myusd; do
+        type_name=''
+        case "$kind" in
+            btc) type_name="${BRIDGE_BTC_TYPE:-}" ;;
+            eth) type_name="${BRIDGE_ETH_TYPE:-}" ;;
+            myusd) type_name="${BRIDGE_MYUSD_TYPE:-}" ;;
+        esac
+        [[ -n "$type_name" ]] || continue
+        pkg="${type_name%%::*}"
+        if object_exists_on_fullnode "$pkg"; then
+            continue
+        fi
+        echo "Clearing stale $kind type $type_name (package not on fullnode)" >&2
+        case "$kind" in
+            btc) PKG_BRIDGE_BTC=''; BRIDGE_BTC_TYPE='' ;;
+            eth) PKG_BRIDGE_ETH=''; BRIDGE_ETH_TYPE='' ;;
+            myusd)
+                PKG_BRIDGE_MYUSD=''
+                BRIDGE_MYUSD_TYPE=''
+                BRIDGE_USDC_TYPE=''
+                BRIDGE_USDT_TYPE=''
+                ;;
+        esac
+    done
     if [[ -n "${BRIDGE_BTC_TYPE:-}" && -n "${BRIDGE_ETH_TYPE:-}" && -n "${BRIDGE_MYUSD_TYPE:-}" ]]; then
         BRIDGE_USDC_TYPE="${BRIDGE_MYUSD_TYPE}"
         BRIDGE_USDT_TYPE="${BRIDGE_MYUSD_TYPE}"
-        log_step "Reusing published bridge token types from session"
+        log_step "Session token types are not registered on the bridge; registering from wallet caps"
+        bridge_ensure_waiting_room_tokens
+        bridge_mint_myusd_or_fail_if_skipped || return 1
         return 0
     fi
     bridge_refresh_session_from_graphql || {
@@ -2405,6 +2577,7 @@ bridge_register_myso_tokens() {
     }
     if ! bridge_ensure_admin_caps_for_publish; then
         echo "Skipping foreign token publish: admin caps unavailable for the active keystore." >&2
+        bridge_mint_myusd_or_fail_if_skipped || return 1
         return 0
     fi
     if [[ -n "${BRIDGE_PUBLISH_MYSO_CONFIG_DIR:-}" ]]; then
@@ -2422,6 +2595,9 @@ bridge_register_myso_tokens() {
             pkg="${type_name%%::*}"
             if object_exists_on_fullnode "$pkg"; then
                 log_step "Reusing published bridge $kind $type_name"
+                if [[ "$kind" == "myusd" ]]; then
+                    bridge_mint_myusd_or_fail_if_skipped || return 1
+                fi
                 continue
             fi
             echo "Clearing stale $kind type $type_name (package not on fullnode)" >&2

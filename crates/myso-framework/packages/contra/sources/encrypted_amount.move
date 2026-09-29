@@ -17,7 +17,7 @@ use myso::{
 /// Bulletproof construction version. `0` is the original Bulletproofs construction
 /// (Bünz et al., 2018), the only version currently supported by
 /// `myso::rangeproofs::verify_bulletproofs_with_dst_ristretto255`.
-const BULLETPROOFS_VERSION: u8 = 0;
+const BULLETPROOFS_VERSION: u8 = 1;
 
 /// Bit-length used by the per-limb range check: each limb encrypts a u16, so the proof
 /// must show every committed value lies in `[0, 2^16)`.

@@ -51,6 +51,7 @@ pub struct Profile {
     pub memory_account_id: Option<String>,
     pub ai_credit_balance_id: Option<String>,
     pub contract_version: i64,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

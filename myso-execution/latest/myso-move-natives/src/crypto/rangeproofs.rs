@@ -5,6 +5,7 @@
 use crate::object_runtime::ObjectRuntime;
 use crate::{NativesCostTable, get_extension};
 use bulletproofs::{BulletproofGens, PedersenGens, RangeProof as ExternalRangeProof};
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use fastcrypto::bulletproofs::Range;
 use fastcrypto::error::FastCryptoError::InvalidInput;
@@ -66,21 +67,38 @@ fn bits_for_range(range: &Range) -> usize {
     }
 }
 
+/// Contra ciphertexts commit the limb on `H` and the blinding on `G`.
+/// `H` is `hash_to_curve("fastcrypto-blinding-gen-01")` from `twisted_elgamal.move`.
+fn contra_pedersen_gens() -> PedersenGens {
+    const H: [u8; 32] = [
+        0x34, 0xce, 0x14, 0x77, 0xc1, 0x45, 0x58, 0x17, 0x80, 0x89, 0x50, 0x0a, 0x39, 0xc8, 0x64,
+        0xe0, 0xf6, 0x07, 0xb3, 0xc1, 0xf4, 0x1a, 0xb3, 0x98, 0x40, 0x0e, 0x4a, 0x9d, 0xe6, 0xd2,
+        0xc4, 0x46,
+    ];
+    let h = CompressedRistretto(H)
+        .decompress()
+        .expect("Contra H is a valid ristretto point");
+    PedersenGens {
+        B: h,
+        B_blinding: RISTRETTO_BASEPOINT_POINT,
+    }
+}
+
 fn verify_external_range_proof_batch(
     proof: &ExternalRangeProof,
     compressed_commitments: &[CompressedRistretto],
     range: &Range,
     dst: &'static [u8],
+    pc_gens: &PedersenGens,
 ) -> bool {
     let bits = bits_for_range(range);
-    let pc_gens = PedersenGens::default();
     let bp_gens = BulletproofGens::new(bits, compressed_commitments.len());
     let mut verifier_transcript = Transcript::new(dst);
 
     proof
         .verify_multiple(
             &bp_gens,
-            &pc_gens,
+            pc_gens,
             &mut verifier_transcript,
             compressed_commitments,
             bits,
@@ -91,7 +109,25 @@ fn verify_external_range_proof_batch(
 pub fn verify_bulletproofs_with_dst_ristretto255_internal(
     context: &mut NativeContext,
     ty_args: Vec<Type>,
+    args: VecDeque<Value>,
+) -> PartialVMResult<NativeResult> {
+    verify_with_pedersen_gens(context, ty_args, args, &PedersenGens::default())
+}
+
+/// Version 1: same proof format, Pedersen generators matching Contra ciphertexts.
+pub fn verify_bulletproofs_with_dst_ristretto255_contra_internal(
+    context: &mut NativeContext,
+    ty_args: Vec<Type>,
+    args: VecDeque<Value>,
+) -> PartialVMResult<NativeResult> {
+    verify_with_pedersen_gens(context, ty_args, args, &contra_pedersen_gens())
+}
+
+fn verify_with_pedersen_gens(
+    context: &mut NativeContext,
+    ty_args: Vec<Type>,
     mut args: VecDeque<Value>,
+    pc_gens: &PedersenGens,
 ) -> PartialVMResult<NativeResult> {
     debug_assert!(ty_args.is_empty());
     debug_assert!(args.len() == 4);
@@ -177,6 +213,7 @@ pub fn verify_bulletproofs_with_dst_ristretto255_internal(
         &compressed_commitments,
         &range,
         dst_label,
+        pc_gens,
     );
 
     Ok(NativeResult::ok(
@@ -265,6 +302,51 @@ mod tests {
             &compressed,
             &range,
             dst,
+            &pc_gens,
+        ));
+    }
+
+    #[test]
+    fn contra_generators_verify_and_default_generators_do_not() {
+        use curve25519_dalek::scalar::Scalar;
+
+        let mut rng = thread_rng();
+        let dst = leak_dst(b"dst-match-21-byte-tag");
+        let values = vec![1234u64, 0, 0, 0];
+        let blindings: Vec<Scalar> = values.iter().map(|_| Scalar::from(rng.next_u64())).collect();
+        let range = Range::Bits16;
+        let bits = bits_for_range(&range);
+        let pc_gens = contra_pedersen_gens();
+        let bp_gens = BulletproofGens::new(bits, values.len());
+        let mut prover_transcript = Transcript::new(dst);
+        let (proof, _) = ExternalRangeProof::prove_multiple_with_rng(
+            &bp_gens,
+            &pc_gens,
+            &mut prover_transcript,
+            &values,
+            &blindings,
+            bits,
+            &mut rng,
+        )
+        .unwrap();
+        let compressed: Vec<CompressedRistretto> = values
+            .iter()
+            .zip(&blindings)
+            .map(|(&v, b)| pc_gens.commit(Scalar::from(v), *b).compress())
+            .collect();
+        assert!(verify_external_range_proof_batch(
+            &proof,
+            &compressed,
+            &range,
+            dst,
+            &pc_gens,
+        ));
+        assert!(!verify_external_range_proof_batch(
+            &proof,
+            &compressed,
+            &range,
+            dst,
+            &PedersenGens::default(),
         ));
     }
 }

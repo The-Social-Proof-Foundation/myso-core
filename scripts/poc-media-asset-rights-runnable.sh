@@ -223,12 +223,23 @@ ensure_challenger_wallet() {
         CHALLENGER_ADDRESS="$(normalize_hex_id "$CHALLENGER_ADDRESS")"
         ensure_wallet_funded "$CHALLENGER_ADDRESS" "$((DEFAULT_DISPUTE_PAYMENT_MIST + SOCIAL_DEFAULT_GAS_BUDGET * 2))" || return 1
         log_session_use "CHALLENGER_ADDRESS" "$CHALLENGER_ADDRESS"
-        return 0
+        ensure_challenger_profile
+        return
     fi
     CHALLENGER_ADDRESS="$(create_ephemeral_wallet "poc_rights_challenger_${SOCIAL_RUN_ID}")" || return 1
     ensure_wallet_funded "$CHALLENGER_ADDRESS" "$((DEFAULT_DISPUTE_PAYMENT_MIST + SOCIAL_DEFAULT_GAS_BUDGET * 2))" || return 1
     log_session_use "CHALLENGER_ADDRESS" "$CHALLENGER_ADDRESS"
     save_poc_rights_session
+    ensure_challenger_profile
+}
+
+# Governance community votes require the voter to own a profile.
+ensure_challenger_profile() {
+    local existing
+    existing="$(resolve_owned_profile_for_address "$CHALLENGER_ADDRESS")" || existing=''
+    [[ -n "$existing" ]] && return 0
+    create_profile_for_address "$CHALLENGER_ADDRESS" "PoC Rights Challenger ${SOCIAL_RUN_ID}" \
+        "pocchallenger${SOCIAL_RUN_ID}" >/dev/null
 }
 
 ensure_new_rights_holder() {
@@ -613,6 +624,7 @@ step_community_approve_proposal() {
     log_step "community_vote_on_proposal approve=true proposal=$PROPOSAL_ID voter=$CHALLENGER_ADDRESS"
     out="$(SKIP_CONFIRM_RUN=1 run_myso_call_as_capture "$CHALLENGER_ADDRESS" governance community_vote_on_proposal \
         "@${POC_GOVERNANCE_REGISTRY_ID}" \
+        "@${USERNAME_REGISTRY_ID}" \
         "@${PROPOSAL_ID}" \
         1 true \
         "@${payment_coin}" \

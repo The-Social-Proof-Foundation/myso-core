@@ -36,7 +36,8 @@ use crate::insurance::{
 use crate::media_asset::{
     count_rights_disputes_submitted, get_active_rights_proposal_id_for_asset,
     get_composition_analysis_for_post, get_media_asset_by_id,
-    get_media_asset_id_for_rights_proposal, get_revenue_manifest_for_post,
+    get_latest_governance_link_for_proposal, get_media_asset_id_for_rights_proposal,
+    get_revenue_manifest_for_post,
     list_license_instances_for_asset, list_license_templates_for_asset,
     list_media_asset_governance_links, list_media_asset_rights_updates, list_media_asset_usages,
 };
@@ -318,6 +319,21 @@ impl SocialPgReader {
             &mut conn,
             username,
             exclude_address,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn get_poc_username_beneficiary_by_identity(
+        &self,
+        creator_identity_source: i16,
+        creator_identity_hash: &str,
+    ) -> anyhow::Result<Option<crate::PocUsernameBeneficiaryRow>> {
+        let mut conn = self.connect().await?;
+        crate::poc_username_beneficiary::get_by_identity(
+            &mut conn,
+            creator_identity_source,
+            creator_identity_hash,
             &self.metrics,
         )
         .await
@@ -1617,6 +1633,16 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<String>> {
         let mut conn = self.connect().await?;
         get_active_rights_proposal_id_for_asset(&mut conn, media_asset_id, &self.metrics).await
+    }
+
+    pub async fn get_latest_governance_link_for_proposal(
+        &self,
+        proposal_id: &str,
+    ) -> anyhow::Result<
+        Option<myso_indexer_alt_social_schema::models::MediaAssetGovernanceLinkRow>,
+    > {
+        let mut conn = self.connect().await?;
+        get_latest_governance_link_for_proposal(&mut conn, proposal_id, &self.metrics).await
     }
 
     pub async fn get_media_asset_id_for_rights_proposal(

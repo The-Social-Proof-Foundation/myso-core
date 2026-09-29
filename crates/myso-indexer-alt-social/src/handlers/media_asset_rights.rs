@@ -32,6 +32,18 @@ struct MediaAssetRightsDisputeProposedEvent {
     claims_commitment: serde_json::Value,
     #[serde(deserialize_with = "super::poc::deserialize_u64")]
     timestamp: u64,
+    #[serde(default)]
+    target_kind: u8,
+    #[serde(default)]
+    beneficiary_address: String,
+    #[serde(default)]
+    vault_id: Option<serde_json::Value>,
+    #[serde(default)]
+    username: Option<String>,
+    #[serde(default)]
+    identity_source: Option<u8>,
+    #[serde(default)]
+    identity_hash: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -221,6 +233,16 @@ fn process_rights_dispute_proposed(
         rights_disputes_submitted: 1,
         transaction_id: tx_id.to_string(),
         time: chain_time(ev.timestamp),
+        target_kind: ev.target_kind as i16,
+        beneficiary_address: if ev.beneficiary_address.is_empty() {
+            "0x0".to_string()
+        } else {
+            ev.beneficiary_address
+        },
+        target_vault_id: ev.vault_id.as_ref().and_then(id_from_json),
+        target_username: ev.username.filter(|s| !s.is_empty()),
+        identity_source: ev.identity_source.map(|v| v as i16),
+        identity_hash: ev.identity_hash.as_ref().and_then(id_from_json),
     };
     Some(vec![SocialEventRow::MediaAssetGovernanceLink(link)])
 }

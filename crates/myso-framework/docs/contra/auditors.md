@@ -177,7 +177,7 @@ in <code>[0, 2^32)</code> so that auditors can recover each limb via baby-step g
 Bulletproof construction version (Bünz et al., 2018).
 
 
-<pre><code><b>const</b> <a href="../contra/auditors.md#contra_auditors_BULLETPROOFS_VERSION">BULLETPROOFS_VERSION</a>: u8 = 0;
+<pre><code><b>const</b> <a href="../contra/auditors.md#contra_auditors_BULLETPROOFS_VERSION">BULLETPROOFS_VERSION</a>: u8 = 1;
 </code></pre>
 
 

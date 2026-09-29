@@ -1055,6 +1055,32 @@ type CommunityVote {
 	voterAddress: MySoAddress!
 }
 
+type CommunityVoteEligibility {
+	"""
+	True when the chain would accept a community vote from this wallet on this registry.
+	"""
+	eligible: Boolean!
+	"""
+	Why the wallet cannot vote; null when eligible.
+	"""
+	reason: CommunityVoteIneligibleReason
+}
+
+enum CommunityVoteIneligibleReason {
+	"""
+	Wallet has not joined (or has left) the platform that owns the registry.
+	"""
+	NOT_MEMBER
+	"""
+	The platform has blocked this wallet.
+	"""
+	BLOCKED
+	"""
+	No indexed platform owns this platform registry.
+	"""
+	PLATFORM_NOT_FOUND
+}
+
 type CompositionAnalysis {
 	analysisJson: JSON
 	analyzedAt: Int!
@@ -2814,6 +2840,16 @@ Arbitrary JSON data.
 """
 scalar JSON
 
+type LicenseTemplateTerms {
+	governingLaw: String
+	instanceRevocable: Boolean!
+	legalTermsHash: String
+	legalTermsUri: String
+	licenseSchemaVersion: Int!
+	templateVersionId: String!
+	version: Int!
+}
+
 """
 Information used by a package to link to a specific version of its dependency.
 """
@@ -2850,10 +2886,10 @@ type MediaAsset {
 	activeRightsProposal: Proposal
 	ancestry: AncestrySnapshot
 	assetKind: MediaAssetKind!
+	authorizationVersion: Int!
 	derivativeGraph(limit: Int, offset: Int): DerivativeGraph
 	detectedRelationships(limit: Int, offset: Int): [DetectedAssetRelationship!]
 	economicsVersion: Int!
-	authorizationVersion: Int!
 	futureUsagePaused: Boolean!
 	licenseInstances(limit: Int, offset: Int): [MediaAssetLicenseInstance!]
 	licenseTerms(limit: Int, offset: Int): [LicenseTemplateTerms!]
@@ -2881,6 +2917,14 @@ enum MediaAssetKind {
 	VISUAL_WORK
 	MUSICAL_COMPOSITION
 	SOUND_RECORDING
+}
+
+type MediaAssetLicenseInstance {
+	acceptedAt: Int!
+	licenseInstanceId: String!
+	licensee: String!
+	status: Int!
+	templateVersionId: String!
 }
 
 """
@@ -2916,24 +2960,6 @@ type MediaAssetRightsUpdate {
 	rightsVersion: Int!
 	time: DateTime!
 	transactionId: String!
-}
-
-type LicenseTemplateTerms {
-	governingLaw: String
-	instanceRevocable: Boolean!
-	legalTermsHash: String
-	legalTermsUri: String
-	licenseSchemaVersion: Int!
-	templateVersionId: String!
-	version: Int!
-}
-
-type MediaAssetLicenseInstance {
-	acceptedAt: Int!
-	licenseInstanceId: String!
-	licensee: String!
-	status: Int!
-	templateVersionId: String!
 }
 
 type MediaAssetUsage {
@@ -7192,6 +7218,13 @@ type Proposal {
 	Anonymous votes on this proposal (paginated).
 	"""
 	anonymousVotes(limit: Int, offset: Int): [AnonymousVote!]
+	"""
+	Whether `address` may cast a community vote under the on-chain voter rules. Platform proposals
+	(registry_type=3) require an active platform membership and no platform block; other registries
+	are open to any wallet. Does not check lifecycle status or whether `address` already voted.
+	Returns null when the social DB is not configured.
+	"""
+	communityVoteEligibility(address: MySoAddress!): CommunityVoteEligibility
 	"""
 	Community votes on this proposal (paginated).
 	"""

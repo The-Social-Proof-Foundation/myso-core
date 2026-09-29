@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use bulletproofs::{BulletproofGens, PedersenGens, RangeProof as ExternalRangeProof};
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
+use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::scalar::Scalar;
 use fastcrypto::bulletproofs::Range;
 use merlin::Transcript;
@@ -16,6 +18,22 @@ pub fn leak_dst(dst: &[u8]) -> &'static [u8] {
 
 fn dalek_scalar_from_u64(x: u64) -> Scalar {
     Scalar::from(x)
+}
+
+/// Same basis as Contra ciphertexts and rangeproofs version 1: value on H, blinding on G.
+fn contra_pedersen_gens() -> PedersenGens {
+    const H: [u8; 32] = [
+        0x34, 0xce, 0x14, 0x77, 0xc1, 0x45, 0x58, 0x17, 0x80, 0x89, 0x50, 0x0a, 0x39, 0xc8, 0x64,
+        0xe0, 0xf6, 0x07, 0xb3, 0xc1, 0xf4, 0x1a, 0xb3, 0x98, 0x40, 0x0e, 0x4a, 0x9d, 0xe6, 0xd2,
+        0xc4, 0x46,
+    ];
+    let h = CompressedRistretto(H)
+        .decompress()
+        .expect("Contra H is a valid ristretto point");
+    PedersenGens {
+        B: h,
+        B_blinding: RISTRETTO_BASEPOINT_POINT,
+    }
 }
 
 fn bits_for_range(range: &Range) -> usize {
@@ -51,7 +69,7 @@ pub fn batch_range_proof_wire(
     let range = range_from_bits(bit_size);
     let bits = bits_for_range(&range);
     let bp_gens = BulletproofGens::new(bits, values.len());
-    let pc_gens = PedersenGens::default();
+    let pc_gens = contra_pedersen_gens();
     let dst_label = leak_dst(dst);
     let mut prover_transcript = Transcript::new(dst_label);
 
@@ -75,7 +93,7 @@ pub fn batch_range_proof_wire(
 }
 
 pub fn pedersen_commitment_bytes(value: u64, blinding: u64) -> [u8; 32] {
-    let pc_gens = PedersenGens::default();
+    let pc_gens = contra_pedersen_gens();
     pc_gens
         .commit(
             dalek_scalar_from_u64(value),
@@ -96,7 +114,7 @@ pub fn assert_wire_proof_valid(
     let bits = bits_for_range(&range);
     let external = ExternalRangeProof::from_bytes(proof_bytes).expect("wire proof bytes");
     let bp_gens = BulletproofGens::new(bits, values.len());
-    let pc_gens = PedersenGens::default();
+    let pc_gens = contra_pedersen_gens();
     let dst_label = leak_dst(dst);
     let mut verifier_transcript = Transcript::new(dst_label);
     let compressed: Vec<_> = values

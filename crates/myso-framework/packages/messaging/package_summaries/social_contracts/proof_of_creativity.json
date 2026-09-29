@@ -3,7 +3,7 @@
     "address": "social_contracts",
     "name": "proof_of_creativity"
   },
-  "doc": " Proof of Creativity module for the MySocial network\n Manages content originality verification through oracle analysis,\n PoC badge issuance, revenue redirection, and community dispute voting",
+  "doc": " Proof of Creativity module for the MySocial network\n Manages content originality verification through oracle analysis,\n MediaAsset resolution, revenue redirection, and community dispute voting\n\n **Revenue hierarchy (tips vs fee-split flows):**\n - Tips enter the post pool with no platform/ecosystem skim; manifest splits only.\n - SPT/trading flows take platform + ecosystem fees off gross, then manifest splits the post pool.\n - `max_embedded_asset_redirect_bps` (PoC admin config) caps any one embedded source asset's share.\n - Rights holders set `compensation_bps` on licenses in `0..max`; on-chain clamp wins at composition.\n - Container denials restrict playback only — tips are never gated by media rights.",
   "immediate_dependencies": [
     {
       "address": "myso",
@@ -44,6 +44,22 @@
     {
       "address": "social_contracts",
       "name": "ai_credit"
+    },
+    {
+      "address": "social_contracts",
+      "name": "derivative_graph"
+    },
+    {
+      "address": "social_contracts",
+      "name": "governance"
+    },
+    {
+      "address": "social_contracts",
+      "name": "license_template"
+    },
+    {
+      "address": "social_contracts",
+      "name": "media_asset"
     },
     {
       "address": "social_contracts",
@@ -209,6 +225,19 @@
           }
         },
         {
+          "name": "dispute_governance_registry_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
           "name": "ctx",
           "type_": {
             "Reference": [
@@ -359,6 +388,18 @@
           "type_": "u64"
         },
         {
+          "name": "media_asset_dispute_cost",
+          "type_": "u64"
+        },
+        {
+          "name": "max_disputes_per_media_asset",
+          "type_": "u8"
+        },
+        {
+          "name": "max_embedded_asset_redirect_bps",
+          "type_": "u64"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -397,9 +438,137 @@
       ],
       "return_": []
     },
-    "max_disputes_per_post": {
+    "max_embedded_asset_redirect_bps": {
       "source_index": 4,
       "index": 4,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "media_asset_dispute_cost": {
+      "source_index": 5,
+      "index": 5,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
+    "max_disputes_per_media_asset": {
+      "source_index": 6,
+      "index": 6,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "max_disputes_per_media_asset_package": {
+      "source_index": 7,
+      "index": 7,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u8"
+      ]
+    },
+    "max_disputes_per_post": {
+      "source_index": 8,
+      "index": 8,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -430,8 +599,8 @@
       ]
     },
     "min_vault_deposit_amount": {
-      "source_index": 5,
-      "index": 5,
+      "source_index": 9,
+      "index": 9,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -461,9 +630,242 @@
         "u64"
       ]
     },
+    "settle_spt_creator_fee_vault": {
+      "source_index": 10,
+      "index": 10,
+      "doc": " Settle an SPT trade's creator-fee slices using the authoritative vault policy.\n Kept here to avoid the existing PoC -> SPT module dependency becoming cyclic.\n The caller cannot lower the configured deposit minimum or redirect a beneficiary.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "settlement",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "social_proof_tokens"
+                  },
+                  "name": "CreatorFeeSettlement",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "poc_vault"
+                  },
+                  "name": "PoCBeneficiaryVault",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "dispute_governance_registry_id": {
+      "source_index": 11,
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "assert_poc_config_version": {
+      "source_index": 12,
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_poc_registry_version": {
+      "source_index": 13,
+      "index": 13,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_poc_dispute_version": {
+      "source_index": 14,
+      "index": 14,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "dispute",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCDispute",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "create_username_beneficiary": {
-      "source_index": 6,
-      "index": 6,
+      "source_index": 15,
+      "index": 15,
       "doc": " Provision a username beneficiary vault for an off-platform creator (admin only).",
       "attributes": [],
       "visibility": "Public",
@@ -622,8 +1024,8 @@
       "return_": []
     },
     "end_username_beneficiary": {
-      "source_index": 7,
-      "index": 7,
+      "source_index": 16,
+      "index": 16,
       "doc": " End an active username beneficiary provision (admin only).",
       "attributes": [],
       "visibility": "Public",
@@ -796,8 +1198,8 @@
       "return_": []
     },
     "claim_username_beneficiary": {
-      "source_index": 8,
-      "index": 8,
+      "source_index": 17,
+      "index": 17,
       "doc": " Oracle-verified claim of a provisioned username beneficiary.",
       "attributes": [],
       "visibility": "Public",
@@ -1028,8 +1430,8 @@
       "return_": []
     },
     "claim_username_beneficiary_vault_balance": {
-      "source_index": 9,
-      "index": 9,
+      "source_index": 18,
+      "index": 18,
       "doc": " Claim vault balance for a username-beneficiary-linked creator wallet (one-time join referral on first claim).",
       "attributes": [],
       "visibility": "Public",
@@ -1188,107 +1590,10 @@
       ],
       "return_": []
     },
-    "mint_shared_poc_badge_object": {
-      "source_index": 10,
-      "index": 10,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Private",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "post_id",
-          "type_": "address"
-        },
-        {
-          "name": "beneficiary_address",
-          "type_": {
-            "Datatype": {
-              "module": {
-                "address": "std",
-                "name": "option"
-              },
-              "name": "Option",
-              "type_arguments": [
-                {
-                  "phantom": false,
-                  "argument": "address"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "matched_anchor_id",
-          "type_": {
-            "Datatype": {
-              "module": {
-                "address": "std",
-                "name": "option"
-              },
-              "name": "Option",
-              "type_arguments": [
-                {
-                  "phantom": false,
-                  "argument": "address"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "similarity_score",
-          "type_": "u64"
-        },
-        {
-          "name": "media_type",
-          "type_": "u8"
-        },
-        {
-          "name": "oracle_address",
-          "type_": "address"
-        },
-        {
-          "name": "analyzed_at",
-          "type_": "u64"
-        },
-        {
-          "name": "ctx",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "tx_context"
-                  },
-                  "name": "TxContext",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        {
-          "Datatype": {
-            "module": {
-              "address": "myso",
-              "name": "object"
-            },
-            "name": "ID",
-            "type_arguments": []
-          }
-        }
-      ]
-    },
-    "run_analyze_and_update_post": {
-      "source_index": 11,
-      "index": 11,
-      "doc": " Oracle analyzes content and updates post PoC status. Does not require a social token pool.\n `derivative_redirection_target`: wallet (0) or beneficiary vault (1) when similarity is detected.\n `embedded_audio_only_derivative`: VIDEO only — oracle detected match on embedded audio track; uses `audio_threshold` and `video_embedded_audio_redirect_bps` ceiling with the same delta ramp.\n `apply_explicit_outcome` + `explicit_poc_outcome == 4`: royalty-free — accumulation via beneficiary vault (same as escrow redirect mode).",
+    "run_analyze_post_composition": {
+      "source_index": 19,
+      "index": 19,
+      "doc": " Oracle validates post composition, pins asset versions, and stores creator-attributable manifest.",
       "attributes": [],
       "visibility": "Private",
       "entry": false,
@@ -1367,15 +1672,698 @@
           }
         },
         {
-          "name": "media_type",
+          "name": "composition_status",
           "type_": "u8"
         },
         {
-          "name": "highest_similarity_score",
-          "type_": "u64"
+          "name": "_monetization_status",
+          "type_": "u8"
         },
         {
-          "name": "original_creator",
+          "name": "analysis",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "media_asset"
+              },
+              "name": "CompositionAnalysis",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "manifest",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "social_contracts",
+                        "name": "media_asset"
+                      },
+                      "name": "RevenueManifest",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "reasoning",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "evidence_urls",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "contains_derivatives",
+          "type_": "bool"
+        },
+        {
+          "name": "contains_unresolved_assets",
+          "type_": "bool"
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "finalize_media_asset": {
+      "source_index": 20,
+      "index": 20,
+      "doc": " Public wrapper: oracle mints or links a canonical MediaAsset after resolution.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "request",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "media_asset"
+              },
+              "name": "MediaResolutionRequest",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "link_to_existing_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "originality_status",
+          "type_": "u8"
+        },
+        {
+          "name": "lineage_parent_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "asset_kind",
+          "type_": "u8"
+        },
+        {
+          "name": "related_work_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "myso",
+                        "name": "object"
+                      },
+                      "name": "ID",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "claims",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "media_asset"
+                },
+                "name": "Claim",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "usage_grants",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "media_asset"
+                },
+                "name": "UsageGrant",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "beneficiary_splits",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "media_asset"
+                },
+                "name": "BeneficiarySplit",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "oracle_update_media_asset_claims": {
+      "source_index": 21,
+      "index": 21,
+      "doc": " Public wrapper: oracle replaces verified claims on an existing asset (dispute/provenance).",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claims",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "media_asset"
+                },
+                "name": "Claim",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "usage_grants",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "media_asset"
+                },
+                "name": "UsageGrant",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_poc_governance_registry": {
+      "source_index": 22,
+      "index": 22,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "assert_valid_claims_commitment": {
+      "source_index": 23,
+      "index": 23,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Private",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "claims_commitment",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "vector": "u8"
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "submit_media_asset_rights_dispute_proposal": {
+      "source_index": 24,
+      "index": 24,
+      "doc": " Submit a media-asset rights dispute to the PoC GovernanceDAO.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "title",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "description",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "claims_commitment",
+          "type_": {
+            "vector": "u8"
+          }
+        },
+        {
+          "name": "evidence_urls",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "_related_post_id",
           "type_": {
             "Datatype": {
               "module": {
@@ -1393,20 +2381,663 @@
           }
         },
         {
-          "name": "derivative_redirection_target",
-          "type_": "u8"
+          "name": "metadata_json",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
         },
         {
-          "name": "embedded_audio_only_derivative",
-          "type_": "bool"
+          "name": "payment",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         },
         {
-          "name": "apply_explicit_outcome",
-          "type_": "bool"
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         },
         {
-          "name": "explicit_poc_outcome",
-          "type_": "u8"
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "clear_media_asset_rights_proposal_on_reject": {
+      "source_index": 25,
+      "index": 25,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "Proposal",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "finalize_media_asset_rights_governance_proposal": {
+      "source_index": 26,
+      "index": 26,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "Proposal",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ecosystem_treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "implement_media_asset_rights_from_governance": {
+      "source_index": 27,
+      "index": 27,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry_gov",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "Proposal",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claims",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "media_asset"
+                },
+                "name": "Claim",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "usage_grants",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "media_asset"
+                },
+                "name": "UsageGrant",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "reasoning",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "evidence_urls",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "finalize_media_asset_rights_via_dao": {
+      "source_index": 28,
+      "index": 28,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry_gov",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "Proposal",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "profile"
+                  },
+                  "name": "EcosystemTreasury",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "claims",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "media_asset"
+                },
+                "name": "Claim",
+                "type_arguments": []
+              }
+            }
+          }
+        },
+        {
+          "name": "usage_grants",
+          "type_": {
+            "vector": {
+              "Datatype": {
+                "module": {
+                  "address": "social_contracts",
+                  "name": "media_asset"
+                },
+                "name": "UsageGrant",
+                "type_arguments": []
+              }
+            }
+          }
         },
         {
           "name": "reasoning",
@@ -1503,13 +3134,13 @@
       ],
       "return_": []
     },
-    "analyze_and_update_post": {
-      "source_index": 12,
-      "index": 12,
+    "analyze_post_composition": {
+      "source_index": 29,
+      "index": 29,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
-      "entry": true,
+      "entry": false,
       "type_parameters": [],
       "parameters": [
         {
@@ -1585,15 +3216,28 @@
           }
         },
         {
-          "name": "media_type",
+          "name": "composition_status",
           "type_": "u8"
         },
         {
-          "name": "highest_similarity_score",
-          "type_": "u64"
+          "name": "monetization_status",
+          "type_": "u8"
         },
         {
-          "name": "original_creator",
+          "name": "analysis",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "media_asset"
+              },
+              "name": "CompositionAnalysis",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "manifest",
           "type_": {
             "Datatype": {
               "module": {
@@ -1604,27 +3248,20 @@
               "type_arguments": [
                 {
                   "phantom": false,
-                  "argument": "address"
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "social_contracts",
+                        "name": "media_asset"
+                      },
+                      "name": "RevenueManifest",
+                      "type_arguments": []
+                    }
+                  }
                 }
               ]
             }
           }
-        },
-        {
-          "name": "derivative_redirection_target",
-          "type_": "u8"
-        },
-        {
-          "name": "embedded_audio_only_derivative",
-          "type_": "bool"
-        },
-        {
-          "name": "apply_explicit_outcome",
-          "type_": "bool"
-        },
-        {
-          "name": "explicit_poc_outcome",
-          "type_": "u8"
         },
         {
           "name": "reasoning",
@@ -1683,6 +3320,14 @@
           }
         },
         {
+          "name": "contains_derivatives",
+          "type_": "bool"
+        },
+        {
+          "name": "contains_unresolved_assets",
+          "type_": "bool"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -1721,13 +3366,13 @@
       ],
       "return_": []
     },
-    "analyze_and_update_post_sync_token_pool": {
-      "source_index": 13,
-      "index": 13,
-      "doc": " Same as `analyze_and_update_post`, then mirrors PoC redirect fields onto `TokenPool` when the post has an SPT registry entry.",
+    "analyze_post_composition_sync_token_pool": {
+      "source_index": 30,
+      "index": 30,
+      "doc": " Same as `analyze_post_composition`, then mirrors revenue manifest onto `TokenPool` when present.",
       "attributes": [],
       "visibility": "Public",
-      "entry": true,
+      "entry": false,
       "type_parameters": [],
       "parameters": [
         {
@@ -1839,15 +3484,28 @@
           }
         },
         {
-          "name": "media_type",
+          "name": "composition_status",
           "type_": "u8"
         },
         {
-          "name": "highest_similarity_score",
-          "type_": "u64"
+          "name": "monetization_status",
+          "type_": "u8"
         },
         {
-          "name": "original_creator",
+          "name": "analysis",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "media_asset"
+              },
+              "name": "CompositionAnalysis",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "manifest",
           "type_": {
             "Datatype": {
               "module": {
@@ -1858,27 +3516,20 @@
               "type_arguments": [
                 {
                   "phantom": false,
-                  "argument": "address"
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "social_contracts",
+                        "name": "media_asset"
+                      },
+                      "name": "RevenueManifest",
+                      "type_arguments": []
+                    }
+                  }
                 }
               ]
             }
           }
-        },
-        {
-          "name": "derivative_redirection_target",
-          "type_": "u8"
-        },
-        {
-          "name": "embedded_audio_only_derivative",
-          "type_": "bool"
-        },
-        {
-          "name": "apply_explicit_outcome",
-          "type_": "bool"
-        },
-        {
-          "name": "explicit_poc_outcome",
-          "type_": "u8"
         },
         {
           "name": "reasoning",
@@ -1937,6 +3588,14 @@
           }
         },
         {
+          "name": "contains_derivatives",
+          "type_": "bool"
+        },
+        {
+          "name": "contains_unresolved_assets",
+          "type_": "bool"
+        },
+        {
           "name": "clock",
           "type_": {
             "Reference": [
@@ -1976,8 +3635,8 @@
       "return_": []
     },
     "claim_beneficiary_vault_balance": {
-      "source_index": 14,
-      "index": 14,
+      "source_index": 31,
+      "index": 31,
       "doc": " Claim accumulated balance for coin type `T` from a beneficiary vault (splits per config bps + optional referrer).",
       "attributes": [],
       "visibility": "Public",
@@ -2101,8 +3760,8 @@
       "return_": []
     },
     "submit_poc_dispute": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 32,
+      "index": 32,
       "doc": " Submit a PoC dispute with community voting",
       "attributes": [],
       "visibility": "Public",
@@ -2261,8 +3920,8 @@
       "return_": []
     },
     "vote_on_dispute": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 33,
+      "index": 33,
       "doc": " Cast a vote on a PoC dispute (community voting)",
       "attributes": [],
       "visibility": "Public",
@@ -2394,8 +4053,8 @@
       "return_": []
     },
     "finalize_dispute_voting_resolution": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 34,
+      "index": 34,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2478,8 +4137,8 @@
       "return_": []
     },
     "resolve_dispute_voting": {
-      "source_index": 18,
-      "index": 18,
+      "source_index": 35,
+      "index": 35,
       "doc": " Resolve PoC dispute after voting period ends",
       "attributes": [],
       "visibility": "Public",
@@ -2562,8 +4221,8 @@
       "return_": []
     },
     "resolve_dispute_voting_sync_token_pool": {
-      "source_index": 19,
-      "index": 19,
+      "source_index": 36,
+      "index": 36,
       "doc": " Same as `resolve_dispute_voting`, then mirrors post PoC state onto `TokenPool` when the post has an SPT registry entry.",
       "attributes": [],
       "visibility": "Public",
@@ -2682,8 +4341,8 @@
       "return_": []
     },
     "claim_voting_reward": {
-      "source_index": 20,
-      "index": 20,
+      "source_index": 37,
+      "index": 37,
       "doc": " Claim voting rewards after dispute resolution",
       "attributes": [],
       "visibility": "Public",
@@ -2747,9 +4406,9 @@
       ],
       "return_": []
     },
-    "assert_embed_audio_derivative_media_type": {
-      "source_index": 21,
-      "index": 21,
+    "clamp_similarity_bps": {
+      "source_index": 38,
+      "index": 38,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2757,19 +4416,17 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "embedded_audio_only_derivative",
-          "type_": "bool"
-        },
-        {
-          "name": "media_type",
-          "type_": "u8"
+          "name": "similarity_bps",
+          "type_": "u64"
         }
       ],
-      "return_": []
+      "return_": [
+        "u64"
+      ]
     },
-    "similarity_redirect_percentage": {
-      "source_index": 22,
-      "index": 22,
+    "can_accept_or_reject_proposal": {
+      "source_index": 39,
+      "index": 39,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2777,46 +4434,74 @@
       "type_parameters": [],
       "parameters": [
         {
-          "name": "threshold",
-          "type_": "u64"
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "DetectedAssetRelationship",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         },
         {
-          "name": "highest_similarity_score",
-          "type_": "u64"
+          "name": "pending",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "PendingDerivativeAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         },
         {
-          "name": "redirect_ceiling",
-          "type_": "u64"
+          "name": "original",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "sender",
+          "type_": "address"
         }
       ],
       "return_": [
-        "u64"
+        "bool"
       ]
     },
-    "bps_to_redirect_percent": {
-      "source_index": 23,
-      "index": 23,
-      "doc": " Converts basis points (0-10000) to redirect percent 0-100 for `post::revenue_redirect_percentage` (nearest integer percent).",
+    "propose_detected_relationship": {
+      "source_index": 40,
+      "index": 40,
+      "doc": " Oracle proposes that a pending upload may derive from an existing canonical asset.",
       "attributes": [],
-      "visibility": "Private",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "bps",
-          "type_": "u64"
-        }
-      ],
-      "return_": [
-        "u64"
-      ]
-    },
-    "get_threshold_for_media_type": {
-      "source_index": 24,
-      "index": 24,
-      "doc": " Get similarity threshold for a media type",
-      "attributes": [],
-      "visibility": "Private",
+      "visibility": "Public",
       "entry": false,
       "type_parameters": [],
       "parameters": [
@@ -2839,17 +4524,498 @@
           }
         },
         {
-          "name": "media_type",
-          "type_": "u8"
+          "name": "accused_pending",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "PendingDerivativeAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "original",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "similarity_bps",
+          "type_": "u64"
+        },
+        {
+          "name": "evidence_commitment",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "vector": "u8"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
         }
       ],
-      "return_": [
-        "u64"
-      ]
+      "return_": []
+    },
+    "accept_detected_relationship": {
+      "source_index": 41,
+      "index": 41,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "DetectedAssetRelationship",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "accused_pending",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "PendingDerivativeAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "original",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "reject_detected_relationship": {
+      "source_index": 42,
+      "index": 42,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "DetectedAssetRelationship",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "accused_pending",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "PendingDerivativeAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "original",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "finalize_detected_lineage": {
+      "source_index": 43,
+      "index": 43,
+      "doc": " Oracle finalizes accepted discovery: parent edge + derivative mint + lineage event.",
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "DetectedAssetRelationship",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "social_contracts",
+                "name": "media_asset"
+              },
+              "name": "PendingDerivativeAsset",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "original",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "media_asset"
+                  },
+                  "name": "MediaAsset",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "license_instance",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseInstance",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "template_version",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "license_template"
+                  },
+                  "name": "LicenseTemplateVersion",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
     },
     "is_authorized_oracle": {
-      "source_index": 25,
-      "index": 25,
+      "source_index": 44,
+      "index": 44,
       "doc": " Check if an address is the authorized oracle",
       "attributes": [],
       "visibility": "Public",
@@ -2883,9 +5049,57 @@
         "bool"
       ]
     },
+    "assert_oracle": {
+      "source_index": 45,
+      "index": 45,
+      "doc": " Oracle authorization gate for sibling modules (e.g. media_asset).",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "proof_of_creativity"
+                  },
+                  "name": "PoCConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "get_registry_stats": {
-      "source_index": 26,
-      "index": 26,
+      "source_index": 46,
+      "index": 46,
       "doc": " Get registry statistics",
       "attributes": [],
       "visibility": "Public",
@@ -2918,10 +5132,10 @@
         "u64"
       ]
     },
-    "has_poc_data": {
-      "source_index": 27,
-      "index": 27,
-      "doc": " Check if a post has PoC data that can be disputed",
+    "has_composition_data": {
+      "source_index": 47,
+      "index": 47,
+      "doc": " Check if a post has composition data that can be disputed",
       "attributes": [],
       "visibility": "Public",
       "entry": false,
@@ -2951,8 +5165,8 @@
       ]
     },
     "get_dispute_voting_status": {
-      "source_index": 28,
-      "index": 28,
+      "source_index": 48,
+      "index": 48,
       "doc": " Get dispute voting status; `current_time_ms` should be `clock::timestamp_ms(clock)`.",
       "attributes": [],
       "visibility": "Public",
@@ -2989,8 +5203,8 @@
       ]
     },
     "get_dispute_stakes": {
-      "source_index": 29,
-      "index": 29,
+      "source_index": 49,
+      "index": 49,
       "doc": " Get dispute stake totals",
       "attributes": [],
       "visibility": "Public",
@@ -3023,8 +5237,8 @@
       ]
     },
     "has_user_voted": {
-      "source_index": 30,
-      "index": 30,
+      "source_index": 50,
+      "index": 50,
       "doc": " Check if user has already voted on dispute",
       "attributes": [],
       "visibility": "Public",
@@ -3059,8 +5273,8 @@
       ]
     },
     "config_version": {
-      "source_index": 31,
-      "index": 31,
+      "source_index": 51,
+      "index": 51,
       "doc": " Get the version of the PoC config",
       "attributes": [],
       "visibility": "Public",
@@ -3091,8 +5305,8 @@
       ]
     },
     "dispute_version": {
-      "source_index": 32,
-      "index": 32,
+      "source_index": 52,
+      "index": 52,
       "doc": " Get the version of a PoC dispute",
       "attributes": [],
       "visibility": "Public",
@@ -3123,8 +5337,8 @@
       ]
     },
     "registry_version": {
-      "source_index": 33,
-      "index": 33,
+      "source_index": 53,
+      "index": 53,
       "doc": " Get the version of the PoC registry",
       "attributes": [],
       "visibility": "Public",
@@ -3155,8 +5369,8 @@
       ]
     },
     "migrate_poc_config": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 54,
+      "index": 54,
       "doc": " Migration function for PoCConfig",
       "attributes": [],
       "visibility": "Public",
@@ -3221,8 +5435,8 @@
       "return_": []
     },
     "migrate_poc_dispute": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 55,
+      "index": 55,
       "doc": " Migration function for PoCDispute",
       "attributes": [],
       "visibility": "Public",
@@ -3287,8 +5501,8 @@
       "return_": []
     },
     "migrate_poc_registry": {
-      "source_index": 36,
-      "index": 36,
+      "source_index": 56,
+      "index": 56,
       "doc": " Migration function for PoCRegistry",
       "attributes": [],
       "visibility": "Public",
@@ -3353,8 +5567,8 @@
       "return_": []
     },
     "create_poc_admin_cap": {
-      "source_index": 37,
-      "index": 37,
+      "source_index": 57,
+      "index": 57,
       "doc": " Create a PoCAdminCap for bootstrap (package visibility only)\n This function is only callable by other modules in the same package",
       "attributes": [],
       "visibility": "Package",
@@ -3509,9 +5723,9 @@
             "doc": " Maximum number of votes allowed per dispute",
             "type_": "u64"
           },
-          "dispute_governance_id": {
+          "dispute_governance_registry_id": {
             "index": 13,
-            "doc": " Governance registry ID for PoC disputes",
+            "doc": " Shared PoC GovernanceDAO object ID (registry_type = 1)",
             "type_": {
               "Datatype": {
                 "module": {
@@ -3568,8 +5782,23 @@
             "doc": " Minimum amount (per asset) accepted into a beneficiary vault deposit.",
             "type_": "u64"
           },
-          "version": {
+          "media_asset_dispute_cost": {
             "index": 23,
+            "doc": " Treasury fee for submitting a media-asset rights governance dispute.",
+            "type_": "u64"
+          },
+          "max_disputes_per_media_asset": {
+            "index": 24,
+            "doc": " Lifetime cap on media-asset rights governance disputes per asset.",
+            "type_": "u8"
+          },
+          "max_embedded_asset_redirect_bps": {
+            "index": 25,
+            "doc": " Max bps any single embedded source asset may redirect from a post revenue pool (0-10000).",
+            "type_": "u64"
+          },
+          "version": {
+            "index": 26,
             "doc": " Version for upgrades",
             "type_": "u64"
           }
@@ -3862,279 +6091,8 @@
         }
       }
     },
-    "PoCResultAppliedEvent": {
-      "index": 5,
-      "doc": " Emitted when oracle applies an explicit or similarity-based PoC outcome (for indexers).",
-      "attributes": [],
-      "abilities": [
-        "Copy",
-        "Drop"
-      ],
-      "type_parameters": [],
-      "fields": {
-        "positional_fields": false,
-        "fields": {
-          "post_id": {
-            "index": 0,
-            "doc": null,
-            "type_": "address"
-          },
-          "poc_outcome": {
-            "index": 1,
-            "doc": null,
-            "type_": "u8"
-          },
-          "poc_redirection_kind": {
-            "index": 2,
-            "doc": null,
-            "type_": "u8"
-          },
-          "similarity_detected": {
-            "index": 3,
-            "doc": null,
-            "type_": "bool"
-          },
-          "timestamp": {
-            "index": 4,
-            "doc": null,
-            "type_": "u64"
-          }
-        }
-      }
-    },
-    "AnalysisSubmittedEvent": {
-      "index": 6,
-      "doc": " Event emitted when oracle submits analysis results",
-      "attributes": [],
-      "abilities": [
-        "Copy",
-        "Drop"
-      ],
-      "type_parameters": [],
-      "fields": {
-        "positional_fields": false,
-        "fields": {
-          "post_id": {
-            "index": 0,
-            "doc": null,
-            "type_": "address"
-          },
-          "media_type": {
-            "index": 1,
-            "doc": null,
-            "type_": "u8"
-          },
-          "similarity_detected": {
-            "index": 2,
-            "doc": null,
-            "type_": "bool"
-          },
-          "highest_similarity_score": {
-            "index": 3,
-            "doc": null,
-            "type_": "u64"
-          },
-          "oracle_address": {
-            "index": 4,
-            "doc": null,
-            "type_": "address"
-          },
-          "timestamp": {
-            "index": 5,
-            "doc": null,
-            "type_": "u64"
-          },
-          "reasoning": {
-            "index": 6,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": {
-                      "Datatype": {
-                        "module": {
-                          "address": "std",
-                          "name": "string"
-                        },
-                        "name": "String",
-                        "type_arguments": []
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          "evidence_urls": {
-            "index": 7,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": {
-                      "vector": {
-                        "Datatype": {
-                          "module": {
-                            "address": "std",
-                            "name": "string"
-                          },
-                          "name": "String",
-                          "type_arguments": []
-                        }
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        }
-      }
-    },
-    "PoCBadgeIssuedEvent": {
-      "index": 7,
-      "doc": " Event emitted when a PoC badge is issued",
-      "attributes": [],
-      "abilities": [
-        "Copy",
-        "Drop"
-      ],
-      "type_parameters": [],
-      "fields": {
-        "positional_fields": false,
-        "fields": {
-          "badge_id": {
-            "index": 0,
-            "doc": null,
-            "type_": "address"
-          },
-          "post_id": {
-            "index": 1,
-            "doc": null,
-            "type_": "address"
-          },
-          "media_type": {
-            "index": 2,
-            "doc": null,
-            "type_": "u8"
-          },
-          "issued_by": {
-            "index": 3,
-            "doc": null,
-            "type_": "address"
-          },
-          "beneficiary_address": {
-            "index": 4,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "address"
-                  }
-                ]
-              }
-            }
-          },
-          "matched_anchor_id": {
-            "index": 5,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": "address"
-                  }
-                ]
-              }
-            }
-          },
-          "media_index": {
-            "index": 6,
-            "doc": null,
-            "type_": "u8"
-          },
-          "timestamp": {
-            "index": 7,
-            "doc": null,
-            "type_": "u64"
-          }
-        }
-      }
-    },
-    "RevenueRedirectionActivatedEvent": {
-      "index": 8,
-      "doc": null,
-      "attributes": [],
-      "abilities": [
-        "Copy",
-        "Drop"
-      ],
-      "type_parameters": [],
-      "fields": {
-        "positional_fields": false,
-        "fields": {
-          "redirection_id": {
-            "index": 0,
-            "doc": null,
-            "type_": "address"
-          },
-          "accused_post_id": {
-            "index": 1,
-            "doc": null,
-            "type_": "address"
-          },
-          "original_post_id": {
-            "index": 2,
-            "doc": null,
-            "type_": "address"
-          },
-          "redirect_percentage": {
-            "index": 3,
-            "doc": null,
-            "type_": "u64"
-          },
-          "similarity_score": {
-            "index": 4,
-            "doc": null,
-            "type_": "u64"
-          },
-          "timestamp": {
-            "index": 5,
-            "doc": null,
-            "type_": "u64"
-          }
-        }
-      }
-    },
     "PoCDisputeSubmittedEvent": {
-      "index": 9,
+      "index": 5,
       "doc": " Event emitted when a PoC dispute is submitted",
       "attributes": [],
       "abilities": [
@@ -4223,7 +6181,7 @@
       }
     },
     "DisputeVoteCastEvent": {
-      "index": 10,
+      "index": 6,
       "doc": " Event emitted when a vote is cast on a dispute",
       "attributes": [],
       "abilities": [
@@ -4273,7 +6231,7 @@
       }
     },
     "PoCDisputeResolvedEvent": {
-      "index": 11,
+      "index": 7,
       "doc": " Event emitted when a dispute is resolved",
       "attributes": [],
       "abilities": [
@@ -4343,7 +6301,7 @@
       }
     },
     "VotingRewardClaimedEvent": {
-      "index": 12,
+      "index": 8,
       "doc": " Event emitted when voting rewards are claimed",
       "attributes": [],
       "abilities": [
@@ -4388,7 +6346,7 @@
       }
     },
     "PoCConfigUpdatedEvent": {
-      "index": 13,
+      "index": 9,
       "doc": " Event emitted when PoC configuration is updated",
       "attributes": [],
       "abilities": [
@@ -4464,53 +6422,720 @@
             "doc": null,
             "type_": "u64"
           },
-          "claim_treasury_fee_bps": {
+          "dispute_governance_registry_id": {
             "index": 13,
             "doc": null,
-            "type_": "u64"
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
           },
-          "max_referral_bps": {
+          "claim_treasury_fee_bps": {
             "index": 14,
             "doc": null,
             "type_": "u64"
           },
-          "video_embedded_audio_redirect_bps": {
+          "max_referral_bps": {
             "index": 15,
             "doc": null,
             "type_": "u64"
           },
-          "dispute_quorum_base_stake": {
+          "video_embedded_audio_redirect_bps": {
             "index": 16,
             "doc": null,
             "type_": "u64"
           },
-          "dispute_second_round_fee_multiplier_bps": {
+          "dispute_quorum_base_stake": {
             "index": 17,
             "doc": null,
             "type_": "u64"
           },
-          "dispute_second_round_quorum_multiplier_bps": {
+          "dispute_second_round_fee_multiplier_bps": {
             "index": 18,
             "doc": null,
             "type_": "u64"
           },
-          "username_beneficiary_join_referral_bps": {
+          "dispute_second_round_quorum_multiplier_bps": {
             "index": 19,
             "doc": null,
             "type_": "u64"
           },
-          "max_disputes_per_post": {
+          "username_beneficiary_join_referral_bps": {
             "index": 20,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_disputes_per_post": {
+            "index": 21,
             "doc": null,
             "type_": "u8"
           },
           "min_vault_deposit_amount": {
-            "index": 21,
+            "index": 22,
+            "doc": null,
+            "type_": "u64"
+          },
+          "media_asset_dispute_cost": {
+            "index": 23,
+            "doc": null,
+            "type_": "u64"
+          },
+          "max_disputes_per_media_asset": {
+            "index": 24,
+            "doc": null,
+            "type_": "u8"
+          },
+          "max_embedded_asset_redirect_bps": {
+            "index": 25,
             "doc": null,
             "type_": "u64"
           },
           "timestamp": {
-            "index": 22,
+            "index": 26,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "MediaAssetRightsDisputeProposedEvent": {
+      "index": 10,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "media_asset_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "proposal_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "submitter": {
+            "index": 2,
+            "doc": null,
+            "type_": "address"
+          },
+          "claims_commitment": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "vector": "u8"
+            }
+          },
+          "timestamp": {
+            "index": 4,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "MediaAssetGovernanceProposalLinkedEvent": {
+      "index": 11,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "media_asset_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "proposal_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "timestamp": {
+            "index": 2,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "MediaAssetGovernanceProposalClearedEvent": {
+      "index": 12,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "media_asset_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "proposal_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "outcome": {
+            "index": 2,
+            "doc": null,
+            "type_": "u8"
+          },
+          "timestamp": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "DetectedAssetRelationship": {
+      "index": 13,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          },
+          "accused_pending_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "original_asset_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "similarity_bps": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "evidence_commitment": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "detected_by": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "detected_at": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          },
+          "status": {
+            "index": 7,
+            "doc": null,
+            "type_": "u8"
+          }
+        }
+      }
+    },
+    "DetectedRelationshipProposedEvent": {
+      "index": 14,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "proposal_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "accused_pending_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "original_asset_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "similarity_bps": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "evidence_commitment": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "detected_by": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "DetectedRelationshipAcceptedEvent": {
+      "index": 15,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "proposal_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "accused_pending_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "original_asset_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "similarity_bps": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "evidence_commitment": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "detected_by": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "DetectedRelationshipRejectedEvent": {
+      "index": 16,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "proposal_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "accused_pending_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "original_asset_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "similarity_bps": {
+            "index": 3,
+            "doc": null,
+            "type_": "u64"
+          },
+          "evidence_commitment": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "vector": "u8"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "detected_by": {
+            "index": 5,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp": {
+            "index": 6,
+            "doc": null,
+            "type_": "u64"
+          }
+        }
+      }
+    },
+    "RelationshipFinalizedEvent": {
+      "index": 17,
+      "doc": null,
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "proposal_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "accused_pending_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "child_asset_id": {
+            "index": 2,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "parent_asset_id": {
+            "index": 3,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "original_asset_id": {
+            "index": 4,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "similarity_bps": {
+            "index": 5,
+            "doc": null,
+            "type_": "u64"
+          },
+          "detected_by": {
+            "index": 6,
+            "doc": null,
+            "type_": "address"
+          },
+          "timestamp": {
+            "index": 7,
             "doc": null,
             "type_": "u64"
           }

@@ -29,6 +29,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Struct `BadgeRemovedEvent`](#social_contracts_profile_BadgeRemovedEvent)
 -  [Struct `ProfileMediaAssetUpdatedEvent`](#social_contracts_profile_ProfileMediaAssetUpdatedEvent)
 -  [Struct `ProfileCreatedEvent`](#social_contracts_profile_ProfileCreatedEvent)
+-  [Struct `DeletedProfileEvent`](#social_contracts_profile_DeletedProfileEvent)
 -  [Struct `ProfileUpdatedEvent`](#social_contracts_profile_ProfileUpdatedEvent)
 -  [Struct `UsernameClaimedEvent`](#social_contracts_profile_UsernameClaimedEvent)
 -  [Struct `UsernameReassignedEvent`](#social_contracts_profile_UsernameReassignedEvent)
@@ -81,6 +82,7 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `create_profile_from_beneficiary_claim`](#social_contracts_profile_create_profile_from_beneficiary_claim)
 -  [Function `ensure_memory_account`](#social_contracts_profile_ensure_memory_account)
 -  [Function `update_profile`](#social_contracts_profile_update_profile)
+-  [Function `delete_profile`](#social_contracts_profile_delete_profile)
 -  [Function `update_profile_picture_asset`](#social_contracts_profile_update_profile_picture_asset)
 -  [Function `update_cover_photo_asset`](#social_contracts_profile_update_cover_photo_asset)
 -  [Function `profile_picture_asset_id`](#social_contracts_profile_profile_picture_asset_id)
@@ -1491,6 +1493,48 @@ Emitted when profile media references a MediaAsset (usage graph).
 </dd>
 <dt>
 <code>created_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_profile_DeletedProfileEvent"></a>
+
+## Struct `DeletedProfileEvent`
+
+Emitted when the owner deletes their profile. The object remains; <code>username</code> is freed.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_DeletedProfileEvent">DeletedProfileEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>deleted_at: u64</code>
 </dt>
 <dd>
 </dd>
@@ -4245,6 +4289,64 @@ Only the profile owner can update profile information
     <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a>, new_birthdate);
     <a href="../social_contracts/profile.md#social_contracts_profile_apply_optional_string_update">apply_optional_string_update</a>(&<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_location">location</a>, new_location);
     <a href="../social_contracts/profile.md#social_contracts_profile_emit_profile_updated_event">emit_profile_updated_event</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, clock, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_profile_delete_profile"></a>
+
+## Function `delete_profile`
+
+Owner-only deletion. Frees the claimed username and clears personal fields.
+The profile object, owner, and <code>address_profiles</code> row stay, so this wallet cannot create another profile.
+Aborts with [<code><a href="../social_contracts/profile.md#social_contracts_profile_EUsernameLocked">EUsernameLocked</a></code>] when the name is reserved for a marketplace listing or PoC beneficiary.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_profile">delete_profile</a>(registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_profile">delete_profile</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">UsernameRegistry</a>,
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">Profile</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
+    <b>assert</b>!(registry.<a href="../social_contracts/profile.md#social_contracts_profile_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), 1);
+    <b>let</b> profile_id = object::uid_to_address(&<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
+    <b>assert</b>!(table::contains(&registry.profile_username, profile_id), <a href="../social_contracts/profile.md#social_contracts_profile_EUsernameNotFound">EUsernameNotFound</a>);
+    <b>let</b> username = *table::borrow(&registry.profile_username, profile_id);
+    <a href="../social_contracts/profile.md#social_contracts_profile_revoke_username">revoke_username</a>(registry, <b>copy</b> username);
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_display_name">display_name</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_bio">bio</a> = string::utf8(b"");
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture">profile_picture</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo">cover_photo</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_profile_picture_asset_id">profile_picture_asset_id</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_cover_photo_asset_id">cover_photo_asset_id</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_website">website</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_birthdate">birthdate</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_location">location</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_x_username">x_username</a> = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.badges = vector::empty();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_badge_id = option::none();
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.selected_ecosystem_badge_id = option::none();
+    event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_DeletedProfileEvent">DeletedProfileEvent</a> {
+        profile_id,
+        <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
+        username,
+        deleted_at: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 

@@ -100,10 +100,92 @@
     }
   ],
   "functions": {
-    "bootstrap_init": {
+    "poc_governance_registry_id": {
       "source_index": 0,
       "index": 0,
-      "doc": " Bootstrap initialization function - creates the governance registries.\n Returns the shared SPoT governance registry object ID for wiring into [`social_contracts::social_proof_of_truth`].",
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ids",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "BootstrapGovernanceRegistryIds",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "spot_governance_registry_id": {
+      "source_index": 1,
+      "index": 1,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ids",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "BootstrapGovernanceRegistryIds",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "bootstrap_init": {
+      "source_index": 2,
+      "index": 2,
+      "doc": " Bootstrap initialization function - creates the governance registries.\n Returns PoC and SPoT registry IDs for wiring into [`proof_of_creativity`] and [`social_proof_of_truth`].",
       "attributes": [],
       "visibility": "Package",
       "entry": false,
@@ -150,18 +232,18 @@
         {
           "Datatype": {
             "module": {
-              "address": "myso",
-              "name": "object"
+              "address": "social_contracts",
+              "name": "governance"
             },
-            "name": "ID",
+            "name": "BootstrapGovernanceRegistryIds",
             "type_arguments": []
           }
         }
       ]
     },
     "seed_founding_delegate": {
-      "source_index": 1,
-      "index": 1,
+      "source_index": 3,
+      "index": 3,
       "doc": " Install the founding delegate without going through nomination (bootstrap / platform creation).",
       "attributes": [],
       "visibility": "Private",
@@ -212,8 +294,8 @@
       "return_": []
     },
     "initialize_registry_tables": {
-      "source_index": 2,
-      "index": 2,
+      "source_index": 4,
+      "index": 4,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -260,8 +342,8 @@
       "return_": []
     },
     "update_governance_parameters_internal": {
-      "source_index": 3,
-      "index": 3,
+      "source_index": 5,
+      "index": 5,
       "doc": " Update governance parameters (internal function)\n This function does not perform authorization checks - callers must verify permissions",
       "attributes": [],
       "visibility": "Private",
@@ -354,8 +436,8 @@
       "return_": []
     },
     "update_platform_governance_parameters": {
-      "source_index": 4,
-      "index": 4,
+      "source_index": 6,
+      "index": 6,
       "doc": " Update governance parameters for platform registries\n Can only be called by the platform module (which verifies platform ownership)\n This function is package-private to prevent direct calls that bypass platform ownership verification",
       "attributes": [],
       "visibility": "Package",
@@ -452,8 +534,8 @@
       "return_": []
     },
     "update_governance_parameters": {
-      "source_index": 5,
-      "index": 5,
+      "source_index": 7,
+      "index": 7,
       "doc": " Update governance parameters for ecosystem/proof-of-creativity registries\n Can only be called by governance admin",
       "attributes": [],
       "visibility": "Public",
@@ -564,8 +646,8 @@
       "return_": []
     },
     "nominate_delegate": {
-      "source_index": 6,
-      "index": 6,
+      "source_index": 8,
+      "index": 8,
       "doc": " Nominate self as a delegate\n Uses wallet-level architecture - no profile required",
       "attributes": [],
       "visibility": "Public",
@@ -612,8 +694,8 @@
       "return_": []
     },
     "vote_for_delegate": {
-      "source_index": 7,
-      "index": 7,
+      "source_index": 9,
+      "index": 9,
       "doc": " Vote for or against a delegate or nominee delegate\n Positive votes support the delegate, negative votes express disapproval\n Users can change their vote at any time",
       "attributes": [],
       "visibility": "Public",
@@ -668,8 +750,8 @@
       "return_": []
     },
     "clear_vote_for_delegate": {
-      "source_index": 8,
-      "index": 8,
+      "source_index": 10,
+      "index": 10,
       "doc": " Remove the caller's up or down vote on a delegate or nominee (neutral / undo).\n Aborts with `ENoExistingVote` if the caller has not voted on this target.",
       "attributes": [],
       "visibility": "Public",
@@ -720,8 +802,8 @@
       "return_": []
     },
     "try_update_delegate_panel_if_due": {
-      "source_index": 9,
-      "index": 9,
+      "source_index": 11,
+      "index": 11,
       "doc": " When `ctx.epoch()` has reached a completed term boundary that has not yet been applied,\n recomputes the delegate council from incumbents and nominees. Otherwise returns immediately.",
       "attributes": [],
       "visibility": "Private",
@@ -768,8 +850,8 @@
       "return_": []
     },
     "update_delegate_panel": {
-      "source_index": 10,
-      "index": 10,
+      "source_index": 12,
+      "index": 12,
       "doc": " Updates delegate panel at the end of a delegate term cycle (keeper / manual backstop).",
       "attributes": [],
       "visibility": "Public",
@@ -816,8 +898,8 @@
       "return_": []
     },
     "submit_proposal": {
-      "source_index": 11,
-      "index": 11,
+      "source_index": 13,
+      "index": 13,
       "doc": " Universal function to submit any type of proposal\n Handles proposal types: ecosystem and proof of creativity",
       "attributes": [],
       "visibility": "Public",
@@ -1025,8 +1107,8 @@
       "return_": []
     },
     "submit_ecosystem_proposal": {
-      "source_index": 12,
-      "index": 12,
+      "source_index": 14,
+      "index": 14,
       "doc": " Submit a new proposal to the ecosystem registry\n Requires staking MYSO tokens equal to the proposal submission cost",
       "attributes": [],
       "visibility": "Public",
@@ -1203,8 +1285,8 @@
       "return_": []
     },
     "submit_proof_of_creativity_proposal": {
-      "source_index": 13,
-      "index": 13,
+      "source_index": 15,
+      "index": 15,
       "doc": " Submit a proof of creativity proposal",
       "attributes": [],
       "visibility": "Public",
@@ -1367,8 +1449,8 @@
       "return_": []
     },
     "submit_spot_resolution_proposal": {
-      "source_index": 14,
-      "index": 14,
+      "source_index": 16,
+      "index": 16,
       "doc": " Submit a SPoT resolution proposal (binary ratification of one outcome for a contested market).",
       "attributes": [],
       "visibility": "Public",
@@ -1531,8 +1613,8 @@
       "return_": []
     },
     "submit_spot_proposal_and_return_id": {
-      "source_index": 15,
-      "index": 15,
+      "source_index": 17,
+      "index": 17,
       "doc": " Package helper: submit a SPoT resolution proposal and return its ID.",
       "attributes": [],
       "visibility": "Package",
@@ -1705,9 +1787,184 @@
         }
       ]
     },
+    "submit_poc_proposal_and_return_id": {
+      "source_index": 18,
+      "index": 18,
+      "doc": " Package helper: submit a PoC governance proposal and return its ID.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "title",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "description",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "string"
+              },
+              "name": "String",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "reference_id",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "myso",
+                "name": "object"
+              },
+              "name": "ID",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "metadata_json",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "coin",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
     "submit_proposal_internal": {
-      "source_index": 16,
-      "index": 16,
+      "source_index": 19,
+      "index": 19,
       "doc": " Internal function for submitting proposals",
       "attributes": [],
       "visibility": "Private",
@@ -1899,8 +2156,8 @@
       ]
     },
     "rescind_proposal": {
-      "source_index": 17,
-      "index": 17,
+      "source_index": 20,
+      "index": 20,
       "doc": " Allow a proposal owner to rescind their proposal if it's still in the delegate review stage",
       "attributes": [],
       "visibility": "Public",
@@ -1983,8 +2240,8 @@
       "return_": []
     },
     "move_to_community_voting": {
-      "source_index": 18,
-      "index": 18,
+      "source_index": 21,
+      "index": 21,
       "doc": " Move a proposal to community voting phase",
       "attributes": [],
       "visibility": "Private",
@@ -2067,9 +2324,9 @@
       "return_": []
     },
     "community_vote_on_proposal": {
-      "source_index": 19,
-      "index": 19,
-      "doc": " Community vote on a proposal with quadratic voting\n Users can cast multiple votes by paying a quadratically increasing cost",
+      "source_index": 22,
+      "index": 22,
+      "doc": " Community vote on a proposal with quadratic voting\n Users can cast multiple votes by paying a quadratically increasing cost.\n Platform registries must use `platform::community_vote_on_platform_governance_proposal`.",
       "attributes": [],
       "visibility": "Public",
       "entry": true,
@@ -2190,10 +2447,134 @@
       ],
       "return_": []
     },
+    "community_vote_internal": {
+      "source_index": 23,
+      "index": 23,
+      "doc": " Caller must enforce any registry-specific voter eligibility (platform membership / blocks).",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "Proposal",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "vote_count",
+          "type_": "u64"
+        },
+        {
+          "name": "approve",
+          "type_": "bool"
+        },
+        {
+          "name": "coin",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "coin"
+                  },
+                  "name": "Coin",
+                  "type_arguments": [
+                    {
+                      "phantom": true,
+                      "argument": {
+                        "Datatype": {
+                          "module": {
+                            "address": "myso",
+                            "name": "myso"
+                          },
+                          "name": "MYSO",
+                          "type_arguments": []
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
     "community_vote_anonymous": {
-      "source_index": 20,
-      "index": 20,
-      "doc": " Submit an anonymous encrypted vote on a proposal",
+      "source_index": 24,
+      "index": 24,
+      "doc": " Submit an anonymous encrypted vote on a proposal.\n Platform registries must use `platform::community_vote_anonymous_on_platform_governance_proposal`.",
       "attributes": [],
       "visibility": "Public",
       "entry": false,
@@ -2287,72 +2668,104 @@
       ],
       "return_": []
     },
-    "community_finalize_voting_approved_value": {
-      "source_index": 21,
-      "index": 21,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [],
-      "return_": [
-        "u8"
-      ]
-    },
-    "community_finalize_voting_reject_community_value": {
-      "source_index": 22,
-      "index": 22,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [],
-      "return_": [
-        "u8"
-      ]
-    },
-    "community_finalize_voting_reject_quorum_value": {
-      "source_index": 23,
-      "index": 23,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [],
-      "return_": [
-        "u8"
-      ]
-    },
-    "delegate_vote_outcome_reject_value": {
-      "source_index": 24,
-      "index": 24,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [],
-      "return_": [
-        "u8"
-      ]
-    },
-    "forfeit_reason_quorum_not_met_value": {
+    "community_vote_anonymous_internal": {
       "source_index": 25,
       "index": 25,
-      "doc": null,
+      "doc": " Caller must enforce any registry-specific voter eligibility (platform membership / blocks).",
       "attributes": [],
-      "visibility": "Public",
+      "visibility": "Package",
       "entry": false,
       "type_parameters": [],
-      "parameters": [],
-      "return_": [
-        "u8"
-      ]
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "Proposal",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "encrypted_vote",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "mydata",
+                "name": "bf_hmac_encryption"
+              },
+              "name": "EncryptedObject",
+              "type_arguments": []
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
     },
-    "forfeit_reason_community_rejected_value": {
+    "community_finalize_voting_approved_value": {
       "source_index": 26,
       "index": 26,
       "doc": null,
@@ -2365,7 +2778,7 @@
         "u8"
       ]
     },
-    "forfeit_reason_delegate_rejected_value": {
+    "community_finalize_voting_reject_community_value": {
       "source_index": 27,
       "index": 27,
       "doc": null,
@@ -2378,9 +2791,74 @@
         "u8"
       ]
     },
-    "assert_platform_delegate_manual_reject": {
+    "community_finalize_voting_reject_quorum_value": {
       "source_index": 28,
       "index": 28,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "delegate_vote_outcome_reject_value": {
+      "source_index": 29,
+      "index": 29,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "forfeit_reason_quorum_not_met_value": {
+      "source_index": 30,
+      "index": 30,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "forfeit_reason_community_rejected_value": {
+      "source_index": 31,
+      "index": 31,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "forfeit_reason_delegate_rejected_value": {
+      "source_index": 32,
+      "index": 32,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "assert_platform_delegate_manual_reject": {
+      "source_index": 33,
+      "index": 33,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -2465,8 +2943,8 @@
       ]
     },
     "assert_shared_global_registry": {
-      "source_index": 29,
-      "index": 29,
+      "source_index": 34,
+      "index": 34,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2495,8 +2973,8 @@
       "return_": []
     },
     "forfeit_proposal_pool_to_treasury_address": {
-      "source_index": 30,
-      "index": 30,
+      "source_index": 35,
+      "index": 35,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2577,8 +3055,8 @@
       "return_": []
     },
     "transition_proposal_rejected_by_delegate_council": {
-      "source_index": 31,
-      "index": 31,
+      "source_index": 36,
+      "index": 36,
       "doc": " Updates status tables only: delegate review to rejected. Caller sends pool + emits [ProposalRejectedEvent].",
       "attributes": [],
       "visibility": "Private",
@@ -2625,8 +3103,8 @@
       "return_": []
     },
     "complete_delegate_reject_to_ecosystem_treasury": {
-      "source_index": 32,
-      "index": 32,
+      "source_index": 37,
+      "index": 37,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2713,8 +3191,8 @@
       "return_": []
     },
     "complete_delegate_reject_drain_to_platform_governance": {
-      "source_index": 33,
-      "index": 33,
+      "source_index": 38,
+      "index": 38,
       "doc": " For platform: transition + forfeiture event (platform route) + [ProposalRejectedEvent]; returns pool balance for the caller to join into `Platform.treasury`.",
       "attributes": [],
       "visibility": "Package",
@@ -2812,8 +3290,8 @@
       ]
     },
     "clone_bytes": {
-      "source_index": 34,
-      "index": 34,
+      "source_index": 39,
+      "index": 39,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2839,8 +3317,8 @@
       ]
     },
     "clone_option_string": {
-      "source_index": 35,
-      "index": 35,
+      "source_index": 40,
+      "index": 40,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -2908,8 +3386,8 @@
       ]
     },
     "run_delegate_review_vote": {
-      "source_index": 36,
-      "index": 36,
+      "source_index": 41,
+      "index": 41,
       "doc": " Run delegate-in-review vote logic; returns 0=still in review, 1=advanced to community, 2=must complete delegate reject (ecosystem or platform) via separate entry.",
       "attributes": [],
       "visibility": "Package",
@@ -3025,8 +3503,8 @@
       ]
     },
     "delegate_vote_on_proposal": {
-      "source_index": 37,
-      "index": 37,
+      "source_index": 42,
+      "index": 42,
       "doc": " Ecosystem and proof-of-creativity only: `ecosystem_treasury` used when the delegate council rejects the proposal.",
       "attributes": [],
       "visibility": "Public",
@@ -3158,8 +3636,8 @@
       "return_": []
     },
     "emit_implementation_reward_to_submitter_event": {
-      "source_index": 38,
-      "index": 38,
+      "source_index": 43,
+      "index": 43,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -3199,8 +3677,8 @@
       "return_": []
     },
     "finalize_community_voting_internals": {
-      "source_index": 39,
-      "index": 39,
+      "source_index": 44,
+      "index": 44,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -3286,8 +3764,8 @@
       ]
     },
     "finalize_proposal": {
-      "source_index": 40,
-      "index": 40,
+      "source_index": 45,
+      "index": 45,
       "doc": " Ecosystem and proof-of-creativity: finalize after community vote; on failure, reward pool to ecosystem treasury.",
       "attributes": [],
       "visibility": "Public",
@@ -3388,8 +3866,8 @@
       "return_": []
     },
     "forfeit_proposal_pool_after_community_reject_to_platform_treasury": {
-      "source_index": 41,
-      "index": 41,
+      "source_index": 46,
+      "index": 46,
       "doc": " After community voting fails for a platform registry: move funds into this platform’s governance (treasury) balance.",
       "attributes": [],
       "visibility": "Package",
@@ -3473,8 +3951,8 @@
       ]
     },
     "anonymous_tally_votes_and_finalize_community_internals": {
-      "source_index": 42,
-      "index": 42,
+      "source_index": 47,
+      "index": 47,
       "doc": " Decrypt anonymous votes, merge tallies, and resolve community finalization. Callable from [`social_contracts::platform`] for platform registries.",
       "attributes": [],
       "visibility": "Package",
@@ -3600,8 +4078,8 @@
       ]
     },
     "finalize_proposal_anonymous": {
-      "source_index": 43,
-      "index": 43,
+      "source_index": 48,
+      "index": 48,
       "doc": " Finalize a proposal with anonymous votes by decrypting them first (ecosystem / proof-of-creativity only).",
       "attributes": [],
       "visibility": "Public",
@@ -3742,8 +4220,8 @@
       "return_": []
     },
     "mark_proposal_implemented_take_pool": {
-      "source_index": 44,
-      "index": 44,
+      "source_index": 49,
+      "index": 49,
       "doc": " Shared implementation transition + drains `reward_pool` for routing by the caller.",
       "attributes": [],
       "visibility": "Package",
@@ -3877,9 +4355,149 @@
         }
       ]
     },
+    "mark_proposal_implemented_take_pool_poc_oracle": {
+      "source_index": 50,
+      "index": 50,
+      "doc": " PoC oracle may implement approved media-asset rights proposals (same package only).",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "proposal",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "Proposal",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "authorized_oracle",
+          "type_": "address"
+        },
+        {
+          "name": "description",
+          "type_": {
+            "Datatype": {
+              "module": {
+                "address": "std",
+                "name": "option"
+              },
+              "name": "Option",
+              "type_arguments": [
+                {
+                  "phantom": false,
+                  "argument": {
+                    "Datatype": {
+                      "module": {
+                        "address": "std",
+                        "name": "string"
+                      },
+                      "name": "String",
+                      "type_arguments": []
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "clock",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "clock"
+                  },
+                  "name": "Clock",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "balance"
+            },
+            "name": "Balance",
+            "type_arguments": [
+              {
+                "phantom": true,
+                "argument": {
+                  "Datatype": {
+                    "module": {
+                      "address": "myso",
+                      "name": "myso"
+                    },
+                    "name": "MYSO",
+                    "type_arguments": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
     "mark_proposal_implemented_to_ecosystem_treasury": {
-      "source_index": 45,
-      "index": 45,
+      "source_index": 51,
+      "index": 51,
       "doc": " Mark implemented: reward the submitter with the implementation pool (ecosystem or proof-of-creativity registry).",
       "attributes": [],
       "visibility": "Public",
@@ -4007,8 +4625,8 @@
       "return_": []
     },
     "mark_proposal_implemented_platform_to_ecosystem_treasury": {
-      "source_index": 46,
-      "index": 46,
+      "source_index": 52,
+      "index": 52,
       "doc": " Mark implemented: platform registry when the linked [`Platform`] is not in the transaction — still pays the proposer.",
       "attributes": [],
       "visibility": "Public",
@@ -4136,8 +4754,8 @@
       "return_": []
     },
     "proposal_type_platform_value": {
-      "source_index": 47,
-      "index": 47,
+      "source_index": 53,
+      "index": 53,
       "doc": " Registry type discriminator for platform routing (see [`social_contracts::platform`]).",
       "attributes": [],
       "visibility": "Public",
@@ -4149,8 +4767,21 @@
       ]
     },
     "proposal_type_spot_value": {
-      "source_index": 48,
-      "index": 48,
+      "source_index": 54,
+      "index": 54,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "proposal_type_proof_of_creativity_value": {
+      "source_index": 55,
+      "index": 55,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4162,8 +4793,8 @@
       ]
     },
     "proposal_status": {
-      "source_index": 49,
-      "index": 49,
+      "source_index": 56,
+      "index": 56,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4194,8 +4825,8 @@
       ]
     },
     "proposal_reference_id": {
-      "source_index": 50,
-      "index": 50,
+      "source_index": 57,
+      "index": 57,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4249,8 +4880,8 @@
       ]
     },
     "status_approved_value": {
-      "source_index": 51,
-      "index": 51,
+      "source_index": 58,
+      "index": 58,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4262,8 +4893,8 @@
       ]
     },
     "status_rejected_value": {
-      "source_index": 52,
-      "index": 52,
+      "source_index": 59,
+      "index": 59,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4275,8 +4906,8 @@
       ]
     },
     "get_proposals_by_type": {
-      "source_index": 53,
-      "index": 53,
+      "source_index": 60,
+      "index": 60,
       "doc": " Get all proposals of a specific type",
       "attributes": [],
       "visibility": "Public",
@@ -4322,8 +4953,8 @@
       ]
     },
     "get_proposals_by_status": {
-      "source_index": 54,
-      "index": 54,
+      "source_index": 61,
+      "index": 61,
       "doc": " Get all proposals with a specific status",
       "attributes": [],
       "visibility": "Public",
@@ -4369,8 +5000,8 @@
       ]
     },
     "get_delegate_count": {
-      "source_index": 55,
-      "index": 55,
+      "source_index": 62,
+      "index": 62,
       "doc": " Get number of delegates",
       "attributes": [],
       "visibility": "Public",
@@ -4401,8 +5032,8 @@
       ]
     },
     "registry_type": {
-      "source_index": 56,
-      "index": 56,
+      "source_index": 63,
+      "index": 63,
       "doc": " Registry type discriminator (ecosystem, proof of creativity, platform).",
       "attributes": [],
       "visibility": "Public",
@@ -4433,8 +5064,8 @@
       ]
     },
     "get_delegate_info": {
-      "source_index": 57,
-      "index": 57,
+      "source_index": 64,
+      "index": 64,
       "doc": " Get delegate information",
       "attributes": [],
       "visibility": "Public",
@@ -4476,8 +5107,8 @@
       ]
     },
     "get_proposal_info": {
-      "source_index": 58,
-      "index": 58,
+      "source_index": 65,
+      "index": 65,
       "doc": " Get proposal information",
       "attributes": [],
       "visibility": "Public",
@@ -4598,9 +5229,41 @@
         "u64"
       ]
     },
+    "proposal_submission_cost": {
+      "source_index": 66,
+      "index": 66,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "registry",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "governance"
+                  },
+                  "name": "GovernanceDAO",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        "u64"
+      ]
+    },
     "proposal_submitter": {
-      "source_index": 59,
-      "index": 59,
+      "source_index": 67,
+      "index": 67,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4631,8 +5294,8 @@
       ]
     },
     "treasury_balance": {
-      "source_index": 60,
-      "index": 60,
+      "source_index": 68,
+      "index": 68,
       "doc": " Get the current treasury balance",
       "attributes": [],
       "visibility": "Public",
@@ -4663,8 +5326,8 @@
       ]
     },
     "calculate_vote_cost": {
-      "source_index": 61,
-      "index": 61,
+      "source_index": 69,
+      "index": 69,
       "doc": " Calculate cost for additional votes beyond the first free vote",
       "attributes": [],
       "visibility": "Public",
@@ -4699,8 +5362,8 @@
       ]
     },
     "is_delegate": {
-      "source_index": 62,
-      "index": 62,
+      "source_index": 70,
+      "index": 70,
       "doc": " Check if an address is a delegate",
       "attributes": [],
       "visibility": "Public",
@@ -4735,8 +5398,8 @@
       ]
     },
     "is_delegate_term_expired": {
-      "source_index": 63,
-      "index": 63,
+      "source_index": 71,
+      "index": 71,
       "doc": " Check if delegate term has expired",
       "attributes": [],
       "visibility": "Public",
@@ -4775,8 +5438,8 @@
       ]
     },
     "get_governance_parameters": {
-      "source_index": 64,
-      "index": 64,
+      "source_index": 72,
+      "index": 72,
       "doc": " Get governance parameters",
       "attributes": [],
       "visibility": "Public",
@@ -4813,8 +5476,8 @@
       ]
     },
     "reject_proposal_manually": {
-      "source_index": 65,
-      "index": 65,
+      "source_index": 73,
+      "index": 73,
       "doc": " If more than half of delegates reject, reject the proposal manually (ecosystem / proof-of-creativity only).",
       "attributes": [],
       "visibility": "Public",
@@ -4915,8 +5578,8 @@
       "return_": []
     },
     "create_platform_governance": {
-      "source_index": 66,
-      "index": 66,
+      "source_index": 74,
+      "index": 74,
       "doc": " Create a platform-specific governance registry when a platform is approved\n This function can only be called by the platform toggle_platform_approval function\n The transaction sender is seeded as the founding delegate (same pattern as `bootstrap_init`).",
       "attributes": [],
       "visibility": "Package",
@@ -5002,8 +5665,8 @@
       ]
     },
     "version": {
-      "source_index": 67,
-      "index": 67,
+      "source_index": 75,
+      "index": 75,
       "doc": " Get version of GovernanceDAO",
       "attributes": [],
       "visibility": "Public",
@@ -5034,8 +5697,8 @@
       ]
     },
     "last_delegate_panel_boundary_epoch": {
-      "source_index": 68,
-      "index": 68,
+      "source_index": 76,
+      "index": 76,
       "doc": " Largest `k * delegate_term_epochs` boundary for which a full delegate panel election has been applied.",
       "attributes": [],
       "visibility": "Public",
@@ -5066,8 +5729,8 @@
       ]
     },
     "set_version": {
-      "source_index": 69,
-      "index": 69,
+      "source_index": 77,
+      "index": 77,
       "doc": " Set version of GovernanceDAO",
       "attributes": [],
       "visibility": "Package",
@@ -5100,8 +5763,8 @@
       "return_": []
     },
     "migrate_registry": {
-      "source_index": 70,
-      "index": 70,
+      "source_index": 78,
+      "index": 78,
       "doc": " Public entry function that migrates registry to the latest version",
       "attributes": [],
       "visibility": "Public",
@@ -5127,7 +5790,25 @@
           }
         },
         {
-          "name": "_ctx",
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
           "type_": {
             "Reference": [
               true,
@@ -5148,8 +5829,8 @@
       "return_": []
     },
     "create_spot_governance_registry": {
-      "source_index": 71,
-      "index": 71,
+      "source_index": 79,
+      "index": 79,
       "doc": " One-time admin path for existing networks that bootstrapped before the SPoT registry existed.",
       "attributes": [],
       "visibility": "Public",
@@ -5214,8 +5895,8 @@
       "return_": []
     },
     "create_governance_admin_cap": {
-      "source_index": 72,
-      "index": 72,
+      "source_index": 80,
+      "index": 80,
       "doc": " Create a GovernanceAdminCap for bootstrap (package visibility only)\n This function is only callable by other modules in the same package",
       "attributes": [],
       "visibility": "Package",
@@ -7016,6 +7697,49 @@
             "index": 3,
             "doc": null,
             "type_": "u64"
+          }
+        }
+      }
+    },
+    "BootstrapGovernanceRegistryIds": {
+      "index": 26,
+      "doc": " PoC + SPoT governance registry IDs returned from bootstrap for wiring into module configs.",
+      "attributes": [],
+      "abilities": [
+        "Copy",
+        "Drop"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "poc_governance_registry_id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
+          },
+          "spot_governance_registry_id": {
+            "index": 1,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "ID",
+                "type_arguments": []
+              }
+            }
           }
         }
       }

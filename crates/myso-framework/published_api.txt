@@ -3628,6 +3628,9 @@ verify_bulletproofs_ristretto255
 verify_bulletproofs_with_dst_ristretto255_internal
 	fun
 	0x2::rangeproofs
+verify_bulletproofs_with_dst_ristretto255_contra_internal
+	fun
+	0x2::rangeproofs
 TableVec
 	public struct
 	0x2::table_vec
@@ -8833,6 +8836,12 @@ MediaAssetFutureUsagePausedEvent
 MediaAssetLicenseInstanceRevokedByLicensorEvent
 	public struct
 	0x50c1::media_asset
+RightsResolutionTarget
+	public struct
+	0x50c1::media_asset
+RightsResolutionBundle
+	public struct
+	0x50c1::media_asset
 MediaAssetRightsDisputeState
 	public struct
 	0x50c1::media_asset
@@ -8981,6 +8990,18 @@ claim_type_license_authority
 	public fun
 	0x50c1::media_asset
 claim_type_beneficiary
+	public fun
+	0x50c1::media_asset
+rights_target_kind_wallet
+	public fun
+	0x50c1::media_asset
+rights_target_kind_vault
+	public fun
+	0x50c1::media_asset
+rights_target_kind_onchain_username
+	public fun
+	0x50c1::media_asset
+rights_target_kind_offchain
 	public fun
 	0x50c1::media_asset
 claim_unverified
@@ -9232,6 +9253,33 @@ rights_disputes_submitted
 assert_no_active_rights_proposal
 	public(package) fun
 	0x50c1::media_asset
+new_rights_target
+	public(package) fun
+	0x50c1::media_asset
+rights_target_kind
+	public(package) fun
+	0x50c1::media_asset
+rights_target_beneficiary
+	public(package) fun
+	0x50c1::media_asset
+rights_target_vault_id
+	public(package) fun
+	0x50c1::media_asset
+rights_target_username
+	public(package) fun
+	0x50c1::media_asset
+rights_target_identity_source
+	public(package) fun
+	0x50c1::media_asset
+rights_target_identity_hash
+	public(package) fun
+	0x50c1::media_asset
+sole_economics_beneficiary
+	public(package) fun
+	0x50c1::media_asset
+assert_economics_claimants_bound
+	public(package) fun
+	0x50c1::media_asset
 link_rights_proposal
 	public(package) fun
 	0x50c1::media_asset
@@ -9244,10 +9292,19 @@ clear_rights_proposal_on_implement
 pending_claims_commitment
 	public(package) fun
 	0x50c1::media_asset
+pending_rights_target
+	public(package) fun
+	0x50c1::media_asset
 assert_registered_asset
 	public(package) fun
 	0x50c1::media_asset
 compute_claims_bundle_commitment
+	public(package) fun
+	0x50c1::media_asset
+compute_rights_resolution_commitment
+	public(package) fun
+	0x50c1::media_asset
+oracle_set_sole_beneficiary_split
 	public(package) fun
 	0x50c1::media_asset
 update_media_asset_economics
@@ -9475,6 +9532,9 @@ ProfileMediaAssetUpdatedEvent
 ProfileCreatedEvent
 	public struct
 	0x50c1::profile
+DeletedProfileEvent
+	public struct
+	0x50c1::profile
 ProfileUpdatedEvent
 	public struct
 	0x50c1::profile
@@ -9626,6 +9686,9 @@ ensure_memory_account
 	public entry fun
 	0x50c1::profile
 update_profile
+	public entry fun
+	0x50c1::profile
+delete_profile
 	public entry fun
 	0x50c1::profile
 update_profile_picture_asset
@@ -10051,6 +10114,9 @@ bootstrap_init
 seed_founding_delegate
 	fun
 	0x50c1::governance
+assert_has_profile
+	fun
+	0x50c1::governance
 initialize_registry_tables
 	fun
 	0x50c1::governance
@@ -10108,8 +10174,14 @@ move_to_community_voting
 community_vote_on_proposal
 	public entry fun
 	0x50c1::governance
+community_vote_internal
+	public(package) fun
+	0x50c1::governance
 community_vote_anonymous
 	public fun
+	0x50c1::governance
+community_vote_anonymous_internal
+	public(package) fun
 	0x50c1::governance
 community_finalize_voting_approved_value
 	public fun
@@ -10408,6 +10480,15 @@ mark_platform_governance_proposal_implemented
 delegate_vote_on_platform_governance_proposal
 	public entry fun
 	0x50c1::platform
+assert_platform_registry_and_voter
+	fun
+	0x50c1::platform
+community_vote_on_platform_governance_proposal
+	public entry fun
+	0x50c1::platform
+community_vote_anonymous_on_platform_governance_proposal
+	public fun
+	0x50c1::platform
 finalize_platform_governance_proposal
 	public entry fun
 	0x50c1::platform
@@ -10470,6 +10551,12 @@ join_platform
 	0x50c1::platform
 leave_platform
 	public fun
+	0x50c1::platform
+leave_platforms
+	public entry fun
+	0x50c1::platform
+leave_joined_wallet
+	fun
 	0x50c1::platform
 is_approved
 	public fun
@@ -13042,6 +13129,24 @@ assert_shard_matches_username
 identity_beneficiary_address
 	fun
 	0x50c1::poc_username_beneficiary
+derived_identity_beneficiary_address
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+namespaced_offchain_username
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+lookup_beneficiary_id_by_identity
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+lookup_beneficiary_id_by_username
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+username_beneficiary_address
+	public fun
+	0x50c1::poc_username_beneficiary
+username_beneficiary_username
+	public fun
+	0x50c1::poc_username_beneficiary
 canonical_username
 	fun
 	0x50c1::poc_username_beneficiary
@@ -13204,8 +13309,38 @@ assert_poc_governance_registry
 assert_valid_claims_commitment
 	fun
 	0x50c1::proof_of_creativity
+ensure_rights_dispute_metadata
+	fun
+	0x50c1::proof_of_creativity
+wallet_rights_target
+	fun
+	0x50c1::proof_of_creativity
+bind_claims_to_beneficiary
+	fun
+	0x50c1::proof_of_creativity
+finish_rights_dispute_submit
+	fun
+	0x50c1::proof_of_creativity
+submit_resolved_rights_dispute
+	fun
+	0x50c1::proof_of_creativity
 submit_media_asset_rights_dispute_proposal
 	public entry fun
+	0x50c1::proof_of_creativity
+submit_media_asset_rights_dispute_for_beneficiary
+	public fun
+	0x50c1::proof_of_creativity
+submit_media_asset_rights_dispute_for_onchain_username
+	public fun
+	0x50c1::proof_of_creativity
+submit_media_asset_rights_dispute_for_profile_username
+	public fun
+	0x50c1::proof_of_creativity
+submit_media_asset_rights_dispute_for_offchain_identity
+	public fun
+	0x50c1::proof_of_creativity
+submit_media_asset_rights_dispute_for_new_offchain_identity
+	public fun
 	0x50c1::proof_of_creativity
 clear_media_asset_rights_proposal_on_reject
 	public entry fun
@@ -13213,7 +13348,25 @@ clear_media_asset_rights_proposal_on_reject
 finalize_media_asset_rights_governance_proposal
 	public entry fun
 	0x50c1::proof_of_creativity
+assert_rights_resolution_commitment
+	fun
+	0x50c1::proof_of_creativity
+apply_approved_rights_resolution
+	fun
+	0x50c1::proof_of_creativity
 implement_media_asset_rights_from_governance
+	public fun
+	0x50c1::proof_of_creativity
+implement_media_asset_rights_to_beneficiary
+	public fun
+	0x50c1::proof_of_creativity
+implement_media_asset_rights_to_onchain_username
+	public fun
+	0x50c1::proof_of_creativity
+implement_media_asset_rights_to_profile_username
+	public fun
+	0x50c1::proof_of_creativity
+implement_media_asset_rights_to_offchain_identity
 	public fun
 	0x50c1::proof_of_creativity
 finalize_media_asset_rights_via_dao
@@ -14664,6 +14817,9 @@ TransferBatch
 	0xc1fe::contra
 init
 	fun
+	0xc1fe::contra
+create_registries
+	public fun
 	0xc1fe::contra
 authorize_as_sender
 	public fun

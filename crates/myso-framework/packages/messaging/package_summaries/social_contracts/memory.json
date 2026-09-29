@@ -3,7 +3,7 @@
     "address": "social_contracts",
     "name": "memory"
   },
-  "doc": " Memory — human root account and hierarchical permissioned sub-agent layer.\n\n One slim [`MemoryAccount`] per human owner (linked from [`social_contracts::profile::Profile`]).\n Each sub-agent is a **shared derived object** keyed by `(memory_account_id, derived_address)`.\n Agents sign as `derived_address` and resolve to the human `principal_owner` for profile,\n platform join, and MyData.\n\n **Hierarchy:** `parent_object_id` points up; no child list on parent. Max depth 8.\n **Registry:** auth mirror [`Table`] on [`MemoryAccount`] keyed by `derived_address` (plus\n object-id reverse index) so social/MyData PTBs need only [`MemoryAccount`], not ancestor refs.\n **Lifecycle:** deactivate/revoke operate on explicit agent objects; subtree batches are\n computed off-chain (indexer/server).\n\n **`max_action_spend`:** optional per-transaction MYSO (MIST) ceiling for sub-agent signers.\n\n ## Indexer event payloads\n\n **SubAgentRegistered / SubAgentUpdated:** `account_id`, `principal_owner`, `profile_id`,\n `agent_object_id`, `derived_address`, `label`, `identity_class`, `role_tags`, `capabilities`,\n `delegatable_caps`, `register_scope`, `approval_required_caps`, `max_action_spend`, `platform_scope`,\n `parent_object_id`, `depth`, `registered_by`, `expires_at`, `active`, `created_at`\n\n **SubAgentDeactivated / SubAgentRevoked:** identifiers above + `agent_object_id`, `derived_address`\n\n **SubAgentsClearedOnTransfer:** `account_id`, `principal_owner`, `profile_id`,\n `previous_owner`, `new_owner`, `revoked_count`\n\n **Social events** (post module): all include `actor_address`, `sub_agent_id` (agent object id),\n `action_identity_class` and reactions add `principal_owner`.",
+  "doc": " Memory — human root account and hierarchical permissioned sub-agent layer.\n\n One slim [`MemoryAccount`] per human owner (linked from [`social_contracts::profile::Profile`]).\n Each sub-agent is a **shared derived object** keyed by `(memory_account_id, derived_address)`.\n Agents sign as `derived_address` and resolve to the human `principal_owner` for profile,\n platform join, and MyData.\n\n **Hierarchy:** `parent_object_id` points up; no child list on parent. Max depth 8.\n **Registry:** auth mirror [`Table`] on [`MemoryAccount`] keyed by `derived_address` (plus\n object-id reverse index) so social/MyData PTBs need only [`MemoryAccount`], not ancestor refs.\n **Lifecycle:** deactivate/revoke operate on explicit agent objects; subtree batches are\n computed off-chain (indexer/server).\n\n **`max_action_spend`:** optional per-transaction MYSO (MIST) ceiling for sub-agent signers.\n\n ## Indexer event payloads\n\n **SubAgentRegistered / SubAgentUpdated:** `account_id`, `principal_owner`, `profile_id`,\n `agent_object_id`, `derived_address`, `label`, `identity_class`, `role_tags`, `capabilities`,\n `delegatable_caps`, `register_scope`, `approval_required_caps`, `max_action_spend`, `platform_scope`,\n `parent_object_id`, `depth`, `registered_by`, `expires_at`, `active`, `created_at`\n\n **SubAgentDeactivated / SubAgentRevoked:** identifiers above + `agent_object_id`, `derived_address`\n\n **Social events** (post module): all include `actor_address`, `sub_agent_id` (agent object id),\n `action_identity_class` and reactions add `principal_owner`.",
   "immediate_dependencies": [
     {
       "address": "myso",
@@ -31,10 +31,6 @@
     },
     {
       "address": "myso",
-      "name": "package"
-    },
-    {
-      "address": "myso",
       "name": "permissioned_group"
     },
     {
@@ -48,6 +44,10 @@
     {
       "address": "myso",
       "name": "tx_context"
+    },
+    {
+      "address": "social_contracts",
+      "name": "upgrade"
     },
     {
       "address": "std",
@@ -545,7 +545,7 @@
         "u64"
       ]
     },
-    "org_perm_memory_read": {
+    "cap_social_graph": {
       "source_index": 34,
       "index": 34,
       "doc": null,
@@ -558,7 +558,7 @@
         "u64"
       ]
     },
-    "org_perm_memory_write": {
+    "org_perm_memory_read": {
       "source_index": 35,
       "index": 35,
       "doc": null,
@@ -571,7 +571,7 @@
         "u64"
       ]
     },
-    "org_perm_agent_manager": {
+    "org_perm_memory_write": {
       "source_index": 36,
       "index": 36,
       "doc": null,
@@ -584,7 +584,7 @@
         "u64"
       ]
     },
-    "org_perm_budget_manager": {
+    "org_perm_agent_manager": {
       "source_index": 37,
       "index": 37,
       "doc": null,
@@ -597,7 +597,7 @@
         "u64"
       ]
     },
-    "org_perm_spend_approver": {
+    "org_perm_budget_manager": {
       "source_index": 38,
       "index": 38,
       "doc": null,
@@ -610,7 +610,7 @@
         "u64"
       ]
     },
-    "org_perm_dashboard_viewer": {
+    "org_perm_spend_approver": {
       "source_index": 39,
       "index": 39,
       "doc": null,
@@ -623,7 +623,7 @@
         "u64"
       ]
     },
-    "org_perm_auditor": {
+    "org_perm_dashboard_viewer": {
       "source_index": 40,
       "index": 40,
       "doc": null,
@@ -636,7 +636,7 @@
         "u64"
       ]
     },
-    "org_perm_all": {
+    "org_perm_auditor": {
       "source_index": 41,
       "index": 41,
       "doc": null,
@@ -649,7 +649,7 @@
         "u64"
       ]
     },
-    "org_perm_governance_proposer": {
+    "org_perm_all": {
       "source_index": 42,
       "index": 42,
       "doc": null,
@@ -662,7 +662,7 @@
         "u64"
       ]
     },
-    "org_perm_governance_voter": {
+    "org_perm_governance_proposer": {
       "source_index": 43,
       "index": 43,
       "doc": null,
@@ -675,7 +675,7 @@
         "u64"
       ]
     },
-    "org_governance_perm_all": {
+    "org_perm_governance_voter": {
       "source_index": 44,
       "index": 44,
       "doc": null,
@@ -688,7 +688,7 @@
         "u64"
       ]
     },
-    "role_mask_owner": {
+    "org_governance_perm_all": {
       "source_index": 45,
       "index": 45,
       "doc": null,
@@ -701,7 +701,7 @@
         "u64"
       ]
     },
-    "role_mask_admin": {
+    "role_mask_owner": {
       "source_index": 46,
       "index": 46,
       "doc": null,
@@ -714,7 +714,7 @@
         "u64"
       ]
     },
-    "role_mask_agent_manager": {
+    "role_mask_admin": {
       "source_index": 47,
       "index": 47,
       "doc": null,
@@ -727,7 +727,7 @@
         "u64"
       ]
     },
-    "role_mask_finance_approver": {
+    "role_mask_agent_manager": {
       "source_index": 48,
       "index": 48,
       "doc": null,
@@ -740,7 +740,7 @@
         "u64"
       ]
     },
-    "role_mask_memory_administrator": {
+    "role_mask_finance_approver": {
       "source_index": 49,
       "index": 49,
       "doc": null,
@@ -753,7 +753,7 @@
         "u64"
       ]
     },
-    "role_mask_auditor": {
+    "role_mask_memory_administrator": {
       "source_index": 50,
       "index": 50,
       "doc": null,
@@ -766,7 +766,7 @@
         "u64"
       ]
     },
-    "register_child": {
+    "role_mask_auditor": {
       "source_index": 51,
       "index": 51,
       "doc": null,
@@ -776,10 +776,10 @@
       "type_parameters": [],
       "parameters": [],
       "return_": [
-        "u8"
+        "u64"
       ]
     },
-    "register_peer": {
+    "register_child": {
       "source_index": 52,
       "index": 52,
       "doc": null,
@@ -792,9 +792,22 @@
         "u8"
       ]
     },
-    "derive_sub_agent_address": {
+    "register_peer": {
       "source_index": 53,
       "index": 53,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [],
+      "return_": [
+        "u8"
+      ]
+    },
+    "derive_sub_agent_address": {
+      "source_index": 54,
+      "index": 54,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -829,8 +842,8 @@
       ]
     },
     "agent_object_id": {
-      "source_index": 54,
-      "index": 54,
+      "source_index": 55,
+      "index": 55,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -870,47 +883,6 @@
       ]
     },
     "organization_id": {
-      "source_index": 55,
-      "index": 55,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "org",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "memory"
-                  },
-                  "name": "AgenticOrganization",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        {
-          "Datatype": {
-            "module": {
-              "address": "myso",
-              "name": "object"
-            },
-            "name": "ID",
-            "type_arguments": []
-          }
-        }
-      ]
-    },
-    "organization_memory_account_id": {
       "source_index": 56,
       "index": 56,
       "doc": null,
@@ -951,9 +923,50 @@
         }
       ]
     },
-    "organization_active": {
+    "organization_memory_account_id": {
       "source_index": 57,
       "index": 57,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "myso",
+              "name": "object"
+            },
+            "name": "ID",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "organization_active": {
+      "source_index": 58,
+      "index": 58,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -984,8 +997,8 @@
       ]
     },
     "sub_agent_organization_id": {
-      "source_index": 58,
-      "index": 58,
+      "source_index": 59,
+      "index": 59,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1025,8 +1038,8 @@
       ]
     },
     "organization_org_type": {
-      "source_index": 59,
-      "index": 59,
+      "source_index": 60,
+      "index": 60,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1057,8 +1070,8 @@
       ]
     },
     "organization_root_agent_id": {
-      "source_index": 60,
-      "index": 60,
+      "source_index": 61,
+      "index": 61,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -1112,66 +1125,6 @@
       ]
     },
     "organization_name": {
-      "source_index": 61,
-      "index": 61,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "org",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "memory"
-                  },
-                  "name": "AgenticOrganization",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": [
-        {
-          "Reference": [
-            false,
-            {
-              "Datatype": {
-                "module": {
-                  "address": "std",
-                  "name": "option"
-                },
-                "name": "Option",
-                "type_arguments": [
-                  {
-                    "phantom": false,
-                    "argument": {
-                      "Datatype": {
-                        "module": {
-                          "address": "std",
-                          "name": "string"
-                        },
-                        "name": "String",
-                        "type_arguments": []
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    "organization_description": {
       "source_index": 62,
       "index": 62,
       "doc": null,
@@ -1231,9 +1184,69 @@
         }
       ]
     },
-    "bootstrap_init": {
+    "organization_description": {
       "source_index": 63,
       "index": 63,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "org",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "AgenticOrganization",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Reference": [
+            false,
+            {
+              "Datatype": {
+                "module": {
+                  "address": "std",
+                  "name": "option"
+                },
+                "name": "Option",
+                "type_arguments": [
+                  {
+                    "phantom": false,
+                    "argument": {
+                      "Datatype": {
+                        "module": {
+                          "address": "std",
+                          "name": "string"
+                        },
+                        "name": "String",
+                        "type_arguments": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "bootstrap_init": {
+      "source_index": 64,
+      "index": 64,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -1280,8 +1293,8 @@
       "return_": []
     },
     "create_memory_admin_cap": {
-      "source_index": 64,
-      "index": 64,
+      "source_index": 65,
+      "index": 65,
       "doc": " Create a [`MemoryAdminCap`] for bootstrap (package visibility only).",
       "attributes": [],
       "visibility": "Package",
@@ -1321,8 +1334,8 @@
       ]
     },
     "update_memory_config": {
-      "source_index": 65,
-      "index": 65,
+      "source_index": 66,
+      "index": 66,
       "doc": " Update global memory configuration (admin only).",
       "attributes": [],
       "visibility": "Public",
@@ -1429,8 +1442,8 @@
       "return_": []
     },
     "create_account_for_profile": {
-      "source_index": 66,
-      "index": 66,
+      "source_index": 67,
+      "index": 67,
       "doc": null,
       "attributes": [],
       "visibility": "Package",
@@ -1508,66 +1521,6 @@
           }
         }
       ]
-    },
-    "transfer_account_owner_with_profile": {
-      "source_index": 67,
-      "index": 67,
-      "doc": " Profile transfer must revoke all sub-agent objects in the same PTB (via [`revoke_sub_agent`])\n before calling [`profile::transfer_profile_with_memory`].",
-      "attributes": [],
-      "visibility": "Package",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "registry",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "memory"
-                  },
-                  "name": "MemoryRegistry",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "account",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "memory"
-                  },
-                  "name": "MemoryAccount",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "profile_id",
-          "type_": "address"
-        },
-        {
-          "name": "old_owner",
-          "type_": "address"
-        },
-        {
-          "name": "new_owner",
-          "type_": "address"
-        }
-      ],
-      "return_": []
     },
     "create_agentic_organization": {
       "source_index": 68,
@@ -4647,51 +4600,9 @@
       ],
       "return_": []
     },
-    "emit_sub_agents_cleared_on_transfer": {
+    "ensure_agent_memory_vault": {
       "source_index": 95,
       "index": 95,
-      "doc": " Emit bulk-clear audit after the last agent revoke during profile transfer orchestration.",
-      "attributes": [],
-      "visibility": "Package",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "account",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "memory"
-                  },
-                  "name": "MemoryAccount",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "previous_owner",
-          "type_": "address"
-        },
-        {
-          "name": "new_owner",
-          "type_": "address"
-        },
-        {
-          "name": "revoked_count",
-          "type_": "u64"
-        }
-      ],
-      "return_": []
-    },
-    "ensure_agent_memory_vault": {
-      "source_index": 96,
-      "index": 96,
       "doc": " Lazy-create per-agent memory vault derived from the sub-agent object.",
       "attributes": [],
       "visibility": "Public",
@@ -4785,6 +4696,54 @@
       ]
     },
     "deactivate_account": {
+      "source_index": 96,
+      "index": 96,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "account",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "reactivate_account": {
       "source_index": 97,
       "index": 97,
       "doc": null,
@@ -4832,57 +4791,9 @@
       ],
       "return_": []
     },
-    "reactivate_account": {
+    "migrate_account": {
       "source_index": 98,
       "index": 98,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Public",
-      "entry": true,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "account",
-          "type_": {
-            "Reference": [
-              true,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "social_contracts",
-                    "name": "memory"
-                  },
-                  "name": "MemoryAccount",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
-        {
-          "name": "ctx",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "tx_context"
-                  },
-                  "name": "TxContext",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": []
-    },
-    "migrate_account": {
-      "source_index": 99,
-      "index": 99,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -4929,32 +4840,14 @@
       "return_": []
     },
     "admin_migrate_account": {
-      "source_index": 100,
-      "index": 100,
+      "source_index": 99,
+      "index": 99,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
-        {
-          "name": "cap",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "package"
-                  },
-                  "name": "UpgradeCap",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
         {
           "name": "account",
           "type_": {
@@ -4967,6 +4860,24 @@
                     "name": "memory"
                   },
                   "name": "MemoryAccount",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
                   "type_arguments": []
                 }
               }
@@ -4995,32 +4906,14 @@
       "return_": []
     },
     "migrate_registry": {
-      "source_index": 101,
-      "index": 101,
+      "source_index": 100,
+      "index": 100,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
       "entry": true,
       "type_parameters": [],
       "parameters": [
-        {
-          "name": "cap",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "package"
-                  },
-                  "name": "UpgradeCap",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        },
         {
           "name": "registry",
           "type_": {
@@ -5033,6 +4926,108 @@
                     "name": "memory"
                   },
                   "name": "MemoryRegistry",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": []
+    },
+    "migrate_config": {
+      "source_index": 101,
+      "index": 101,
+      "doc": null,
+      "attributes": [],
+      "visibility": "Public",
+      "entry": true,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "config",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "memory"
+                  },
+                  "name": "MemoryConfig",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "_",
+          "type_": {
+            "Reference": [
+              false,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "social_contracts",
+                    "name": "upgrade"
+                  },
+                  "name": "UpgradeAdminCap",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
                   "type_arguments": []
                 }
               }
@@ -9796,39 +9791,9 @@
       ],
       "return_": []
     },
-    "assert_cap_for_this_package": {
+    "has_suffix": {
       "source_index": 191,
       "index": 191,
-      "doc": null,
-      "attributes": [],
-      "visibility": "Private",
-      "entry": false,
-      "type_parameters": [],
-      "parameters": [
-        {
-          "name": "cap",
-          "type_": {
-            "Reference": [
-              false,
-              {
-                "Datatype": {
-                  "module": {
-                    "address": "myso",
-                    "name": "package"
-                  },
-                  "name": "UpgradeCap",
-                  "type_arguments": []
-                }
-              }
-            ]
-          }
-        }
-      ],
-      "return_": []
-    },
-    "has_suffix": {
-      "source_index": 192,
-      "index": 192,
       "doc": null,
       "attributes": [],
       "visibility": "Private",
@@ -12045,62 +12010,8 @@
         }
       }
     },
-    "SubAgentsClearedOnTransfer": {
-      "index": 34,
-      "doc": null,
-      "attributes": [],
-      "abilities": [
-        "Copy",
-        "Drop"
-      ],
-      "type_parameters": [],
-      "fields": {
-        "positional_fields": false,
-        "fields": {
-          "account_id": {
-            "index": 0,
-            "doc": null,
-            "type_": {
-              "Datatype": {
-                "module": {
-                  "address": "myso",
-                  "name": "object"
-                },
-                "name": "ID",
-                "type_arguments": []
-              }
-            }
-          },
-          "principal_owner": {
-            "index": 1,
-            "doc": null,
-            "type_": "address"
-          },
-          "profile_id": {
-            "index": 2,
-            "doc": null,
-            "type_": "address"
-          },
-          "previous_owner": {
-            "index": 3,
-            "doc": null,
-            "type_": "address"
-          },
-          "new_owner": {
-            "index": 4,
-            "doc": null,
-            "type_": "address"
-          },
-          "revoked_count": {
-            "index": 5,
-            "doc": null,
-            "type_": "u64"
-          }
-        }
-      }
-    },
     "MemoryAccountDeactivated": {
-      "index": 35,
+      "index": 34,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12134,7 +12045,7 @@
       }
     },
     "MemoryAccountReactivated": {
-      "index": 36,
+      "index": 35,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12168,7 +12079,7 @@
       }
     },
     "MemoryAccountMigrated": {
-      "index": 37,
+      "index": 36,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12207,7 +12118,7 @@
       }
     },
     "MemoryRegistryMigrated": {
-      "index": 38,
+      "index": 37,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12246,7 +12157,7 @@
       }
     },
     "AgentMemoryVaultCreated": {
-      "index": 39,
+      "index": 38,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12303,7 +12214,7 @@
       }
     },
     "AgenticOrganizationCreated": {
-      "index": 40,
+      "index": 39,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12422,7 +12333,7 @@
       }
     },
     "AgenticOrganizationUpdated": {
-      "index": 41,
+      "index": 40,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12507,7 +12418,7 @@
       }
     },
     "AgenticOrganizationCategoryUpdated": {
-      "index": 42,
+      "index": 41,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12551,7 +12462,7 @@
       }
     },
     "AgenticOrganizationDeactivated": {
-      "index": 43,
+      "index": 42,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12585,7 +12496,7 @@
       }
     },
     "OrgMemoryGroupCreated": {
-      "index": 44,
+      "index": 43,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12652,7 +12563,7 @@
       }
     },
     "OrgMemoryPermissionGranted": {
-      "index": 45,
+      "index": 44,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12729,7 +12640,7 @@
       }
     },
     "OrgMemoryPermissionRevoked": {
-      "index": 46,
+      "index": 45,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12806,7 +12717,7 @@
       }
     },
     "OrgRoleDefined": {
-      "index": 47,
+      "index": 46,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12897,7 +12808,7 @@
       }
     },
     "OrgRoleAssigned": {
-      "index": 48,
+      "index": 47,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -12993,7 +12904,7 @@
       }
     },
     "OrgRoleRevoked": {
-      "index": 49,
+      "index": 48,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -13084,7 +12995,7 @@
       }
     },
     "OrgInvitationCreated": {
-      "index": 50,
+      "index": 49,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -13194,7 +13105,7 @@
       }
     },
     "OrgInvitationAccepted": {
-      "index": 51,
+      "index": 50,
       "doc": null,
       "attributes": [],
       "abilities": [
@@ -13304,7 +13215,7 @@
       }
     },
     "OrgInvitationDeclined": {
-      "index": 52,
+      "index": 51,
       "doc": null,
       "attributes": [],
       "abilities": [

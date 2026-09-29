@@ -11,5 +11,5 @@ MySo = { local = "../../../../crates/myso-framework/packages/myso-framework/myso
 bridged_btc = "0x0"
 
 [environments]
-localnet = "7fe1c64b"
+localnet = "3b358e3c"
 testnet = "56a7099f"

@@ -11,5 +11,5 @@ MySo = { local = "../../../../crates/myso-framework/packages/myso-framework/myso
 bridged_usdc = "0x0"
 
 [environments]
-localnet = "7fe1c64b"
+localnet = "b8a7e07e"
 testnet = "56a7099f"

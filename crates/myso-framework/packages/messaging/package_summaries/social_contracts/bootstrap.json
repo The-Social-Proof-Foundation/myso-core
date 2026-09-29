@@ -128,9 +128,50 @@
     }
   ],
   "functions": {
-    "claim_all_admin_capabilities": {
+    "create_messaging_admin_cap": {
       "source_index": 0,
       "index": 0,
+      "doc": " Create a [`MessagingAdminCap`] for genesis bootstrap.",
+      "attributes": [],
+      "visibility": "Package",
+      "entry": false,
+      "type_parameters": [],
+      "parameters": [
+        {
+          "name": "ctx",
+          "type_": {
+            "Reference": [
+              true,
+              {
+                "Datatype": {
+                  "module": {
+                    "address": "myso",
+                    "name": "tx_context"
+                  },
+                  "name": "TxContext",
+                  "type_arguments": []
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "return_": [
+        {
+          "Datatype": {
+            "module": {
+              "address": "social_contracts",
+              "name": "bootstrap"
+            },
+            "name": "MessagingAdminCap",
+            "type_arguments": []
+          }
+        }
+      ]
+    },
+    "claim_all_admin_capabilities": {
+      "source_index": 1,
+      "index": 1,
       "doc": " Claim all admin capabilities (one-time only)\n Creates and transfers all admin capabilities to caller, then seals the bootstrap key.",
       "attributes": [],
       "visibility": "Public",
@@ -213,8 +254,8 @@
       "return_": []
     },
     "is_bootstrap_used": {
-      "source_index": 1,
-      "index": 1,
+      "source_index": 2,
+      "index": 2,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -245,8 +286,8 @@
       ]
     },
     "bootstrap_version": {
-      "source_index": 2,
-      "index": 2,
+      "source_index": 3,
+      "index": 3,
       "doc": null,
       "attributes": [],
       "visibility": "Public",
@@ -277,6 +318,36 @@
       ]
     }
   },
-  "structs": {},
+  "structs": {
+    "MessagingAdminCap": {
+      "index": 0,
+      "doc": " Admin capability for updating `messaging::messaging_config::MessagingConfig`.",
+      "attributes": [],
+      "abilities": [
+        "Key",
+        "Store"
+      ],
+      "type_parameters": [],
+      "fields": {
+        "positional_fields": false,
+        "fields": {
+          "id": {
+            "index": 0,
+            "doc": null,
+            "type_": {
+              "Datatype": {
+                "module": {
+                  "address": "myso",
+                  "name": "object"
+                },
+                "name": "UID",
+                "type_arguments": []
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "enums": {}
 }

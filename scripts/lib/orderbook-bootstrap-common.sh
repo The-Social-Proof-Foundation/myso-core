@@ -1082,7 +1082,7 @@ orderbook_read_bm_coin_balance() {
     out="$(myso client call \
         --package "$ORDERBOOK_PACKAGE_ID" --module balance_manager --function balance \
         --type-args "$coin_type" \
-        --args "@${bm_id}" \
+        --args "${bm_id}" \
         --dry-run --json 2>/dev/null)" || { printf '0'; return 0; }
     orderbook_parse_u64_return "$out"
 }
@@ -1106,6 +1106,158 @@ orderbook_mm_myusd_have() {
 orderbook_should_mint_mm_myusd() {
     local have="${1:-0}" required="${2:-0}"
     [[ "$have" -lt "$required" ]]
+}
+
+# 6-decimal MYUSD raw units as a 2-decimal token amount.
+orderbook_format_myusd_amount() {
+    local raw="${1:-0}"
+    [[ "$raw" =~ ^[0-9]+$ ]] || raw=0
+    printf '%d.%02d' $((raw / 1000000)) $(((raw / 10000) % 100))
+}
+
+# 9-decimal MYSO raw units as a 2-decimal token amount.
+orderbook_format_myso_amount() {
+    local raw="${1:-0}"
+    [[ "$raw" =~ ^[0-9]+$ ]] || raw=0
+    printf '%d.%02d' $((raw / 1000000000)) $(((raw / 10000000) % 100))
+}
+
+# Parse a decimal token amount into raw units (6 for MYUSD, 9 for MYSO).
+orderbook_parse_decimal_raw() {
+    local text="$1" decimals="$2" whole frac scale=1 i
+    [[ "$text" =~ ^([0-9]+)(\.([0-9]+))?$ ]] || return 1
+    whole="${BASH_REMATCH[1]}"
+    frac="${BASH_REMATCH[3]:-}"
+    [[ ${#frac} -le "$decimals" ]] || return 1
+    while [[ ${#frac} -lt "$decimals" ]]; do
+        frac="${frac}0"
+    done
+    for ((i = 0; i < decimals; i++)); do
+        scale=$((scale * 10))
+    done
+    printf '%s\n' $((10#$whole * scale + 10#$frac))
+}
+
+# MYSO/USD scaled by 1e8 (470000 = 0.0047). Live HTTP price, else that default.
+orderbook_fetch_myso_usd_price_1e8() {
+    local url body usd
+    url="${MYSO_ORACLE_SOURCE_URL:-https://api.testnet.dripdrop.social/price/mysocial}"
+    body="$(curl -sf --max-time 3 -H 'Accept: application/json' "$url" 2>/dev/null)" || body=''
+    if [[ -n "$body" ]]; then
+        usd="$(echo "$body" | jq -r '(.priceUsd // .price_usd // .last_price // empty)' 2>/dev/null)" || usd=''
+    fi
+    if [[ -z "${usd:-}" || "$usd" == null ]]; then
+        usd="$(curl -sf --max-time 2 "http://127.0.0.1:${ORACLE_STATUS_PORT:-9010}/" 2>/dev/null \
+            | jq -r '.prices.myso // empty' 2>/dev/null | tr -d '$')" || usd=''
+    fi
+    if [[ ! "${usd:-}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || ! awk -v p="$usd" 'BEGIN { exit !(p+0 > 0) }'; then
+        usd='0.0047'
+        MM_MYSO_USD_PRICE_SOURCE='default'
+    else
+        MM_MYSO_USD_PRICE_SOURCE='live'
+    fi
+    MM_MYSO_USD_PRICE_1E8="$(python3 -c "print(int(round(float('${usd}') * 100000000)))")"
+}
+
+orderbook_format_myso_usd_price() {
+    local raw="${1:-470000}" text
+    printf -v text '%d.%08d' $((raw / 100000000)) $((raw % 100000000))
+    while [[ "$text" == *0 ]]; do
+        text="${text%0}"
+    done
+    [[ "$text" == *. ]] && text="${text}0"
+    printf '%s\n' "$text"
+}
+
+orderbook_current_coin_raw() {
+    local coin_type="$1" wallet bm
+    [[ -n "${DEPLOYER_ADDRESS:-}" && -n "$coin_type" ]] || return 1
+    wallet="$(orderbook_resolve_myusd_balance "$DEPLOYER_ADDRESS" "$coin_type")" || return 1
+    bm="$(orderbook_owned_bm_coin_balance_total "$coin_type")" || bm=0
+    orderbook_mm_myusd_have "$wallet" "$bm"
+}
+
+orderbook_current_myusd_raw() {
+    orderbook_current_coin_raw "${MYUSD_COIN_TYPE:-}"
+}
+
+orderbook_current_myso_raw() {
+    orderbook_current_coin_raw "$MYSO_COIN_TYPE"
+}
+
+# 1% stays unlocked for taker fees. Same reserve the market maker keeps.
+orderbook_myso_skew_usable_raw() {
+    local total="${1:-0}"
+    [[ "$total" =~ ^[0-9]+$ ]] || total=0
+    printf '%s\n' $((total * 99 / 100))
+}
+
+# Closest weight is `levels`, farthest weight is 1. Prints "near far" raw shares of the usable balance.
+orderbook_myso_skew_ends() {
+    local levels="$1" total="$2"
+    [[ "$levels" =~ ^[1-9][0-9]*$ ]] || return 1
+    [[ "$total" =~ ^[0-9]+$ ]] || return 1
+    python3 -c "
+levels=int('${levels}')
+total=int('${total}') * 99 // 100
+decay=900000
+scale=1000000
+weight=scale
+weight_sum=0
+weights=[]
+for _ in range(levels):
+    weights.append(weight)
+    weight_sum += weight
+    weight = max(1, weight * decay // scale)
+near=total * weights[0] // weight_sum
+far=total * weights[-1] // weight_sum
+print(near, far)
+"
+}
+
+# Pool account cap is 100 open orders, so a two-sided book stops at 50 per side.
+orderbook_myso_posted_levels() {
+    local levels="${1:-0}"
+    [[ "$levels" =~ ^[1-9][0-9]*$ ]] || levels=1
+    if [[ "$levels" -gt 50 ]]; then
+        printf '50\n'
+    else
+        printf '%s\n' "$levels"
+    fi
+}
+
+orderbook_myso_depth_title() {
+    local requested="$1" have="${2:-}" levels near_q far_q near_b far_b uses myso cap_note=""
+    levels="$(orderbook_myso_posted_levels "$requested")"
+    if [[ "$requested" -gt 50 ]]; then
+        cap_note="posts ${levels}+${levels} (pool max 100) · "
+    fi
+    if [[ ! "$have" =~ ^[0-9]+$ || "$have" -le 0 ]]; then
+        printf '%s each side · %slargest at the touch · price %s · balance unavailable\n' \
+            "$requested" \
+            "$cap_note" \
+            "$(orderbook_format_myso_usd_price "${MM_MYSO_USD_PRICE_1E8:-470000}")"
+        return 0
+    fi
+    read -r near_q far_q < <(orderbook_myso_skew_ends "$levels" "$have") || return 1
+    uses="$(orderbook_myso_skew_usable_raw "$have")"
+    myso="${MM_MYSO_HAVE_RAW:-0}"
+    if [[ "$myso" =~ ^[0-9]+$ && "$myso" -gt 0 ]]; then
+        read -r near_b far_b < <(orderbook_myso_skew_ends "$levels" "$myso") || return 1
+    else
+        near_b=0
+        far_b=0
+    fi
+    printf '%s each side · %sbid %s→%s MYUSD · ask %s→%s MYSO · uses %s MYUSD · price %s · balance %s · covered\n' \
+        "$requested" \
+        "$cap_note" \
+        "$(orderbook_format_myusd_amount "$near_q")" \
+        "$(orderbook_format_myusd_amount "$far_q")" \
+        "$(orderbook_format_myso_amount "$near_b")" \
+        "$(orderbook_format_myso_amount "$far_b")" \
+        "$(orderbook_format_myusd_amount "$uses")" \
+        "$(orderbook_format_myso_usd_price "${MM_MYSO_USD_PRICE_1E8:-470000}")" \
+        "$(orderbook_format_myusd_amount "$have")"
 }
 
 orderbook_mm_myusd_quote_total_required() {
@@ -1132,8 +1284,8 @@ orderbook_ensure_deployer_myusd_for_mm() {
         log_step "MYUSD already covers MM quotes (wallet $wallet + BM $bm = $have, need $required)"
         return 0
     fi
-    if [[ "$bm" -ge "$quote_only" ]]; then
-        log_step "BalanceManager MYUSD ($bm) already covers quote deposits ($quote_only) — skipping mint"
+    if [[ "$have" -ge "$quote_only" ]]; then
+        log_step "Orderbook wallet already covers quote deposits (wallet $wallet + BM $bm = $have, need $quote_only)"
         return 0
     fi
     if [[ -z "${MYUSD_TREASURY_CAP_ID:-}" ]]; then
@@ -1370,7 +1522,7 @@ orderbook_read_pool_tick() {
     out="$(myso client call \
         --package "$ORDERBOOK_PACKAGE_ID" --module pool --function pool_book_params \
         --type-args "$base_type" "$quote_type" \
-        --args "@${pool_id}" \
+        --args "${pool_id}" \
         --dry-run --json 2>/dev/null)" || return 1
     tick="$(echo "$out" | jq -r '
         (.command_outputs[0].returnValues[0].json
@@ -2303,7 +2455,8 @@ orderbook_fetch_mm_pools_json() {
             if $pair == "MYSO" then
                 {orderSizeBase: ($myso_os|tostring), fallbackMidPrice: fallback($myso_fb_off),
                  baseDepositAmount: ($myso_bd|tostring), quoteDepositAmount: ($myso_qd|tostring),
-                 levelsPerSide: $myso_levels, spreadBps: $myso_spread, levelSpacingBps: $myso_spacing}
+                 levelsPerSide: $myso_levels, spreadBps: $myso_spread, levelSpacingBps: $myso_spacing,
+                 inventorySkew: true}
             elif $pair == "BTC" then
                 {orderSizeBase: ($btc_os|tostring), fallbackMidPrice: fallback($btc_fb_off),
                  baseDepositAmount: ($btc_bd|tostring), quoteDepositAmount: ($btc_qd|tostring)}
@@ -2337,7 +2490,8 @@ orderbook_fetch_mm_pools_json() {
                 quoteDepositAmount: $t.quoteDepositAmount,
                 levelsPerSide: $t.levelsPerSide,
                 spreadBps: $t.spreadBps,
-                levelSpacingBps: $t.levelSpacingBps
+                levelSpacingBps: $t.levelSpacingBps,
+                inventorySkew: ($t.inventorySkew // false)
               }
           )
         ')" || return 1
