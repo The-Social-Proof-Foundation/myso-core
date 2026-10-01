@@ -656,6 +656,16 @@ async fn clear_deleted_profile<'a>(
         ))
         .execute(conn)
         .await?;
+    if !owner_norm.is_empty() {
+        total += diesel::sql_query(
+            "UPDATE wallet_badge_selections \
+             SET badge_id = NULL, ecosystem_badge_id = NULL \
+             WHERE LOWER(wallet_address) = LOWER($1)",
+        )
+        .bind::<Text, _>(&owner_norm)
+        .execute(conn)
+        .await?;
+    }
     Ok(total)
 }
 
