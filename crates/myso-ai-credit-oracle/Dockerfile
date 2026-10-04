@@ -1,19 +1,46 @@
-# ============================================================
-# AI credit oracle — Dockerfile
+# Build from repo root (recommended):
+#   docker build -f crates/myso-ai-credit-oracle/Dockerfile .
 #
-# Build from the myso-core repo root. Cargo.toml uses workspace deps.
-#     docker build -f crates/myso-ai-credit-oracle/Dockerfile .
-#
-# Railway Root Directory must stay "/" so the workspace is the context.
-# The pricing catalog path is compiled as CARGO_MANIFEST_DIR/config,
-# so that directory is copied to the same absolute path in the runtime image.
-# ============================================================
+# Also works when the build context is only crates/myso-ai-credit-oracle (fetches full tree via git).
 
-# Tag: rust:1.85-bookworm  |  arch: linux/amd64  |  pinned: 2026-04-16
-FROM rust:1.85-bookworm@sha256:bf7d87666c4da6eace19e06d21bc4859c6e2a5c97a21ac273b0e082112753cf0 AS builder
+FROM rust:1.94-bookworm AS builder
+
+ARG MYSO_CORE_GIT_URL=https://github.com/The-Social-Proof-Foundation/myso-core.git
+ARG MYSO_CORE_GIT_REF=main
+ARG RAILWAY_GIT_COMMIT_SHA
+ARG GITHUB_TOKEN
 
 WORKDIR /app
-COPY . .
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    ca-certificates \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . /scratch/
+
+RUN set -eux; \
+    if grep -q '^\[workspace\]' /scratch/Cargo.toml 2>/dev/null; then \
+        cp -a /scratch/. /app/; \
+    else \
+        if [ -n "${GITHUB_TOKEN:-}" ]; then \
+            clone_url="https://x-access-token:${GITHUB_TOKEN}@github.com/The-Social-Proof-Foundation/myso-core.git"; \
+        else \
+            clone_url="${MYSO_CORE_GIT_URL}"; \
+        fi; \
+        git clone --depth 1 "${clone_url}" /app; \
+        cd /app; \
+        if [ -n "${RAILWAY_GIT_COMMIT_SHA:-}" ]; then \
+            git fetch --depth 1 origin "${RAILWAY_GIT_COMMIT_SHA}"; \
+            git checkout "${RAILWAY_GIT_COMMIT_SHA}"; \
+        elif [ "${MYSO_CORE_GIT_REF}" != "main" ]; then \
+            git fetch --depth 1 origin "${MYSO_CORE_GIT_REF}"; \
+            git checkout "${MYSO_CORE_GIT_REF}"; \
+        fi; \
+    fi
+
 RUN cargo build --release --locked -p myso-ai-credit-oracle
 
 FROM debian:bookworm-slim AS runtime

@@ -5,8 +5,15 @@
         "dockerfilePath": "crates/myso-ai-credit-oracle/Dockerfile",
         "watchPatterns": [
             "crates/myso-ai-credit-oracle/**",
+            "crates/myso-types/**",
+            "crates/myso-sdk/**",
+            "crates/myso-crypto/**",
+            "crates/myso-json-rpc-types/**",
+            "crates/myso-sdk-types/**",
+            "crates/shared-crypto/**",
             "Cargo.toml",
-            "Cargo.lock"
+            "Cargo.lock",
+            "rust-toolchain.toml"
         ]
     },
     "deploy": {
