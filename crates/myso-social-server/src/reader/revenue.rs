@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::dsl::sum;
+use diesel::expression::dsl::sum;
 use diesel::expression_methods::ExpressionMethods;
 use diesel::sql_types::{BigInt, Date, Double, Nullable, Text, Timestamp, Timestamptz};
 use diesel::OptionalExtension;

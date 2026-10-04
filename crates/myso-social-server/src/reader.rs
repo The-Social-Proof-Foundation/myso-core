@@ -1004,7 +1004,7 @@ impl Reader {
         start_date: chrono::NaiveDateTime,
         end_date: chrono::NaiveDateTime,
     ) -> Result<serde_json::Value, crate::error::SocialError> {
-        use diesel::dsl::sum;
+        use diesel::expression::dsl::sum;
         let mut conn = self.db.connect().await?;
         let start_dt =
             chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(start_date, chrono::Utc);

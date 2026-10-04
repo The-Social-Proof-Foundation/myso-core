@@ -11,7 +11,7 @@ use axum::{
     Json, Router,
 };
 use diesel::dsl::count_star;
-use diesel::dsl::{max, min};
+use diesel::expression::dsl::{max, min};
 use diesel::{ExpressionMethods, QueryDsl};
 use governor::{Quota, RateLimiter};
 use myso_pg_db::{Db, DbArgs};
