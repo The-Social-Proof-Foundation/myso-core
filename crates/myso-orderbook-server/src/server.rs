@@ -11,7 +11,6 @@ use axum::{
     Json, Router,
 };
 use diesel::dsl::count_star;
-use diesel::expression::dsl::{max, min};
 use diesel::{ExpressionMethods, QueryDsl};
 use governor::{Quota, RateLimiter};
 use myso_pg_db::{Db, DbArgs};
@@ -1003,8 +1002,8 @@ async fn high_low_prices_24h(
         .group_by(schema::order_fills::pool_id)
         .select((
             schema::order_fills::pool_id,
-            max(schema::order_fills::price),
-            min(schema::order_fills::price),
+            diesel::dsl::max(schema::order_fills::price),
+            diesel::dsl::min(schema::order_fills::price),
         ));
     let results: Vec<(String, Option<i64>, Option<i64>)> = state.reader.results(query).await?;
 

@@ -1,7 +1,6 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::expression::dsl::sum;
 use diesel::expression_methods::ExpressionMethods;
 use diesel::sql_types::{BigInt, Date, Double, Nullable, Text, Timestamp, Timestamptz};
 use diesel::OptionalExtension;
@@ -440,7 +439,7 @@ pub(crate) async fn get_unified_revenue(
                 chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(d, chrono::Utc),
             ));
         }
-        q.select(sum(unified_revenue::amount))
+        q.select(diesel::dsl::sum(unified_revenue::amount))
             .get_result(&mut conn)
             .await?
     };

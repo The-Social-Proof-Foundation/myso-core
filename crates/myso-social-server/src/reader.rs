@@ -1004,7 +1004,6 @@ impl Reader {
         start_date: chrono::NaiveDateTime,
         end_date: chrono::NaiveDateTime,
     ) -> Result<serde_json::Value, crate::error::SocialError> {
-        use diesel::expression::dsl::sum;
         let mut conn = self.db.connect().await?;
         let start_dt =
             chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(start_date, chrono::Utc);
@@ -1054,7 +1053,7 @@ impl Reader {
             rev_query = rev_query.filter(subscription_revenue::service_id.eq(sid));
         }
         let total_revenue: Option<bigdecimal::BigDecimal> = rev_query
-            .select(sum(subscription_revenue::amount))
+            .select(diesel::dsl::sum(subscription_revenue::amount))
             .get_result(&mut conn)
             .await?;
         let total_revenue: i64 = total_revenue
