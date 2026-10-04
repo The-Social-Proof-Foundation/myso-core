@@ -22,6 +22,7 @@ build
 storage
 !consensus/core/src/storage
 !crates/myso-types/src/storage
+network.config/
 
 # Move-related files
 Move.lock

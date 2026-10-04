@@ -51,9 +51,12 @@ COPY --from=builder --chown=appuser:appuser \
 COPY --from=builder --chown=appuser:appuser \
     /app/crates/myso-ai-credit-oracle/config ./crates/myso-ai-credit-oracle/config
 
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
+
 USER appuser
 
 ENV PORT=8095
+ENV AI_CREDIT_RECEIPT_STORE=/app/data/ai_credit_receipts.json
 EXPOSE 8095
 
 CMD ["sh", "-c", "export AI_CREDIT_ORACLE_LISTEN=0.0.0.0:${PORT:-8095}; exec ./myso-ai-credit-oracle"]
