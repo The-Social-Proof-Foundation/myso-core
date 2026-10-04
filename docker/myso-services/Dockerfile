@@ -1,4 +1,4 @@
-FROM rust:1.92-bullseye AS chef
+FROM rust:1.92-bookworm AS chef
 WORKDIR myso
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
@@ -19,7 +19,7 @@ RUN find /myso/target/release/ -maxdepth 1 -type f -executable -print
 RUN find /myso/target/release/ -maxdepth 1 -type f -executable -print | xargs cp -t /myso/bin/
 
 # Production Image
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 WORKDIR myso
 COPY --from=builder /myso/bin /tmp/myso-bin
 RUN find /tmp/myso-bin -maxdepth 1 -type f -executable -print | xargs cp -t /usr/local/bin/

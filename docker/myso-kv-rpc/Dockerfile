@@ -1,4 +1,4 @@
-FROM rust:1.92-bullseye as build
+FROM rust:1.92-bookworm as build
 
 ARG PROFILE=release
 WORKDIR /work

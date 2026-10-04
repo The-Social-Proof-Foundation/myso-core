@@ -1,5 +1,5 @@
 # Build application
-FROM rust:1.87-bullseye AS builder
+FROM rust:1.87-bookworm AS builder
 WORKDIR /app
 
 # Install dependencies
@@ -22,7 +22,7 @@ ENV GIT_REVISION=$GIT_REVISION
 RUN cargo build --release --bin myso-faucet --bin merge_coins
 
 # Production Image
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \

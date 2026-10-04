@@ -1,5 +1,5 @@
 # Build application
-FROM rust:1.82-bullseye AS builder
+FROM rust:1.82-bookworm AS builder
 ARG PROFILE=release
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
@@ -21,7 +21,7 @@ COPY . .
 RUN cargo build --release --bin myso-orderbook-indexer
 
 # Production Image
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \

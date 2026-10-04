@@ -1,5 +1,5 @@
 # Build application
-FROM rust:1.82-bullseye AS builder
+FROM rust:1.82-bookworm AS builder
 ARG PROFILE=release
 WORKDIR /app
 
@@ -19,7 +19,7 @@ COPY . .
 RUN cargo build --release --bin myso-social-server
 
 # Production Image
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \

@@ -1,5 +1,5 @@
 # MySo Bridge Dockerfile for Railway Deployment
-FROM rust:1.81-bullseye
+FROM rust:1.81-bookworm
 
 WORKDIR /work
 

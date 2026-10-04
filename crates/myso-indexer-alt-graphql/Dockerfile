@@ -2,7 +2,7 @@
 #
 # Copy in all crates, Cargo.toml and Cargo.lock unmodified,
 # and build the application.
-FROM rust:1.92-bullseye AS builder
+FROM rust:1.92-bookworm AS builder
 ARG PROFILE=release
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
@@ -37,7 +37,7 @@ ENV CARGO_BUILD_JOBS=4
 RUN cargo build --release --bin myso-indexer-alt-graphql
 
 # Production Image
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -108,4 +108,4 @@ LABEL build-date=$BUILD_DATE
 LABEL git-revision=$GIT_REVISION
 
 # Use the entrypoint script
-ENTRYPOINT /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -2,7 +2,7 @@
 #
 # Copy in all crates, Cargo.toml and Cargo.lock unmodified,
 # and build the application.
-FROM rust:1.92-bullseye AS builder
+FROM rust:1.92-bookworm AS builder
 ARG PROFILE=release
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
@@ -18,7 +18,7 @@ COPY external-crates external-crates
 RUN cargo build --profile ${PROFILE} --bin myso-node
 
 # Production Image
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 # Use jemalloc as memory allocator
 RUN apt-get update && apt-get install -y ca-certificates curl
 ARG PROFILE=release

@@ -2,9 +2,9 @@
 #
 # Copy in all crates, Cargo.toml and Cargo.lock unmodified,
 # and build the application.
-# rust:1.92-bullseye
+# rust:1.92-bookworm
 ARG PROFILE=release-unwind
-FROM rust:1.92-bullseye AS builder
+FROM rust:1.92-bookworm AS builder
 ARG PROFILE
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
@@ -24,8 +24,8 @@ COPY external-crates external-crates
 RUN cargo build --profile ${PROFILE} --bin myso-indexer-alt-graphql
 
 # Production Image
-# debian:bullseye-slim
-FROM debian@sha256:fdd75562fdcde1039c2480a1ea1cd2cf03b18b6e4cb551cabb03bde66ade8a5d AS runtime
+# debian:bookworm-slim
+FROM debian:bookworm-slim AS runtime
 ARG PROFILE
 # Use jemalloc as memory allocator
 RUN apt-get update && apt-get install -y libjemalloc-dev ca-certificates curl
