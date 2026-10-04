@@ -50,12 +50,15 @@ pub(crate) async fn list_usage_lines(
     db: &Db,
     balance_id: &str,
     limit: i64,
+    offset: i64,
 ) -> Result<Vec<AiCreditUsageLineRow>, SocialError> {
     let mut conn = db.connect().await?;
     ai_credit_usage_lines::table
         .filter(ai_credit_usage_lines::balance_id.eq(balance_id))
         .order(ai_credit_usage_lines::created_at.desc())
+        .then_order_by(ai_credit_usage_lines::id.desc())
         .limit(limit)
+        .offset(offset)
         .select(AiCreditUsageLineRow::as_select())
         .load(&mut conn)
         .await
@@ -67,6 +70,7 @@ pub(crate) async fn list_reservations(
     balance_id: &str,
     status: Option<&str>,
     limit: i64,
+    offset: i64,
 ) -> Result<Vec<AiSpendReservationRow>, SocialError> {
     let mut conn = db.connect().await?;
     let mut query = ai_spend_reservations::table
@@ -78,6 +82,7 @@ pub(crate) async fn list_reservations(
     query
         .order(ai_spend_reservations::reservation_nonce.desc())
         .limit(limit)
+        .offset(offset)
         .select(AiSpendReservationRow::as_select())
         .load(&mut conn)
         .await
@@ -104,7 +109,7 @@ pub(crate) async fn list_live_reservations(
     db: &Db,
     balance_id: &str,
 ) -> Result<Vec<AiSpendReservationRow>, SocialError> {
-    list_reservations(db, balance_id, Some(RESERVATION_STATUS_RESERVED), 100).await
+    list_reservations(db, balance_id, Some(RESERVATION_STATUS_RESERVED), 100, 0).await
 }
 
 pub(crate) async fn get_ai_credit_config(

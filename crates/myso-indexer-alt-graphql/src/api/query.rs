@@ -2,20 +2,20 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::anyhow;
 use anyhow::Context as _;
-use async_graphql::connection::Connection;
+use anyhow::anyhow;
 use async_graphql::Context;
+use async_graphql::ID;
 use async_graphql::Object;
 use async_graphql::Result;
-use async_graphql::ID;
+use async_graphql::connection::Connection;
 use fastcrypto::encoding::Base58;
 use fastcrypto::encoding::Encoding;
 use futures::future::try_join_all;
 use myso_indexer_alt_reader::fullnode_client::Error::GrpcExecutionError;
 use myso_indexer_alt_reader::fullnode_client::FullnodeClient;
 use myso_indexer_alt_social_reader::{
-    delegate_rating_viewer_lookup_key, DelegateRatingViewerTarget,
+    DelegateRatingViewerTarget, delegate_rating_viewer_lookup_key,
 };
 use myso_rpc::proto::myso::rpc::v2 as proto;
 
@@ -30,16 +30,16 @@ use crate::api::scalars::uint53::UInt53;
 use crate::api::types::address;
 use crate::api::types::address::Address;
 use crate::api::types::address::AddressKey;
-use crate::api::types::checkpoint::filter::CheckpointFilter;
 use crate::api::types::checkpoint::CCheckpoint;
 use crate::api::types::checkpoint::Checkpoint;
+use crate::api::types::checkpoint::filter::CheckpointFilter;
 use crate::api::types::coin_metadata::CoinMetadata;
 use crate::api::types::dynamic_field::DynamicField;
 use crate::api::types::epoch::CEpoch;
 use crate::api::types::epoch::Epoch;
-use crate::api::types::event::filter::EventFilter;
 use crate::api::types::event::CEvent;
 use crate::api::types::event::Event;
+use crate::api::types::event::filter::EventFilter;
 use crate::api::types::governance::{
     AnonymousVotingTrend, Delegate, GovernanceEvent, GovernanceRegistry, NominatedDelegate,
     Proposal,
@@ -77,7 +77,6 @@ use crate::api::types::poc::PocBeneficiaryVault;
 use crate::api::types::poc_username_beneficiary::PocUsernameBeneficiary;
 use crate::api::types::post::{CommentSummary, Post, ReactionSummary, RepostSummary, TipSummary};
 use crate::api::types::profile::Profile;
-use crate::api::types::wallet::Wallet;
 use crate::api::types::profile_subscription::{
     ProfileSubscription, ProfileSubscriptionPlan, ProfileSubscriptionService, SubscriptionAccess,
 };
@@ -99,21 +98,22 @@ use crate::api::types::spt::{
     SptHolding, SptOrder, SptPool, SptPriceHistory, SptReservationHolding,
     SptReservationVolumeBucket, SptReservationVolumeInterval, SptSortBy,
 };
-use crate::api::types::transaction::filter::TransactionFilter;
-use crate::api::types::transaction::filter::TransactionFilterValidator as TFValidator;
 use crate::api::types::transaction::CTransaction;
 use crate::api::types::transaction::Transaction;
+use crate::api::types::transaction::filter::TransactionFilter;
+use crate::api::types::transaction::filter::TransactionFilterValidator as TFValidator;
 use crate::api::types::transaction_effects::TransactionEffects;
 use crate::api::types::username::{UsernameAvailability, UsernameRegistry};
 use crate::api::types::vesting::{
     VestingLeaderboardEntry, VestingLeaderboardResponse, VestingWallet,
 };
+use crate::api::types::wallet::Wallet;
 use crate::api::types::zklogin;
 use crate::api::types::zklogin::ZkLoginIntentScope;
 use crate::api::types::zklogin::ZkLoginVerifyResult;
+use crate::error::RpcError;
 use crate::error::bad_user_input;
 use crate::error::upcast;
-use crate::error::RpcError;
 use crate::pagination::Page;
 use crate::pagination::PaginationConfig;
 use crate::scope::Scope;
@@ -387,9 +387,9 @@ impl Query {
             .await
         {
             Ok(None) => Some(Ok(None)),
-            Ok(Some(link)) => {
-                Some(Ok(MediaAssetRightsProposalLink::from_row(reader, link).await))
-            }
+            Ok(Some(link)) => Some(Ok(
+                MediaAssetRightsProposalLink::from_row(reader, link).await
+            )),
             Err(e) => Some(Err(e.into())),
         }
     }

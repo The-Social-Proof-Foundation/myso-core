@@ -1824,11 +1824,12 @@ impl Reader {
         &self,
         balance_id: &str,
         limit: i64,
+        offset: i64,
     ) -> Result<
         Vec<myso_indexer_alt_social_schema::models::AiCreditUsageLineRow>,
         crate::error::SocialError,
     > {
-        ai_credit::list_usage_lines(&self.db, balance_id, limit).await
+        ai_credit::list_usage_lines(&self.db, balance_id, limit, offset).await
     }
 
     pub async fn list_ai_spend_reservations(
@@ -1836,11 +1837,12 @@ impl Reader {
         balance_id: &str,
         status: Option<&str>,
         limit: i64,
+        offset: i64,
     ) -> Result<
         Vec<myso_indexer_alt_social_schema::models::AiSpendReservationRow>,
         crate::error::SocialError,
     > {
-        ai_credit::list_reservations(&self.db, balance_id, status, limit).await
+        ai_credit::list_reservations(&self.db, balance_id, status, limit, offset).await
     }
 
     pub async fn list_live_ai_spend_reservations(
@@ -1887,20 +1889,31 @@ impl Reader {
         organization_id: &str,
         member: Option<&str>,
         active_only: bool,
+        limit: i64,
+        offset: i64,
     ) -> Result<
         Vec<myso_indexer_alt_social_schema::models::OrgMemoryPermissionRow>,
         crate::error::SocialError,
     > {
-        enterprise::list_org_memory_permissions(&self.db, organization_id, member, active_only)
-            .await
+        enterprise::list_org_memory_permissions(
+            &self.db,
+            organization_id,
+            member,
+            active_only,
+            limit,
+            offset,
+        )
+        .await
     }
 
     pub async fn list_org_roles(
         &self,
         organization_id: &str,
+        limit: i64,
+        offset: i64,
     ) -> Result<Vec<myso_indexer_alt_social_schema::models::OrgRoleRow>, crate::error::SocialError>
     {
-        enterprise::list_org_roles(&self.db, organization_id).await
+        enterprise::list_org_roles(&self.db, organization_id, limit, offset).await
     }
 
     pub async fn list_org_role_assignments(
@@ -1908,11 +1921,21 @@ impl Reader {
         organization_id: &str,
         member: Option<&str>,
         active_only: bool,
+        limit: i64,
+        offset: i64,
     ) -> Result<
         Vec<myso_indexer_alt_social_schema::models::OrgRoleAssignmentRow>,
         crate::error::SocialError,
     > {
-        enterprise::list_org_role_assignments(&self.db, organization_id, member, active_only).await
+        enterprise::list_org_role_assignments(
+            &self.db,
+            organization_id,
+            member,
+            active_only,
+            limit,
+            offset,
+        )
+        .await
     }
 
     pub async fn list_org_invitations(
@@ -1920,11 +1943,14 @@ impl Reader {
         organization_id: &str,
         invitee: Option<&str>,
         status: Option<&str>,
+        limit: i64,
+        offset: i64,
     ) -> Result<
         Vec<myso_indexer_alt_social_schema::models::OrgInvitationRow>,
         crate::error::SocialError,
     > {
-        enterprise::list_org_invitations(&self.db, organization_id, invitee, status).await
+        enterprise::list_org_invitations(&self.db, organization_id, invitee, status, limit, offset)
+            .await
     }
 
     pub async fn list_spend_approvals_by_owner(
@@ -1932,11 +1958,21 @@ impl Reader {
         owner: &str,
         status: Option<&str>,
         agent_object_id: Option<&str>,
+        limit: i64,
+        offset: i64,
     ) -> Result<
         Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>,
         crate::error::SocialError,
     > {
-        enterprise::list_spend_approvals_by_owner(&self.db, owner, status, agent_object_id).await
+        enterprise::list_spend_approvals_by_owner(
+            &self.db,
+            owner,
+            status,
+            agent_object_id,
+            limit,
+            offset,
+        )
+        .await
     }
 
     pub async fn list_spend_approvals_by_org(
@@ -1945,6 +1981,7 @@ impl Reader {
         status: Option<&str>,
         agent_object_id: Option<&str>,
         limit: i64,
+        offset: i64,
     ) -> Result<
         Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>,
         crate::error::SocialError,
@@ -1955,6 +1992,7 @@ impl Reader {
             status,
             agent_object_id,
             limit,
+            offset,
         )
         .await
         .map_err(Into::into)
@@ -1965,6 +2003,7 @@ impl Reader {
         organization_id: &str,
         window: myso_indexer_alt_social_reader::OrganizationStatsWindow,
         limit: i64,
+        offset: i64,
     ) -> Result<
         Vec<myso_indexer_alt_social_reader::AgentSpendBreakdownEntry>,
         crate::error::SocialError,
@@ -1974,6 +2013,7 @@ impl Reader {
             organization_id,
             window,
             limit,
+            offset,
         )
         .await
         .map_err(Into::into)

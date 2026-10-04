@@ -140,8 +140,8 @@ Current version of the package, starting from version 1
 
 ## Function `share_initial`
 
-Shares the genesis <code><a href="../messaging/version.md#messaging_version_Version">Version</a></code> singleton. Called from <code>messaging::init</code> so Version
-is always created alongside <code>MessagingNamespace</code>.
+Shares the genesis <code><a href="../messaging/version.md#messaging_version_Version">Version</a></code> singleton. Called from <code>messaging::create_genesis_objects</code>
+so Version is created alongside <code>MessagingNamespace</code>.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/version.md#messaging_version_share_initial">share_initial</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)

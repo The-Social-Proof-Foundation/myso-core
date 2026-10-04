@@ -582,6 +582,7 @@ impl SocialPgReader {
         organization_id: &str,
         window: OrganizationStatsWindow,
         limit: i64,
+        offset: i64,
     ) -> anyhow::Result<Vec<crate::enterprise::AgentSpendBreakdownEntry>> {
         let mut conn = self.connect().await?;
         crate::enterprise::list_agent_spend_breakdown(
@@ -589,6 +590,7 @@ impl SocialPgReader {
             organization_id,
             window,
             limit,
+            offset,
             &self.metrics,
         )
         .await
@@ -676,6 +678,7 @@ impl SocialPgReader {
         status: Option<&str>,
         agent_object_id: Option<&str>,
         limit: i64,
+        offset: i64,
     ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>> {
         let mut conn = self.connect().await?;
         crate::enterprise::list_spend_approvals_by_org(
@@ -684,6 +687,7 @@ impl SocialPgReader {
             status,
             agent_object_id,
             limit,
+            offset,
             &self.metrics,
         )
         .await

@@ -347,7 +347,12 @@ impl Proposal {
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
         let address = address.to_string();
-        if reader.get_profile_by_address(&address).await.ok()?.is_none() {
+        if reader
+            .get_profile_by_address(&address)
+            .await
+            .ok()?
+            .is_none()
+        {
             return Some(CommunityVoteEligibility::denied(
                 CommunityVoteIneligibleReason::NoProfile,
             ));

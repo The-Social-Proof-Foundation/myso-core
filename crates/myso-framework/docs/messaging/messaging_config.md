@@ -307,7 +307,7 @@ Shared singleton for paid-messaging parameters.
 
 ## Function `share_initial`
 
-Shares the genesis [<code><a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">MessagingConfig</a></code>] singleton. Called from <code>messaging::init</code>.
+Shares the genesis [<code><a href="../messaging/messaging_config.md#messaging_messaging_config_MessagingConfig">MessagingConfig</a></code>] singleton. Called from <code>messaging::create_genesis_objects</code>.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../messaging/messaging_config.md#messaging_messaging_config_share_initial">share_initial</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)

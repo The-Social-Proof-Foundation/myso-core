@@ -232,6 +232,7 @@ pub async fn list_agent_spend_breakdown_for_db(
     organization_id: &str,
     window: OrganizationStatsWindow,
     limit: i64,
+    offset: i64,
 ) -> anyhow::Result<Vec<AgentSpendBreakdownEntry>> {
     let mut conn = db.connect().await?;
     enterprise::list_agent_spend_breakdown(
@@ -239,6 +240,7 @@ pub async fn list_agent_spend_breakdown_for_db(
         organization_id,
         window,
         limit,
+        offset,
         standalone_reader_metrics(),
     )
     .await
@@ -250,6 +252,7 @@ pub async fn list_spend_approvals_by_org_for_db(
     status: Option<&str>,
     agent_object_id: Option<&str>,
     limit: i64,
+    offset: i64,
 ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::AiCreditSpendApprovalRow>> {
     let mut conn = db.connect().await?;
     enterprise::list_spend_approvals_by_org(
@@ -258,6 +261,7 @@ pub async fn list_spend_approvals_by_org_for_db(
         status,
         agent_object_id,
         limit,
+        offset,
         standalone_reader_metrics(),
     )
     .await

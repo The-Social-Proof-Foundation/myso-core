@@ -67,12 +67,27 @@ pub struct PageParams {
 
 impl PageParams {
     pub fn limit(&self) -> i64 {
-        self.limit.unwrap_or(20).min(100)
+        self.limit.unwrap_or(20).clamp(1, 100)
     }
     pub fn offset(&self) -> i64 {
         let page = self.page.unwrap_or(1).max(1);
         let limit = self.limit();
         self.offset.unwrap_or_else(|| (page - 1) * limit)
+    }
+}
+
+/// Rebuilds [`PageParams`] from query fields declared directly on a handler struct.
+///
+/// `#[serde(flatten)]` cannot be used with axum's `Query`: `serde_urlencoded` buffers the
+/// flattened map as strings, so numeric fields fail with
+/// `invalid type: string "50", expected i64` — which made `?limit=` unusable on every
+/// paged endpoint. Paged query structs therefore declare `limit`/`offset`/`page` as plain
+/// fields and rebuild [`PageParams`] here so the limit/offset math lives in one place.
+pub fn page_params(limit: Option<i64>, offset: Option<i64>, page: Option<i64>) -> PageParams {
+    PageParams {
+        limit,
+        offset,
+        page,
     }
 }
 
@@ -536,6 +551,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/internal/organizations/:id/summary",
             get(get_org_summary_internal),
+        )
+        .route(
+            "/internal/organizations/:id/memory-permissions",
+            get(list_org_memory_permissions_internal),
         )
         .route(
             "/internal/organizations/:id/control",

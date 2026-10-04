@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use crate::error::SocialError;
 
-use super::super::{AppState, PageParams};
+use super::super::{page_params, AppState, PageParams};
 
 pub async fn list_poc_badges(
     State(state): State<Arc<AppState>>,
@@ -180,8 +180,15 @@ pub async fn list_poc_vault_claims(
 #[derive(Debug, Deserialize)]
 pub struct PocUsernameBeneficiaryQuery {
     pub status: Option<i16>,
-    #[serde(flatten)]
-    pub page: PageParams,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl PocUsernameBeneficiaryQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 pub async fn list_poc_username_beneficiaries(
@@ -189,8 +196,8 @@ pub async fn list_poc_username_beneficiaries(
     Query(params): Query<PocUsernameBeneficiaryQuery>,
 ) -> Result<Json<Vec<myso_indexer_alt_social_schema::models::PocUsernameBeneficiaryRow>>, SocialError>
 {
-    let limit = params.page.limit();
-    let offset = params.page.offset();
+    let limit = params.page_params().limit();
+    let offset = params.page_params().offset();
     let rows = state
         .reader
         .list_poc_username_beneficiaries(params.status, limit, offset)

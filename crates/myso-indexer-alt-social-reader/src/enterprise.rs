@@ -79,6 +79,7 @@ pub async fn list_agent_spend_breakdown(
     organization_id: &str,
     window: OrganizationStatsWindow,
     limit: i64,
+    offset: i64,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Vec<AgentSpendBreakdownEntry>> {
     metrics.requests_received.inc();
@@ -120,14 +121,15 @@ pub async fn list_agent_spend_breakdown(
             mus.entries,
             mus.bytes,
             mus.org_shared_entries
-        ORDER BY spent_mist DESC, sa.label ASC
-        LIMIT $3
+        ORDER BY spent_mist DESC, sa.label ASC, sa.agent_object_id ASC
+        LIMIT $3 OFFSET $4
     "#;
 
     let rows: Vec<AgentSpendBreakdownRow> = diesel::sql_query(query)
         .bind::<diesel::sql_types::Text, _>(organization_id)
         .bind::<diesel::sql_types::BigInt, _>(days)
         .bind::<diesel::sql_types::BigInt, _>(limit)
+        .bind::<diesel::sql_types::BigInt, _>(offset)
         .load(conn)
         .await?;
 
@@ -291,6 +293,7 @@ pub async fn list_spend_approvals_by_org(
     status: Option<&str>,
     agent_object_id: Option<&str>,
     limit: i64,
+    offset: i64,
     metrics: &DbReaderMetrics,
 ) -> anyhow::Result<Vec<AiCreditSpendApprovalRow>> {
     metrics.requests_received.inc();
@@ -307,7 +310,9 @@ pub async fn list_spend_approvals_by_org(
     }
     let rows = query
         .order(ai_credit_spend_approvals::updated_at.desc())
+        .then_order_by(ai_credit_spend_approvals::agent_object_id.asc())
         .limit(limit)
+        .offset(offset)
         .select(AiCreditSpendApprovalRow::as_select())
         .load(conn)
         .await?;

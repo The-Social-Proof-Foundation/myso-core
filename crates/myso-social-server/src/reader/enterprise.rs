@@ -31,6 +31,8 @@ pub(crate) async fn list_org_memory_permissions(
     organization_id: &str,
     member: Option<&str>,
     active_only: bool,
+    limit: i64,
+    offset: i64,
 ) -> Result<Vec<OrgMemoryPermissionRow>, SocialError> {
     let mut conn = db.connect().await?;
     let mut query = org_memory_permissions::table
@@ -44,6 +46,9 @@ pub(crate) async fn list_org_memory_permissions(
     }
     query
         .order(org_memory_permissions::permission_kind.asc())
+        .then_order_by(org_memory_permissions::member_address.asc())
+        .limit(limit)
+        .offset(offset)
         .select(OrgMemoryPermissionRow::as_select())
         .load(&mut conn)
         .await
@@ -53,12 +58,16 @@ pub(crate) async fn list_org_memory_permissions(
 pub(crate) async fn list_org_roles(
     db: &Db,
     organization_id: &str,
+    limit: i64,
+    offset: i64,
 ) -> Result<Vec<OrgRoleRow>, SocialError> {
     let mut conn = db.connect().await?;
     org_roles::table
         .filter(org_roles::organization_id.eq(organization_id))
         .filter(org_roles::active.eq(true))
         .order(org_roles::role_name.asc())
+        .limit(limit)
+        .offset(offset)
         .select(OrgRoleRow::as_select())
         .load(&mut conn)
         .await
@@ -70,6 +79,8 @@ pub(crate) async fn list_org_role_assignments(
     organization_id: &str,
     member: Option<&str>,
     active_only: bool,
+    limit: i64,
+    offset: i64,
 ) -> Result<Vec<OrgRoleAssignmentRow>, SocialError> {
     let mut conn = db.connect().await?;
     let mut query = org_role_assignments::table
@@ -83,6 +94,9 @@ pub(crate) async fn list_org_role_assignments(
     }
     query
         .order(org_role_assignments::assigned_at_ms.desc())
+        .then_order_by(org_role_assignments::role_name.asc())
+        .limit(limit)
+        .offset(offset)
         .select(OrgRoleAssignmentRow::as_select())
         .load(&mut conn)
         .await
@@ -94,6 +108,8 @@ pub(crate) async fn list_org_invitations(
     organization_id: &str,
     invitee: Option<&str>,
     status: Option<&str>,
+    limit: i64,
+    offset: i64,
 ) -> Result<Vec<OrgInvitationRow>, SocialError> {
     let mut conn = db.connect().await?;
     let mut query = org_invitations::table
@@ -107,6 +123,9 @@ pub(crate) async fn list_org_invitations(
     }
     query
         .order(org_invitations::created_at_ms.desc())
+        .then_order_by(org_invitations::invitee_address.asc())
+        .limit(limit)
+        .offset(offset)
         .select(OrgInvitationRow::as_select())
         .load(&mut conn)
         .await
@@ -122,6 +141,8 @@ pub(crate) async fn list_spend_approvals_by_owner(
     owner: &str,
     status: Option<&str>,
     agent_object_id: Option<&str>,
+    limit: i64,
+    offset: i64,
 ) -> Result<Vec<AiCreditSpendApprovalRow>, SocialError> {
     let mut conn = db.connect().await?;
     let balance_ids: Vec<String> = ai_credit_balances::table
@@ -143,6 +164,9 @@ pub(crate) async fn list_spend_approvals_by_owner(
     }
     query
         .order(ai_credit_spend_approvals::updated_at.desc())
+        .then_order_by(ai_credit_spend_approvals::agent_object_id.asc())
+        .limit(limit)
+        .offset(offset)
         .select(AiCreditSpendApprovalRow::as_select())
         .load(&mut conn)
         .await

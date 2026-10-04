@@ -11,6 +11,7 @@ use crate::{
     error::{MySoErrorKind, MySoResult},
     signature::{AuthenticatorTrait, VerifyParams},
 };
+use fastcrypto::rsa::{Base64UrlUnpadded, Encoding};
 use fastcrypto::{error::FastCryptoError, traits::ToFromBytes};
 use fastcrypto_zkp::bn254::zk_login::JwkId;
 use fastcrypto_zkp::bn254::zk_login::{JWK, OIDCProvider};
@@ -237,6 +238,9 @@ fn verify_zklogin_inputs_wrapper(
     all_jwk: &im::HashMap<JwkId, JWK>,
     env: &ZkLoginEnv,
 ) -> MySoResult<()> {
+    if *env == ZkLoginEnv::Test {
+        return verify_localnet_zklogin(&params, all_jwk);
+    }
     verify_zk_login(
         &params.inputs,
         params.max_epoch,
@@ -250,6 +254,48 @@ fn verify_zklogin_inputs_wrapper(
         }
         .into()
     })
+}
+
+fn verify_localnet_zklogin(
+    params: &ZkLoginCachingParams,
+    all_jwk: &im::HashMap<JwkId, JWK>,
+) -> MySoResult<()> {
+    let iss = params.inputs.get_iss().to_string();
+    let kid = params.inputs.get_kid().to_string();
+    let jwk = all_jwk
+        .get(&JwkId::new(iss.clone(), kid.clone()))
+        .ok_or_else(|| MySoErrorKind::InvalidSignature {
+            error: format!("JWK not found ({iss} - {kid})"),
+        })?;
+    let modulus = Base64UrlUnpadded::decode_vec(&jwk.n).map_err(|_| {
+        Into::<crate::error::MySoError>::into(MySoErrorKind::InvalidSignature {
+            error: "Invalid Base64 encoded jwk modulus".to_string(),
+        })
+    })?;
+    let public_input = params
+        .inputs
+        .calculate_all_inputs_hash(&params.extended_pk_bytes, &modulus, params.max_epoch)
+        .map_err(|e| {
+            Into::<crate::error::MySoError>::into(MySoErrorKind::InvalidSignature {
+                error: e.to_string(),
+            })
+        })?;
+    let proof = params.inputs.get_proof().as_arkworks().map_err(|e| {
+        Into::<crate::error::MySoError>::into(MySoErrorKind::InvalidSignature {
+            error: e.to_string(),
+        })
+    })?;
+    match crate::localnet_zklogin_vk::verify_localnet_groth16(&proof, public_input) {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(MySoErrorKind::InvalidSignature {
+            error: "Groth16 proof verify failed".to_string(),
+        }
+        .into()),
+        Err(e) => Err(MySoErrorKind::InvalidSignature {
+            error: e.to_string(),
+        }
+        .into()),
+    }
 }
 
 impl ToFromBytes for ZkLoginAuthenticator {

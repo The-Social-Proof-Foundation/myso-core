@@ -10,14 +10,21 @@ use std::sync::Arc;
 use crate::error::SocialError;
 use crate::reader::memory::SubAgentListResponse;
 
-use super::super::{AppState, PageParams};
+use super::super::{page_params, AppState, PageParams};
 
 #[derive(Debug, Deserialize)]
 pub struct SubAgentQuery {
     #[serde(default = "default_active_only")]
     pub active_only: bool,
-    #[serde(flatten)]
-    pub page: PageParams,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl SubAgentQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 fn default_active_only() -> bool {
@@ -34,8 +41,8 @@ pub async fn list_profile_sub_agents(
         .list_sub_agents(
             &address,
             query.active_only,
-            query.page.limit(),
-            query.page.offset(),
+            query.page_params().limit(),
+            query.page_params().offset(),
         )
         .await?;
     Ok(Json(result))
@@ -87,8 +94,8 @@ pub async fn list_sub_agent_children(
         .list_sub_agent_children(
             &agent_object_id,
             query.active_only,
-            query.page.limit(),
-            query.page.offset(),
+            query.page_params().limit(),
+            query.page_params().offset(),
         )
         .await?;
     Ok(Json(children))

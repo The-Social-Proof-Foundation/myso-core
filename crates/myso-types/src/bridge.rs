@@ -635,7 +635,10 @@ mod tests {
 
     #[test]
     fn effective_claim_policy_defaults_to_direct() {
-        assert_eq!(effective_claim_policy(&[], TOKEN_ID_USDC, 1, 10), CLAIM_POLICY_DIRECT);
+        assert_eq!(
+            effective_claim_policy(&[], TOKEN_ID_USDC, 1, 10),
+            CLAIM_POLICY_DIRECT
+        );
     }
 
     #[test]

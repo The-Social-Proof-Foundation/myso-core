@@ -80,6 +80,8 @@ const EMessageLogMismatch: u64 = 4;
 const EPaidNotRequiredForFollower: u64 = 5;
 /// Escrow is below the recipient's configured minimum for stranger paid DMs.
 const EBelowMinMessageCost: u64 = 6;
+/// `create_genesis_objects` was called by an address other than `@0x0`.
+const ENotSystemAddress: u64 = 7;
 /// Transaction sender does not match the resolved agent actor address.
 const EAgentSenderMismatch: u64 = 8;
 /// Registered sub-agents must use `create_agent_group`, not human `create_group`.
@@ -147,9 +149,21 @@ public struct AgentGroupCreated has copy, drop {
     created_at: u64,
 }
 
+/// Singletons are shared from genesis via `create_genesis_objects`, not package init.
+/// Publish and the genesis transaction share one digest, so `object::new` during init
+/// is overwritten by later genesis writes.
 fun init(otw: MESSAGING, ctx: &mut TxContext) {
     package::claim_and_keep(otw, ctx);
+}
 
+/// Create and share the messaging singletons. Called once from genesis.
+/// A normal user transaction aborts because the sender is not `@0x0`.
+public fun create_genesis_objects(ctx: &mut TxContext) {
+    assert!(ctx.sender() == @0x0, ENotSystemAddress);
+    create_genesis_objects_internal(ctx);
+}
+
+fun create_genesis_objects_internal(ctx: &mut TxContext) {
     let mut namespace = MessagingNamespace {
         id: object::new(ctx),
     };
@@ -1373,6 +1387,7 @@ public fun init_for_testing(ctx: &mut TxContext) {
 #[test_only]
 public fun init_for_testing_with_clock(clock: &Clock, ctx: &mut TxContext) {
     init(MESSAGING(), ctx);
+    create_genesis_objects_internal(ctx);
     block_list::test_init(clock, ctx);
     social_graph::init_for_testing(clock, ctx);
 }

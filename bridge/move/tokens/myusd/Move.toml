@@ -9,5 +9,5 @@ edition = "legacy"
 myusd = "0x0"
 
 [environments]
-localnet = "ca266366"
+localnet = "ab64df2e"
 testnet = "56a7099f"

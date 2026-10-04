@@ -57,6 +57,11 @@ struct ForbiddenResponse {
     code: &'static str,
 }
 
+/// Authorization is an existence scan over one wallet's grants for one organization, so
+/// it must see every row rather than a page. A single wallet cannot hold more than a
+/// handful of permission kinds or role assignments per organization.
+const ORG_ACCESS_SCAN_LIMIT: i64 = 1000;
+
 /// Pure permission check used by middleware and unit tests.
 pub fn member_has_org_permission(
     memory_permissions: &[OrgMemoryPermissionRow],
@@ -79,10 +84,22 @@ pub async fn caller_has_org_permission(
 ) -> Result<bool, crate::error::SocialError> {
     let required_bit = required.permission_bit();
     let memory_permissions = reader
-        .list_org_memory_permissions(organization_id, Some(wallet_address), true)
+        .list_org_memory_permissions(
+            organization_id,
+            Some(wallet_address),
+            true,
+            ORG_ACCESS_SCAN_LIMIT,
+            0,
+        )
         .await?;
     let role_assignments = reader
-        .list_org_role_assignments(organization_id, Some(wallet_address), true)
+        .list_org_role_assignments(
+            organization_id,
+            Some(wallet_address),
+            true,
+            ORG_ACCESS_SCAN_LIMIT,
+            0,
+        )
         .await?;
     Ok(member_has_org_permission(
         &memory_permissions,

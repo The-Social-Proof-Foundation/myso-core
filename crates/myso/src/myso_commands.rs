@@ -2,7 +2,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::io::{Write, stdout};
+use std::io::{stdout, Write};
 use std::net::{AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::num::NonZeroUsize;
 use std::ops::Deref;
@@ -12,7 +12,7 @@ use std::time::Duration;
 use std::{fs, io};
 
 use crate::external_signer::ExternalKeysCommand;
-use anyhow::{Context, anyhow, bail, ensure};
+use anyhow::{anyhow, bail, ensure, Context};
 use clap::*;
 use colored::Colorize;
 use fastcrypto::traits::KeyPair;
@@ -29,13 +29,13 @@ use myso_config::node::Genesis;
 use myso_config::node::LOCAL_REFERENCE_GAS_PRICE;
 use myso_config::p2p::SeedPeer;
 use myso_config::{
-    Config, FULL_NODE_DB_PATH, MYSO_CLIENT_CONFIG, MYSO_FULLNODE_CONFIG, MYSO_NETWORK_CONFIG,
-    PersistedConfig, genesis_blob_exists, myso_config_dir,
+    genesis_blob_exists, myso_config_dir, Config, PersistedConfig, FULL_NODE_DB_PATH,
+    MYSO_CLIENT_CONFIG, MYSO_FULLNODE_CONFIG, MYSO_NETWORK_CONFIG,
 };
 use myso_config::{
     MYSO_BENCHMARK_GENESIS_GAS_KEYSTORE_FILENAME, MYSO_GENESIS_FILENAME, MYSO_KEYSTORE_FILENAME,
 };
-use myso_faucet::{AppState, FaucetConfig, SimpleFaucet, create_wallet_context, start_faucet};
+use myso_faucet::{create_wallet_context, start_faucet, AppState, FaucetConfig, SimpleFaucet};
 use myso_futures::service::Service;
 use myso_indexer_alt::{config::IndexerConfig, setup_indexer};
 use myso_indexer_alt_consistent_store::{
@@ -43,12 +43,12 @@ use myso_indexer_alt_consistent_store::{
     start_service as start_consistent_store,
 };
 use myso_indexer_alt_framework::{
+    ingestion::{ingestion_client::IngestionClientArgs, ClientArgs},
     IndexerArgs,
-    ingestion::{ClientArgs, ingestion_client::IngestionClientArgs},
 };
 use myso_indexer_alt_graphql::{
-    RpcArgs as GraphQlArgs, args::KvArgs as GraphQlKvArgs, config::RpcConfig as GraphQlConfig,
-    start_rpc as start_graphql,
+    args::KvArgs as GraphQlKvArgs, config::RpcConfig as GraphQlConfig, start_rpc as start_graphql,
+    RpcArgs as GraphQlArgs,
 };
 use myso_indexer_alt_reader::{
     consistent_reader::ConsistentReaderArgs, fullnode_client::FullnodeArgs,
@@ -60,10 +60,10 @@ use myso_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use myso_move::summary::PackageSummaryMetadata;
 use myso_move::{self, execute_move_command};
 use myso_move_build::BuildConfig as MySoBuildConfig;
-use myso_package_alt::{MySoFlavor, find_environment};
-use myso_pg_db::DbArgs;
+use myso_package_alt::{find_environment, MySoFlavor};
 use myso_pg_db::ensure_database;
-use myso_pg_db::temp::{LocalDatabase, get_available_port};
+use myso_pg_db::temp::{get_available_port, LocalDatabase};
+use myso_pg_db::DbArgs;
 use myso_protocol_config::Chain;
 use myso_replay_2 as SR2;
 use myso_rpc_api::Client;
@@ -79,7 +79,7 @@ use myso_types::crypto::{MySoKeyPair, SignatureScheme, ToFromBytes};
 use myso_types::move_package::MovePackage;
 use mysten_common::tempdir;
 use orderbook_indexer::{
-    OrderbookEnv, Package, build_orderbook_indexer, orderbook_api_config_for_local_myso_start,
+    build_orderbook_indexer, orderbook_api_config_for_local_myso_start, OrderbookEnv, Package,
 };
 use prometheus::Registry;
 use rand::rngs::OsRng;
@@ -90,11 +90,11 @@ use tracing::{info, warn};
 use url::Url;
 
 use crate::client_commands::{
-    MySoClientCommands, USER_AGENT, check_for_unpublished_deps, load_root_pkg_for_publish_upgrade,
-    pkg_tree_shake,
+    check_for_unpublished_deps, load_root_pkg_for_publish_upgrade, pkg_tree_shake,
+    MySoClientCommands, USER_AGENT,
 };
-use crate::fire_drill::{FireDrill, run_fire_drill};
-use crate::genesis_ceremony::{Ceremony, run};
+use crate::fire_drill::{run_fire_drill, FireDrill};
+use crate::genesis_ceremony::{run, Ceremony};
 use crate::keytool::KeyToolCommand;
 use crate::trace_analysis_commands::AnalyzeTraceCommand;
 use crate::validator_commands::MySoValidatorCommand;
@@ -115,6 +115,9 @@ const DEFAULT_MYDATA_KEY_SERVER_PORT: u16 = 2024;
 const DEFAULT_SPOT_ORACLE_PORT: u16 = crate::local_spot_oracle::DEFAULT_SPOT_ORACLE_PORT;
 const DEFAULT_POC_API_PORT: u16 = crate::local_poc::DEFAULT_POC_API_PORT;
 const DEFAULT_MESSAGING_RELAYER_PORT: u16 = crate::local_messaging::DEFAULT_MESSAGING_RELAYER_PORT;
+/// Written into the start config dir after the one-time local client setup succeeds.
+/// Absent on a fresh `myso genesis` directory and on every `--force-regenesis` temp dir.
+const LOCALNET_INITIALIZED_MARKER: &str = "localnet-initialized";
 
 /// Max connections per embedded Postgres pool when `myso start` runs indexers + APIs on one server.
 /// Typical local `max_connections` is 100; several pools must fit under that. Raise Postgres
@@ -1198,6 +1201,9 @@ async fn start(
             .with_fullnode_rpc_config(rpc_config);
     }
 
+    // Fresh persisted configs and every `--force-regenesis` temp dir lack this marker.
+    let run_local_init = !config_dir.join(LOCALNET_INITIALIZED_MARKER).is_file();
+
     let mut swarm = swarm_builder.build();
     swarm.launch().await?;
     // Let nodes connect to one another
@@ -1565,11 +1571,7 @@ async fn start(
         let _ = update_wallet_config_rpc(config_dir.clone(), fullnode_rpc_url.clone()).await?;
     }
 
-    if force_regenesis && myso_config_dir()?.join(MYSO_CLIENT_CONFIG).exists() {
-        let _ = update_wallet_config_rpc(myso_config_dir()?, fullnode_rpc_url.clone()).await?;
-    }
-
-    if with_mydata.is_some() && !config_dir.join(MYSO_CLIENT_CONFIG).is_file() && !force_regenesis {
+    if with_mydata.is_some() && !config_dir.join(MYSO_CLIENT_CONFIG).is_file() && !run_local_init {
         bail!(
             "`--with-mydata` requires a client configuration at {:?}. \
              Run `myso genesis` (or use `--force-regenesis`, which creates one for the ephemeral network).",
@@ -1577,9 +1579,20 @@ async fn start(
         );
     }
 
-    if force_regenesis && with_mydata.is_some() {
-        crate::local_mydata::ensure_regenesis_client_config(&swarm, &config_dir, &fullnode_rpc_url)
-            .await?;
+    if run_local_init {
+        prepare_localnet_client(
+            &mut swarm,
+            &config_dir,
+            &fullnode_rpc_url,
+            force_regenesis,
+            with_mydata.is_some(),
+            with_faucet.is_some(),
+        )
+        .await?;
+        let marker = config_dir.join(LOCALNET_INITIALIZED_MARKER);
+        fs::write(&marker, b"").with_context(|| {
+            format!("Failed to write localnet init marker {}", marker.display())
+        })?;
     }
 
     let mut mydata_child: Option<tokio::process::Child> = None;
@@ -1696,35 +1709,6 @@ async fn start(
             ..Default::default()
         };
         config.write_ahead_log = config_dir.join("faucet.wal");
-
-        if force_regenesis {
-            let kp = swarm.config_mut().account_keys.swap_remove(0);
-            let keystore_path = config_dir.join(MYSO_KEYSTORE_FILENAME);
-            let mut keystore =
-                Keystore::from(FileBasedKeystore::load_or_create(&keystore_path).unwrap());
-            let address: MySoAddress = kp.public().into();
-            keystore
-                .import(None, MySoKeyPair::Ed25519(kp))
-                .await
-                .unwrap();
-
-            MySoClientConfig {
-                keystore,
-                external_keys: None,
-                envs: vec![MySoEnv {
-                    alias: "localnet".to_string(),
-                    rpc: fullnode_rpc_url.clone(),
-                    ws: None,
-                    basic_auth: None,
-                    chain_id: None,
-                }],
-                active_address: Some(address),
-                active_env: Some("localnet".to_string()),
-            }
-            .persisted(config_dir.join(MYSO_CLIENT_CONFIG).as_path())
-            .save()
-            .unwrap();
-        }
 
         const FAUCET_CONCURRENCY_LIMIT: usize = 30;
 
@@ -2349,6 +2333,54 @@ fn normalize_bind_addr(addr: SocketAddr) -> IpAddr {
         IpAddr::V6(v6) if v6.is_unspecified() => IpAddr::V6(Ipv6Addr::LOCALHOST),
         ip => ip,
     }
+}
+
+/// Local client setup previously inlined under `--force-regenesis`.
+///
+/// Creates `client.yaml` only when it is missing. The `~/.myso` RPC update stays
+/// limited to ephemeral regenesis, whose node is not the persisted config dir.
+async fn prepare_localnet_client(
+    swarm: &mut Swarm,
+    config_dir: &Path,
+    fullnode_rpc_url: &str,
+    force_regenesis: bool,
+    with_mydata: bool,
+    with_faucet: bool,
+) -> anyhow::Result<()> {
+    if force_regenesis && myso_config_dir()?.join(MYSO_CLIENT_CONFIG).exists() {
+        let _ = update_wallet_config_rpc(myso_config_dir()?, fullnode_rpc_url.to_string()).await?;
+    }
+
+    if with_mydata && !config_dir.join(MYSO_CLIENT_CONFIG).is_file() {
+        crate::local_mydata::ensure_regenesis_client_config(swarm, config_dir, fullnode_rpc_url)
+            .await?;
+    }
+
+    if with_faucet && !config_dir.join(MYSO_CLIENT_CONFIG).is_file() {
+        let kp = swarm.config_mut().account_keys.swap_remove(0);
+        let keystore_path = config_dir.join(MYSO_KEYSTORE_FILENAME);
+        let mut keystore = Keystore::from(FileBasedKeystore::load_or_create(&keystore_path)?);
+        let address: MySoAddress = kp.public().into();
+        keystore.import(None, MySoKeyPair::Ed25519(kp)).await?;
+
+        MySoClientConfig {
+            keystore,
+            external_keys: None,
+            envs: vec![MySoEnv {
+                alias: "localnet".to_string(),
+                rpc: fullnode_rpc_url.to_string(),
+                ws: None,
+                basic_auth: None,
+                chain_id: None,
+            }],
+            active_address: Some(address),
+            active_env: Some("localnet".to_string()),
+        }
+        .persisted(config_dir.join(MYSO_CLIENT_CONFIG).as_path())
+        .save()?;
+    }
+
+    Ok(())
 }
 
 async fn update_wallet_config_rpc(

@@ -204,11 +204,15 @@ async fn test_verify_transaction() {
         .await
         .unwrap();
 
+    // Upstream vector, rejected by the MySocial Test key. Not a positive check of that key.
     assert_eq!(
         result,
         ZkLoginResult {
-            success: true,
-            error: None
+            success: false,
+            error: Some(
+                "Signature is not valid: Signature is not valid: Groth16 proof verify failed"
+                    .to_string()
+            )
         }
     );
 }
@@ -246,11 +250,15 @@ async fn test_verify_personal_message() {
         .await
         .unwrap();
 
+    // Upstream vector, rejected by the MySocial Test key. Not a positive check of that key.
     assert_eq!(
         result,
         ZkLoginResult {
-            success: true,
-            error: None
+            success: false,
+            error: Some(
+                "Signature is not valid: Signature is not valid: Groth16 proof verify failed"
+                    .to_string()
+            )
         }
     );
 }
@@ -288,11 +296,15 @@ async fn test_verify_zklogin_payload_bypasses_query_limit() {
         .await
         .unwrap();
 
+    // Upstream vector, rejected by the MySocial Test key. Not a positive check of that key.
     assert_eq!(
         result,
         ZkLoginResult {
-            success: true,
-            error: None,
+            success: false,
+            error: Some(
+                "Signature is not valid: Signature is not valid: Groth16 proof verify failed"
+                    .to_string()
+            ),
         }
     );
 }

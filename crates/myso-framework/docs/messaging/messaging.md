@@ -54,6 +54,8 @@ Messaging-specific:
 -  [Struct `AgentGroupCreated`](#messaging_messaging_AgentGroupCreated)
 -  [Constants](#@Constants_2)
 -  [Function `init`](#messaging_messaging_init)
+-  [Function `create_genesis_objects`](#messaging_messaging_create_genesis_objects)
+-  [Function `create_genesis_objects_internal`](#messaging_messaging_create_genesis_objects_internal)
 -  [Function `create_group`](#messaging_messaging_create_group)
     -  [Parameters](#@Parameters_3)
     -  [Returns](#@Returns_4)
@@ -562,6 +564,16 @@ Escrow is below the recipient's configured minimum for stranger paid DMs.
 
 
 
+<a name="messaging_messaging_ENotSystemAddress"></a>
+
+<code><a href="../messaging/messaging.md#messaging_messaging_create_genesis_objects">create_genesis_objects</a></code> was called by an address other than <code>@0x0</code>.
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_ENotSystemAddress">ENotSystemAddress</a>: u64 = 7;
+</code></pre>
+
+
+
 <a name="messaging_messaging_EAgentSenderMismatch"></a>
 
 Transaction sender does not match the resolved agent actor address.
@@ -658,6 +670,9 @@ Registered sub-agents must use <code><a href="../messaging/messaging.md#messagin
 
 ## Function `init`
 
+Singletons are shared from genesis via <code><a href="../messaging/messaging.md#messaging_messaging_create_genesis_objects">create_genesis_objects</a></code>, not package init.
+Publish and the genesis transaction share one digest, so <code>object::new</code> during init
+is overwritten by later genesis writes.
 
 
 <pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_init">init</a>(otw: <a href="../messaging/messaging.md#messaging_messaging_MESSAGING">messaging::messaging::MESSAGING</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -671,6 +686,56 @@ Registered sub-agents must use <code><a href="../messaging/messaging.md#messagin
 
 <pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_init">init</a>(otw: <a href="../messaging/messaging.md#messaging_messaging_MESSAGING">MESSAGING</a>, ctx: &<b>mut</b> TxContext) {
     package::claim_and_keep(otw, ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_create_genesis_objects"></a>
+
+## Function `create_genesis_objects`
+
+Create and share the messaging singletons. Called once from genesis.
+A normal user transaction aborts because the sender is not <code>@0x0</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_genesis_objects">create_genesis_objects</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_genesis_objects">create_genesis_objects</a>(ctx: &<b>mut</b> TxContext) {
+    <b>assert</b>!(ctx.sender() == @0x0, <a href="../messaging/messaging.md#messaging_messaging_ENotSystemAddress">ENotSystemAddress</a>);
+    <a href="../messaging/messaging.md#messaging_messaging_create_genesis_objects_internal">create_genesis_objects_internal</a>(ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_create_genesis_objects_internal"></a>
+
+## Function `create_genesis_objects_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_genesis_objects_internal">create_genesis_objects_internal</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_genesis_objects_internal">create_genesis_objects_internal</a>(ctx: &<b>mut</b> TxContext) {
     <b>let</b> <b>mut</b> namespace = <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a> {
         id: object::new(ctx),
     };

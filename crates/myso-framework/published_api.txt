@@ -14179,6 +14179,12 @@ AgentGroupCreated
 init
 	fun
 	0xe110::messaging
+create_genesis_objects
+	public fun
+	0xe110::messaging
+create_genesis_objects_internal
+	fun
+	0xe110::messaging
 create_group
 	public fun
 	0xe110::messaging

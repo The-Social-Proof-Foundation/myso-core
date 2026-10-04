@@ -119,6 +119,13 @@ fn zklogin_sign_personal_message() {
         &aux_verify_data,
         Arc::new(VerifiedDigestCache::new_empty()),
     );
-    // Verify passes.
-    assert!(res.is_ok());
+    // This sample was proved under the upstream test key. Test now uses the MySocial
+    // ceremony key, so the sample is rejected. That rejection does not show the new key accepts a valid proof.
+    let err = res.unwrap_err().into_inner();
+    match err {
+        crate::error::MySoErrorKind::InvalidSignature { error } => {
+            assert_eq!(error, "Signature is not valid: Groth16 proof verify failed");
+        }
+        other => panic!("expected Groth16 rejection, got {other:?}"),
+    }
 }

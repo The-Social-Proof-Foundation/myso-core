@@ -9,7 +9,7 @@ use std::sync::Arc;
 use crate::error::SocialError;
 use crate::reader::ai_credit::{AiCreditBalanceResponse, IngestUsageLineRequest};
 
-use super::super::{AppState, PageParams};
+use super::super::{page_params, AppState, PageParams};
 
 pub async fn get_profile_ai_credit_balance(
     State(state): State<Arc<AppState>>,
@@ -40,9 +40,16 @@ pub async fn get_profile_ai_credit_balance(
 
 #[derive(Debug, serde::Deserialize)]
 pub struct ReservationHistoryQuery {
-    #[serde(flatten)]
-    pub page: PageParams,
     pub status: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl ReservationHistoryQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 pub async fn list_ai_spend_reservations(
@@ -60,7 +67,12 @@ pub async fn list_ai_spend_reservations(
     }
     let rows = state
         .reader
-        .list_ai_spend_reservations(&balance_id, query.status.as_deref(), query.page.limit())
+        .list_ai_spend_reservations(
+            &balance_id,
+            query.status.as_deref(),
+            query.page_params().limit(),
+            query.page_params().offset(),
+        )
         .await?;
     Ok(Json(rows))
 }
@@ -101,8 +113,15 @@ pub async fn ingest_usage_line_internal(
 
 #[derive(Debug, serde::Deserialize)]
 pub struct UsageHistoryQuery {
-    #[serde(flatten)]
-    pub page: PageParams,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl UsageHistoryQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 pub async fn list_ai_credit_usage_history(
@@ -112,7 +131,11 @@ pub async fn list_ai_credit_usage_history(
 ) -> Result<Json<Vec<myso_indexer_alt_social_schema::models::AiCreditUsageLineRow>>, SocialError> {
     let lines = state
         .reader
-        .list_ai_credit_usage_lines(&balance_id, query.page.limit())
+        .list_ai_credit_usage_lines(
+            &balance_id,
+            query.page_params().limit(),
+            query.page_params().offset(),
+        )
         .await?;
     Ok(Json(lines))
 }

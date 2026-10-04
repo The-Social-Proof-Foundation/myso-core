@@ -212,6 +212,7 @@ impl AgenticOrganization {
                 &self.inner.organization_id,
                 resolve_stats_window(window),
                 limit as i64,
+                0,
             )
             .await
             .ok()
@@ -313,6 +314,7 @@ impl AgenticOrganization {
                 status.as_deref(),
                 agent.as_deref(),
                 limit as i64,
+                0,
             )
             .await
             .ok()

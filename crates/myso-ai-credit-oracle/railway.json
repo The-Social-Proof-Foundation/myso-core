@@ -1,0 +1,19 @@
+{
+    "$schema": "https://railway.com/railway.schema.json",
+    "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "crates/myso-ai-credit-oracle/Dockerfile",
+        "watchPatterns": [
+            "crates/myso-ai-credit-oracle/**",
+            "Cargo.toml",
+            "Cargo.lock"
+        ]
+    },
+    "deploy": {
+        "runtime": "V2",
+        "numReplicas": 1,
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 10,
+        "healthcheckPath": "/health"
+    }
+}

@@ -13,15 +13,22 @@ use crate::reader::organization::{
     parse_leaderboard_sort, parse_org_type, parse_stats_window, AgenticOrganizationListResponse,
 };
 
-use super::super::{AppState, PageParams};
+use super::super::{page_params, AppState, PageParams};
 
 #[derive(Debug, Deserialize)]
 pub struct OrganizationListQuery {
     pub org_type: Option<i16>,
     #[serde(default = "default_active_only")]
     pub active_only: bool,
-    #[serde(flatten)]
-    pub page: PageParams,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl OrganizationListQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 fn default_active_only() -> bool {
@@ -33,8 +40,15 @@ pub struct OrganizationLeaderboardQuery {
     pub sort: String,
     pub category: String,
     pub window: Option<String>,
-    #[serde(flatten)]
-    pub page: PageParams,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl OrganizationLeaderboardQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -71,8 +85,8 @@ pub async fn list_profile_organizations(
             &address,
             query.org_type,
             query.active_only,
-            query.page.limit(),
-            query.page.offset(),
+            query.page_params().limit(),
+            query.page_params().offset(),
         )
         .await?;
     Ok(Json(response))
@@ -121,8 +135,8 @@ pub async fn get_organization_leaderboard(
             sort,
             org_type,
             window,
-            query.page.limit(),
-            query.page.offset(),
+            query.page_params().limit(),
+            query.page_params().offset(),
         )
         .await?;
     Ok(Json(response))

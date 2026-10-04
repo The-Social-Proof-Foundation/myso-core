@@ -51,7 +51,8 @@ use myso_types::transaction::{
 };
 use myso_types::{
     BRIDGE_ADDRESS, CONTRA_PACKAGE_ID, MYSO_BRIDGE_OBJECT_ID, MYSO_FRAMEWORK_ADDRESS,
-    MYSO_ORDERBOOK_REGISTRY_OBJECT_ID, MYSO_SYSTEM_ADDRESS, ORDERBOOK_ADDRESS,
+    MYSO_MESSAGING_PACKAGE_ID, MYSO_ORDERBOOK_REGISTRY_OBJECT_ID, MYSO_SYSTEM_ADDRESS,
+    ORDERBOOK_ADDRESS,
 };
 use shared_crypto::intent::{Intent, IntentMessage, IntentScope};
 use std::collections::BTreeMap;
@@ -1162,6 +1163,16 @@ pub fn generate_genesis_system_object(
             vec![],
         )?;
 
+        // Share messaging singletons. Package init does not: fresh ids from publish
+        // collide with this transaction, which is the last genesis state update.
+        builder.move_call(
+            MYSO_MESSAGING_PACKAGE_ID,
+            ident_str!("messaging").to_owned(),
+            ident_str!("create_genesis_objects").to_owned(),
+            vec![],
+            vec![],
+        )?;
+
         // Step 3: Create ProtocolConfig-controlled system objects, unless disabled (which only
         // happens in tests).
         if protocol_config.create_authenticator_state_in_genesis() {
@@ -1323,6 +1334,7 @@ mod test {
     use myso_config::local_ip_utils;
     use myso_config::node::DEFAULT_COMMISSION_RATE;
     use myso_config::node::DEFAULT_VALIDATOR_GAS_PRICE;
+    use myso_types::MYSO_MESSAGING_ADDRESS;
     use myso_types::MYSO_ORDERBOOK_REGISTRY_OBJECT_ID;
     use myso_types::ORDERBOOK_ADDRESS;
     use myso_types::base_types::{MySoAddress, ObjectID};
@@ -1397,6 +1409,28 @@ mod test {
             registry_objects[0].id(),
             ObjectID::from(MYSO_ORDERBOOK_REGISTRY_OBJECT_ID),
         );
+        for (module, name) in [
+            ("messaging", "MessagingNamespace"),
+            ("version", "Version"),
+            ("group_manager", "GroupManager"),
+            ("group_leaver", "GroupLeaver"),
+            ("group_handle_registry", "GroupHandleRegistry"),
+            ("paid_messaging_policy", "PaidMessagingRegistry"),
+            ("messaging_config", "MessagingConfig"),
+        ] {
+            let count = genesis
+                .objects()
+                .iter()
+                .filter(|o| {
+                    o.struct_tag().is_some_and(|tag| {
+                        tag.address == MYSO_MESSAGING_ADDRESS
+                            && tag.module.as_str() == module
+                            && tag.name.as_str() == name
+                    })
+                })
+                .count();
+            assert_eq!(count, 1, "expected exactly one {module}::{name}");
+        }
         builder.save(dir.path()).unwrap();
         Builder::load(dir.path()).unwrap();
     }

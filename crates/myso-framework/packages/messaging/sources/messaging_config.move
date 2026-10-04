@@ -38,7 +38,7 @@ public struct MessagingConfigUpdatedEvent has copy, drop {
     max_dedupe_key_bytes: u64,
 }
 
-/// Shares the genesis [`MessagingConfig`] singleton. Called from `messaging::init`.
+/// Shares the genesis [`MessagingConfig`] singleton. Called from `messaging::create_genesis_objects`.
 public(package) fun share_initial(ctx: &mut TxContext) {
     let config = new_defaults(ctx);
     let sender = tx_context::sender(ctx);

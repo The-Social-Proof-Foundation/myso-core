@@ -21,7 +21,7 @@ use crate::reader::enterprise::{
 };
 use crate::workflow_client::{memory_access_idempotency_key, WorkflowClient, WorkflowItemIngest};
 
-use super::super::{AppState, PageParams};
+use super::super::{page_params, AppState, PageParams};
 
 fn check_sync_secret(
     headers: &HeaderMap,
@@ -58,6 +58,15 @@ pub struct MemberQuery {
     pub member: Option<String>,
     #[serde(default = "default_active_only")]
     pub active_only: bool,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl MemberQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 fn default_active_only() -> bool {
@@ -71,7 +80,34 @@ pub async fn list_org_memory_permissions(
 ) -> Result<Json<Vec<OrgMemoryPermissionRow>>, SocialError> {
     let rows = state
         .reader
-        .list_org_memory_permissions(&organization_id, query.member.as_deref(), query.active_only)
+        .list_org_memory_permissions(
+            &organization_id,
+            query.member.as_deref(),
+            query.active_only,
+            query.page_params().limit(),
+            query.page_params().offset(),
+        )
+        .await?;
+    Ok(Json(rows))
+}
+
+/// Service-to-service read of org memory grants. Callers send `x-internal-sync-secret`.
+pub async fn list_org_memory_permissions_internal(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(organization_id): Path<String>,
+    Query(query): Query<MemberQuery>,
+) -> Result<Json<Vec<OrgMemoryPermissionRow>>, SocialError> {
+    check_required_sync_secret(&headers, "x-internal-sync-secret", "INTERNAL_SYNC_SECRET")?;
+    let rows = state
+        .reader
+        .list_org_memory_permissions(
+            &organization_id,
+            query.member.as_deref(),
+            query.active_only,
+            query.page_params().limit(),
+            query.page_params().offset(),
+        )
         .await?;
     Ok(Json(rows))
 }
@@ -79,8 +115,16 @@ pub async fn list_org_memory_permissions(
 pub async fn list_org_roles(
     State(state): State<Arc<AppState>>,
     Path(organization_id): Path<String>,
+    Query(query): Query<MemberQuery>,
 ) -> Result<Json<Vec<OrgRoleRow>>, SocialError> {
-    let rows = state.reader.list_org_roles(&organization_id).await?;
+    let rows = state
+        .reader
+        .list_org_roles(
+            &organization_id,
+            query.page_params().limit(),
+            query.page_params().offset(),
+        )
+        .await?;
     Ok(Json(rows))
 }
 
@@ -91,7 +135,13 @@ pub async fn list_org_role_assignments(
 ) -> Result<Json<Vec<OrgRoleAssignmentRow>>, SocialError> {
     let rows = state
         .reader
-        .list_org_role_assignments(&organization_id, query.member.as_deref(), query.active_only)
+        .list_org_role_assignments(
+            &organization_id,
+            query.member.as_deref(),
+            query.active_only,
+            query.page_params().limit(),
+            query.page_params().offset(),
+        )
         .await?;
     Ok(Json(rows))
 }
@@ -100,6 +150,15 @@ pub async fn list_org_role_assignments(
 pub struct InvitationsQuery {
     pub invitee: Option<String>,
     pub status: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl InvitationsQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 pub async fn list_org_invitations(
@@ -113,6 +172,8 @@ pub async fn list_org_invitations(
             &organization_id,
             query.invitee.as_deref(),
             query.status.as_deref(),
+            query.page_params().limit(),
+            query.page_params().offset(),
         )
         .await?;
     Ok(Json(rows))
@@ -122,6 +183,15 @@ pub async fn list_org_invitations(
 pub struct ApprovalsQuery {
     pub status: Option<String>,
     pub agent: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl ApprovalsQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 pub async fn list_profile_spend_approvals(
@@ -131,7 +201,13 @@ pub async fn list_profile_spend_approvals(
 ) -> Result<Json<Vec<AiCreditSpendApprovalRow>>, SocialError> {
     let rows = state
         .reader
-        .list_spend_approvals_by_owner(&address, query.status.as_deref(), query.agent.as_deref())
+        .list_spend_approvals_by_owner(
+            &address,
+            query.status.as_deref(),
+            query.agent.as_deref(),
+            query.page_params().limit(),
+            query.page_params().offset(),
+        )
         .await?;
     Ok(Json(rows))
 }
@@ -140,6 +216,14 @@ pub async fn list_profile_spend_approvals(
 pub struct SpendBreakdownQuery {
     pub window: Option<String>,
     pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl SpendBreakdownQuery {
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 pub async fn list_org_spend_breakdown(
@@ -152,10 +236,10 @@ pub async fn list_org_spend_breakdown(
         .as_deref()
         .and_then(OrganizationStatsWindow::parse)
         .unwrap_or(OrganizationStatsWindow::All);
-    let limit = query.limit.unwrap_or(20).clamp(1, 100);
+    let params = query.page_params();
     let rows = state
         .reader
-        .list_agent_spend_breakdown(&organization_id, window, limit)
+        .list_agent_spend_breakdown(&organization_id, window, params.limit(), params.offset())
         .await?;
     Ok(Json(rows))
 }
@@ -171,7 +255,8 @@ pub async fn list_org_spend_approvals(
             &organization_id,
             query.status.as_deref(),
             query.agent.as_deref(),
-            100,
+            query.page_params().limit(),
+            query.page_params().offset(),
         )
         .await?;
     Ok(Json(rows))
@@ -179,10 +264,28 @@ pub async fn list_org_spend_approvals(
 
 #[derive(Debug, Deserialize)]
 pub struct AuditLogQuery {
-    #[serde(flatten)]
-    pub filter: AuditLogFilter,
-    #[serde(flatten)]
-    pub page: PageParams,
+    pub action: Option<String>,
+    pub actor: Option<String>,
+    pub target_type: Option<String>,
+    pub source: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub page: Option<i64>,
+}
+
+impl AuditLogQuery {
+    fn filter(&self) -> AuditLogFilter {
+        AuditLogFilter {
+            action: self.action.clone(),
+            actor: self.actor.clone(),
+            target_type: self.target_type.clone(),
+            source: self.source.clone(),
+        }
+    }
+
+    fn page_params(&self) -> PageParams {
+        page_params(self.limit, self.offset, self.page)
+    }
 }
 
 pub async fn list_org_audit_logs(
@@ -194,9 +297,9 @@ pub async fn list_org_audit_logs(
         .reader
         .list_audit_logs_for_org(
             &organization_id,
-            &query.filter,
-            query.page.limit(),
-            query.page.offset(),
+            &query.filter(),
+            query.page_params().limit(),
+            query.page_params().offset(),
         )
         .await?;
     Ok(Json(rows))
@@ -211,9 +314,9 @@ pub async fn list_profile_audit_logs(
         .reader
         .list_audit_logs_for_actor(
             &address,
-            &query.filter,
-            query.page.limit(),
-            query.page.offset(),
+            &query.filter(),
+            query.page_params().limit(),
+            query.page_params().offset(),
         )
         .await?;
     Ok(Json(rows))
@@ -389,6 +492,10 @@ pub async fn get_org_summary_internal(
     }))
 }
 
+/// Row ceiling for the internal control-plane snapshot, which deliberately returns a
+/// fixed window rather than a page (it has no pagination parameters).
+const INTERNAL_SNAPSHOT_LIMIT: i64 = 500;
+
 /// Internal organization control-plane snapshot for authenticated agent gateways.
 /// The gateway separately verifies that its principal owns or belongs to this org.
 pub async fn get_org_control_internal(
@@ -411,14 +518,17 @@ pub async fn get_org_control_internal(
         .into_iter()
         .filter(|agent| agent.organization_id.as_deref() == Some(organization_id.as_str()))
         .collect::<Vec<_>>();
-    let roles = state.reader.list_org_roles(&organization_id).await?;
+    let roles = state
+        .reader
+        .list_org_roles(&organization_id, INTERNAL_SNAPSHOT_LIMIT, 0)
+        .await?;
     let role_assignments = state
         .reader
-        .list_org_role_assignments(&organization_id, None, false)
+        .list_org_role_assignments(&organization_id, None, false, INTERNAL_SNAPSHOT_LIMIT, 0)
         .await?;
     let invitations = state
         .reader
-        .list_org_invitations(&organization_id, None, None)
+        .list_org_invitations(&organization_id, None, None, INTERNAL_SNAPSHOT_LIMIT, 0)
         .await?;
     let messaging_groups = state
         .reader
