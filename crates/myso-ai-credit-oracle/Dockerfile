@@ -8,7 +8,6 @@ FROM rust:1.94-bookworm AS builder
 ARG MYSO_CORE_GIT_URL=https://github.com/The-Social-Proof-Foundation/myso-core.git
 ARG MYSO_CORE_GIT_REF=main
 ARG RAILWAY_GIT_COMMIT_SHA
-ARG GITHUB_TOKEN
 
 WORKDIR /app
 
@@ -25,12 +24,7 @@ RUN set -eux; \
     if grep -q '^\[workspace\]' /scratch/Cargo.toml 2>/dev/null; then \
         cp -a /scratch/. /app/; \
     else \
-        if [ -n "${GITHUB_TOKEN:-}" ]; then \
-            clone_url="https://x-access-token:${GITHUB_TOKEN}@github.com/The-Social-Proof-Foundation/myso-core.git"; \
-        else \
-            clone_url="${MYSO_CORE_GIT_URL}"; \
-        fi; \
-        git clone --depth 1 "${clone_url}" /app; \
+        git clone --depth 1 "${MYSO_CORE_GIT_URL}" /app; \
         cd /app; \
         if [ -n "${RAILWAY_GIT_COMMIT_SHA:-}" ]; then \
             git fetch --depth 1 origin "${RAILWAY_GIT_COMMIT_SHA}"; \
