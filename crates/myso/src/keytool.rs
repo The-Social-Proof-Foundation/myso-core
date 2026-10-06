@@ -1,7 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
-use crate::zklogin_commands_util::{perform_zk_login_test_tx, read_cli_line};
+use crate::zklogin_commands_util::{perform_zk_login_test_tx, read_cli_line, zklogin_prover_url};
 use anyhow::anyhow;
 use aws_sdk_kms::{
     Client as KmsClient,
@@ -984,14 +984,14 @@ impl KeyToolCommand {
                 .unwrap()
                 .jwt;
 
-                // call prover-dev for zklogin inputs
+                let prover_url = zklogin_prover_url()?;
                 let reader = get_proof(
                     &parsed_token,
                     max_epoch,
                     &jwt_randomness,
                     &kp_bigint,
                     user_salt,
-                    "https://prover-dev.mystenlabs.com/v1",
+                    &prover_url,
                 )
                 .await
                 .unwrap();

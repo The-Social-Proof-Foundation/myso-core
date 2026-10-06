@@ -30,6 +30,15 @@ use std::io::Write;
 use std::thread::sleep;
 use std::time::Duration;
 
+/// URL of the MySo zkLogin prover. Must serve `/v1` and prove with `zklogin_myso_final.zkey`.
+pub fn zklogin_prover_url() -> Result<String, anyhow::Error> {
+    std::env::var("MYSO_ZKLOGIN_PROVER_URL").map_err(|_| {
+        anyhow!(
+            "MYSO_ZKLOGIN_PROVER_URL is not set. Localnet Test proofs must come from a prover loaded with zklogin_myso_final.zkey."
+        )
+    })
+}
+
 /// Read a line from stdin, parse the id_token field and return.
 pub fn read_cli_line() -> Result<String, anyhow::Error> {
     let mut s = String::new();
@@ -82,13 +91,14 @@ pub async fn perform_zk_login_test_tx(
         .await
         .unwrap_or("129390038577185583942388216820280642146".to_string());
     println!("User salt: {user_salt}");
+    let prover_url = zklogin_prover_url()?;
     let reader = get_proof(
         parsed_token,
         max_epoch,
         jwt_randomness,
         kp_bigint,
         &user_salt,
-        "https://prover-dev.mystenlabs.com/v1",
+        &prover_url,
     )
     .await
     .map_err(|e| anyhow!("Failed to get proof {e}"))?;

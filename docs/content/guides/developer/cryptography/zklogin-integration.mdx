@@ -140,17 +140,7 @@ const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(ephemeralKeyPai
 
 You need to fetch a new ZK proof if the previous ephemeral key pair is expired or is otherwise inaccessible.
 
-Because generating a ZK proof can be resource-intensive and potentially slow on the client side, it's advised that wallets utilize a backend service endpoint dedicated to ZK proof generation.
-
-There are two options:
-
-1. Call the Mysten Labs-maintained proving service.
-1. Run the proving service in your backend using the provided Docker images.
-
-### Call the Mysten Labs-maintained proving service
-
-If you want to use the Mysten hosted ZK Proving Service for Mainnet, please refer to [Enoki docs](https://docs.enoki.mystenlabs.com/) and contact us for accessing it.
-
+Because generating a ZK proof can be resource-intensive, wallets should call your own prover. That prover must be loaded with `zklogin_myso_final.zkey`. Set `$PROVER_URL` to `MYSO_ZKLOGIN_PROVER_URL`.
 
 You can use BigInt or Base64 encoding for `extendedEphemeralPublicKey`, `jwtRandomness`, and `salt`. The following examples show two sample requests with the first using BigInt encoding and the second using Base64.
 
@@ -230,69 +220,14 @@ const partialZkLoginSignature = proofResponse as PartialZkLoginSignature;
 
 ### Run the proving service in your backend
 
-1. Install [Git Large File Storage](https://git-lfs.com/) (an open source Git extension for large file versioning) before downloading the zkey.
+Localnet verifies zkLogin with the Groth16 key in `zklogin_myso_final.zkey` (SHA-256 `0b892f2a26827ba5cf9fb0ad936596f940d04e5efb7c8f87d23566775865fc2e`). The prover must be loaded with that same zkey. A proof from any other circuit fails with `Groth16 proof verify failed`.
 
-1. Download the [Groth16 proving key zkey file](https://docs.circom.io/getting-started/proving-circuits/). There are zkeys available for all MySo networks.
+1. Start your prover with `zklogin_myso_final.zkey` mounted. The MySo prover accepts `POST /prove`.
+1. Set `MYSO_ZKLOGIN_PROVER_URL` to that full URL, including `/prove`. The CLI reads this variable and does not fall back to any other prover.
+1. The profile UI proxy (`/api/zklogin/prove`) reads the same variable. If the value already ends in `/prove`, it is used as-is.
+1. Log in again after changing the URL. A cached proof from a different prover still fails.
 
-   - Main zkey (for Mainnet and Testnet)
-     ```sh
-     $ wget -O - https://raw.githubusercontent.com/myso-foundation/zklogin-ceremony-contributions/main/download-main-zkey.sh | bash
-     ```
-   - Test zkey (for Devnet)
-
-     ```sh
-     $ wget -O - https://raw.githubusercontent.com/myso-foundation/zklogin-ceremony-contributions/main/download-test-zkey.sh | bash
-     ```
-
-   - To verify the download contains the correct zkey file, you can run the following command to check the Blake2b hash: `b2sum ${file_name}.zkey`.
-
-     | Network          | zkey file name      | Hash                                                                                                                               |
-     | ---------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-     | Mainnet, Testnet | `zkLogin-main.zkey` | `060beb961802568ac9ac7f14de0fbcd55e373e8f5ec7cc32189e26fb65700aa4e36f5604f868022c765e634d14ea1cd58bd4d79cef8f3cf9693510696bcbcbce` |
-     | Devnet           | `zkLogin-test.zkey` | `686e2f5fd969897b1c034d7654799ee2c3952489814e4eaaf3d7e1bb539841047ae8ee5fdcdaca5f4ddd76abb5a8e8eb77b44b693a2ba9d4be57e94292b26ce2` |
-
-1. For the next step, you need two Docker images from the [mysten/zklogin repository](https://hub.docker.com/r/mysten/zklogin) (tagged as `prover` and `prover-fe`). To simplify, a docker compose file is available that automates this process. Run `docker compose` with the downloaded zkey from the same directory as the YAML file.
-
-```yaml
-services:
-  backend:
-    image: mysten/zklogin:prover-stable
-    volumes:
-      # The ZKEY environment variable must be set to the path of the zkey file.
-      - ${ZKEY}:/app/binaries/zkLogin.zkey
-    environment:
-      - ZKEY=/app/binaries/zkLogin.zkey
-      - WITNESS_BINARIES=/app/binaries
-
-  frontend:
-    image: mysten/zklogin:prover-fe-stable
-    command: '8080'
-    ports:
-      # The PROVER_PORT environment variable must be set to the desired port.
-      - '${PROVER_PORT}:8080'
-    environment:
-      - PROVER_URI=http://backend:8080/input
-      - NODE_ENV=production
-      - DEBUG=zkLogin:info,jwks
-      # The default timeout is 15 seconds. Uncomment the following line to change it.
-      # - PROVER_TIMEOUT=30
-```
-
-```
-ZKEY=<path_to_zkLogin.zkey> PROVER_PORT=<PROVER_PORT> docker compose up
-```
-
-1. To call the service, the following two endpoints are supported:
-   - `/ping`: To test if the service is up. Running `curl http://localhost:PROVER_PORT/ping` should return `pong`.
-   - `/v1`: The request and response are the same as the Mysten Labs maintained service.
-
-A few important things to note:
-
-- The backend service (mysten/zklogin:prover-stable) is compute-heavy. Use at least the minimum recommended 16 cores and 16GB RAM. Using weaker instances can lead to timeout errors with the message "Call to rapidsnark service took longer than 15s". You can adjust the environment variable `PROVER_TIMEOUT` to set a different timeout value, for example, `PROVER_TIMEOUT=30` for a timeout of 30 seconds.
-
-- If you want to compile the prover from scratch (for performance reasons), please see our fork of [rapidsnark](https://github.com/MystenLabs/rapidsnark#compile-prover-in-server-mode). You'd need to compile and launch the prover in server mode.
-
-- Setting `DEBUG=*` turns on all logs in the prover-fe service some of which may contain PII. Consider using DEBUG=zkLogin:info,jwks in production environments.
+The request body stays the same shape as the curl examples above. After a prover URL change, do not reuse a proof issued by a different zkey.
 
 ## Assemble the zkLogin signature and submit the transaction
 
@@ -363,11 +298,7 @@ Consequently, you should not store them persistently in a storage location that 
 
 ## Efficiency considerations
 
-Compared to traditional signatures, zkLogin signatures take a longer time to generate. For example, the prover that Mysten Labs maintains typically takes about three seconds to return a proof, which runs on a machine with 16 vCPUs and 64 GB RAM. Using more powerful machines, such as those with physical CPUs or graphics processing units (GPUs), can reduce the proving time further.
-
-Carefully consider how many requests your application needs to make to the prover. Broadly speaking, the right metric to consider is the number of active user sessions and not the number of signatures. This is because you can cache the same ZK proof and reuse it across the session, as previously explained. For example, if you expect a million active user sessions per day, then you need a prover that can handle one or two requests per second (RPS), assuming evenly distributed traffic.
-
-The prover that Mysten Labs maintains is set to auto-scale to handle traffic surges. If you are not sure whether Mysten Labs can handle a specific number of requests or expect a sudden spike in the number of prover requests your application needs to make, please reach out to us on [Discord](https://discord.gg/myso). Our plan is to horizontally scale the prover to handle any RPS you require.
+A zkLogin proof is slower than a traditional signature. Cache one proof with its ephemeral key and reuse it until `maxEpoch`. Size the prover for active sessions, not for every transaction.
 
 ## Related links
 
