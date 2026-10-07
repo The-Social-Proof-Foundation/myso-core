@@ -519,8 +519,8 @@ module social_contracts::memory_org_sharing_tests {
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             memory::approve_org_key_policy(
-                &memory_config,
                 memory::owner_key_suffix_bytes(USER1),
+                &memory_config,
                 &memory_account,
                 &org,
                 &group,
@@ -546,8 +546,8 @@ module social_contracts::memory_org_sharing_tests {
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             memory::approve_org_key_policy(
-                &memory_config,
                 b"org-blob-id",
+                &memory_config,
                 &memory_account,
                 &org,
                 &group,
@@ -581,8 +581,8 @@ module social_contracts::memory_org_sharing_tests {
             let memory_account = test_scenario::take_shared<MemoryAccount>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             memory::approve_org_key_policy(
-                &memory_config,
                 b"org-blob-id",
+                &memory_config,
                 &memory_account,
                 &org,
                 &group,

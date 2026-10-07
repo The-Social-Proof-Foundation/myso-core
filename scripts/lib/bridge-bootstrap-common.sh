@@ -2197,7 +2197,9 @@ bridge_extract_created_containing() {
             ($o.objectId? // $o.object_id? // $o.reference?.objectId? // "") | tostring;
         (.changed_objects // .changedObjects // [])[]
         | if type == "array" then empty else . end
-        | select(object_type(.) | contains($t))
+        # Match the struct name, not a substring: RegulatedCoinMetadata<T>
+        # is a different type from the CoinMetadata<T> bridge registration needs.
+        | select(object_type(.) | split("<")[0] | endswith("::" + $t))
         | object_id(.)
         | select(length > 0)
     ' | head -n1)"

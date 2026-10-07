@@ -1500,9 +1500,10 @@ module social_contracts::memory {
     /// Approve MYDATA key release for org-shared memory: the account owner (own-blob suffix)
     /// or any holder of `OrgMemoryReader` on the org's share group. Registered sub-agents
     /// must additionally have an active ancestor chain.
+    /// MyData key servers require `id` as the FIRST parameter of every approve entry.
     public entry fun approve_org_key_policy(
-        config: &MemoryConfig,
         id: vector<u8>,
+        config: &MemoryConfig,
         account: &MemoryAccount,
         org: &AgenticOrganization,
         group: &PermissionedGroup<MemorySharePackage>,
@@ -2074,8 +2075,8 @@ module social_contracts::memory {
     // ============================================================
 
     public entry fun approve_key_policy(
-        config: &MemoryConfig,
         id: vector<u8>,
+        config: &MemoryConfig,
         account: &MemoryAccount,
         clock: &Clock,
         ctx: &TxContext,

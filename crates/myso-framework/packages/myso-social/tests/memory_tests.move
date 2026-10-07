@@ -371,8 +371,8 @@ module social_contracts::memory_tests {
             vector::append(&mut id, owner_suffix);
 
             memory::approve_key_policy(
-                &memory_config,
                 id,
+                &memory_config,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario),
@@ -392,8 +392,8 @@ module social_contracts::memory_tests {
             vector::append(&mut id, owner_suffix);
 
             memory::approve_key_policy(
-                &memory_config,
                 id,
+                &memory_config,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario),
@@ -439,8 +439,8 @@ module social_contracts::memory_tests {
             vector::append(&mut id, owner_suffix);
 
             memory::approve_key_policy(
-                &memory_config,
                 id,
+                &memory_config,
                 &memory_account,
                 &clock,
                 test_scenario::ctx(&mut scenario),

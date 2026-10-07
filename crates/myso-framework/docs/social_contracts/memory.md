@@ -6428,9 +6428,10 @@ Effective mask for a role name (built-in constant or custom definition).
 Approve MYDATA key release for org-shared memory: the account owner (own-blob suffix)
 or any holder of <code><a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">OrgMemoryReader</a></code> on the org's share group. Registered sub-agents
 must additionally have an active ancestor chain.
+MyData key servers require <code>id</code> as the FIRST parameter of every approve entry.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_approve_org_key_policy">approve_org_key_policy</a>(config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, id: vector&lt;u8&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_approve_org_key_policy">approve_org_key_policy</a>(id: vector&lt;u8&gt;, config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6440,8 +6441,8 @@ must additionally have an active ancestor chain.
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_approve_org_key_policy">approve_org_key_policy</a>(
-    config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">MemoryConfig</a>,
     id: vector&lt;u8&gt;,
+    config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">MemoryConfig</a>,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
     org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
     group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
@@ -7942,7 +7943,7 @@ True when <code>descendant_id</code> sits strictly below <code>ancestor_id</code
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_approve_key_policy">approve_key_policy</a>(config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, id: vector&lt;u8&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_approve_key_policy">approve_key_policy</a>(id: vector&lt;u8&gt;, config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -7952,8 +7953,8 @@ True when <code>descendant_id</code> sits strictly below <code>ancestor_id</code
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_approve_key_policy">approve_key_policy</a>(
-    config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">MemoryConfig</a>,
     id: vector&lt;u8&gt;,
+    config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">MemoryConfig</a>,
     account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
     clock: &Clock,
     ctx: &TxContext,
