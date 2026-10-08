@@ -686,6 +686,22 @@ bridge_register_existing_foreign_token() {
         echo "Cannot re-register $type_name (treasury=$tc metadata=$md upgrade=$uc)" >&2
         return 1
     }
+    local cap_owner treasury_owner
+    cap_owner="$(object_address_owner "$uc" || true)"
+    treasury_owner="$(object_address_owner "$tc" || true)"
+    if [[ -n "$cap_owner" && -n "$treasury_owner" ]]; then
+        cap_owner="$(normalize_hex_id "$cap_owner")"
+        treasury_owner="$(normalize_hex_id "$treasury_owner")"
+        [[ "$cap_owner" == "$treasury_owner" ]] || {
+            echo "TreasuryCap and UpgradeCap have different owners for $type_name" >&2
+            return 1
+        }
+        bridge_keystore_has_address "$cap_owner" || {
+            echo "Cap owner $cap_owner is missing from the active keystore" >&2
+            return 1
+        }
+        active="$cap_owner"
+    fi
     log_step "register_foreign_token $type_name (existing caps)"
     out="$(SKIP_CONFIRM_RUN=1 invoke_ptb_as_capture "$active" \
         --move-call "${BRIDGE_PACKAGE_ID}::bridge::register_foreign_token" "<${type_name}>" \
@@ -1287,10 +1303,10 @@ ${myso_types}
       nonce: 0
       chain_id: EthCustom
       native: true
-      token_ids: [0, 1, 2, 3, 4]
-      token_addresses: ["${evm0}", "${evm1}", "${evm2}", "${evm3}", "${evm4}"]
-      token_myso_decimals: [9, 8, 8, 6, 6]
-      token_prices: [12800, 432518900, 25969600, 10000, 10000]
+      token_ids: [1, 2, 3, 4]
+      token_addresses: ["${evm1}", "${evm2}", "${evm3}", "${evm4}"]
+      token_myso_decimals: [8, 8, 6, 6]
+      token_prices: [432518900, 25969600, 10000, 10000]
 myso:
   myso-rpc-url: "${MYSO_RPC_URL}"
   myso-bridge-chain-id: ${BRIDGE_MYSO_CHAIN_ID}
@@ -2162,6 +2178,33 @@ bridge_resolve_upgrade_cap_for_package() {
     local pkg="$1" owner="$2" attempt json cap
     pkg="$(normalize_hex_id "$pkg")" || return 1
     owner="$(normalize_hex_id "$owner")" || return 1
+    # Published records survive wallet switches and GraphQL indexing delays.
+    cap="$(python3 - "$BRIDGE_DIR/token-packages" "$pkg" <<'PY_CAP'
+import pathlib, re, sys
+root, pkg = pathlib.Path(sys.argv[1]), sys.argv[2].lower()
+for path in root.glob("*/Published.toml"):
+    text = path.read_text()
+    ids = re.findall(r'(?:original-id|published-at)\s*=\s*"(0x[0-9a-fA-F]+)"', text)
+    if any(int(value, 16) == int(pkg, 16) for value in ids):
+        match = re.search(r'upgrade-capability\s*=\s*"(0x[0-9a-fA-F]+)"', text)
+        if match:
+            print(match.group(1))
+            break
+PY_CAP
+)"
+    if [[ -n "$cap" ]]; then
+        json="$(myso client object "$cap" --json 2>/dev/null)" || json=''
+        if printf '%s' "$json" | jq -e '
+            def norm: tostring | ascii_downcase | ltrimstr("0x") | sub("^0+"; "");
+            ((.data.type // .type // .object_type // .data.content.type // .content.type // "")
+                | endswith("::package::UpgradeCap"))
+            or (.data.Move.type_.Other as $tag
+                | ($tag.module == "package" and $tag.name == "UpgradeCap"
+                   and (($tag.address // "" | norm) == "2")))' >/dev/null 2>&1; then
+            normalize_hex_id "$cap"
+            return 0
+        fi
+    fi
     graphql_is_reachable "$GRAPHQL_URL" || return 1
     for attempt in $(seq 1 12); do
         json="$(graphql_post 'query UpgradeCaps($owner: MySoAddress!) {
@@ -2171,7 +2214,7 @@ bridge_resolve_upgrade_cap_for_package() {
         }' "$(jq -nc --arg owner "$owner" '{owner: $owner}')" 2>/dev/null)" || json=''
         cap="$(echo "$json" | jq -r --arg pkg "$pkg" '
             def norm:
-                (tostring | ltrimstr("0x") | ascii_downcase);
+                (tostring | ltrimstr("0x") | ascii_downcase | sub("^0+"; ""));
             .data.objects.nodes[]?
             | select((.asMoveObject.contents.json.package // "" | norm) == ($pkg | norm))
             | .address
@@ -2702,15 +2745,15 @@ bridge_governance_add_tokens_evm() {
     if bridge_cli governance --config-path "$BRIDGE_CLIENT_CONFIG_PATH" --chain-id "$BRIDGE_ETH_CHAIN_ID" \
         add-tokens-on-evm \
         --nonce 0 \
-        --token-ids 0,1,2,3,4 \
-        --token-type-names "${t0},${t1},${t2},${t3},${t4}" \
-        --token-prices 12800,432518900,25969600,10000,10000 \
-        --token-myso-decimals 9,8,8,6,6; then
+        --token-ids 1,2,3,4 \
+        --token-type-names "${t1},${t2},${t3},${t4}" \
+        --token-prices 432518900,25969600,10000,10000 \
+        --token-myso-decimals 8,8,6,6; then
         TOKENS_REGISTERED_EVM=1
     else
         echo "add-tokens-on-evm failed or tokens already present on the EVM config (local forge deploy registers them)." >&2
-        TOKENS_REGISTERED_EVM=1
-        return 0
+        TOKENS_REGISTERED_EVM=0
+        return 1
     fi
 }
 
