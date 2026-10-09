@@ -17,6 +17,7 @@ DROP INDEX IF EXISTS idx_vesting_events_event_time;
 DROP TABLE IF EXISTS vesting_events CASCADE;
 
 DROP INDEX IF EXISTS idx_vesting_wallets_owner_address;
+DROP INDEX IF EXISTS idx_vesting_wallets_coin_type;
 DROP INDEX IF EXISTS idx_vesting_wallets_start_time;
 DROP INDEX IF EXISTS idx_vesting_wallets_schedule_end;
 DROP INDEX IF EXISTS idx_vesting_wallets_created_at;

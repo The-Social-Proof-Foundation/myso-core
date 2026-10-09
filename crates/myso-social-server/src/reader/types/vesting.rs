@@ -11,6 +11,7 @@ use super::social_graph::{PaginationInfo, UniversalUserResult};
 pub struct VestingWalletRow {
     pub wallet_id: String,
     pub owner_address: String,
+    pub coin_type: String,
     pub total_amount: i64,
     pub start_time: i64,
     pub schedule_end: i64,
@@ -97,6 +98,7 @@ pub struct VestingEventRow {
     pub wallet_id: String,
     pub event_type: String,
     pub owner_address: String,
+    pub coin_type: String,
     pub amount: i64,
     pub remaining_balance: Option<i64>,
     pub start_time: Option<i64>,
@@ -132,6 +134,8 @@ pub struct ClaimableResponse {
 
 #[derive(Debug, Serialize)]
 pub struct VestingAnalyticsResponse {
+    /// `None` when the totals span every coin (mixed decimals; counts only are meaningful).
+    pub coin_type: Option<String>,
     pub total_wallets: i64,
     pub total_vested_amount: i64,
     pub total_claimed_amount: i64,
@@ -144,6 +148,7 @@ pub struct VestingAnalyticsResponse {
 #[derive(Debug, Serialize)]
 pub struct VestingLeaderboardEntry {
     pub owner_address: String,
+    pub coin_type: String,
     pub total_vested: i64,
     pub total_claimed: i64,
     pub active_wallets: i64,

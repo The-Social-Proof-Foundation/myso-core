@@ -7,7 +7,7 @@
 use move_core_types::account_address::AccountAddress;
 use serde::{Deserialize, Serialize};
 
-use super::access::{self, post_access_json_from_bcs, BcsPostAccess};
+use super::access::{self, BcsPostAccess, post_access_json_from_bcs};
 
 /// Error returned when event contents fail to parse, for diagnostic logging.
 #[derive(Debug)]
@@ -640,7 +640,7 @@ pub struct BcsBadgeRemovedEvent {
     removed_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsVestingPieceEvent {
     kind: u8,
     time_offset: u64,
@@ -649,10 +649,11 @@ pub struct BcsVestingPieceEvent {
     curve_factor: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsTokensVestedEvent {
     wallet_id: AccountAddress,
     owner: AccountAddress,
+    coin_type: BcsMoveTypeName,
     total_amount: u64,
     start_time: u64,
     schedule_end: u64,
@@ -660,19 +661,21 @@ pub struct BcsTokensVestedEvent {
     vested_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsTokensClaimedEvent {
     wallet_id: AccountAddress,
     owner: AccountAddress,
+    coin_type: BcsMoveTypeName,
     claimed_amount: u64,
     remaining_balance: u64,
     claimed_at: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsVestingWalletDeletedEvent {
     wallet_id: AccountAddress,
     owner: AccountAddress,
+    coin_type: BcsMoveTypeName,
     deleted_at: u64,
 }
 
@@ -3413,6 +3416,7 @@ fn parse_profile_event(
             Ok(Some(serde_json::json!({
                 "wallet_id": addr_to_string(&ev.wallet_id),
                 "owner": addr_to_string(&ev.owner),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
                 "total_amount": ev.total_amount,
                 "start_time": ev.start_time,
                 "schedule_end": ev.schedule_end,
@@ -3432,6 +3436,7 @@ fn parse_profile_event(
             Ok(Some(serde_json::json!({
                 "wallet_id": addr_to_string(&ev.wallet_id),
                 "owner": addr_to_string(&ev.owner),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
                 "claimed_amount": ev.claimed_amount,
                 "remaining_balance": ev.remaining_balance,
                 "claimed_at": ev.claimed_at,
@@ -3443,6 +3448,7 @@ fn parse_profile_event(
             Ok(Some(serde_json::json!({
                 "wallet_id": addr_to_string(&ev.wallet_id),
                 "owner": addr_to_string(&ev.owner),
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
                 "deleted_at": ev.deleted_at,
             })))
         }
@@ -5146,8 +5152,9 @@ fn parse_media_asset_event(
             })))
         }
         "MediaAssetLicenseInstanceRevokedByLicensorEvent" => {
-            let ev = bcs::from_bytes::<BcsMediaAssetLicenseInstanceRevokedByLicensorEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
+            let ev =
+                bcs::from_bytes::<BcsMediaAssetLicenseInstanceRevokedByLicensorEvent>(contents)
+                    .map_err(|e| bcs_parse_err(e, contents))?;
             Ok(Some(serde_json::json!({
                 "media_asset_id": addr_to_string(&ev.media_asset_id),
                 "license_instance_id": addr_to_string(&ev.license_instance_id),
@@ -7112,8 +7119,8 @@ mod tests {
     /// BCS field order must match Move `platform::PlatformCreatedEvent` (redirect_uri after moderators_group_id).
     #[test]
     fn platform_created_event_bcs_parse_then_handler_row_shape() {
-        use crate::handlers::platform::handle_platform_event;
         use crate::handlers::SocialEventRow;
+        use crate::handlers::platform::handle_platform_event;
 
         let pid = AccountAddress::from_hex_literal(
             "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
@@ -7189,8 +7196,8 @@ mod tests {
     /// BCS → JSON → handler for join: membership upsert + audit event.
     #[test]
     fn user_joined_platform_event_bcs_parse_then_handler_row_shape() {
-        use crate::handlers::platform::handle_platform_event;
         use crate::handlers::SocialEventRow;
+        use crate::handlers::platform::handle_platform_event;
 
         let wallet = AccountAddress::from_hex_literal(
             "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -7233,8 +7240,8 @@ mod tests {
     /// BCS → JSON → handler for leave: soft left_at stamp + audit event (no delete).
     #[test]
     fn user_left_platform_event_bcs_parse_then_handler_row_shape() {
-        use crate::handlers::platform::handle_platform_event;
         use crate::handlers::SocialEventRow;
+        use crate::handlers::platform::handle_platform_event;
         use chrono::{TimeZone, Utc};
 
         let wallet = AccountAddress::from_hex_literal(
@@ -7290,8 +7297,8 @@ mod tests {
     /// BCS serialization matches Move `platform::PlatformDeletedEvent`; handlers produce delete + audit rows.
     #[test]
     fn platform_deleted_event_bcs_parse_then_handler_row_shape() {
-        use crate::handlers::platform::handle_platform_event;
         use crate::handlers::SocialEventRow;
+        use crate::handlers::platform::handle_platform_event;
         use chrono::{TimeZone, Utc};
 
         let pid = AccountAddress::from_hex_literal(
@@ -7634,8 +7641,8 @@ mod tests {
     fn test_parse_sub_pool_created_event_from_live_transaction() {
         use move_core_types::account_address::AccountAddress;
 
-        use crate::handlers::mydata;
         use crate::handlers::SocialEventRow;
+        use crate::handlers::mydata;
 
         let sub_pool_id = AccountAddress::from_hex_literal(
             "0x2147facf6a89c71b6fe2144647a0810f9eaf2e755235f61b94bd18f624f85cb1",
@@ -7891,6 +7898,66 @@ mod tests {
         assert_eq!(json["amount"], 5_000_000_000_i64);
         assert_eq!(json["is_post"], true);
         assert_eq!(json["coin_type"].as_str().unwrap(), "0x2::myso::MYSO");
+    }
+
+    fn vesting_coin_type(name: &str) -> BcsMoveTypeName {
+        BcsMoveTypeName {
+            name: BcsMoveAsciiString {
+                bytes: name.as_bytes().to_vec(),
+            },
+        }
+    }
+
+    #[test]
+    fn vesting_events_carry_coin_type() {
+        let wallet_id = AccountAddress::from_hex_literal("0x1").unwrap();
+        let owner = AccountAddress::from_hex_literal("0x2").unwrap();
+        let coin = "0xabc::usdc::USDC";
+
+        let vested = BcsTokensVestedEvent {
+            wallet_id,
+            owner,
+            coin_type: vesting_coin_type(coin),
+            total_amount: 1_000_000,
+            start_time: 10,
+            schedule_end: 20,
+            pieces: vec![BcsVestingPieceEvent {
+                kind: 1,
+                time_offset: 0,
+                duration: 10,
+                amount_bps: 10_000,
+                curve_factor: 1000,
+            }],
+            vested_at: 5,
+        };
+        let bytes = bcs::to_bytes(&vested).expect("bcs");
+        let json = parse_event_contents("profile", "TokensVestedEvent", &bytes).expect("parse");
+        assert_eq!(json["coin_type"].as_str().unwrap(), coin);
+        assert_eq!(json["total_amount"], 1_000_000_i64);
+
+        let claimed = BcsTokensClaimedEvent {
+            wallet_id,
+            owner,
+            coin_type: vesting_coin_type(coin),
+            claimed_amount: 400_000,
+            remaining_balance: 600_000,
+            claimed_at: 15,
+        };
+        let bytes = bcs::to_bytes(&claimed).expect("bcs");
+        let json = parse_event_contents("profile", "TokensClaimedEvent", &bytes).expect("parse");
+        assert_eq!(json["coin_type"].as_str().unwrap(), coin);
+        assert_eq!(json["remaining_balance"], 600_000_i64);
+
+        let deleted = BcsVestingWalletDeletedEvent {
+            wallet_id,
+            owner,
+            coin_type: vesting_coin_type(coin),
+            deleted_at: 25,
+        };
+        let bytes = bcs::to_bytes(&deleted).expect("bcs");
+        let json =
+            parse_event_contents("profile", "VestingWalletDeletedEvent", &bytes).expect("parse");
+        assert_eq!(json["coin_type"].as_str().unwrap(), coin);
     }
 
     #[test]
@@ -8369,10 +8436,12 @@ mod tests {
             parse_event_contents("memory", "AgentMemoryVaultCreated", &bytes).expect("parse");
         assert!(json["vault_id"].as_str().unwrap().starts_with("0x"));
         assert!(json["agent_object_id"].as_str().unwrap().starts_with("0x"));
-        assert!(json["memory_account_id"]
-            .as_str()
-            .unwrap()
-            .starts_with("0x"));
+        assert!(
+            json["memory_account_id"]
+                .as_str()
+                .unwrap()
+                .starts_with("0x")
+        );
     }
 
     #[test]
@@ -8478,7 +8547,9 @@ mod tests {
         let json = parse_event_contents("post", "PostCreatedEvent", &bytes).expect("parse");
         assert_eq!(json["composition_status"], 1);
         assert_eq!(json["monetization_status"], 2);
-        let ids = json["media_asset_ids"].as_array().expect("media_asset_ids array");
+        let ids = json["media_asset_ids"]
+            .as_array()
+            .expect("media_asset_ids array");
         assert_eq!(ids.len(), 1);
         assert!(ids[0].as_str().unwrap().ends_with("aa"));
     }
@@ -8717,10 +8788,12 @@ mod tests {
         let bytes = bcs::to_bytes(&ev).expect("serialize PoCConfigUpdatedEvent");
         let json = parse_event_contents("proof_of_creativity", "PoCConfigUpdatedEvent", &bytes)
             .expect("parse PoCConfigUpdatedEvent");
-        assert!(json["dispute_governance_registry_id"]
-            .as_str()
-            .unwrap()
-            .starts_with("0x"));
+        assert!(
+            json["dispute_governance_registry_id"]
+                .as_str()
+                .unwrap()
+                .starts_with("0x")
+        );
         assert_eq!(json["media_asset_dispute_cost"], 10_000_000_000_i64);
         assert_eq!(json["max_disputes_per_media_asset"], 2);
         assert_eq!(json["max_embedded_asset_redirect_bps"], 5000);

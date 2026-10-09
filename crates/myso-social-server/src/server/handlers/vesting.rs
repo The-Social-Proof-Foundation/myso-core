@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use axum::extract::{Path, Query, State};
 use axum::Json;
+use axum::extract::{Path, Query, State};
 use std::sync::Arc;
 
 use crate::error::SocialError;
@@ -21,6 +21,7 @@ pub async fn list_vesting_wallets(
         .list_vesting_wallets(
             params.active.unwrap_or(false),
             params.owner_address.as_deref(),
+            params.coin_type.as_deref(),
             limit,
             offset,
             page,
@@ -38,7 +39,7 @@ pub async fn list_vesting_wallets_active(
     let page = params.page();
     let response = state
         .reader
-        .list_vesting_wallets(true, None, limit, offset, page)
+        .list_vesting_wallets(true, None, params.coin_type.as_deref(), limit, offset, page)
         .await?;
     Ok(Json(response))
 }
@@ -92,7 +93,7 @@ pub async fn get_user_vesting_wallets(
     let page = params.page();
     let response = state
         .reader
-        .get_user_vesting_wallets(&address, limit, offset, page)
+        .get_user_vesting_wallets(&address, params.coin_type.as_deref(), limit, offset, page)
         .await?;
     Ok(Json(response))
 }
@@ -113,8 +114,12 @@ pub async fn list_vesting_events(
 
 pub async fn get_vesting_analytics(
     State(state): State<Arc<AppState>>,
+    Query(params): Query<VestingPageParams>,
 ) -> Result<Json<crate::reader::VestingAnalyticsResponse>, SocialError> {
-    let analytics = state.reader.get_vesting_analytics().await?;
+    let analytics = state
+        .reader
+        .get_vesting_analytics(params.coin_type.as_deref())
+        .await?;
     Ok(Json(analytics))
 }
 
@@ -127,7 +132,7 @@ pub async fn get_vesting_leaderboard(
     let page = params.page();
     let response = state
         .reader
-        .get_vesting_leaderboard(limit, offset, page)
+        .get_vesting_leaderboard(params.coin_type.as_deref(), limit, offset, page)
         .await?;
     Ok(Json(response))
 }

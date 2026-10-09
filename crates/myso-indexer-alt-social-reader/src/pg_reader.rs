@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::bail;
 use anyhow::Context;
+use anyhow::bail;
 use async_graphql::dataloader::DataLoader;
 use myso_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use prometheus::Registry;
@@ -13,17 +13,18 @@ use url::Url;
 
 use myso_pg_db as db;
 
+use crate::PostDeletionEventRow;
+use crate::PostModerationEventRow;
 use crate::ai_credit::get_ai_credit_config;
 use crate::governance::{
-    batch_viewer_latest_delegate_rating_vote_kind, get_anonymous_voting_trends,
-    get_delegate_by_address, get_delegate_proposals, get_delegate_ratings,
-    get_governance_registry_by_platform_id, get_governance_registry_by_type,
+    DelegateRatingViewerTarget, batch_viewer_latest_delegate_rating_vote_kind,
+    get_anonymous_voting_trends, get_delegate_by_address, get_delegate_proposals,
+    get_delegate_ratings, get_governance_registry_by_platform_id, get_governance_registry_by_type,
     get_governance_stats_by_registry_id, get_proposal_anonymous_stats,
     get_proposal_anonymous_votes, get_proposal_by_id, get_proposal_community_votes,
     get_proposal_community_votes_count, get_proposal_decryption_failures,
     get_proposal_delegate_votes, get_proposal_reward_distributions, list_delegates,
     list_governance_events, list_governance_registries, list_nominated_delegates, list_proposals,
-    DelegateRatingViewerTarget,
 };
 use crate::insurance::{
     get_insurance_config, get_insurance_coverage_route, get_insurance_policy,
@@ -35,9 +36,8 @@ use crate::insurance::{
 };
 use crate::media_asset::{
     count_rights_disputes_submitted, get_active_rights_proposal_id_for_asset,
-    get_composition_analysis_for_post, get_media_asset_by_id,
-    get_latest_governance_link_for_proposal, get_media_asset_id_for_rights_proposal,
-    get_revenue_manifest_for_post,
+    get_composition_analysis_for_post, get_latest_governance_link_for_proposal,
+    get_media_asset_by_id, get_media_asset_id_for_rights_proposal, get_revenue_manifest_for_post,
     list_license_instances_for_asset, list_license_templates_for_asset,
     list_media_asset_governance_links, list_media_asset_rights_updates, list_media_asset_usages,
 };
@@ -45,8 +45,8 @@ use crate::media_asset_graph::{
     get_ancestry_snapshot, get_resolved_policy, list_derivative_edges_for_child,
     list_derivative_edges_for_parent, list_detected_relationships, list_resolved_obligations,
 };
-use crate::memory::get_memory_config as fetch_memory_config;
 use crate::memory::SubAgentListResult;
+use crate::memory::get_memory_config as fetch_memory_config;
 use crate::messaging::{
     get_messaging_agent_groups_by_org, get_messaging_config, get_messaging_revenue_summary,
     get_paid_message_escrows_by_wallet,
@@ -63,8 +63,8 @@ use crate::mydata::{
     list_mydata_sub_pools_for_broad_pool, list_mydata_sub_pools_for_listing,
 };
 use crate::org_leaderboard::{
-    org_type_from_slug, organization_categories, OrganizationCategoryInfo,
-    OrganizationLeaderboardResult, OrganizationLeaderboardSort,
+    OrganizationCategoryInfo, OrganizationLeaderboardResult, OrganizationLeaderboardSort,
+    org_type_from_slug, organization_categories,
 };
 use crate::org_stats::{OrganizationStatistics, OrganizationStatsWindow};
 use crate::organization::AgenticOrganizationListResult;
@@ -74,12 +74,7 @@ use crate::platform::{
     get_platform_moderators, get_platform_treasury_balance, get_platform_user_access,
     list_platform_treasury_balances, list_platform_treasury_withdrawals,
 };
-use crate::pnl::{get_profile_pnl_for_windows, ProfilePnLWindow, ProfilePnLWindowResult};
-use crate::returns::{
-    get_trader_return_leaderboard, get_user_spt_portfolio, get_user_spt_position_timeseries,
-    get_user_spt_positions, SptPortfolioMetrics, SptPositionMetrics, SptPositionTimeSeriesPoint,
-    SptReturnWindow, TraderReturnLeaderboardEntry, TraderReturnSort, MIN_LEADERBOARD_CAPITAL_MYSO,
-};
+use crate::pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 use crate::poc::{
     get_poc_analysis_for_post, get_poc_badges_for_post,
     get_poc_beneficiary_vault_by_beneficiary_address, get_poc_beneficiary_vault_by_vault_id,
@@ -88,6 +83,7 @@ use crate::poc::{
     list_poc_vault_coin_balances_for_vault, list_poc_vault_deposits_for_vault,
 };
 use crate::post::PostRow;
+use crate::profile::UniversalUserResult;
 use crate::profile::get_ecosystem_treasury;
 use crate::profile::get_profile_badges;
 use crate::profile::get_profile_by_address;
@@ -96,19 +92,24 @@ use crate::profile::get_profile_or_wallet_by_address;
 use crate::profile::get_profile_summary_enriched;
 use crate::profile::get_profiles;
 use crate::profile::get_profiles_summary_enriched;
-use crate::profile::UniversalUserResult;
 use crate::promotion::{
     get_promotion, get_promotion_by_post_id, get_promotion_hourly, get_promotion_stats,
     get_promotion_time_series, get_promotion_views, get_promotion_views_count, get_spending_trends,
     get_top_performing_promotions, list_promoted_posts,
 };
+use crate::returns::{
+    MIN_LEADERBOARD_CAPITAL_MYSO, SptPortfolioMetrics, SptPositionMetrics,
+    SptPositionTimeSeriesPoint, SptReturnWindow, TraderReturnLeaderboardEntry, TraderReturnSort,
+    get_trader_return_leaderboard, get_user_spt_portfolio, get_user_spt_position_timeseries,
+    get_user_spt_positions,
+};
 use crate::revenue::{get_platform_revenue_breakdown, get_platform_revenue_summary};
 use crate::social_graph::{
-    batch_viewer_social_context, check_following, check_platform_blocked, check_profile_blocked,
+    FollowSortBy, ProfileSummaryRow, ViewerSocialContext, batch_viewer_social_context,
+    check_following, check_platform_blocked, check_profile_blocked,
     count_profile_platform_memberships, get_blocked_platforms, get_blocked_profiles,
     get_follow_recommendations, get_followers, get_following, get_mutual_connections,
-    get_mutual_count, get_profile_platform_memberships, resolve_profile_address, FollowSortBy,
-    ProfileSummaryRow, ViewerSocialContext,
+    get_mutual_count, get_profile_platform_memberships, resolve_profile_address,
 };
 use crate::spot::{
     get_spot_claim_by_object_id, get_spot_config, get_spot_creator_stats,
@@ -121,17 +122,16 @@ use crate::spot::{
 };
 use crate::spt::SptReservationVolumeInterval;
 use crate::spt::{
-    get_former_reservation_holdings_for_pool, get_reservation_holdings_for_pool,
-    get_reservation_pool_id_for_associated_id, get_spt_exchange_config, get_spt_holdings_by_holder,
-    get_spt_holdings_by_pool, get_spt_pool, get_spt_pool_id_for_profile, get_spt_price_history,
+    SptTransactionsWithViewer, get_former_reservation_holdings_for_pool,
+    get_reservation_holdings_for_pool, get_reservation_pool_id_for_associated_id,
+    get_spt_exchange_config, get_spt_holdings_by_holder, get_spt_holdings_by_pool, get_spt_pool,
+    get_spt_pool_id_for_profile, get_spt_price_history,
     get_spt_reservation_holdings_for_reserver as fetch_spt_reservation_holdings_for_reserver,
     get_spt_reservation_volume_history, get_spt_swaps_for_pool, get_spt_swaps_for_trader,
-    get_spt_transactions, get_spt_transfers_for_pool, list_spt_pools, SptTransactionsWithViewer,
+    get_spt_transactions, get_spt_transfers_for_pool, list_spt_pools,
 };
 use crate::subscription::get_subscription_config;
 use crate::vesting::{get_vesting_leaderboard, get_vesting_wallet, list_vesting_wallets};
-use crate::PostDeletionEventRow;
-use crate::PostModerationEventRow;
 use myso_indexer_alt_social_schema::models::{
     AgenticOrganizationRow, MemoryAccountRow, SubAgentRow,
 };
@@ -490,6 +490,39 @@ impl SocialPgReader {
     ) -> anyhow::Result<Option<SubAgentRow>> {
         let mut conn = self.connect().await?;
         crate::memory::get_sub_agent_by_object_id(&mut conn, agent_object_id, &self.metrics).await
+    }
+
+    /// P&L for one sub-agent (by `agent_object_id`), including revoked/deactivated agents.
+    pub async fn get_sub_agent_pnl(
+        &self,
+        agent_object_id: &str,
+        windows: &[ProfilePnLWindow],
+    ) -> anyhow::Result<Option<crate::agent_pnl::SubAgentPnl>> {
+        let mut conn = self.connect().await?;
+        crate::agent_pnl::get_sub_agent_pnl(&mut conn, agent_object_id, windows, &self.metrics)
+            .await
+    }
+
+    /// P&L for every sub-agent of a principal (paged) plus a roll-up across all of them.
+    pub async fn list_sub_agent_pnl(
+        &self,
+        principal_owner: &str,
+        active_only: bool,
+        windows: &[ProfilePnLWindow],
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<crate::agent_pnl::SubAgentPnlSummary> {
+        let mut conn = self.connect().await?;
+        crate::agent_pnl::list_sub_agent_pnl(
+            &mut conn,
+            principal_owner,
+            active_only,
+            windows,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     pub async fn get_agent_memory_vault_id(
@@ -1352,26 +1385,39 @@ impl SocialPgReader {
         get_vesting_wallet(&mut conn, wallet_id, &self.metrics).await
     }
 
-    /// List vesting wallets with optional owner and active-only filters.
+    /// List vesting wallets with optional owner, coin type and active-only filters.
     pub async fn list_vesting_wallets(
         &self,
         owner: Option<&str>,
+        coin_type: Option<&str>,
         active_only: bool,
         limit: i64,
         offset: i64,
     ) -> anyhow::Result<Vec<crate::vesting::VestingWalletWithStatus>> {
         let mut conn = self.connect().await?;
-        list_vesting_wallets(&mut conn, owner, active_only, limit, offset, &self.metrics).await
+        let coin_type = coin_type.map(myso_indexer_alt_social_schema::models::canonical_coin_type);
+        list_vesting_wallets(
+            &mut conn,
+            owner,
+            coin_type.as_deref(),
+            active_only,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
-    /// Get vesting leaderboard.
+    /// Get vesting leaderboard, grouped per coin type (optionally filtered to one).
     pub async fn get_vesting_leaderboard(
         &self,
+        coin_type: Option<&str>,
         limit: i64,
         offset: i64,
     ) -> anyhow::Result<crate::vesting::VestingLeaderboardResponse> {
         let mut conn = self.connect().await?;
-        get_vesting_leaderboard(&mut conn, limit, offset, &self.metrics).await
+        let coin_type = coin_type.map(myso_indexer_alt_social_schema::models::canonical_coin_type);
+        get_vesting_leaderboard(&mut conn, coin_type.as_deref(), limit, offset, &self.metrics).await
     }
 
     /// Get SPT holdings for a holder address.
@@ -1479,12 +1525,20 @@ impl SocialPgReader {
 
     /// Get atomic creator-fee routing settlements for an SPT pool.
     pub async fn get_spt_creator_fee_settlements(
-        &self, pool_id: &str, limit: i64, offset: i64,
+        &self,
+        pool_id: &str,
+        limit: i64,
+        offset: i64,
     ) -> anyhow::Result<Vec<crate::SptCreatorFeeSettlement>> {
         let mut conn = self.connect().await?;
         crate::spt::get_spt_creator_fee_settlements(
-            &mut conn, pool_id, limit, offset, &self.metrics,
-        ).await
+            &mut conn,
+            pool_id,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// SPT→SPT swaps where the pool is either the source or destination pool.
@@ -1642,9 +1696,8 @@ impl SocialPgReader {
     pub async fn get_latest_governance_link_for_proposal(
         &self,
         proposal_id: &str,
-    ) -> anyhow::Result<
-        Option<myso_indexer_alt_social_schema::models::MediaAssetGovernanceLinkRow>,
-    > {
+    ) -> anyhow::Result<Option<myso_indexer_alt_social_schema::models::MediaAssetGovernanceLinkRow>>
+    {
         let mut conn = self.connect().await?;
         get_latest_governance_link_for_proposal(&mut conn, proposal_id, &self.metrics).await
     }
@@ -1757,7 +1810,8 @@ impl SocialPgReader {
         asset_id: &str,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::LicenseTemplateVersionRow>> {
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::LicenseTemplateVersionRow>>
+    {
         let mut conn = self.connect().await?;
         list_license_templates_for_asset(&mut conn, asset_id, limit, offset, &self.metrics).await
     }

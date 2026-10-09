@@ -9,7 +9,7 @@ use std::str::FromStr;
 use super::common;
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
-    NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent, NewUsernameListing,
+    canonical_coin_type, NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent, NewUsernameListing,
     NewUsernameOffer, NewUsernameRegistry, NewUsernameReservation, NewUsernameSaleFee,
     NewVestingEvent, NewVestingWallet, USERNAME_RESERVATION_STATUS_ACTIVE,
 };
@@ -1029,6 +1029,8 @@ struct TokensVestedEvent {
     wallet_id: String,
     #[serde(rename = "owner", default)]
     owner: String,
+    #[serde(rename = "coin_type", default)]
+    coin_type: String,
     #[serde(
         rename = "total_amount",
         default,
@@ -1095,6 +1097,7 @@ fn process_tokens_vested_event(
     let wallet = NewVestingWallet {
         wallet_id: ev.wallet_id.clone(),
         owner_address: ev.owner.clone(),
+        coin_type: canonical_coin_type(&ev.coin_type),
         total_amount,
         start_time,
         schedule_end,
@@ -1109,6 +1112,7 @@ fn process_tokens_vested_event(
         wallet_id: ev.wallet_id,
         event_type: "vested".to_string(),
         owner_address: ev.owner,
+        coin_type: canonical_coin_type(&ev.coin_type),
         amount: total_amount,
         remaining_balance: Some(total_amount),
         start_time: Some(start_time),
@@ -1130,6 +1134,8 @@ struct TokensClaimedEvent {
     wallet_id: String,
     #[serde(rename = "owner", default)]
     owner: String,
+    #[serde(rename = "coin_type", default)]
+    coin_type: String,
     #[serde(
         rename = "claimed_amount",
         default,
@@ -1170,6 +1176,7 @@ fn process_tokens_claimed_event(
         wallet_id: ev.wallet_id.clone(),
         event_type: "claimed".to_string(),
         owner_address: ev.owner.clone(),
+        coin_type: canonical_coin_type(&ev.coin_type),
         amount: claimed_amount,
         remaining_balance: Some(remaining_balance),
         start_time: None,
@@ -1278,6 +1285,8 @@ struct VestingWalletDeletedEvent {
     wallet_id: String,
     #[serde(rename = "owner", default)]
     _owner: String,
+    #[serde(rename = "coin_type", default)]
+    coin_type: String,
     #[serde(
         rename = "deleted_at",
         default,
@@ -1563,6 +1572,7 @@ fn process_vesting_wallet_deleted_event(
         wallet_id: ev.wallet_id.clone(),
         event_type: "deleted".to_string(),
         owner_address: ev._owner.clone(),
+        coin_type: canonical_coin_type(&ev.coin_type),
         amount: 0,
         remaining_balance: None,
         start_time: None,
@@ -1732,9 +1742,10 @@ mod tests {
         let rows = handle_profile_event("UsernameClaimedEvent", &data, "tx:1", CK_MS)
             .expect("handle_profile_event should return Some");
         assert_eq!(rows.len(), 3);
-        assert!(rows
-            .iter()
-            .any(|r| matches!(r, SocialEventRow::UsernameRegistryUpsert(_))));
+        assert!(
+            rows.iter()
+                .any(|r| matches!(r, SocialEventRow::UsernameRegistryUpsert(_)))
+        );
         assert!(rows.iter().any(|r| matches!(
             r,
             SocialEventRow::ProfileUsernameSet {
@@ -2097,9 +2108,11 @@ mod tests {
             SocialEventRow::ProfileUsernameSet { profile_id: pid, username, .. }
                 if *pid == profile_id_string && username == "brandnew"
         )));
-        assert!(!rows
-            .iter()
-            .any(|r| matches!(r, SocialEventRow::UsernameRegistryReassign { .. })));
+        assert!(
+            !rows
+                .iter()
+                .any(|r| matches!(r, SocialEventRow::UsernameRegistryReassign { .. }))
+        );
         let audit_event = rows
             .iter()
             .find_map(|row| match row {

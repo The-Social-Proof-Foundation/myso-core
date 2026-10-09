@@ -5,6 +5,7 @@ pub mod governance;
 
 pub use governance::{DelegateRatingViewerTarget, delegate_rating_viewer_lookup_key};
 pub mod access;
+pub mod agent_pnl;
 pub mod ai_credit;
 pub mod enterprise;
 pub mod insurance;
@@ -85,6 +86,10 @@ pub use organization::AgenticOrganizationListResult;
 pub use pg_reader::{ProfileSummaryEnrichmentKey, SocialPgReader};
 pub use platform::{
     PlatformBlockedProfileRow, PlatformConfigRow, PlatformRow, PlatformUserAccessRow,
+};
+pub use agent_pnl::{
+    SubAgentLifetimePnl, SubAgentPnl, SubAgentPnlSummary, SubAgentPnlTotals, SubAgentStatus,
+    SubAgentWindowPnl,
 };
 pub use pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
 pub use returns::{

@@ -84,9 +84,7 @@ impl Profile {
             selected_badge_id: inner.selected_badge_id,
             selected_ecosystem_badge_id: inner.selected_ecosystem_badge_id,
             contract_version: inner.contract_version,
-            deleted_at: inner
-                .deleted_at
-                .map(|t| t.and_utc().timestamp_millis()),
+            deleted_at: inner.deleted_at.map(|t| t.and_utc().timestamp_millis()),
         };
         Self { inner: response }
     }
@@ -606,6 +604,7 @@ impl Profile {
     async fn vesting_wallets(
         &self,
         ctx: &Context<'_>,
+        coin_type: Option<String>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Vec<VestingWallet>> {
@@ -615,7 +614,13 @@ impl Profile {
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
         let rows = reader
-            .list_vesting_wallets(Some(&self.inner.owner_address), false, limit, offset)
+            .list_vesting_wallets(
+                Some(&self.inner.owner_address),
+                coin_type.as_deref(),
+                false,
+                limit,
+                offset,
+            )
             .await
             .ok()?;
         Some(rows.into_iter().map(VestingWallet::from_row).collect())
@@ -986,6 +991,35 @@ impl Profile {
             .await
             .ok()?;
         Some(rows.into_iter().map(ProfilePnLWindowStats::from).collect())
+    }
+
+    /// P&L of every sub-agent under this profile, with a roll-up across all of them.
+    /// Revoked and deactivated agents are included unless `activeOnly` is true.
+    async fn sub_agents_pnl(
+        &self,
+        ctx: &Context<'_>,
+        active_only: Option<bool>,
+        windows: Option<Vec<ProfilePnLWindow>>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<crate::api::types::agent_pnl::SubAgentPnlSummary> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let windows = crate::api::types::agent_pnl::resolve_windows(windows);
+        let limit = limit.unwrap_or(20).min(50) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        reader
+            .list_sub_agent_pnl(
+                &self.inner.owner_address,
+                active_only.unwrap_or(false),
+                &windows,
+                limit,
+                offset,
+            )
+            .await
+            .ok()
+            .map(crate::api::types::agent_pnl::SubAgentPnlSummary::from_row)
     }
 
     /// Personal SPT investment metrics (WAC). Not token price performance.

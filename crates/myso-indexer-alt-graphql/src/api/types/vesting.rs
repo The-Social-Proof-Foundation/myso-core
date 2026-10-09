@@ -68,6 +68,11 @@ impl VestingWallet {
         &self.inner.wallet.wallet_id
     }
 
+    /// Fully-qualified Move type of the vested coin, e.g. `0x2::myso::MYSO`.
+    async fn coin_type(&self) -> &str {
+        &self.inner.wallet.coin_type
+    }
+
     async fn owner_address(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.wallet.owner_address)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
@@ -173,6 +178,11 @@ impl VestingLeaderboardEntry {
     async fn owner_address(&self) -> MySoAddress {
         MySoAddress::from_str(&self.inner.owner_address)
             .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    /// Fully-qualified Move type of the vested coin; totals are per coin.
+    async fn coin_type(&self) -> &str {
+        &self.inner.coin_type
     }
 
     async fn total_vested(&self) -> i64 {

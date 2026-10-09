@@ -284,6 +284,7 @@ pub struct SubscriptionRevenueQuery {
 pub struct VestingWalletsQuery {
     pub active: Option<bool>,
     pub owner_address: Option<String>,
+    pub coin_type: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub page: Option<i64>,
@@ -327,6 +328,7 @@ impl VestingEventsQuery {
 
 #[derive(Debug, Deserialize)]
 pub struct VestingPageParams {
+    pub coin_type: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub page: Option<i64>,
@@ -504,6 +506,10 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(list_profile_sub_agents),
         )
         .route(
+            "/profiles/:address/sub-agents/pnl",
+            get(list_profile_sub_agents_pnl),
+        )
+        .route(
             "/profiles/:address/memory-account",
             get(get_profile_memory_account),
         )
@@ -565,6 +571,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/sub-agents/by-object/:agentObjectId",
             get(get_sub_agent_by_object_id),
+        )
+        .route(
+            "/sub-agents/by-object/:agentObjectId/pnl",
+            get(get_sub_agent_pnl),
         )
         .route(
             "/sub-agents/:agentObjectId/children",

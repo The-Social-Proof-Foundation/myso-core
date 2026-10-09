@@ -4,8 +4,8 @@
 // API-layer types: DTOs, query params, and aggregates.
 // DB-table types live in myso_indexer_alt_social_schema::models.
 
-use diesel::sql_types::{BigInt, Date, Text};
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Date, Text};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]

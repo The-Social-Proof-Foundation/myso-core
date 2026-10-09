@@ -54,7 +54,8 @@ pub use insurance::{
 };
 pub use memory::{
     get_memory_config, get_profile_memory_account, get_sub_agent, get_sub_agent_by_object_id,
-    list_profile_sub_agents, list_sub_agent_children,
+    get_sub_agent_pnl, list_profile_sub_agents, list_profile_sub_agents_pnl,
+    list_sub_agent_children,
 };
 pub use messaging::{
     get_agent_groups, get_message_history, get_messaging_config, get_messaging_revenue_summary,

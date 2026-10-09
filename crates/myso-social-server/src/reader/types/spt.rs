@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Bool, Double, Integer, Nullable, SmallInt, Text, Timestamptz};
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Double, Integer, Nullable, SmallInt, Text, Timestamptz};
 use serde::Serialize;
 
 use crate::json_serde::{json_string_i64, json_string_opt_i64};

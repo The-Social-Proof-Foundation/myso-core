@@ -1,16 +1,16 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::expression_methods::ExpressionMethods;
-use diesel::sql_types::{BigInt, Date, Double, Nullable, Text, Timestamp, Timestamptz};
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
 use diesel::SelectableHelper;
+use diesel::expression_methods::ExpressionMethods;
+use diesel::sql_types::{BigInt, Date, Double, Nullable, Text, Timestamp, Timestamptz};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    normalize_revenue_currency, PlatformRevenueBreakdownRow, UnifiedRevenue, REVENUE_SOURCE_MYDATA,
-    REVENUE_SOURCE_SPT, REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS,
+    PlatformRevenueBreakdownRow, REVENUE_SOURCE_MYDATA, REVENUE_SOURCE_SPT,
+    REVENUE_SOURCE_SUBSCRIPTION, REVENUE_SOURCE_TIPS, UnifiedRevenue, normalize_revenue_currency,
 };
 use myso_indexer_alt_social_schema::schema::{ecosystem_treasury, unified_revenue};
 use myso_pg_db::Db;

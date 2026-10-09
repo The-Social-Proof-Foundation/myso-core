@@ -758,6 +758,7 @@ impl Query {
         &self,
         ctx: &Context<'_>,
         owner: Option<MySoAddress>,
+        coin_type: Option<String>,
         active_only: Option<bool>,
         limit: Option<u64>,
         offset: Option<u64>,
@@ -772,6 +773,7 @@ impl Query {
             reader
                 .list_vesting_wallets(
                     owner_str.as_deref(),
+                    coin_type.as_deref(),
                     active_only.unwrap_or(false),
                     limit,
                     offset,
@@ -813,6 +815,7 @@ impl Query {
     async fn vesting_leaderboard(
         &self,
         ctx: &Context<'_>,
+        coin_type: Option<String>,
         limit: Option<u64>,
         offset: Option<u64>,
     ) -> Option<Result<VestingLeaderboardResponse, RpcError>> {
@@ -823,7 +826,7 @@ impl Query {
         let offset = offset.unwrap_or(0) as i64;
         Some(
             reader
-                .get_vesting_leaderboard(limit, offset)
+                .get_vesting_leaderboard(coin_type.as_deref(), limit, offset)
                 .await
                 .map_err(Into::into)
                 .map(|r| VestingLeaderboardResponse {

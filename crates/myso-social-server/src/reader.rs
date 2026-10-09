@@ -28,9 +28,9 @@ mod vesting;
 
 pub use types::*;
 
-use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
+use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{MemoryAccountRow, Profile, SubAgentRow};
 use myso_indexer_alt_social_schema::schema::{
@@ -1076,8 +1076,8 @@ impl Reader {
         };
 
         let auto_renewed_renewals: i64 = {
-            use diesel::sql_query;
             use diesel::QueryableByName;
+            use diesel::sql_query;
             #[derive(QueryableByName)]
             struct CountRow {
                 #[diesel(sql_type = BigInt)]
@@ -1127,8 +1127,8 @@ impl Reader {
             q.count().get_result(&mut conn).await?
         };
         let refunded_cancels: i64 = {
-            use diesel::sql_query;
             use diesel::QueryableByName;
+            use diesel::sql_query;
             #[derive(QueryableByName)]
             struct CountRow {
                 #[diesel(sql_type = BigInt)]
@@ -1169,8 +1169,8 @@ impl Reader {
         };
 
         let average_subscription_duration: f64 = {
-            use diesel::sql_query;
             use diesel::QueryableByName;
+            use diesel::sql_query;
             #[derive(QueryableByName)]
             struct AvgRow {
                 #[diesel(sql_type = Nullable<BigInt>)]
@@ -1283,8 +1283,8 @@ impl Reader {
             _mrr_placeholder,
         ) in services
         {
-            use diesel::sql_query;
             use diesel::QueryableByName;
+            use diesel::sql_query;
             #[derive(QueryableByName)]
             struct ActiveRow {
                 #[diesel(sql_type = BigInt)]
@@ -1514,6 +1514,48 @@ impl Reader {
         myso_indexer_alt_social_reader::get_profile_pnl_for_windows(&mut conn, address, windows)
             .await
             .map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
+    pub async fn get_sub_agent_pnl(
+        &self,
+        agent_object_id: &str,
+        windows: &[myso_indexer_alt_social_reader::ProfilePnLWindow],
+    ) -> Result<Option<myso_indexer_alt_social_reader::SubAgentPnl>, crate::error::SocialError>
+    {
+        let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
+        let mut conn = self.db.connect().await?;
+        myso_indexer_alt_social_reader::agent_pnl::get_sub_agent_pnl(
+            &mut conn,
+            agent_object_id,
+            windows,
+            metrics,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))
+    }
+
+    pub async fn list_sub_agent_pnl(
+        &self,
+        principal_owner: &str,
+        active_only: bool,
+        windows: &[myso_indexer_alt_social_reader::ProfilePnLWindow],
+        limit: i64,
+        offset: i64,
+    ) -> Result<myso_indexer_alt_social_reader::SubAgentPnlSummary, crate::error::SocialError>
+    {
+        let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
+        let mut conn = self.db.connect().await?;
+        myso_indexer_alt_social_reader::agent_pnl::list_sub_agent_pnl(
+            &mut conn,
+            principal_owner,
+            active_only,
+            windows,
+            limit,
+            offset,
+            metrics,
+        )
+        .await
+        .map_err(|e| crate::error::SocialError::internal(e.to_string()))
     }
 
     pub async fn get_profile_events(
@@ -2575,11 +2617,13 @@ impl Reader {
         &self,
         active_only: bool,
         owner: Option<&str>,
+        coin_type: Option<&str>,
         limit: i64,
         offset: i64,
         page: i64,
     ) -> Result<VestingWalletsResponse, crate::error::SocialError> {
-        vesting::list_vesting_wallets(&self.db, active_only, owner, limit, offset, page).await
+        vesting::list_vesting_wallets(&self.db, active_only, owner, coin_type, limit, offset, page)
+            .await
     }
 
     pub async fn get_vesting_wallet_by_id(
@@ -2609,11 +2653,12 @@ impl Reader {
     pub async fn get_user_vesting_wallets(
         &self,
         address: &str,
+        coin_type: Option<&str>,
         limit: i64,
         offset: i64,
         page: i64,
     ) -> Result<VestingWalletsResponse, crate::error::SocialError> {
-        vesting::get_user_vesting_wallets(&self.db, address, limit, offset, page).await
+        vesting::get_user_vesting_wallets(&self.db, address, coin_type, limit, offset, page).await
     }
 
     pub async fn list_vesting_events(
@@ -2628,17 +2673,19 @@ impl Reader {
 
     pub async fn get_vesting_analytics(
         &self,
+        coin_type: Option<&str>,
     ) -> Result<VestingAnalyticsResponse, crate::error::SocialError> {
-        vesting::get_vesting_analytics(&self.db).await
+        vesting::get_vesting_analytics(&self.db, coin_type).await
     }
 
     pub async fn get_vesting_leaderboard(
         &self,
+        coin_type: Option<&str>,
         limit: i64,
         offset: i64,
         page: i64,
     ) -> Result<VestingLeaderboardResponse, crate::error::SocialError> {
-        vesting::get_vesting_leaderboard(&self.db, limit, offset, page).await
+        vesting::get_vesting_leaderboard(&self.db, coin_type, limit, offset, page).await
     }
 
     pub async fn get_spt_pool_by_associated_id(

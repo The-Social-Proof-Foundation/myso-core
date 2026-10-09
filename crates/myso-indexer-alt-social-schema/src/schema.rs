@@ -2943,6 +2943,7 @@ diesel::table! {
         wallet_id -> Text,
         event_type -> Text,
         owner_address -> Text,
+        coin_type -> Text,
         amount -> Int8,
         remaining_balance -> Nullable<Int8>,
         start_time -> Nullable<Int8>,
@@ -2958,6 +2959,7 @@ diesel::table! {
     vesting_wallets (wallet_id) {
         wallet_id -> Text,
         owner_address -> Text,
+        coin_type -> Text,
         total_amount -> Int8,
         start_time -> Int8,
         schedule_end -> Int8,

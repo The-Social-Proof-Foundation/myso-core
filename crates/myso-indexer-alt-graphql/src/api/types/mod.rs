@@ -46,6 +46,7 @@ pub(crate) mod open_move_type;
 pub(crate) mod organization;
 pub(crate) mod owner;
 pub(crate) mod platform;
+pub(crate) mod agent_pnl;
 pub(crate) mod pnl;
 pub(crate) mod returns;
 pub(crate) mod poc;

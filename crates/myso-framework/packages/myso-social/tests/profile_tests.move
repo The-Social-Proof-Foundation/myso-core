@@ -30,6 +30,8 @@ module social_contracts::profile_tests {
     use myso::event;
     use myso::transfer;
     
+    public struct TEST_COIN has drop {}
+
     const ADMIN: address = @0xAD;
     const USER1: address = @0x1;
     const USER2: address = @0x2;
@@ -1973,7 +1975,7 @@ module social_contracts::profile_tests {
     ) {
         let (kinds, time_offsets, durations, amount_bps, curve_factors) =
             linear_piece_vectors(duration);
-        profile::vest_myso(
+        profile::vest_tokens<MYSO>(
             profile_config,
             coin,
             recipient,
@@ -2029,7 +2031,7 @@ module social_contracts::profile_tests {
 
         test_scenario::next_tx(&mut scenario, USER2);
         {
-            let vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             assert!(profile::vesting_owner(&vesting_wallet) == USER2, 1);
             assert!(profile::vesting_total_amount(&vesting_wallet) == 10_000_000_000, 2);
             assert!(profile::vesting_start_time(&vesting_wallet) == 2000, 3);
@@ -2038,6 +2040,85 @@ module social_contracts::profile_tests {
             assert!(profile::vesting_balance(&vesting_wallet) == 10_000_000_000, 6);
             assert!(profile::vesting_piece_count(&vesting_wallet) == 1, 7);
             test_scenario::return_to_sender(&scenario, vesting_wallet);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun test_vest_claim_delete_non_myso_coin() {
+        let mut scenario = test_scenario::begin(ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(&mut scenario));
+            clock::share_for_testing(clock);
+
+            let mut clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::set_for_testing(&mut clock, 1000);
+            clock::share_for_testing(clock);
+            let coins = coin::mint_for_testing<TEST_COIN>(20_000_000_000, test_scenario::ctx(&mut scenario));
+            transfer::public_transfer(coins, USER1);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER1);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            let coins = test_scenario::take_from_sender<Coin<TEST_COIN>>(&scenario);
+            let (kinds, time_offsets, durations, amount_bps, curve_factors) =
+                linear_piece_vectors(10000);
+
+            profile::vest_tokens<TEST_COIN>(
+                &profile_config,
+                coins,
+                USER2,
+                2000,
+                kinds,
+                time_offsets,
+                durations,
+                amount_bps,
+                curve_factors,
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<TEST_COIN>>(&scenario);
+            assert!(profile::vesting_total_amount(&vesting_wallet) == 20_000_000_000, 1);
+
+            clock::set_for_testing(&mut clock, 7000);
+            assert!(profile::claimable(&profile_config, &vesting_wallet, &clock) == 10_000_000_000, 2);
+            profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
+            assert!(profile::vesting_balance(&vesting_wallet) == 10_000_000_000, 3);
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scenario, vesting_wallet);
+            test_scenario::return_shared(profile_config);
+        };
+
+        test_scenario::next_tx(&mut scenario, USER2);
+        {
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
+            let mut clock = test_scenario::take_shared<Clock>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<TEST_COIN>>(&scenario);
+            let claimed = test_scenario::take_from_sender<Coin<TEST_COIN>>(&scenario);
+            assert!(coin::value(&claimed) == 10_000_000_000, 4);
+            test_scenario::return_to_sender(&scenario, claimed);
+
+            clock::set_for_testing(&mut clock, 15000);
+            profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
+            assert!(profile::vesting_balance(&vesting_wallet) == 0, 5);
+            profile::delete_vesting_wallet(vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(profile_config);
         };
 
         test_scenario::end(scenario);
@@ -2081,7 +2162,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             assert!(profile::claimable(&profile_config, &vesting_wallet, &clock) == 0, 1);
             profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
             assert!(profile::vesting_claimed_amount(&vesting_wallet) == 0, 2);
@@ -2132,7 +2213,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             clock::set_for_testing(&mut clock, 7000);
             assert!(profile::claimable(&profile_config, &vesting_wallet, &clock) == 5_000_000_000, 1);
             profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
@@ -2191,7 +2272,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             clock::set_for_testing(&mut clock, 15000);
             assert!(profile::claimable(&profile_config, &vesting_wallet, &clock) == 10_000_000_000, 1);
             profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
@@ -2250,7 +2331,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             clock::set_for_testing(&mut clock, 5000);
             assert!(profile::claimable(&profile_config, &vesting_wallet, &clock) == 3_000_000_000, 1);
             profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
@@ -2264,7 +2345,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             clock::set_for_testing(&mut clock, 11000);
             assert!(profile::claimable(&profile_config, &vesting_wallet, &clock) == 6_000_000_000, 3);
             profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
@@ -2278,7 +2359,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             clock::set_for_testing(&mut clock, 20000);
             assert!(profile::claimable(&profile_config, &vesting_wallet, &clock) == 3_000_000_000, 5);
             profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
@@ -2312,7 +2393,7 @@ module social_contracts::profile_tests {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
             let mut coins = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
-            profile::vest_myso(
+            profile::vest_tokens<MYSO>(
                 &profile_config,
                 coin::split(&mut coins, 10_000_000_000, test_scenario::ctx(&mut scenario)),
                 USER2,
@@ -2334,7 +2415,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             // Before cliff: continuous portion only, cliff lump not yet unlocked
             clock::set_for_testing(&mut clock, 6999);
             let before_cliff = profile::claimable(&profile_config, &vesting_wallet, &clock);
@@ -2391,7 +2472,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut clock = test_scenario::take_shared<Clock>(&scenario);
-            let vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             // 0.05% elapsed => 500 vested; threshold is 1000 (0.1%)
             clock::set_for_testing(&mut clock, 2005);
             assert!(profile::claimable(&profile_config, &vesting_wallet, &clock) == 0, 1);
@@ -2444,7 +2525,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             clock::set_for_testing(&mut clock, 12000);
             // Mid-schedule tiny accrual would be suppressed; end bypasses threshold
             assert!(profile::claimable(&profile_config, &vesting_wallet, &clock) == 1003, 1);
@@ -2497,7 +2578,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_address<VestingWallet>(&scenario, USER2);
+            let mut vesting_wallet = test_scenario::take_from_address<VestingWallet<MYSO>>(&scenario, USER2);
             profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(clock);
             test_scenario::return_to_address(USER2, vesting_wallet);
@@ -2580,7 +2661,7 @@ module social_contracts::profile_tests {
                 vector::push_back(&mut curve_factors, 0);
                 i = i + 1;
             };
-            profile::vest_myso(
+            profile::vest_tokens<MYSO>(
                 &profile_config,
                 coin::split(&mut coins, 10_000_000_000, test_scenario::ctx(&mut scenario)),
                 USER2,
@@ -2639,7 +2720,7 @@ module social_contracts::profile_tests {
         {
             let profile_config = test_scenario::take_shared<ProfileConfig>(&scenario);
             let mut clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let mut vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             clock::set_for_testing(&mut clock, 15000);
             profile::claim_vested_tokens(&profile_config, &mut vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
             assert!(profile::vesting_balance(&vesting_wallet) == 0, 1);
@@ -2651,7 +2732,7 @@ module social_contracts::profile_tests {
         test_scenario::next_tx(&mut scenario, USER2);
         {
             let clock = test_scenario::take_shared<Clock>(&scenario);
-            let vesting_wallet = test_scenario::take_from_sender<VestingWallet>(&scenario);
+            let vesting_wallet = test_scenario::take_from_sender<VestingWallet<MYSO>>(&scenario);
             profile::delete_vesting_wallet(vesting_wallet, &clock, test_scenario::ctx(&mut scenario));
             test_scenario::return_shared(clock);
         };

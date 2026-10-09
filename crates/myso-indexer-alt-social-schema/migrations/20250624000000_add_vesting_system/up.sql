@@ -8,6 +8,7 @@
 CREATE TABLE IF NOT EXISTS vesting_wallets (
     wallet_id TEXT PRIMARY KEY,
     owner_address TEXT NOT NULL,
+    coin_type TEXT NOT NULL,
     total_amount BIGINT NOT NULL,
     start_time BIGINT NOT NULL,
     schedule_end BIGINT NOT NULL,
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS vesting_events (
     wallet_id TEXT NOT NULL,
     event_type TEXT NOT NULL,
     owner_address TEXT NOT NULL,
+    coin_type TEXT NOT NULL,
     amount BIGINT NOT NULL,
     remaining_balance BIGINT,
     start_time BIGINT,
@@ -64,6 +66,7 @@ END $$;
 -- ============================================================================
 
 CREATE INDEX IF NOT EXISTS idx_vesting_wallets_owner_address ON vesting_wallets(owner_address);
+CREATE INDEX IF NOT EXISTS idx_vesting_wallets_coin_type ON vesting_wallets(coin_type);
 CREATE INDEX IF NOT EXISTS idx_vesting_wallets_start_time ON vesting_wallets(start_time);
 CREATE INDEX IF NOT EXISTS idx_vesting_wallets_schedule_end ON vesting_wallets(schedule_end);
 CREATE INDEX IF NOT EXISTS idx_vesting_wallets_created_at ON vesting_wallets(created_at);

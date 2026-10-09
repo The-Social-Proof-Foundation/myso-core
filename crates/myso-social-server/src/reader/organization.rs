@@ -2,11 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use myso_indexer_alt_social_reader::{
-    get_agentic_organization_for_db, get_organization_leaderboard_for_db,
-    get_organization_statistics_for_db, list_agentic_organizations_by_owner_for_db,
-    org_type_from_slug, organization_categories, OrganizationCategoryInfo,
-    OrganizationLeaderboardResult, OrganizationLeaderboardSort, OrganizationStatistics,
-    OrganizationStatsWindow,
+    OrganizationCategoryInfo, OrganizationLeaderboardResult, OrganizationLeaderboardSort,
+    OrganizationStatistics, OrganizationStatsWindow, get_agentic_organization_for_db,
+    get_organization_leaderboard_for_db, get_organization_statistics_for_db,
+    list_agentic_organizations_by_owner_for_db, org_type_from_slug, organization_categories,
 };
 use myso_indexer_alt_social_schema::models::AgenticOrganizationRow;
 use myso_pg_db::Db;

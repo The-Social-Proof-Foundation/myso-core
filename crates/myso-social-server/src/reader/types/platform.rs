@@ -3,8 +3,8 @@
 
 use serde::Serialize;
 
-use diesel::sql_types::{BigInt, Text};
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Text};
 
 // API-layer type: subset of Platform for list/detail responses.
 // DB-table type: myso_indexer_alt_social_schema::models::Platform.

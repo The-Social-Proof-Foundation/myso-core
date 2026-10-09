@@ -9973,10 +9973,10 @@ cliff_lump_piece
 pieces_from_vectors
 	fun
 	0x50c1::profile
-vest_myso
+vest_tokens
 	public entry fun
 	0x50c1::profile
-vest_myso_internal
+vest_tokens_internal
 	fun
 	0x50c1::profile
 claim_vested_tokens

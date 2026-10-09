@@ -9,6 +9,7 @@ module social_contracts::profile {
     use std::string::{Self, String};
     use std::ascii;
     use std::option::{Self, Option};
+    use std::type_name::{Self, TypeName};
     
     use myso::{
         object::{Self, UID, ID},
@@ -304,10 +305,10 @@ module social_contracts::profile {
         curve_factor: u64,
     }
 
-    /// Vesting Wallet contains MYSO coins released over a piecewise schedule.
-    public struct VestingWallet has key, store {
+    /// Vesting Wallet holds coins of any type `T` released over a piecewise schedule.
+    public struct VestingWallet<phantom T> has key, store {
         id: UID,
-        balance: Balance<MYSO>,
+        balance: Balance<T>,
         owner: address,
         start_time: u64,
         claimed_amount: u64,
@@ -560,10 +561,11 @@ module social_contracts::profile {
         curve_factor: u64,
     }
 
-    /// Event emitted when MYSO tokens are vested
+    /// Event emitted when tokens are vested
     public struct TokensVestedEvent has copy, drop {
         wallet_id: address,
         owner: address,
+        coin_type: TypeName,
         total_amount: u64,
         start_time: u64,
         schedule_end: u64,
@@ -575,6 +577,7 @@ module social_contracts::profile {
     public struct TokensClaimedEvent has copy, drop {
         wallet_id: address,
         owner: address,
+        coin_type: TypeName,
         claimed_amount: u64,
         remaining_balance: u64,
         claimed_at: u64,
@@ -584,6 +587,7 @@ module social_contracts::profile {
     public struct VestingWalletDeletedEvent has copy, drop {
         wallet_id: address,
         owner: address,
+        coin_type: TypeName,
         deleted_at: u64,
     }
 
@@ -3081,7 +3085,7 @@ module social_contracts::profile {
         ((alloc as u128) * curved / (precision as u128)) as u64
     }
 
-    fun calculate_total_vested(config: &ProfileConfig, wallet: &VestingWallet, current_time: u64): u64 {
+    fun calculate_total_vested<T>(config: &ProfileConfig, wallet: &VestingWallet<T>, current_time: u64): u64 {
         if (current_time < wallet.start_time) {
             return 0
         };
@@ -3193,11 +3197,11 @@ module social_contracts::profile {
         pieces
     }
 
-    /// Create a vesting wallet from parallel piece vectors (entry-compatible).
+    /// Create a vesting wallet for any coin type `T` from parallel piece vectors (entry-compatible).
     /// Cliff lumps unlock instantly at `time_offset`; continuous pieces vest over `duration`.
-    public entry fun vest_myso(
+    public entry fun vest_tokens<T>(
         config: &ProfileConfig,
-        coin: Coin<MYSO>,
+        coin: Coin<T>,
         recipient: address,
         start_time: u64,
         kinds: vector<u8>,
@@ -3215,12 +3219,12 @@ module social_contracts::profile {
             amount_bps_list,
             curve_factors,
         );
-        vest_myso_internal(config, coin, recipient, start_time, pieces, clock, ctx);
+        vest_tokens_internal<T>(config, coin, recipient, start_time, pieces, clock, ctx);
     }
 
-    fun vest_myso_internal(
+    fun vest_tokens_internal<T>(
         config: &ProfileConfig,
-        coin: Coin<MYSO>,
+        coin: Coin<T>,
         recipient: address,
         start_time: u64,
         pieces: vector<VestingPiece>,
@@ -3235,7 +3239,7 @@ module social_contracts::profile {
 
         let schedule_end = validate_schedule(config, start_time, total_amount, &pieces);
 
-        let wallet = VestingWallet {
+        let wallet = VestingWallet<T> {
             id: object::new(ctx),
             balance: coin::into_balance(coin),
             owner: recipient,
@@ -3266,6 +3270,7 @@ module social_contracts::profile {
         event::emit(TokensVestedEvent {
             wallet_id,
             owner: recipient,
+            coin_type: type_name::with_defining_ids<T>(),
             total_amount,
             start_time,
             schedule_end,
@@ -3277,9 +3282,9 @@ module social_contracts::profile {
     }
 
     /// Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
-    public entry fun claim_vested_tokens(
+    public entry fun claim_vested_tokens<T>(
         config: &ProfileConfig,
-        wallet: &mut VestingWallet,
+        wallet: &mut VestingWallet<T>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -3292,7 +3297,7 @@ module social_contracts::profile {
             assert!(wallet.claimed_amount <= MAX_U64 - claimable_amount, EOverflow);
             wallet.claimed_amount = wallet.claimed_amount + claimable_amount;
 
-            let claimed_coin = coin::from_balance<MYSO>(
+            let claimed_coin = coin::from_balance<T>(
                 balance::split(&mut wallet.balance, claimable_amount),
                 ctx
             );
@@ -3303,6 +3308,7 @@ module social_contracts::profile {
             event::emit(TokensClaimedEvent {
                 wallet_id,
                 owner: sender,
+                coin_type: type_name::with_defining_ids<T>(),
                 claimed_amount: claimable_amount,
                 remaining_balance,
                 claimed_at: clock::timestamp_ms(clock),
@@ -3312,11 +3318,11 @@ module social_contracts::profile {
         };
     }
 
-    public fun claimable(config: &ProfileConfig, wallet: &VestingWallet, clock: &Clock): u64 {
+    public fun claimable<T>(config: &ProfileConfig, wallet: &VestingWallet<T>, clock: &Clock): u64 {
         calculate_claimable(config, wallet, clock)
     }
 
-    fun calculate_claimable(config: &ProfileConfig, wallet: &VestingWallet, clock: &Clock): u64 {
+    fun calculate_claimable<T>(config: &ProfileConfig, wallet: &VestingWallet<T>, clock: &Clock): u64 {
         let current_time = clock::timestamp_ms(clock);
         let remaining_balance = balance::value(&wallet.balance);
 
@@ -3377,14 +3383,14 @@ module social_contracts::profile {
     }
 
     /// Delete an empty vesting wallet
-    public entry fun delete_vesting_wallet(wallet: VestingWallet, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun delete_vesting_wallet<T>(wallet: VestingWallet<T>, clock: &Clock, ctx: &mut TxContext) {
         let sender = tx_context::sender(ctx);
         assert!(wallet.owner == sender, ENotVestingWalletOwner);
 
         let wallet_id = object::uid_to_address(&wallet.id);
         let owner = wallet.owner;
 
-        let VestingWallet {
+        let VestingWallet<T> {
             id,
             balance,
             owner: _,
@@ -3400,6 +3406,7 @@ module social_contracts::profile {
         event::emit(VestingWalletDeletedEvent {
             wallet_id,
             owner,
+            coin_type: type_name::with_defining_ids<T>(),
             deleted_at: clock::timestamp_ms(clock),
         });
 
@@ -3409,35 +3416,35 @@ module social_contracts::profile {
 
     // === Vesting Wallet Accessors ===
 
-    public fun vesting_balance(wallet: &VestingWallet): u64 {
+    public fun vesting_balance<T>(wallet: &VestingWallet<T>): u64 {
         balance::value(&wallet.balance)
     }
 
-    public fun vesting_owner(wallet: &VestingWallet): address {
+    public fun vesting_owner<T>(wallet: &VestingWallet<T>): address {
         wallet.owner
     }
 
-    public fun vesting_start_time(wallet: &VestingWallet): u64 {
+    public fun vesting_start_time<T>(wallet: &VestingWallet<T>): u64 {
         wallet.start_time
     }
 
-    public fun vesting_schedule_end(wallet: &VestingWallet): u64 {
+    public fun vesting_schedule_end<T>(wallet: &VestingWallet<T>): u64 {
         wallet.schedule_end
     }
 
-    public fun vesting_total_amount(wallet: &VestingWallet): u64 {
+    public fun vesting_total_amount<T>(wallet: &VestingWallet<T>): u64 {
         wallet.total_amount
     }
 
-    public fun vesting_claimed_amount(wallet: &VestingWallet): u64 {
+    public fun vesting_claimed_amount<T>(wallet: &VestingWallet<T>): u64 {
         wallet.claimed_amount
     }
 
-    public fun vesting_piece_count(wallet: &VestingWallet): u64 {
+    public fun vesting_piece_count<T>(wallet: &VestingWallet<T>): u64 {
         vector::length(&wallet.pieces)
     }
 
-    public fun vesting_pieces(wallet: &VestingWallet): vector<VestingPiece> {
+    public fun vesting_pieces<T>(wallet: &VestingWallet<T>): vector<VestingPiece> {
         let mut out = vector::empty<VestingPiece>();
         let len = vector::length(&wallet.pieces);
         let mut i = 0;

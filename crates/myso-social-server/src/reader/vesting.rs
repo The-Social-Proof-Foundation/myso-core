@@ -1,13 +1,13 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use diesel::sql_types::{BigInt, Text};
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
-use myso_indexer_alt_social_schema::models::parse_pieces;
+use myso_indexer_alt_social_schema::models::{canonical_coin_type, parse_pieces};
 use myso_indexer_alt_social_schema::schema::{vesting_events, vesting_wallets};
 
 use crate::error::SocialError;
@@ -22,6 +22,7 @@ use myso_pg_db::Db;
 fn vesting_wallet_row_from_tuple(
     wallet_id: String,
     owner_address: String,
+    coin_type: String,
     total_amount: i64,
     start_time: i64,
     schedule_end: i64,
@@ -35,6 +36,7 @@ fn vesting_wallet_row_from_tuple(
     VestingWalletRow {
         wallet_id,
         owner_address,
+        coin_type,
         total_amount,
         start_time,
         schedule_end,
@@ -51,215 +53,98 @@ pub(crate) async fn list_vesting_wallets(
     db: &Db,
     active_only: bool,
     owner: Option<&str>,
+    coin_type: Option<&str>,
     limit: i64,
     offset: i64,
     page: i64,
 ) -> Result<VestingWalletsResponse, SocialError> {
+    let coin_type = coin_type.map(canonical_coin_type);
+    let coin_type = coin_type.as_deref();
     let mut conn = db.connect().await?;
     let current_time_ms = chrono::Utc::now().timestamp_millis();
 
-    let (total, results) = if active_only || owner.is_some() {
-        #[derive(QueryableByName)]
-        struct CountRow {
-            #[diesel(sql_type = BigInt)]
-            count: i64,
-        }
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = BigInt)]
+        count: i64,
+    }
 
-        let (count_sql, data_sql) = if owner.is_some() {
-            if active_only {
-                (
-                    "SELECT COUNT(*)::bigint as count FROM vesting_wallets \
-                     WHERE owner_address = $1 AND start_time <= $2 AND remaining_balance > 0 \
-                     AND schedule_end > $2",
-                    "SELECT wallet_id, owner_address, total_amount, start_time, schedule_end, pieces, \
-                     claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
-                     FROM vesting_wallets \
-                     WHERE owner_address = $1 AND start_time <= $2 AND remaining_balance > 0 \
-                     AND schedule_end > $2 \
-                     ORDER BY created_at DESC LIMIT $3 OFFSET $4",
-                )
-            } else {
-                (
-                    "SELECT COUNT(*)::bigint as count FROM vesting_wallets WHERE owner_address = $1",
-                    "SELECT wallet_id, owner_address, total_amount, start_time, schedule_end, pieces, \
-                     claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
-                     FROM vesting_wallets WHERE owner_address = $1 \
-                     ORDER BY created_at DESC LIMIT $2 OFFSET $3",
-                )
-            }
-        } else {
-            (
-                "SELECT COUNT(*)::bigint as count FROM vesting_wallets \
-                 WHERE start_time <= $1 AND remaining_balance > 0 AND schedule_end > $1",
-                "SELECT wallet_id, owner_address, total_amount, start_time, schedule_end, pieces, \
-                 claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
-                 FROM vesting_wallets \
-                 WHERE start_time <= $1 AND remaining_balance > 0 AND schedule_end > $1 \
-                 ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+    const FILTER: &str = "($1::text IS NULL OR owner_address = $1) \
+         AND ($2::text IS NULL OR coin_type = $2) \
+         AND (NOT $3 OR (start_time <= $4 AND remaining_balance > 0 AND schedule_end > $4))";
+
+    let total: i64 = diesel::sql_query(format!(
+        "SELECT COUNT(*)::bigint as count FROM vesting_wallets WHERE {FILTER}"
+    ))
+    .bind::<diesel::sql_types::Nullable<Text>, _>(owner)
+    .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
+    .bind::<diesel::sql_types::Bool, _>(active_only)
+    .bind::<BigInt, _>(current_time_ms)
+    .get_result::<CountRow>(&mut conn)
+    .await?
+    .count;
+
+    #[derive(QueryableByName)]
+    struct WalletRow {
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        wallet_id: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        owner_address: String,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        coin_type: String,
+        #[diesel(sql_type = BigInt)]
+        total_amount: i64,
+        #[diesel(sql_type = BigInt)]
+        start_time: i64,
+        #[diesel(sql_type = BigInt)]
+        schedule_end: i64,
+        #[diesel(sql_type = diesel::sql_types::Jsonb)]
+        pieces: serde_json::Value,
+        #[diesel(sql_type = BigInt)]
+        claimed_amount: i64,
+        #[diesel(sql_type = BigInt)]
+        remaining_balance: i64,
+        #[diesel(sql_type = diesel::sql_types::Timestamp)]
+        created_at: chrono::NaiveDateTime,
+        #[diesel(sql_type = diesel::sql_types::Timestamp)]
+        updated_at: chrono::NaiveDateTime,
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        transaction_id: String,
+    }
+
+    let rows: Vec<WalletRow> = diesel::sql_query(format!(
+        "SELECT wallet_id, owner_address, coin_type, total_amount, start_time, schedule_end, \
+         pieces, claimed_amount, remaining_balance, created_at, updated_at, transaction_id \
+         FROM vesting_wallets WHERE {FILTER} \
+         ORDER BY created_at DESC LIMIT $5 OFFSET $6"
+    ))
+    .bind::<diesel::sql_types::Nullable<Text>, _>(owner)
+    .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
+    .bind::<diesel::sql_types::Bool, _>(active_only)
+    .bind::<BigInt, _>(current_time_ms)
+    .bind::<BigInt, _>(limit)
+    .bind::<BigInt, _>(offset)
+    .load(&mut conn)
+    .await?;
+    let results: Vec<VestingWalletRow> = rows
+        .into_iter()
+        .map(|r| {
+            vesting_wallet_row_from_tuple(
+                r.wallet_id,
+                r.owner_address,
+                r.coin_type,
+                r.total_amount,
+                r.start_time,
+                r.schedule_end,
+                r.pieces,
+                r.claimed_amount,
+                r.remaining_balance,
+                r.created_at,
+                r.updated_at,
+                r.transaction_id,
             )
-        };
-
-        let total: i64 = if let Some(o) = owner {
-            if active_only {
-                diesel::sql_query(count_sql)
-                    .bind::<diesel::sql_types::Text, _>(o)
-                    .bind::<BigInt, _>(current_time_ms)
-                    .get_result::<CountRow>(&mut conn)
-                    .await?
-            } else {
-                diesel::sql_query(count_sql)
-                    .bind::<diesel::sql_types::Text, _>(o)
-                    .get_result::<CountRow>(&mut conn)
-                    .await?
-            }
-        } else {
-            diesel::sql_query(count_sql)
-                .bind::<BigInt, _>(current_time_ms)
-                .get_result::<CountRow>(&mut conn)
-                .await?
-        }
-        .count;
-
-        #[derive(QueryableByName)]
-        struct WalletRow {
-            #[diesel(sql_type = diesel::sql_types::Text)]
-            wallet_id: String,
-            #[diesel(sql_type = diesel::sql_types::Text)]
-            owner_address: String,
-            #[diesel(sql_type = BigInt)]
-            total_amount: i64,
-            #[diesel(sql_type = BigInt)]
-            start_time: i64,
-            #[diesel(sql_type = BigInt)]
-            schedule_end: i64,
-            #[diesel(sql_type = diesel::sql_types::Jsonb)]
-            pieces: serde_json::Value,
-            #[diesel(sql_type = BigInt)]
-            claimed_amount: i64,
-            #[diesel(sql_type = BigInt)]
-            remaining_balance: i64,
-            #[diesel(sql_type = diesel::sql_types::Timestamp)]
-            created_at: chrono::NaiveDateTime,
-            #[diesel(sql_type = diesel::sql_types::Timestamp)]
-            updated_at: chrono::NaiveDateTime,
-            #[diesel(sql_type = diesel::sql_types::Text)]
-            transaction_id: String,
-        }
-
-        let rows: Vec<WalletRow> = if let Some(o) = owner {
-            if active_only {
-                diesel::sql_query(data_sql)
-                    .bind::<diesel::sql_types::Text, _>(o)
-                    .bind::<BigInt, _>(current_time_ms)
-                    .bind::<BigInt, _>(limit)
-                    .bind::<BigInt, _>(offset)
-                    .load(&mut conn)
-                    .await?
-            } else {
-                diesel::sql_query(data_sql)
-                    .bind::<diesel::sql_types::Text, _>(o)
-                    .bind::<BigInt, _>(limit)
-                    .bind::<BigInt, _>(offset)
-                    .load(&mut conn)
-                    .await?
-            }
-        } else {
-            diesel::sql_query(data_sql)
-                .bind::<BigInt, _>(current_time_ms)
-                .bind::<BigInt, _>(limit)
-                .bind::<BigInt, _>(offset)
-                .load(&mut conn)
-                .await?
-        };
-        let results: Vec<VestingWalletRow> = rows
-            .into_iter()
-            .map(|r| {
-                vesting_wallet_row_from_tuple(
-                    r.wallet_id,
-                    r.owner_address,
-                    r.total_amount,
-                    r.start_time,
-                    r.schedule_end,
-                    r.pieces,
-                    r.claimed_amount,
-                    r.remaining_balance,
-                    r.created_at,
-                    r.updated_at,
-                    r.transaction_id,
-                )
-            })
-            .collect();
-        (total, results)
-    } else {
-        let total = vesting_wallets::table
-            .count()
-            .get_result::<i64>(&mut conn)
-            .await?;
-        let rows = vesting_wallets::table
-            .order_by(vesting_wallets::created_at.desc())
-            .limit(limit)
-            .offset(offset)
-            .select((
-                vesting_wallets::wallet_id,
-                vesting_wallets::owner_address,
-                vesting_wallets::total_amount,
-                vesting_wallets::start_time,
-                vesting_wallets::schedule_end,
-                vesting_wallets::pieces,
-                vesting_wallets::claimed_amount,
-                vesting_wallets::remaining_balance,
-                vesting_wallets::created_at,
-                vesting_wallets::updated_at,
-                vesting_wallets::transaction_id,
-            ))
-            .load::<(
-                String,
-                String,
-                i64,
-                i64,
-                i64,
-                serde_json::Value,
-                i64,
-                i64,
-                chrono::NaiveDateTime,
-                chrono::NaiveDateTime,
-                String,
-            )>(&mut conn)
-            .await?;
-        let results: Vec<VestingWalletRow> = rows
-            .into_iter()
-            .map(
-                |(
-                    wallet_id,
-                    owner_address,
-                    total_amount,
-                    start_time,
-                    schedule_end,
-                    pieces,
-                    claimed_amount,
-                    remaining_balance,
-                    created_at,
-                    updated_at,
-                    transaction_id,
-                )| {
-                    vesting_wallet_row_from_tuple(
-                        wallet_id,
-                        owner_address,
-                        total_amount,
-                        start_time,
-                        schedule_end,
-                        pieces,
-                        claimed_amount,
-                        remaining_balance,
-                        created_at,
-                        updated_at,
-                        transaction_id,
-                    )
-                },
-            )
-            .collect();
-        (total, results)
-    };
+        })
+        .collect();
 
     let owner_addresses: Vec<String> = results.iter().map(|w| w.owner_address.clone()).collect();
     let user_map = enrich_users_with_universal_data(&mut conn, owner_addresses).await?;
@@ -317,6 +202,7 @@ pub(crate) async fn get_vesting_wallet_by_id(
         .select((
             vesting_wallets::wallet_id,
             vesting_wallets::owner_address,
+            vesting_wallets::coin_type,
             vesting_wallets::total_amount,
             vesting_wallets::start_time,
             vesting_wallets::schedule_end,
@@ -328,6 +214,7 @@ pub(crate) async fn get_vesting_wallet_by_id(
             vesting_wallets::transaction_id,
         ))
         .first::<(
+            String,
             String,
             String,
             i64,
@@ -345,7 +232,9 @@ pub(crate) async fn get_vesting_wallet_by_id(
     let current_time_ms = chrono::Utc::now().timestamp_millis() as u64;
     Ok(result.map(|r| {
         VestingWalletWithStatus::from_wallet(
-            vesting_wallet_row_from_tuple(r.0, r.1, r.2, r.3, r.4, r.5, r.6, r.7, r.8, r.9, r.10),
+            vesting_wallet_row_from_tuple(
+                r.0, r.1, r.2, r.3, r.4, r.5, r.6, r.7, r.8, r.9, r.10, r.11,
+            ),
             current_time_ms,
         )
     }))
@@ -376,6 +265,7 @@ pub(crate) async fn get_vesting_wallet_events(
             vesting_events::wallet_id,
             vesting_events::event_type,
             vesting_events::owner_address,
+            vesting_events::coin_type,
             vesting_events::amount,
             vesting_events::remaining_balance,
             vesting_events::start_time,
@@ -387,6 +277,7 @@ pub(crate) async fn get_vesting_wallet_events(
         ))
         .load::<(
             i32,
+            String,
             String,
             String,
             String,
@@ -409,6 +300,7 @@ pub(crate) async fn get_vesting_wallet_events(
                 wallet_id,
                 event_type,
                 owner_address,
+                coin_type,
                 amount,
                 remaining_balance,
                 start_time,
@@ -422,6 +314,7 @@ pub(crate) async fn get_vesting_wallet_events(
                 wallet_id,
                 event_type,
                 owner_address,
+                coin_type,
                 amount,
                 remaining_balance,
                 start_time,
@@ -532,11 +425,12 @@ pub(crate) async fn get_vesting_claimable(
 pub(crate) async fn get_user_vesting_wallets(
     db: &Db,
     address: &str,
+    coin_type: Option<&str>,
     limit: i64,
     offset: i64,
     page: i64,
 ) -> Result<VestingWalletsResponse, SocialError> {
-    list_vesting_wallets(db, false, Some(address), limit, offset, page).await
+    list_vesting_wallets(db, false, Some(address), coin_type, limit, offset, page).await
 }
 
 pub(crate) async fn list_vesting_events(
@@ -568,6 +462,7 @@ pub(crate) async fn list_vesting_events(
             vesting_events::wallet_id,
             vesting_events::event_type,
             vesting_events::owner_address,
+            vesting_events::coin_type,
             vesting_events::amount,
             vesting_events::remaining_balance,
             vesting_events::start_time,
@@ -579,6 +474,7 @@ pub(crate) async fn list_vesting_events(
         ))
         .load::<(
             i32,
+            String,
             String,
             String,
             String,
@@ -601,6 +497,7 @@ pub(crate) async fn list_vesting_events(
                 wallet_id,
                 event_type,
                 owner_address,
+                coin_type,
                 amount,
                 remaining_balance,
                 start_time,
@@ -614,6 +511,7 @@ pub(crate) async fn list_vesting_events(
                 wallet_id,
                 event_type,
                 owner_address,
+                coin_type,
                 amount,
                 remaining_balance,
                 start_time,
@@ -647,7 +545,10 @@ pub(crate) async fn list_vesting_events(
 
 pub(crate) async fn get_vesting_analytics(
     db: &Db,
+    coin_type: Option<&str>,
 ) -> Result<VestingAnalyticsResponse, SocialError> {
+    let coin_type = coin_type.map(canonical_coin_type);
+    let coin_type = coin_type.as_deref();
     let mut conn = db.connect().await?;
     let current_time_ms = chrono::Utc::now().timestamp_millis();
 
@@ -667,22 +568,29 @@ pub(crate) async fn get_vesting_analytics(
         avg: f64,
     }
 
-    let total_wallets: i64 =
-        diesel::sql_query("SELECT COUNT(*)::bigint as count FROM vesting_wallets")
-            .get_result::<CountRow>(&mut conn)
-            .await
-            .map(|r| r.count)?;
+    let total_wallets: i64 = diesel::sql_query(
+        "SELECT COUNT(*)::bigint as count FROM vesting_wallets \
+         WHERE ($1::text IS NULL OR coin_type = $1)",
+    )
+    .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
+    .get_result::<CountRow>(&mut conn)
+    .await
+    .map(|r| r.count)?;
 
     let total_vested_amount: i64 = diesel::sql_query(
-        "SELECT COALESCE(SUM(total_amount), 0)::bigint as total FROM vesting_wallets",
+        "SELECT COALESCE(SUM(total_amount), 0)::bigint as total FROM vesting_wallets \
+         WHERE ($1::text IS NULL OR coin_type = $1)",
     )
+    .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
     .get_result::<SumRow>(&mut conn)
     .await
     .map(|r| r.total)?;
 
     let total_claimed_amount: i64 = diesel::sql_query(
-        "SELECT COALESCE(SUM(claimed_amount), 0)::bigint as total FROM vesting_wallets",
+        "SELECT COALESCE(SUM(claimed_amount), 0)::bigint as total FROM vesting_wallets \
+         WHERE ($1::text IS NULL OR coin_type = $1)",
     )
+    .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
     .get_result::<SumRow>(&mut conn)
     .await
     .map(|r| r.total)?;
@@ -695,9 +603,11 @@ pub(crate) async fn get_vesting_analytics(
         WHERE start_time <= $1
           AND remaining_balance > 0
           AND schedule_end > $1
+          AND ($2::text IS NULL OR coin_type = $2)
         "#,
     )
     .bind::<BigInt, _>(current_time_ms)
+    .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
     .get_result::<CountRow>(&mut conn)
     .await
     .map(|r| r.count)?;
@@ -706,22 +616,27 @@ pub(crate) async fn get_vesting_analytics(
         r#"
         SELECT COUNT(*)::bigint as count FROM vesting_wallets
         WHERE schedule_end <= $1
+          AND ($2::text IS NULL OR coin_type = $2)
         "#,
     )
     .bind::<BigInt, _>(current_time_ms)
+    .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
     .get_result::<CountRow>(&mut conn)
     .await
     .map(|r| r.count)?;
 
     let average_schedule_duration: f64 = diesel::sql_query(
-        "SELECT COALESCE(AVG(schedule_end - start_time)::double precision / 86400000.0, 0) as avg FROM vesting_wallets",
+        "SELECT COALESCE(AVG(schedule_end - start_time)::double precision / 86400000.0, 0) as avg \
+         FROM vesting_wallets WHERE ($1::text IS NULL OR coin_type = $1)",
     )
+    .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
     .get_result::<AvgRow>(&mut conn)
     .await
     .map(|r| r.avg)
     .unwrap_or(0.0);
 
     Ok(VestingAnalyticsResponse {
+        coin_type: coin_type.map(str::to_string),
         total_wallets,
         total_vested_amount,
         total_claimed_amount,
@@ -734,10 +649,13 @@ pub(crate) async fn get_vesting_analytics(
 
 pub(crate) async fn get_vesting_leaderboard(
     db: &Db,
+    coin_type: Option<&str>,
     limit: i64,
     offset: i64,
     _page: i64,
 ) -> Result<VestingLeaderboardResponse, SocialError> {
+    let coin_type = coin_type.map(canonical_coin_type);
+    let coin_type = coin_type.as_deref();
     let mut conn = db.connect().await?;
     let current_time_ms = chrono::Utc::now().timestamp_millis();
 
@@ -745,6 +663,8 @@ pub(crate) async fn get_vesting_leaderboard(
     struct LeaderboardRow {
         #[diesel(sql_type = Text)]
         owner_address: String,
+        #[diesel(sql_type = Text)]
+        coin_type: String,
         #[diesel(sql_type = BigInt)]
         total_vested: i64,
         #[diesel(sql_type = BigInt)]
@@ -761,8 +681,10 @@ pub(crate) async fn get_vesting_leaderboard(
         count: i64,
     }
     let total = diesel::sql_query(
-        "SELECT COUNT(DISTINCT owner_address)::bigint as count FROM vesting_wallets",
+        "SELECT COUNT(DISTINCT owner_address)::bigint as count FROM vesting_wallets \
+         WHERE ($1::text IS NULL OR coin_type = $1)",
     )
+    .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
     .get_result::<TotalRow>(&mut conn)
     .await
     .map(|r| r.count)?;
@@ -770,12 +692,14 @@ pub(crate) async fn get_vesting_leaderboard(
     let query = r#"
         SELECT
             owner_address,
+            coin_type,
             SUM(total_amount)::bigint as total_vested,
             SUM(claimed_amount)::bigint as total_claimed,
             SUM(CASE WHEN start_time <= $1 AND remaining_balance > 0 AND schedule_end > $1 THEN 1 ELSE 0 END)::bigint as active_wallets,
             SUM(CASE WHEN schedule_end <= $1 THEN 1 ELSE 0 END)::bigint as completed_wallets
         FROM vesting_wallets
-        GROUP BY owner_address
+        WHERE ($4::text IS NULL OR coin_type = $4)
+        GROUP BY owner_address, coin_type
         ORDER BY total_vested DESC
         LIMIT $2 OFFSET $3
     "#;
@@ -784,6 +708,7 @@ pub(crate) async fn get_vesting_leaderboard(
         .bind::<BigInt, _>(current_time_ms)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
+        .bind::<diesel::sql_types::Nullable<Text>, _>(coin_type)
         .load::<LeaderboardRow>(&mut conn)
         .await?;
 
@@ -807,6 +732,7 @@ pub(crate) async fn get_vesting_leaderboard(
                 });
             VestingLeaderboardEntry {
                 owner_address: r.owner_address,
+                coin_type: r.coin_type,
                 total_vested: r.total_vested,
                 total_claimed: r.total_claimed,
                 active_wallets: r.active_wallets,

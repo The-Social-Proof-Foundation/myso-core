@@ -276,8 +276,8 @@ pub use username::{
     USERNAME_RESERVATION_STATUS_ACTIVE, USERNAME_RESERVATION_STATUS_RELEASED,
 };
 pub use vesting::{
-    apply_curve, calculate_total_vested, calculate_vesting_claimable, finalize_claimable,
-    parse_pieces, vested_amount_for_piece, NewVestingEvent, NewVestingWallet, UpdateVestingWallet,
+    apply_curve, calculate_total_vested, calculate_vesting_claimable, canonical_coin_type,
+    finalize_claimable, parse_pieces, vested_amount_for_piece, NewVestingEvent, NewVestingWallet, UpdateVestingWallet,
     VestingEvent, VestingPiece, VestingWallet, BPS_DENOMINATOR, CURVE_FACTOR_LINEAR,
     CURVE_FACTOR_MAX, CURVE_FACTOR_MIN, MIN_CLAIM_THRESHOLD_DIVISOR, PIECE_KIND_CLIFF,
     PIECE_KIND_CONTINUOUS, VESTING_EVENT_TYPE_CLAIMED, VESTING_EVENT_TYPE_VESTED,

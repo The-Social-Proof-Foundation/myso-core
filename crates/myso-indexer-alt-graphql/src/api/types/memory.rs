@@ -36,6 +36,25 @@ impl SubAgent {
         &self.inner.label
     }
 
+    /// P&L for this agent (MYSO base units), net of its AI credit spend. Available for
+    /// revoked and deactivated agents too. `windows` defaults to 7d, 30d and all-time.
+    async fn pnl(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        windows: Option<Vec<crate::api::types::pnl::ProfilePnLWindow>>,
+    ) -> Option<crate::api::types::agent_pnl::SubAgentPnl> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let windows = crate::api::types::agent_pnl::resolve_windows(windows);
+        reader
+            .get_sub_agent_pnl(&self.inner.agent_object_id, &windows)
+            .await
+            .ok()
+            .flatten()
+            .map(crate::api::types::agent_pnl::SubAgentPnl::from_row)
+    }
+
     async fn memory_vault_id(&self, ctx: &async_graphql::Context<'_>) -> Option<String> {
         let reader_opt = ctx
             .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;

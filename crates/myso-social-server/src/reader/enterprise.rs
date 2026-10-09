@@ -9,9 +9,9 @@ use diesel::QueryDsl;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    AiCreditSpendApprovalRow, AuditLogRow, MemoryUsageStatsRow, NewAiCreditSpendApproval,
-    NewAuditLog, OrgInvitationRow, OrgMemoryPermissionRow, OrgRoleAssignmentRow, OrgRoleRow,
-    APPROVAL_STATUS_REQUESTED,
+    APPROVAL_STATUS_REQUESTED, AiCreditSpendApprovalRow, AuditLogRow, MemoryUsageStatsRow,
+    NewAiCreditSpendApproval, NewAuditLog, OrgInvitationRow, OrgMemoryPermissionRow,
+    OrgRoleAssignmentRow, OrgRoleRow,
 };
 use myso_indexer_alt_social_schema::schema::{
     ai_credit_balances, ai_credit_spend_approvals, audit_log, memory_usage_stats, org_invitations,

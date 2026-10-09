@@ -315,7 +315,7 @@ pub async fn get_profile_config(
         .map(Json)
 }
 
-fn parse_profile_pnl_windows(raw: Option<&str>) -> Result<Vec<ProfilePnLWindow>, SocialError> {
+pub(crate) fn parse_profile_pnl_windows(raw: Option<&str>) -> Result<Vec<ProfilePnLWindow>, SocialError> {
     let Some(raw) = raw.map(str::trim).filter(|s| !s.is_empty()) else {
         return Ok(vec![
             ProfilePnLWindow::Days7,

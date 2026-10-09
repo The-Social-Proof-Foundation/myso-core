@@ -150,6 +150,7 @@ pub fn calculate_vesting_claimable(
 pub struct VestingWallet {
     pub wallet_id: String,
     pub owner_address: String,
+    pub coin_type: String,
     pub total_amount: i64,
     pub start_time: i64,
     pub schedule_end: i64,
@@ -166,6 +167,7 @@ pub struct VestingWallet {
 pub struct NewVestingWallet {
     pub wallet_id: String,
     pub owner_address: String,
+    pub coin_type: String,
     pub total_amount: i64,
     pub start_time: i64,
     pub schedule_end: i64,
@@ -192,6 +194,7 @@ pub struct VestingEvent {
     pub wallet_id: String,
     pub event_type: String,
     pub owner_address: String,
+    pub coin_type: String,
     pub amount: i64,
     pub remaining_balance: Option<i64>,
     pub start_time: Option<i64>,
@@ -208,6 +211,7 @@ pub struct NewVestingEvent {
     pub wallet_id: String,
     pub event_type: String,
     pub owner_address: String,
+    pub coin_type: String,
     pub amount: i64,
     pub remaining_balance: Option<i64>,
     pub start_time: Option<i64>,
@@ -294,5 +298,67 @@ mod tests {
         let total = 10_000_000_000_i64;
         let claimable = calculate_vesting_claimable(total, 2000, 12_000, &pieces, 0, 7000, total);
         assert_eq!(claimable, 6_250_000_000);
+    }
+}
+
+/// One spelling for a Move coin type, so stored values and API filters compare equal.
+///
+/// Type names reach the indexer as `0x2::myso::MYSO`, `2::myso::MYSO` or with a zero-padded
+/// 64-digit address. The leading address becomes `0x` + lowercase hex with leading zeros
+/// dropped; the module/struct path (and any generic arguments) is kept verbatim.
+pub fn canonical_coin_type(raw: &str) -> String {
+    let trimmed = raw.trim();
+    let Some((address, rest)) = trimmed.split_once("::") else {
+        return trimmed.to_string();
+    };
+    let hex = address
+        .strip_prefix("0x")
+        .or_else(|| address.strip_prefix("0X"))
+        .unwrap_or(address);
+    if hex.is_empty() || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return trimmed.to_string();
+    }
+    let hex = hex.trim_start_matches('0').to_ascii_lowercase();
+    let hex = if hex.is_empty() { "0".to_string() } else { hex };
+    format!("0x{hex}::{rest}")
+}
+
+#[cfg(test)]
+mod canonical_coin_type_tests {
+    use super::canonical_coin_type;
+
+    #[test]
+    fn spellings_of_one_type_agree() {
+        let expected = "0x2::myso::MYSO";
+        assert_eq!(canonical_coin_type("0x2::myso::MYSO"), expected);
+        assert_eq!(canonical_coin_type("2::myso::MYSO"), expected);
+        assert_eq!(
+            canonical_coin_type(
+                "0x0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO"
+            ),
+            expected
+        );
+        assert_eq!(
+            canonical_coin_type(
+                "0000000000000000000000000000000000000000000000000000000000000002::myso::MYSO"
+            ),
+            expected
+        );
+    }
+
+    #[test]
+    fn symbol_case_and_generics_are_preserved() {
+        assert_eq!(canonical_coin_type("0xABC::usdc::USDC"), "0xabc::usdc::USDC");
+        assert_eq!(
+            canonical_coin_type("0x00A::lp::LP<0x2::myso::MYSO>"),
+            "0xa::lp::LP<0x2::myso::MYSO>"
+        );
+    }
+
+    #[test]
+    fn non_type_strings_pass_through() {
+        assert_eq!(canonical_coin_type("  "), "");
+        assert_eq!(canonical_coin_type("MYSO"), "MYSO");
+        assert_eq!(canonical_coin_type("zz::a::B"), "zz::a::B");
     }
 }
