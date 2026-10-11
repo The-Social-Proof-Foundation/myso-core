@@ -51,6 +51,14 @@ pub struct BcsMoveObjectId {
     bytes: AccountAddress,
 }
 
+impl BcsMoveObjectId {
+    /// For tests and fixtures: wraps an address as a Move `ID`.
+    #[cfg(test)]
+    pub fn from_address(bytes: AccountAddress) -> Self {
+        Self { bytes }
+    }
+}
+
 fn move_object_id_to_string(id: &BcsMoveObjectId) -> String {
     addr_to_string(&id.bytes)
 }
@@ -234,6 +242,208 @@ struct BcsAgentGroupCreated {
     group_name: String,
     group_uuid: String,
     created_at: u64,
+}
+
+
+// ---------------------------------------------------------------------------
+// agent_task events (flat; field order must match social_contracts::agent_task)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskOffered {
+    pub task_id: BcsMoveObjectId,
+    pub buyer_principal: AccountAddress,
+    pub buyer_agent_id: Option<BcsMoveObjectId>,
+    pub buyer_memory_account_id: BcsMoveObjectId,
+    pub seller_principal: AccountAddress,
+    pub seller_agent_id: BcsMoveObjectId,
+    pub seller_memory_account_id: BcsMoveObjectId,
+    pub organization_id: Option<BcsMoveObjectId>,
+    pub room_group_id: Option<BcsMoveObjectId>,
+    pub platform_id: Option<AccountAddress>,
+    pub title: String,
+    pub scope_digest: Vec<u8>,
+    pub amount_mist: u64,
+    pub accept_window_ms: u64,
+    pub delivery_window_ms: u64,
+    pub settle_window_ms: u64,
+    pub platform_fee_bps: u64,
+    pub ecosystem_fee_bps: u64,
+    pub terms_digest: Vec<u8>,
+    pub accept_deadline_ms: u64,
+    pub created_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskAccepted {
+    pub task_id: BcsMoveObjectId,
+    pub seller_agent_id: BcsMoveObjectId,
+    pub seller_principal: AccountAddress,
+    pub accepted_at_ms: u64,
+    pub delivery_deadline_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskCancelled {
+    pub task_id: BcsMoveObjectId,
+    pub close_kind: u8,
+    pub buyer_principal: AccountAddress,
+    pub amount_mist: u64,
+    pub cancelled_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskDelivered {
+    pub task_id: BcsMoveObjectId,
+    pub seller_agent_id: BcsMoveObjectId,
+    pub deliverable_digest: Vec<u8>,
+    pub deliverable_uri: String,
+    pub delivered_at_ms: u64,
+    pub settle_deadline_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskRefundProposed {
+    pub task_id: BcsMoveObjectId,
+    pub proposer_role: u8,
+    pub proposed_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskRefundProposalCleared {
+    pub task_id: BcsMoveObjectId,
+    pub cleared_by_role: u8,
+    pub reason: u8,
+    pub cleared_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskRefunded {
+    pub task_id: BcsMoveObjectId,
+    pub refund_kind: u8,
+    pub buyer_principal: AccountAddress,
+    pub amount_mist: u64,
+    pub refunded_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskReceiptSettled {
+    pub task_id: BcsMoveObjectId,
+    pub receipt_id: BcsMoveObjectId,
+    pub buyer_principal: AccountAddress,
+    pub buyer_agent_id: Option<BcsMoveObjectId>,
+    pub seller_principal: AccountAddress,
+    pub seller_agent_id: BcsMoveObjectId,
+    pub organization_id: Option<BcsMoveObjectId>,
+    pub room_group_id: Option<BcsMoveObjectId>,
+    pub settlement_kind: u8,
+    pub amount_mist: u64,
+    pub platform_fee_mist: u64,
+    pub ecosystem_fee_mist: u64,
+    pub net_amount_mist: u64,
+    pub deliverable_digest: Option<Vec<u8>>,
+    pub deliverable_uri: Option<String>,
+    pub buyer_credibility_bps: u64,
+    pub seller_credibility_bps: u64,
+    pub settle_deadline_ms: u64,
+    pub review_deadline_ms: u64,
+    pub settled_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskReviewSubmitted {
+    pub task_id: BcsMoveObjectId,
+    pub receipt_id: BcsMoveObjectId,
+    pub rater_role: u8,
+    pub rater_principal: AccountAddress,
+    pub rater_agent_id: Option<BcsMoveObjectId>,
+    pub reviewee_principal: AccountAddress,
+    pub reviewee_agent_id: Option<BcsMoveObjectId>,
+    pub stars: u8,
+    pub rater_credibility_bps: u64,
+    pub value_weight_bps: u64,
+    pub base_weight_bps: u64,
+    pub prior_pair_reviews: u64,
+    pub weight_bps: u64,
+    pub reviewed_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskConfigUpdated {
+    pub updated_by: AccountAddress,
+    pub platform_fee_bps: u64,
+    pub ecosystem_fee_bps: u64,
+    pub ecosystem_fee_recipient: AccountAddress,
+    pub min_escrow_mist: u64,
+    pub accept_window_min_ms: u64,
+    pub accept_window_default_ms: u64,
+    pub accept_window_max_ms: u64,
+    pub delivery_window_min_ms: u64,
+    pub delivery_window_max_ms: u64,
+    pub settle_window_min_ms: u64,
+    pub settle_window_max_ms: u64,
+    pub release_grace_ms: u64,
+    pub review_window_ms: u64,
+    pub max_title_bytes: u64,
+    pub max_uri_bytes: u64,
+    pub active: bool,
+    pub prior_mean_milli: u64,
+    pub prior_weight_bps: u64,
+    pub value_ref_mist: u64,
+    pub min_value_weight_bps: u64,
+    pub max_value_weight_bps: u64,
+    pub cred_base_bps: u64,
+    pub cred_step_bps: u64,
+    pub cred_cap_n: u64,
+    pub cred_max_bps: u64,
+    pub overall_seller_weight_bps: u64,
+    pub overall_buyer_weight_bps: u64,
+    pub timestamp_ms: u64,
+}
+
+/// `memory::ReputationUpdated`: the aggregate after one review, for one subject and role.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsReputationUpdated {
+    pub subject_kind: u8,
+    pub subject_id: BcsMoveObjectId,
+    pub principal_owner: AccountAddress,
+    pub organization_id: Option<BcsMoveObjectId>,
+    pub role: u8,
+    pub review_count: u64,
+    pub star_1: u64,
+    pub star_2: u64,
+    pub star_3: u64,
+    pub star_4: u64,
+    pub star_5: u64,
+    pub weight_sum_bps: u128,
+    pub weighted_star_sum: u128,
+    pub bayesian_score_milli: u64,
+    pub confidence_bps: u64,
+    pub receipt_id: BcsMoveObjectId,
+    pub updated_at_ms: u64,
+}
+
+/// `memory::CredibilityUpdated`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsCredibilityUpdated {
+    pub account_id: BcsMoveObjectId,
+    pub principal_owner: AccountAddress,
+    pub settled_count: u64,
+    pub volume_mist: u128,
+    pub credibility_bps: u64,
+    pub updated_at_ms: u64,
+}
+
+/// Mirror of `messaging::AgentRoomBound`; field order must match the Move struct.
+#[derive(Debug, Deserialize)]
+struct BcsAgentRoomBound {
+    group_id: BcsMoveObjectId,
+    room_kind: u8,
+    task_id: Option<BcsMoveObjectId>,
+    creator_actor: AccountAddress,
+    creator_principal: AccountAddress,
+    organization_id: Option<BcsMoveObjectId>,
+    created_at_ms: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -3230,6 +3440,7 @@ fn parse_event_contents_inner(
         "paid_messaging_policy" => parse_paid_messaging_policy_event(event_name, contents),
         "messaging_config" | "messaging" => parse_messaging_event(event_name, contents),
         "message_log" => parse_message_log_event(event_name, contents),
+        "agent_task" => parse_agent_task_event(event_name, contents),
         _ => Ok(None),
     };
 
@@ -3591,6 +3802,192 @@ fn parse_paid_messaging_policy_event(
     }
 }
 
+fn hex_digest(bytes: &[u8]) -> String {
+    hex::encode(bytes)
+}
+
+/// Every `agent_task` event. u128 values never appear here; they are strings in the memory events.
+fn parse_agent_task_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "TaskOffered" => {
+            let ev = bcs::from_bytes::<BcsTaskOffered>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "buyer_principal": addr_to_string(&ev.buyer_principal),
+                "buyer_agent_id": optional_move_object_id_json(&ev.buyer_agent_id),
+                "buyer_memory_account_id": move_object_id_to_string(&ev.buyer_memory_account_id),
+                "seller_principal": addr_to_string(&ev.seller_principal),
+                "seller_agent_id": move_object_id_to_string(&ev.seller_agent_id),
+                "seller_memory_account_id": move_object_id_to_string(&ev.seller_memory_account_id),
+                "organization_id": optional_move_object_id_json(&ev.organization_id),
+                "room_group_id": optional_move_object_id_json(&ev.room_group_id),
+                "platform_id": optional_addr_json(&ev.platform_id),
+                "title": ev.title,
+                "scope_digest": hex_digest(&ev.scope_digest),
+                "amount_mist": ev.amount_mist,
+                "accept_window_ms": ev.accept_window_ms,
+                "delivery_window_ms": ev.delivery_window_ms,
+                "settle_window_ms": ev.settle_window_ms,
+                "platform_fee_bps": ev.platform_fee_bps,
+                "ecosystem_fee_bps": ev.ecosystem_fee_bps,
+                "terms_digest": hex_digest(&ev.terms_digest),
+                "accept_deadline_ms": ev.accept_deadline_ms,
+                "created_at_ms": ev.created_at_ms,
+            })))
+        }
+        "TaskAccepted" => {
+            let ev = bcs::from_bytes::<BcsTaskAccepted>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "seller_agent_id": move_object_id_to_string(&ev.seller_agent_id),
+                "seller_principal": addr_to_string(&ev.seller_principal),
+                "accepted_at_ms": ev.accepted_at_ms,
+                "delivery_deadline_ms": ev.delivery_deadline_ms,
+            })))
+        }
+        "TaskCancelled" => {
+            let ev = bcs::from_bytes::<BcsTaskCancelled>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "close_kind": ev.close_kind,
+                "buyer_principal": addr_to_string(&ev.buyer_principal),
+                "amount_mist": ev.amount_mist,
+                "cancelled_at_ms": ev.cancelled_at_ms,
+            })))
+        }
+        "TaskDelivered" => {
+            let ev = bcs::from_bytes::<BcsTaskDelivered>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "seller_agent_id": move_object_id_to_string(&ev.seller_agent_id),
+                "deliverable_digest": hex_digest(&ev.deliverable_digest),
+                "deliverable_uri": ev.deliverable_uri,
+                "delivered_at_ms": ev.delivered_at_ms,
+                "settle_deadline_ms": ev.settle_deadline_ms,
+            })))
+        }
+        "TaskRefundProposed" => {
+            let ev = bcs::from_bytes::<BcsTaskRefundProposed>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "proposer_role": ev.proposer_role,
+                "proposed_at_ms": ev.proposed_at_ms,
+            })))
+        }
+        "TaskRefundProposalCleared" => {
+            let ev = bcs::from_bytes::<BcsTaskRefundProposalCleared>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "cleared_by_role": ev.cleared_by_role,
+                "reason": ev.reason,
+                "cleared_at_ms": ev.cleared_at_ms,
+            })))
+        }
+        "TaskRefunded" => {
+            let ev = bcs::from_bytes::<BcsTaskRefunded>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "refund_kind": ev.refund_kind,
+                "buyer_principal": addr_to_string(&ev.buyer_principal),
+                "amount_mist": ev.amount_mist,
+                "refunded_at_ms": ev.refunded_at_ms,
+            })))
+        }
+        "TaskReceiptSettled" => {
+            let ev = bcs::from_bytes::<BcsTaskReceiptSettled>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "receipt_id": move_object_id_to_string(&ev.receipt_id),
+                "buyer_principal": addr_to_string(&ev.buyer_principal),
+                "buyer_agent_id": optional_move_object_id_json(&ev.buyer_agent_id),
+                "seller_principal": addr_to_string(&ev.seller_principal),
+                "seller_agent_id": move_object_id_to_string(&ev.seller_agent_id),
+                "organization_id": optional_move_object_id_json(&ev.organization_id),
+                "room_group_id": optional_move_object_id_json(&ev.room_group_id),
+                "settlement_kind": ev.settlement_kind,
+                "amount_mist": ev.amount_mist,
+                "platform_fee_mist": ev.platform_fee_mist,
+                "ecosystem_fee_mist": ev.ecosystem_fee_mist,
+                "net_amount_mist": ev.net_amount_mist,
+                "deliverable_digest": ev.deliverable_digest.as_deref().map(hex_digest),
+                "deliverable_uri": ev.deliverable_uri,
+                "buyer_credibility_bps": ev.buyer_credibility_bps,
+                "seller_credibility_bps": ev.seller_credibility_bps,
+                "settle_deadline_ms": ev.settle_deadline_ms,
+                "review_deadline_ms": ev.review_deadline_ms,
+                "settled_at_ms": ev.settled_at_ms,
+            })))
+        }
+        "TaskReviewSubmitted" => {
+            let ev = bcs::from_bytes::<BcsTaskReviewSubmitted>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "receipt_id": move_object_id_to_string(&ev.receipt_id),
+                "rater_role": ev.rater_role,
+                "rater_principal": addr_to_string(&ev.rater_principal),
+                "rater_agent_id": optional_move_object_id_json(&ev.rater_agent_id),
+                "reviewee_principal": addr_to_string(&ev.reviewee_principal),
+                "reviewee_agent_id": optional_move_object_id_json(&ev.reviewee_agent_id),
+                "stars": ev.stars,
+                "rater_credibility_bps": ev.rater_credibility_bps,
+                "value_weight_bps": ev.value_weight_bps,
+                "base_weight_bps": ev.base_weight_bps,
+                "prior_pair_reviews": ev.prior_pair_reviews,
+                "weight_bps": ev.weight_bps,
+                "reviewed_at_ms": ev.reviewed_at_ms,
+            })))
+        }
+        "TaskConfigUpdated" => {
+            let ev = bcs::from_bytes::<BcsTaskConfigUpdated>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "platform_fee_bps": ev.platform_fee_bps,
+                "ecosystem_fee_bps": ev.ecosystem_fee_bps,
+                "ecosystem_fee_recipient": addr_to_string(&ev.ecosystem_fee_recipient),
+                "min_escrow_mist": ev.min_escrow_mist,
+                "accept_window_min_ms": ev.accept_window_min_ms,
+                "accept_window_default_ms": ev.accept_window_default_ms,
+                "accept_window_max_ms": ev.accept_window_max_ms,
+                "delivery_window_min_ms": ev.delivery_window_min_ms,
+                "delivery_window_max_ms": ev.delivery_window_max_ms,
+                "settle_window_min_ms": ev.settle_window_min_ms,
+                "settle_window_max_ms": ev.settle_window_max_ms,
+                "release_grace_ms": ev.release_grace_ms,
+                "review_window_ms": ev.review_window_ms,
+                "max_title_bytes": ev.max_title_bytes,
+                "max_uri_bytes": ev.max_uri_bytes,
+                "active": ev.active,
+                "prior_mean_milli": ev.prior_mean_milli,
+                "prior_weight_bps": ev.prior_weight_bps,
+                "value_ref_mist": ev.value_ref_mist,
+                "min_value_weight_bps": ev.min_value_weight_bps,
+                "max_value_weight_bps": ev.max_value_weight_bps,
+                "cred_base_bps": ev.cred_base_bps,
+                "cred_step_bps": ev.cred_step_bps,
+                "cred_cap_n": ev.cred_cap_n,
+                "cred_max_bps": ev.cred_max_bps,
+                "overall_seller_weight_bps": ev.overall_seller_weight_bps,
+                "overall_buyer_weight_bps": ev.overall_buyer_weight_bps,
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        _ => Ok(None),
+    }
+}
+
 fn parse_messaging_event(
     event_name: &str,
     contents: &[u8],
@@ -3622,6 +4019,19 @@ fn parse_messaging_event(
                 "group_name": ev.group_name,
                 "group_uuid": ev.group_uuid,
                 "created_at": ev.created_at,
+            })))
+        }
+        "AgentRoomBound" => {
+            let ev = bcs::from_bytes::<BcsAgentRoomBound>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": move_object_id_to_string(&ev.group_id),
+                "room_kind": ev.room_kind,
+                "task_id": optional_move_object_id_json(&ev.task_id),
+                "creator_actor": addr_to_string(&ev.creator_actor),
+                "creator_principal": addr_to_string(&ev.creator_principal),
+                "organization_id": optional_move_object_id_json(&ev.organization_id),
+                "created_at_ms": ev.created_at_ms,
             })))
         }
         _ => Ok(None),
@@ -4414,6 +4824,42 @@ fn parse_memory_event(
                 "previous_owner": addr_to_string(&ev.previous_owner),
                 "new_owner": addr_to_string(&ev.new_owner),
                 "revoked_count": ev.revoked_count,
+            })))
+        }
+        "ReputationUpdated" => {
+            let ev = bcs::from_bytes::<BcsReputationUpdated>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            // u128 sums are decimal strings: serde_json numbers stop at u64.
+            Ok(Some(serde_json::json!({
+                "subject_kind": ev.subject_kind,
+                "subject_id": move_object_id_to_string(&ev.subject_id),
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "organization_id": optional_move_object_id_json(&ev.organization_id),
+                "role": ev.role,
+                "review_count": ev.review_count,
+                "star_1": ev.star_1,
+                "star_2": ev.star_2,
+                "star_3": ev.star_3,
+                "star_4": ev.star_4,
+                "star_5": ev.star_5,
+                "weight_sum_bps": ev.weight_sum_bps.to_string(),
+                "weighted_star_sum": ev.weighted_star_sum.to_string(),
+                "bayesian_score_milli": ev.bayesian_score_milli,
+                "confidence_bps": ev.confidence_bps,
+                "receipt_id": move_object_id_to_string(&ev.receipt_id),
+                "updated_at_ms": ev.updated_at_ms,
+            })))
+        }
+        "CredibilityUpdated" => {
+            let ev = bcs::from_bytes::<BcsCredibilityUpdated>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": move_object_id_to_string(&ev.account_id),
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "settled_count": ev.settled_count,
+                "volume_mist": ev.volume_mist.to_string(),
+                "credibility_bps": ev.credibility_bps,
+                "updated_at_ms": ev.updated_at_ms,
             })))
         }
         "MemoryAccountDeactivated" => {

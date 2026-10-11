@@ -7417,6 +7417,21 @@ OrgRoleAssignmentKey
 SubAgentConstraints
 	public struct
 	0x50c1::memory
+ReputationParams
+	public struct
+	0x50c1::memory
+ReputationAggregate
+	public struct
+	0x50c1::memory
+CredibilityStats
+	public struct
+	0x50c1::memory
+ReviewPairKey
+	public struct
+	0x50c1::memory
+ReviewOutcome
+	public struct
+	0x50c1::memory
 OrgRegistryEntry
 	public struct
 	0x50c1::memory
@@ -7439,6 +7454,12 @@ MemoryAccount
 	public struct
 	0x50c1::memory
 MemoryAccountCreated
+	public struct
+	0x50c1::memory
+ReputationUpdated
+	public struct
+	0x50c1::memory
+CredibilityUpdated
 	public struct
 	0x50c1::memory
 SubAgentRegistered
@@ -7610,6 +7631,9 @@ cap_budget_manage
 	public fun
 	0x50c1::memory
 cap_social_graph
+	public fun
+	0x50c1::memory
+cap_task_trade
 	public fun
 	0x50c1::memory
 org_perm_memory_read
@@ -7915,6 +7939,177 @@ registry_version
 current_contract_version
 	public fun
 	0x50c1::memory
+new_reputation_params
+	public fun
+	0x50c1::memory
+assert_reputation_params
+	public fun
+	0x50c1::memory
+reputation_prior_mean_milli
+	public fun
+	0x50c1::memory
+reputation_prior_weight_bps
+	public fun
+	0x50c1::memory
+reputation_value_ref_mist
+	public fun
+	0x50c1::memory
+reputation_min_value_weight_bps
+	public fun
+	0x50c1::memory
+reputation_max_value_weight_bps
+	public fun
+	0x50c1::memory
+reputation_cred_base_bps
+	public fun
+	0x50c1::memory
+reputation_cred_step_bps
+	public fun
+	0x50c1::memory
+reputation_cred_cap_n
+	public fun
+	0x50c1::memory
+reputation_cred_max_bps
+	public fun
+	0x50c1::memory
+reputation_overall_seller_weight_bps
+	public fun
+	0x50c1::memory
+reputation_overall_buyer_weight_bps
+	public fun
+	0x50c1::memory
+role_seller
+	public fun
+	0x50c1::memory
+role_buyer
+	public fun
+	0x50c1::memory
+empty_aggregate
+	public(package) fun
+	0x50c1::memory
+empty_credibility
+	public(package) fun
+	0x50c1::memory
+checked_add_u128
+	public fun
+	0x50c1::memory
+checked_mul_u128
+	public fun
+	0x50c1::memory
+checked_div_u128
+	public fun
+	0x50c1::memory
+checked_narrow_u64
+	public fun
+	0x50c1::memory
+checked_add_u64
+	public fun
+	0x50c1::memory
+checked_mul_u64
+	public fun
+	0x50c1::memory
+checked_bps_of
+	public fun
+	0x50c1::memory
+aggregate_review_count
+	public fun
+	0x50c1::memory
+aggregate_histogram
+	public fun
+	0x50c1::memory
+aggregate_weight_sum_bps
+	public fun
+	0x50c1::memory
+aggregate_weighted_star_sum
+	public fun
+	0x50c1::memory
+aggregate_updated_at_ms
+	public fun
+	0x50c1::memory
+aggregate_last_receipt_id
+	public fun
+	0x50c1::memory
+aggregate_cached_score_milli
+	public fun
+	0x50c1::memory
+aggregate_score_milli
+	public fun
+	0x50c1::memory
+aggregate_confidence_bps
+	public fun
+	0x50c1::memory
+overall_reputation
+	public fun
+	0x50c1::memory
+agent_overall
+	public fun
+	0x50c1::memory
+sub_agent_seller_reputation
+	public fun
+	0x50c1::memory
+sub_agent_buyer_reputation
+	public fun
+	0x50c1::memory
+account_human_buyer_reputation
+	public fun
+	0x50c1::memory
+account_settled_count
+	public fun
+	0x50c1::memory
+account_settled_volume_mist
+	public fun
+	0x50c1::memory
+credibility_bps_for
+	public fun
+	0x50c1::memory
+account_credibility_bps
+	public fun
+	0x50c1::memory
+pair_review_count
+	public fun
+	0x50c1::memory
+value_weight_bps
+	public fun
+	0x50c1::memory
+outcome_value_weight_bps
+	public fun
+	0x50c1::memory
+outcome_base_weight_bps
+	public fun
+	0x50c1::memory
+outcome_weight_bps
+	public fun
+	0x50c1::memory
+outcome_prior_pair_reviews
+	public fun
+	0x50c1::memory
+record_settlement
+	public(package) fun
+	0x50c1::memory
+apply_seller_review
+	public(package) fun
+	0x50c1::memory
+apply_buyer_agent_review
+	public(package) fun
+	0x50c1::memory
+apply_human_buyer_review
+	public(package) fun
+	0x50c1::memory
+weigh_review
+	fun
+	0x50c1::memory
+apply_to_aggregate
+	fun
+	0x50c1::memory
+role_score
+	fun
+	0x50c1::memory
+finish_score
+	fun
+	0x50c1::memory
+emit_reputation_updated
+	fun
+	0x50c1::memory
 approve_key_policy
 	public entry fun
 	0x50c1::memory
@@ -8083,426 +8278,6 @@ assert_object_version
 has_suffix
 	fun
 	0x50c1::memory
-AiCreditOracleAdminCap
-	public struct
-	0x50c1::ai_credit
-AiCreditConfig
-	public struct
-	0x50c1::ai_credit
-AgentBudgetEntry
-	public struct
-	0x50c1::ai_credit
-SpendApprovalKey
-	public struct
-	0x50c1::ai_credit
-SpendApproval
-	public struct
-	0x50c1::ai_credit
-ApprovalNonceKey
-	public struct
-	0x50c1::ai_credit
-AiCreditBalance
-	public struct
-	0x50c1::ai_credit
-IntentMessage
-	public struct
-	0x50c1::ai_credit
-UsageReceipt
-	public struct
-	0x50c1::ai_credit
-SpendReservationIntent
-	public struct
-	0x50c1::ai_credit
-SpendReservation
-	public struct
-	0x50c1::ai_credit
-CaptureSpendIntent
-	public struct
-	0x50c1::ai_credit
-CancelSpendIntent
-	public struct
-	0x50c1::ai_credit
-AiCreditBalanceCreated
-	public struct
-	0x50c1::ai_credit
-AiCreditDeposited
-	public struct
-	0x50c1::ai_credit
-AiCreditWithdrawn
-	public struct
-	0x50c1::ai_credit
-AiCreditAccountCapsUpdated
-	public struct
-	0x50c1::ai_credit
-AiCreditAgentBudgetUpdated
-	public struct
-	0x50c1::ai_credit
-AiCreditAgentBudgetDisabled
-	public struct
-	0x50c1::ai_credit
-AiCreditAgentBudgetChanged
-	public struct
-	0x50c1::ai_credit
-AiCreditSpendApproved
-	public struct
-	0x50c1::ai_credit
-AiCreditSpendApprovalRevoked
-	public struct
-	0x50c1::ai_credit
-AiCreditSpendApprovalConsumed
-	public struct
-	0x50c1::ai_credit
-AiCreditUsageSettled
-	public struct
-	0x50c1::ai_credit
-AiSpendReserved
-	public struct
-	0x50c1::ai_credit
-AiSpendCaptured
-	public struct
-	0x50c1::ai_credit
-AiSpendCancelled
-	public struct
-	0x50c1::ai_credit
-AiSpendExpired
-	public struct
-	0x50c1::ai_credit
-AiCreditBalanceDepleted
-	public struct
-	0x50c1::ai_credit
-AiCreditBalancePaused
-	public struct
-	0x50c1::ai_credit
-AiCreditBalanceReactivated
-	public struct
-	0x50c1::ai_credit
-AiCreditOraclePubkeyUpdated
-	public struct
-	0x50c1::ai_credit
-AiCreditSettlementLimitsUpdated
-	public struct
-	0x50c1::ai_credit
-AiCreditMarkupUpdated
-	public struct
-	0x50c1::ai_credit
-AiCreditMinDepositUpdated
-	public struct
-	0x50c1::ai_credit
-AiCreditConfigInitialized
-	public struct
-	0x50c1::ai_credit
-bootstrap_init
-	public(package) fun
-	0x50c1::ai_credit
-create_oracle_admin_cap
-	public(package) fun
-	0x50c1::ai_credit
-create_and_share_balance
-	public(package) fun
-	0x50c1::ai_credit
-new_balance
-	fun
-	0x50c1::ai_credit
-deposit
-	public entry fun
-	0x50c1::ai_credit
-withdraw
-	public entry fun
-	0x50c1::ai_credit
-set_account_caps
-	public entry fun
-	0x50c1::ai_credit
-set_agent_budget
-	public entry fun
-	0x50c1::ai_credit
-set_agent_budget_as_manager
-	public entry fun
-	0x50c1::ai_credit
-disable_agent_budget
-	public entry fun
-	0x50c1::ai_credit
-approve_agent_spend
-	public entry fun
-	0x50c1::ai_credit
-approve_agent_spend_as_approver
-	public entry fun
-	0x50c1::ai_credit
-revoke_agent_spend_approval
-	public entry fun
-	0x50c1::ai_credit
-set_child_agent_budget
-	public entry fun
-	0x50c1::ai_credit
-disable_child_agent_budget
-	public entry fun
-	0x50c1::ai_credit
-approve_child_agent_spend
-	public entry fun
-	0x50c1::ai_credit
-pause_balance
-	public entry fun
-	0x50c1::ai_credit
-reactivate_balance
-	public entry fun
-	0x50c1::ai_credit
-reserve_signed_spend
-	public fun
-	0x50c1::ai_credit
-make_spend_reservation_intent_from_objects
-	public fun
-	0x50c1::ai_credit
-capture_reserved_spend
-	public fun
-	0x50c1::ai_credit
-cancel_reserved_spend
-	public fun
-	0x50c1::ai_credit
-expire_reservation
-	public fun
-	0x50c1::ai_credit
-settle_usage
-	public fun
-	0x50c1::ai_credit
-settle_usage_batch
-	public fun
-	0x50c1::ai_credit
-settle_signed_usage
-	public fun
-	0x50c1::ai_credit
-make_usage_receipt_from_objects
-	public fun
-	0x50c1::ai_credit
-settle_usage_with_signature
-	fun
-	0x50c1::ai_credit
-execute_settlement
-	fun
-	0x50c1::ai_credit
-execute_reservation
-	fun
-	0x50c1::ai_credit
-execute_capture
-	fun
-	0x50c1::ai_credit
-execute_cancellation
-	fun
-	0x50c1::ai_credit
-update_oracle_pubkey
-	public entry fun
-	0x50c1::ai_credit
-update_oracle_markup
-	public entry fun
-	0x50c1::ai_credit
-update_min_deposit
-	public entry fun
-	0x50c1::ai_credit
-update_settlement_limits
-	public entry fun
-	0x50c1::ai_credit
-update_treasury
-	public entry fun
-	0x50c1::ai_credit
-balance_mist
-	public fun
-	0x50c1::ai_credit
-available_mist
-	public fun
-	0x50c1::ai_credit
-reserved_mist
-	public fun
-	0x50c1::ai_credit
-latest_reservation_nonce
-	public fun
-	0x50c1::ai_credit
-reservation_for
-	public fun
-	0x50c1::ai_credit
-reservation_max_amount_mist
-	public fun
-	0x50c1::ai_credit
-reservation_agent_object_id
-	public fun
-	0x50c1::ai_credit
-reservation_hard_expiry_ms
-	public fun
-	0x50c1::ai_credit
-oracle_markup_bps
-	public fun
-	0x50c1::ai_credit
-min_deposit_mist
-	public fun
-	0x50c1::ai_credit
-spend_approval_for
-	public fun
-	0x50c1::ai_credit
-approval_max_amount_mist
-	public fun
-	0x50c1::ai_credit
-approval_expires_at_ms
-	public fun
-	0x50c1::ai_credit
-approval_approved_by
-	public fun
-	0x50c1::ai_credit
-approval_nonce
-	public fun
-	0x50c1::ai_credit
-agent_approval_threshold
-	public fun
-	0x50c1::ai_credit
-agent_remaining_mist
-	public fun
-	0x50c1::ai_credit
-usage_inference
-	public fun
-	0x50c1::ai_credit
-usage_tool
-	public fun
-	0x50c1::ai_credit
-usage_embed
-	public fun
-	0x50c1::ai_credit
-usage_storage
-	public fun
-	0x50c1::ai_credit
-usage_workflow
-	public fun
-	0x50c1::ai_credit
-mist_per_myso
-	public fun
-	0x50c1::ai_credit
-assert_agent_may_spend
-	public fun
-	0x50c1::ai_credit
-assert_version
-	fun
-	0x50c1::ai_credit
-migrate_config
-	public entry fun
-	0x50c1::ai_credit
-migrate_balance
-	public entry fun
-	0x50c1::ai_credit
-assert_owner
-	fun
-	0x50c1::ai_credit
-assert_active
-	fun
-	0x50c1::ai_credit
-assert_agent_linked
-	fun
-	0x50c1::ai_credit
-assert_org_gate_for_agent
-	fun
-	0x50c1::ai_credit
-assert_parent_manages_child
-	fun
-	0x50c1::ai_credit
-assert_child_budget_within_parent_envelope
-	fun
-	0x50c1::ai_credit
-assert_limit_not_looser
-	fun
-	0x50c1::ai_credit
-assert_within_parent_envelope
-	fun
-	0x50c1::ai_credit
-upsert_agent_budget
-	fun
-	0x50c1::ai_credit
-disable_agent_budget_internal
-	fun
-	0x50c1::ai_credit
-store_spend_approval
-	fun
-	0x50c1::ai_credit
-next_approval_nonce
-	fun
-	0x50c1::ai_credit
-maybe_consume_spend_approval
-	fun
-	0x50c1::ai_credit
-assert_oracle_admin
-	fun
-	0x50c1::ai_credit
-verify_receipt_signature
-	fun
-	0x50c1::ai_credit
-verify_reservation_signature
-	fun
-	0x50c1::ai_credit
-verify_capture_signature
-	fun
-	0x50c1::ai_credit
-verify_cancel_signature
-	fun
-	0x50c1::ai_credit
-assert_receipt_fresh
-	fun
-	0x50c1::ai_credit
-assert_signed_timestamp_fresh
-	fun
-	0x50c1::ai_credit
-roll_account_windows
-	fun
-	0x50c1::ai_credit
-roll_agent_windows
-	fun
-	0x50c1::ai_credit
-assert_account_caps
-	fun
-	0x50c1::ai_credit
-assert_agent_caps
-	fun
-	0x50c1::ai_credit
-release_reservation_counters
-	fun
-	0x50c1::ai_credit
-capture_reservation_counters
-	fun
-	0x50c1::ai_credit
-BlockListRegistry
-	public struct
-	0x50c1::block_list
-UserBlockEvent
-	public struct
-	0x50c1::block_list
-UserUnblockEvent
-	public struct
-	0x50c1::block_list
-bootstrap_init
-	public(package) fun
-	0x50c1::block_list
-block_wallet_internal
-	public(package) fun
-	0x50c1::block_list
-unblock_wallet_internal
-	public(package) fun
-	0x50c1::block_list
-either_blocked
-	public fun
-	0x50c1::block_list
-assert_not_blocked
-	public fun
-	0x50c1::block_list
-is_blocked
-	public fun
-	0x50c1::block_list
-blocked_count
-	public fun
-	0x50c1::block_list
-get_blocked_wallets
-	public fun
-	0x50c1::block_list
-registry_version
-	public fun
-	0x50c1::block_list
-borrow_registry_version_mut
-	public(package) fun
-	0x50c1::block_list
-migrate_block_list_registry
-	public entry fun
-	0x50c1::block_list
 LicenseTemplateVersion
 	public struct
 	0x50c1::license_template
@@ -9463,6 +9238,384 @@ finalize_policy_refresh
 resolved_policy_version
 	public(package) fun
 	0x50c1::media_asset
+AiCreditOracleAdminCap
+	public struct
+	0x50c1::ai_credit
+AiCreditConfig
+	public struct
+	0x50c1::ai_credit
+AgentBudgetEntry
+	public struct
+	0x50c1::ai_credit
+SpendApprovalKey
+	public struct
+	0x50c1::ai_credit
+SpendApproval
+	public struct
+	0x50c1::ai_credit
+ApprovalNonceKey
+	public struct
+	0x50c1::ai_credit
+AiCreditBalance
+	public struct
+	0x50c1::ai_credit
+IntentMessage
+	public struct
+	0x50c1::ai_credit
+UsageReceipt
+	public struct
+	0x50c1::ai_credit
+SpendReservationIntent
+	public struct
+	0x50c1::ai_credit
+SpendReservation
+	public struct
+	0x50c1::ai_credit
+CaptureSpendIntent
+	public struct
+	0x50c1::ai_credit
+CancelSpendIntent
+	public struct
+	0x50c1::ai_credit
+AiCreditBalanceCreated
+	public struct
+	0x50c1::ai_credit
+AiCreditDeposited
+	public struct
+	0x50c1::ai_credit
+AiCreditWithdrawn
+	public struct
+	0x50c1::ai_credit
+AiCreditAccountCapsUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditAgentBudgetUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditAgentBudgetDisabled
+	public struct
+	0x50c1::ai_credit
+AiCreditAgentBudgetChanged
+	public struct
+	0x50c1::ai_credit
+AiCreditSpendApproved
+	public struct
+	0x50c1::ai_credit
+AiCreditSpendApprovalRevoked
+	public struct
+	0x50c1::ai_credit
+AiCreditSpendApprovalConsumed
+	public struct
+	0x50c1::ai_credit
+AiCreditUsageSettled
+	public struct
+	0x50c1::ai_credit
+AiSpendReserved
+	public struct
+	0x50c1::ai_credit
+AiSpendCaptured
+	public struct
+	0x50c1::ai_credit
+AiSpendCancelled
+	public struct
+	0x50c1::ai_credit
+AiSpendExpired
+	public struct
+	0x50c1::ai_credit
+AiCreditBalanceDepleted
+	public struct
+	0x50c1::ai_credit
+AiCreditBalancePaused
+	public struct
+	0x50c1::ai_credit
+AiCreditBalanceReactivated
+	public struct
+	0x50c1::ai_credit
+AiCreditOraclePubkeyUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditSettlementLimitsUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditMarkupUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditMinDepositUpdated
+	public struct
+	0x50c1::ai_credit
+AiCreditConfigInitialized
+	public struct
+	0x50c1::ai_credit
+bootstrap_init
+	public(package) fun
+	0x50c1::ai_credit
+create_oracle_admin_cap
+	public(package) fun
+	0x50c1::ai_credit
+create_and_share_balance
+	public(package) fun
+	0x50c1::ai_credit
+new_balance
+	fun
+	0x50c1::ai_credit
+deposit
+	public entry fun
+	0x50c1::ai_credit
+withdraw
+	public entry fun
+	0x50c1::ai_credit
+set_account_caps
+	public entry fun
+	0x50c1::ai_credit
+set_agent_budget
+	public entry fun
+	0x50c1::ai_credit
+set_agent_budget_as_manager
+	public entry fun
+	0x50c1::ai_credit
+disable_agent_budget
+	public entry fun
+	0x50c1::ai_credit
+approve_agent_spend
+	public entry fun
+	0x50c1::ai_credit
+approve_agent_spend_as_approver
+	public entry fun
+	0x50c1::ai_credit
+revoke_agent_spend_approval
+	public entry fun
+	0x50c1::ai_credit
+set_child_agent_budget
+	public entry fun
+	0x50c1::ai_credit
+disable_child_agent_budget
+	public entry fun
+	0x50c1::ai_credit
+approve_child_agent_spend
+	public entry fun
+	0x50c1::ai_credit
+pause_balance
+	public entry fun
+	0x50c1::ai_credit
+reactivate_balance
+	public entry fun
+	0x50c1::ai_credit
+reserve_signed_spend
+	public fun
+	0x50c1::ai_credit
+make_spend_reservation_intent_from_objects
+	public fun
+	0x50c1::ai_credit
+capture_reserved_spend
+	public fun
+	0x50c1::ai_credit
+cancel_reserved_spend
+	public fun
+	0x50c1::ai_credit
+expire_reservation
+	public fun
+	0x50c1::ai_credit
+settle_usage
+	public fun
+	0x50c1::ai_credit
+settle_usage_batch
+	public fun
+	0x50c1::ai_credit
+settle_signed_usage
+	public fun
+	0x50c1::ai_credit
+make_usage_receipt_from_objects
+	public fun
+	0x50c1::ai_credit
+settle_usage_with_signature
+	fun
+	0x50c1::ai_credit
+execute_settlement
+	fun
+	0x50c1::ai_credit
+execute_reservation
+	fun
+	0x50c1::ai_credit
+execute_capture
+	fun
+	0x50c1::ai_credit
+execute_cancellation
+	fun
+	0x50c1::ai_credit
+update_oracle_pubkey
+	public entry fun
+	0x50c1::ai_credit
+update_oracle_markup
+	public entry fun
+	0x50c1::ai_credit
+update_min_deposit
+	public entry fun
+	0x50c1::ai_credit
+update_settlement_limits
+	public entry fun
+	0x50c1::ai_credit
+update_treasury
+	public entry fun
+	0x50c1::ai_credit
+balance_mist
+	public fun
+	0x50c1::ai_credit
+available_mist
+	public fun
+	0x50c1::ai_credit
+reserved_mist
+	public fun
+	0x50c1::ai_credit
+latest_reservation_nonce
+	public fun
+	0x50c1::ai_credit
+reservation_for
+	public fun
+	0x50c1::ai_credit
+reservation_max_amount_mist
+	public fun
+	0x50c1::ai_credit
+reservation_agent_object_id
+	public fun
+	0x50c1::ai_credit
+reservation_hard_expiry_ms
+	public fun
+	0x50c1::ai_credit
+oracle_markup_bps
+	public fun
+	0x50c1::ai_credit
+min_deposit_mist
+	public fun
+	0x50c1::ai_credit
+spend_approval_for
+	public fun
+	0x50c1::ai_credit
+approval_max_amount_mist
+	public fun
+	0x50c1::ai_credit
+approval_expires_at_ms
+	public fun
+	0x50c1::ai_credit
+approval_approved_by
+	public fun
+	0x50c1::ai_credit
+approval_nonce
+	public fun
+	0x50c1::ai_credit
+agent_approval_threshold
+	public fun
+	0x50c1::ai_credit
+agent_remaining_mist
+	public fun
+	0x50c1::ai_credit
+usage_inference
+	public fun
+	0x50c1::ai_credit
+usage_tool
+	public fun
+	0x50c1::ai_credit
+usage_embed
+	public fun
+	0x50c1::ai_credit
+usage_storage
+	public fun
+	0x50c1::ai_credit
+usage_workflow
+	public fun
+	0x50c1::ai_credit
+mist_per_myso
+	public fun
+	0x50c1::ai_credit
+assert_agent_may_spend
+	public fun
+	0x50c1::ai_credit
+assert_version
+	fun
+	0x50c1::ai_credit
+migrate_config
+	public entry fun
+	0x50c1::ai_credit
+migrate_balance
+	public entry fun
+	0x50c1::ai_credit
+assert_owner
+	fun
+	0x50c1::ai_credit
+assert_active
+	fun
+	0x50c1::ai_credit
+assert_agent_linked
+	fun
+	0x50c1::ai_credit
+assert_org_gate_for_agent
+	fun
+	0x50c1::ai_credit
+assert_parent_manages_child
+	fun
+	0x50c1::ai_credit
+assert_child_budget_within_parent_envelope
+	fun
+	0x50c1::ai_credit
+assert_limit_not_looser
+	fun
+	0x50c1::ai_credit
+assert_within_parent_envelope
+	fun
+	0x50c1::ai_credit
+upsert_agent_budget
+	fun
+	0x50c1::ai_credit
+disable_agent_budget_internal
+	fun
+	0x50c1::ai_credit
+store_spend_approval
+	fun
+	0x50c1::ai_credit
+next_approval_nonce
+	fun
+	0x50c1::ai_credit
+maybe_consume_spend_approval
+	fun
+	0x50c1::ai_credit
+assert_oracle_admin
+	fun
+	0x50c1::ai_credit
+verify_receipt_signature
+	fun
+	0x50c1::ai_credit
+verify_reservation_signature
+	fun
+	0x50c1::ai_credit
+verify_capture_signature
+	fun
+	0x50c1::ai_credit
+verify_cancel_signature
+	fun
+	0x50c1::ai_credit
+assert_receipt_fresh
+	fun
+	0x50c1::ai_credit
+assert_signed_timestamp_fresh
+	fun
+	0x50c1::ai_credit
+roll_account_windows
+	fun
+	0x50c1::ai_credit
+roll_agent_windows
+	fun
+	0x50c1::ai_credit
+assert_account_caps
+	fun
+	0x50c1::ai_credit
+assert_agent_caps
+	fun
+	0x50c1::ai_credit
+release_reservation_counters
+	fun
+	0x50c1::ai_credit
+capture_reservation_counters
+	fun
+	0x50c1::ai_credit
 ProfileAdminCap
 	public struct
 	0x50c1::profile
@@ -10348,6 +10501,48 @@ create_spot_governance_registry
 create_governance_admin_cap
 	public(package) fun
 	0x50c1::governance
+BlockListRegistry
+	public struct
+	0x50c1::block_list
+UserBlockEvent
+	public struct
+	0x50c1::block_list
+UserUnblockEvent
+	public struct
+	0x50c1::block_list
+bootstrap_init
+	public(package) fun
+	0x50c1::block_list
+block_wallet_internal
+	public(package) fun
+	0x50c1::block_list
+unblock_wallet_internal
+	public(package) fun
+	0x50c1::block_list
+either_blocked
+	public fun
+	0x50c1::block_list
+assert_not_blocked
+	public fun
+	0x50c1::block_list
+is_blocked
+	public fun
+	0x50c1::block_list
+blocked_count
+	public fun
+	0x50c1::block_list
+get_blocked_wallets
+	public fun
+	0x50c1::block_list
+registry_version
+	public fun
+	0x50c1::block_list
+borrow_registry_version_mut
+	public(package) fun
+	0x50c1::block_list
+migrate_block_list_registry
+	public entry fun
+	0x50c1::block_list
 PlatformConfig
 	public struct
 	0x50c1::platform
@@ -10771,6 +10966,267 @@ migrate_platform
 migrate_registry
 	public entry fun
 	0x50c1::platform
+TaskMarketCap
+	public struct
+	0x50c1::agent_task
+TaskConfig
+	public struct
+	0x50c1::agent_task
+TaskTerms
+	public struct
+	0x50c1::agent_task
+TaskPayout
+	public struct
+	0x50c1::agent_task
+TaskReviewState
+	public struct
+	0x50c1::agent_task
+TaskEscrow
+	public struct
+	0x50c1::agent_task
+TaskOffered
+	public struct
+	0x50c1::agent_task
+TaskAccepted
+	public struct
+	0x50c1::agent_task
+TaskCancelled
+	public struct
+	0x50c1::agent_task
+TaskDelivered
+	public struct
+	0x50c1::agent_task
+TaskRefundProposed
+	public struct
+	0x50c1::agent_task
+TaskRefundProposalCleared
+	public struct
+	0x50c1::agent_task
+TaskRefunded
+	public struct
+	0x50c1::agent_task
+TaskReceiptSettled
+	public struct
+	0x50c1::agent_task
+TaskReviewSubmitted
+	public struct
+	0x50c1::agent_task
+TaskConfigUpdated
+	public struct
+	0x50c1::agent_task
+bootstrap_init
+	public(package) fun
+	0x50c1::agent_task
+create_task_market_cap
+	public(package) fun
+	0x50c1::agent_task
+set_task_config
+	public entry fun
+	0x50c1::agent_task
+migrate_task_config
+	public entry fun
+	0x50c1::agent_task
+validate_task_config
+	fun
+	0x50c1::agent_task
+emit_config_updated
+	fun
+	0x50c1::agent_task
+create_task
+	public entry fun
+	0x50c1::agent_task
+accept_task
+	public entry fun
+	0x50c1::agent_task
+decline_task
+	public entry fun
+	0x50c1::agent_task
+cancel_offer
+	public entry fun
+	0x50c1::agent_task
+expire_offer
+	public entry fun
+	0x50c1::agent_task
+close_offer
+	fun
+	0x50c1::agent_task
+mark_delivered
+	public entry fun
+	0x50c1::agent_task
+settle_task
+	public entry fun
+	0x50c1::agent_task
+release_task
+	public entry fun
+	0x50c1::agent_task
+finalize_settlement
+	fun
+	0x50c1::agent_task
+pay_seller
+	fun
+	0x50c1::agent_task
+refund_task
+	public entry fun
+	0x50c1::agent_task
+propose_refund
+	public entry fun
+	0x50c1::agent_task
+accept_refund
+	public entry fun
+	0x50c1::agent_task
+reject_refund
+	public entry fun
+	0x50c1::agent_task
+withdraw_refund
+	public entry fun
+	0x50c1::agent_task
+clear_proposal
+	fun
+	0x50c1::agent_task
+close_as_refunded
+	fun
+	0x50c1::agent_task
+pay_buyer_back
+	fun
+	0x50c1::agent_task
+review_seller
+	public entry fun
+	0x50c1::agent_task
+review_buyer_agent
+	public entry fun
+	0x50c1::agent_task
+review_buyer_principal
+	public entry fun
+	0x50c1::agent_task
+record_seller_review
+	fun
+	0x50c1::agent_task
+assert_reviewable
+	fun
+	0x50c1::agent_task
+resolve_buyer_actor
+	fun
+	0x50c1::agent_task
+assert_seller_with_cap
+	fun
+	0x50c1::agent_task
+assert_seller_sender
+	fun
+	0x50c1::agent_task
+resolve_party
+	fun
+	0x50c1::agent_task
+compute_terms_digest
+	public fun
+	0x50c1::agent_task
+status_offered
+	public fun
+	0x50c1::agent_task
+status_accepted
+	public fun
+	0x50c1::agent_task
+status_delivered
+	public fun
+	0x50c1::agent_task
+status_settled
+	public fun
+	0x50c1::agent_task
+status_refunded
+	public fun
+	0x50c1::agent_task
+status_cancelled
+	public fun
+	0x50c1::agent_task
+status
+	public fun
+	0x50c1::agent_task
+close_kind
+	public fun
+	0x50c1::agent_task
+settlement_kind
+	public fun
+	0x50c1::agent_task
+amount_mist
+	public fun
+	0x50c1::agent_task
+escrowed_mist
+	public fun
+	0x50c1::agent_task
+buyer_principal
+	public fun
+	0x50c1::agent_task
+seller_principal
+	public fun
+	0x50c1::agent_task
+buyer_agent_id
+	public fun
+	0x50c1::agent_task
+seller_agent_id
+	public fun
+	0x50c1::agent_task
+terms_digest
+	public fun
+	0x50c1::agent_task
+platform_fee_bps
+	public fun
+	0x50c1::agent_task
+ecosystem_fee_bps
+	public fun
+	0x50c1::agent_task
+accept_deadline_ms
+	public fun
+	0x50c1::agent_task
+delivery_deadline_ms
+	public fun
+	0x50c1::agent_task
+settle_deadline_ms
+	public fun
+	0x50c1::agent_task
+review_deadline_ms
+	public fun
+	0x50c1::agent_task
+settled_at_ms
+	public fun
+	0x50c1::agent_task
+platform_fee_mist
+	public fun
+	0x50c1::agent_task
+ecosystem_fee_mist
+	public fun
+	0x50c1::agent_task
+net_amount_mist
+	public fun
+	0x50c1::agent_task
+refund_proposer
+	public fun
+	0x50c1::agent_task
+buyer_credibility_bps
+	public fun
+	0x50c1::agent_task
+seller_credibility_bps
+	public fun
+	0x50c1::agent_task
+buyer_review_stars
+	public fun
+	0x50c1::agent_task
+seller_review_stars
+	public fun
+	0x50c1::agent_task
+config_active
+	public fun
+	0x50c1::agent_task
+config_release_grace_ms
+	public fun
+	0x50c1::agent_task
+config_review_window_ms
+	public fun
+	0x50c1::agent_task
+config_min_escrow_mist
+	public fun
+	0x50c1::agent_task
+config_reputation
+	public fun
+	0x50c1::agent_task
 SubscriptionAdminCap
 	public struct
 	0x50c1::subscription
@@ -14176,6 +14632,9 @@ MessagingNamespace
 AgentGroupCreated
 	public struct
 	0xe110::messaging
+AgentRoomBound
+	public struct
+	0xe110::messaging
 init
 	fun
 	0xe110::messaging
@@ -14281,6 +14740,9 @@ resolve_messaging_actor
 attach_agent_creator_metadata
 	fun
 	0xe110::messaging
+attach_room_metadata
+	fun
+	0xe110::messaging
 grant_agent_initial_members
 	fun
 	0xe110::messaging
@@ -14301,6 +14763,12 @@ assert_peers_not_blocked
 	0xe110::messaging
 count_non_creator_peers
 	fun
+	0xe110::messaging
+room_kind_agent_room
+	public fun
+	0xe110::messaging
+group_data
+	public fun
 	0xe110::messaging
 is_direct_message_group
 	fun

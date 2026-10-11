@@ -8,7 +8,7 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
+    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
     NewUnifiedRevenue, NewWalletMessagingPolicy, PAID_MESSAGE_STATUS_CLAIMED,
     PAID_MESSAGE_STATUS_ESCROWED, PAID_MESSAGE_STATUS_REFUNDED, PAID_MESSAGE_STATUS_SETTLED,
     REVENUE_TYPE_MESSAGING_CLAIM, REVENUE_TYPE_MESSAGING_NET, REVENUE_TYPE_MESSAGING_PLATFORM_FEE,
@@ -99,6 +99,17 @@ struct AgentGroupCreatedEvent {
     created_at: u64,
 }
 
+#[derive(Debug, Deserialize)]
+struct AgentRoomBoundEvent {
+    group_id: String,
+    room_kind: u8,
+    task_id: Option<String>,
+    creator_actor: String,
+    creator_principal: String,
+    organization_id: Option<String>,
+    created_at_ms: u64,
+}
+
 fn content_id(group_id: &str, seq: u64) -> String {
     format!("{group_id}:{seq}")
 }
@@ -116,6 +127,7 @@ pub fn handle_messaging_event(
         "AgentGroupCreated" => {
             process_agent_group_created_event(data, event_id, checkpoint_timestamp_ms)
         }
+        "AgentRoomBound" => process_agent_room_bound_event(data, event_id, checkpoint_timestamp_ms),
         _ => None,
     }
 }
@@ -206,6 +218,34 @@ fn process_messaging_config_updated_event(
         transaction_id: event_id.to_string(),
     };
     Some(vec![SocialEventRow::MessagingConfig(row)])
+}
+
+fn process_agent_room_bound_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: AgentRoomBoundEvent = common::deserialize_social_event_json(
+        "messaging",
+        "AgentRoomBound",
+        event_id,
+        data,
+        "messaging AgentRoomBound JSON did not match AgentRoomBoundEvent",
+    )?;
+    let timestamp_ms =
+        common::chain_timestamp_ms(Some(ev.created_at_ms as i64), checkpoint_timestamp_ms);
+    Some(vec![SocialEventRow::AgentRoom(NewAgentRoom {
+        group_id: ev.group_id,
+        room_kind: ev.room_kind as i16,
+        task_id: ev.task_id,
+        creator_actor: ev.creator_actor,
+        creator_principal: ev.creator_principal,
+        organization_id: ev.organization_id,
+        created_at_ms: timestamp_ms,
+        event_id: event_id.to_string(),
+        transaction_id: event_id.split(':').next().unwrap_or(event_id).to_string(),
+        time: common::chain_time_from_ms(timestamp_ms),
+    })])
 }
 
 fn process_agent_group_created_event(
@@ -576,5 +616,79 @@ mod tests {
         assert_eq!(row.min_cost, Some(1_000_000));
         assert_eq!(row.updated_at, 42);
         assert!(row.wallet_address.starts_with("0x"));
+    }
+
+    /// Local mirror of the Move `AgentRoomBound` layout: `ID` is a one-field struct holding an
+    /// address, so it serializes as 32 bytes, exactly like the parser's `BcsMoveObjectId`.
+    #[derive(serde::Serialize)]
+    struct RoomBoundBytes {
+        group_id: ObjectIdBytes,
+        room_kind: u8,
+        task_id: Option<ObjectIdBytes>,
+        creator_actor: move_core_types::account_address::AccountAddress,
+        creator_principal: move_core_types::account_address::AccountAddress,
+        organization_id: Option<ObjectIdBytes>,
+        created_at_ms: u64,
+    }
+
+    #[derive(serde::Serialize)]
+    struct ObjectIdBytes {
+        bytes: move_core_types::account_address::AccountAddress,
+    }
+
+    fn room_bound_bytes(task: bool, org: bool) -> Vec<u8> {
+        use move_core_types::account_address::AccountAddress;
+        let id = |hex: &str| ObjectIdBytes {
+            bytes: AccountAddress::from_hex_literal(hex).unwrap(),
+        };
+        bcs::to_bytes(&RoomBoundBytes {
+            group_id: id("0x1111"),
+            room_kind: 1,
+            task_id: task.then(|| id("0x7a5c")),
+            creator_actor: AccountAddress::from_hex_literal("0xa11ce").unwrap(),
+            creator_principal: AccountAddress::from_hex_literal("0xb0b").unwrap(),
+            organization_id: org.then(|| id("0x0e9")),
+            created_at_ms: 1_700_000_000_000,
+        })
+        .unwrap()
+    }
+
+    #[test]
+    fn agent_room_bound_parses_into_row() {
+        let json = super::super::events::parse_event_contents(
+            "messaging",
+            "AgentRoomBound",
+            &room_bound_bytes(true, true),
+        )
+        .expect("BCS parse should succeed");
+        let rows = handle_messaging_event("AgentRoomBound", &json, "txdigest:3", 1)
+            .expect("handler should accept");
+        assert_eq!(rows.len(), 1);
+        let SocialEventRow::AgentRoom(room) = &rows[0] else {
+            panic!("expected AgentRoom row");
+        };
+        assert_eq!(room.room_kind, 1);
+        assert!(room.group_id.ends_with("1111"));
+        assert!(room.task_id.as_deref().unwrap().ends_with("7a5c"));
+        assert!(room.organization_id.is_some());
+        assert_eq!(room.created_at_ms, 1_700_000_000_000);
+        assert_eq!(room.event_id, "txdigest:3");
+        assert_eq!(room.transaction_id, "txdigest");
+    }
+
+    #[test]
+    fn agent_room_bound_without_task_or_org_has_null_columns() {
+        let json = super::super::events::parse_event_contents(
+            "messaging",
+            "AgentRoomBound",
+            &room_bound_bytes(false, false),
+        )
+        .expect("BCS parse should succeed");
+        let rows = handle_messaging_event("AgentRoomBound", &json, "txdigest:0", 1).unwrap();
+        let SocialEventRow::AgentRoom(room) = &rows[0] else {
+            panic!("expected AgentRoom row");
+        };
+        assert!(room.task_id.is_none());
+        assert!(room.organization_id.is_none());
     }
 }

@@ -91,6 +91,8 @@ module social_contracts::memory {
     const CAP_BUDGET_MANAGE: u64 = 32768;
     /// Follow, unfollow, block, and unblock on behalf of the principal profile.
     const CAP_SOCIAL_GRAPH: u64 = 65536;
+    /// Create, accept, deliver, settle, refund and review tasks in `agent_task`.
+    const CAP_TASK_TRADE: u64 = 131072;
 
     // ============================================================
     // Org permission bitmap (org memory share group + roles)
@@ -211,6 +213,10 @@ module social_contracts::memory {
     const EOrgInvitationNotInvitee: u64 = 58;
     const EOrgInvitationExpired: u64 = 59;
     const EOrgInvitationEmpty: u64 = 60;
+    const EInvalidStars: u64 = 61;
+    const EInvalidReputationParams: u64 = 62;
+    const EArithmeticOverflow: u64 = 63;
+    const EDivideByZero: u64 = 64;
     const ENoAccess: u64 = 100;
     const EInvalidConfig: u64 = 101;
 
@@ -224,6 +230,24 @@ module social_contracts::memory {
     const MAX_AGENT_DEPTH: u8 = 8;
 
     const VERSION_DF_KEY: vector<u8> = b"memory_version";
+
+    // Reputation constants
+    const ROLE_SELLER: u8 = 1;
+    const ROLE_BUYER: u8 = 2;
+    const SUBJECT_AGENT_SELLER: u8 = 1;
+    const SUBJECT_AGENT_BUYER: u8 = 2;
+    const SUBJECT_HUMAN_BUYER: u8 = 3;
+    const BPS_DENOMINATOR: u64 = 10000;
+    const BPS_DENOMINATOR_U128: u128 = 10000;
+    /// One star in the milli-star scale used by every aggregate.
+    const STAR_TO_MILLI: u128 = 1000;
+    const MIN_STAR_MILLI: u64 = 1000;
+    const MAX_STAR_MILLI: u64 = 5000;
+    const MAX_PRIOR_WEIGHT_BPS: u64 = 1000000;
+    const MAX_VALUE_WEIGHT_BPS: u64 = 100000;
+    const MAX_CRED_CAP_N: u64 = 10000;
+    const MAX_U64_AS_U128: u128 = 18446744073709551615;
+    const MAX_U128: u128 = 340282366920938463463374607431768211455;
 
     // ============================================================
     // Structs
@@ -338,6 +362,61 @@ module social_contracts::memory {
         max_action_spend: Option<u64>,
     }
 
+    /// Weighting and Bayesian prior parameters (owned by `agent_task::TaskConfig`).
+    public struct ReputationParams has store, copy, drop {
+        prior_mean_milli: u64,
+        prior_weight_bps: u64,
+        value_ref_mist: u64,
+        min_value_weight_bps: u64,
+        max_value_weight_bps: u64,
+        cred_base_bps: u64,
+        cred_step_bps: u64,
+        cred_cap_n: u64,
+        cred_max_bps: u64,
+        overall_seller_weight_bps: u64,
+        overall_buyer_weight_bps: u64,
+    }
+
+    /// Running reputation sums for one subject and role. Nothing is stored per review.
+    public struct ReputationAggregate has store, copy, drop {
+        review_count: u64,
+        star_1: u64,
+        star_2: u64,
+        star_3: u64,
+        star_4: u64,
+        star_5: u64,
+        /// Σ w (bps).
+        weight_sum_bps: u128,
+        /// Σ w * stars * 1000.
+        weighted_star_sum: u128,
+        /// Score at the last update (milli-stars, 1000..5000).
+        bayesian_score_milli: u64,
+        /// W / (W + C) at the last update (bps).
+        confidence_bps: u64,
+        updated_at_ms: u64,
+        last_receipt_id: Option<ID>,
+    }
+
+    /// Principal-level credibility inputs: completed, paid transactions in either role.
+    public struct CredibilityStats has store, copy, drop {
+        settled_count: u64,
+        volume_mist: u128,
+    }
+
+    /// Directional repeat-pair counter key, a dynamic field on the reviewee principal's account.
+    public struct ReviewPairKey has store, copy, drop {
+        rater_principal: address,
+        rater_role: u8,
+    }
+
+    /// How a review was weighted; `agent_task` copies it into `TaskReviewSubmitted`.
+    public struct ReviewOutcome has copy, drop {
+        value_weight_bps: u64,
+        base_weight_bps: u64,
+        weight_bps: u64,
+        prior_pair_reviews: u64,
+    }
+
     public struct OrgRegistryEntry has store, copy, drop {
         active: bool,
     }
@@ -397,6 +476,10 @@ module social_contracts::memory {
         created_at: u64,
         expires_at: Option<u64>,
         active: bool,
+        /// Reviews received as a task seller.
+        as_seller: ReputationAggregate,
+        /// Reviews received as a task buyer.
+        as_buyer: ReputationAggregate,
     }
 
     /// Lazy per-agent memory blob anchor (derived from [`SubAgent`]).
@@ -429,6 +512,9 @@ module social_contracts::memory {
         agent_ids: Table<ID, address>,
         organizations: Table<ID, OrgRegistryEntry>,
         org_count: u8,
+        credibility: CredibilityStats,
+        /// Reputation as a buyer when this principal buys directly (no agent).
+        human_as_buyer: ReputationAggregate,
     }
 
     // ============================================================
@@ -439,6 +525,40 @@ module social_contracts::memory {
         account_id: ID,
         owner: address,
         profile_id: address,
+    }
+
+    /// One per aggregate update (a review). Flat: histogram counters are separate fields.
+    public struct ReputationUpdated has copy, drop {
+        /// 1 agent as seller, 2 agent as buyer, 3 principal buying directly.
+        subject_kind: u8,
+        /// Agent object id, or the memory account id for subject kind 3.
+        subject_id: ID,
+        principal_owner: address,
+        organization_id: Option<ID>,
+        /// 1 seller, 2 buyer.
+        role: u8,
+        review_count: u64,
+        star_1: u64,
+        star_2: u64,
+        star_3: u64,
+        star_4: u64,
+        star_5: u64,
+        weight_sum_bps: u128,
+        weighted_star_sum: u128,
+        bayesian_score_milli: u64,
+        confidence_bps: u64,
+        receipt_id: ID,
+        updated_at_ms: u64,
+    }
+
+    /// One per principal per settled receipt.
+    public struct CredibilityUpdated has copy, drop {
+        account_id: ID,
+        principal_owner: address,
+        settled_count: u64,
+        volume_mist: u128,
+        credibility_bps: u64,
+        updated_at_ms: u64,
     }
 
     public struct SubAgentRegistered has copy, drop {
@@ -702,6 +822,7 @@ module social_contracts::memory {
     public fun cap_ai_spend(): u64 { CAP_AI_SPEND }
     public fun cap_budget_manage(): u64 { CAP_BUDGET_MANAGE }
     public fun cap_social_graph(): u64 { CAP_SOCIAL_GRAPH }
+    public fun cap_task_trade(): u64 { CAP_TASK_TRADE }
 
     public fun org_perm_memory_read(): u64 { ORG_PERM_MEMORY_READ }
     public fun org_perm_memory_write(): u64 { ORG_PERM_MEMORY_WRITE }
@@ -866,6 +987,8 @@ module social_contracts::memory {
             agent_ids: table::new(ctx),
             organizations: table::new(ctx),
             org_count: 0,
+            credibility: empty_credibility(),
+            human_as_buyer: empty_aggregate(),
         };
         set_version(&mut account.id, upgrade::current_version());
 
@@ -2071,6 +2194,515 @@ module social_contracts::memory {
     public fun current_contract_version(): u64 { upgrade::current_version() }
 
     // ============================================================
+    // Bidirectional reputation
+    //
+    // Each agent accumulates its own seller-role and buyer-role aggregates; a principal that
+    // buys directly (no agent) accumulates `human_as_buyer` on its account. Credibility and
+    // the repeat-pair counter are principal-level, so rotating agents never resets either.
+    // Aggregates are running sums (O(1) per review, nothing stored per review); the
+    // Bayesian score is recomputed from the sums with the integer-only formula
+    //   score = (C * m + weighted_star_sum) / (C + weight_sum)
+    // The overall score is derived on read from the two role aggregates of one subject.
+    // ============================================================
+
+    /// Weighting and Bayesian prior parameters; embedded in `agent_task::TaskConfig`.
+    public fun new_reputation_params(
+        prior_mean_milli: u64,
+        prior_weight_bps: u64,
+        value_ref_mist: u64,
+        min_value_weight_bps: u64,
+        max_value_weight_bps: u64,
+        cred_base_bps: u64,
+        cred_step_bps: u64,
+        cred_cap_n: u64,
+        cred_max_bps: u64,
+        overall_seller_weight_bps: u64,
+        overall_buyer_weight_bps: u64,
+    ): ReputationParams {
+        let params = ReputationParams {
+            prior_mean_milli,
+            prior_weight_bps,
+            value_ref_mist,
+            min_value_weight_bps,
+            max_value_weight_bps,
+            cred_base_bps,
+            cred_step_bps,
+            cred_cap_n,
+            cred_max_bps,
+            overall_seller_weight_bps,
+            overall_buyer_weight_bps,
+        };
+        assert_reputation_params(&params);
+        params
+    }
+
+    /// Bounds that keep every reputation computation inside `u128` and free of zero divisors.
+    public fun assert_reputation_params(p: &ReputationParams) {
+        assert!(
+            p.prior_mean_milli >= MIN_STAR_MILLI && p.prior_mean_milli <= MAX_STAR_MILLI,
+            EInvalidReputationParams,
+        );
+        assert!(p.prior_weight_bps > 0 && p.prior_weight_bps <= MAX_PRIOR_WEIGHT_BPS, EInvalidReputationParams);
+        assert!(p.value_ref_mist > 0, EInvalidReputationParams);
+        assert!(p.min_value_weight_bps > 0, EInvalidReputationParams);
+        assert!(p.min_value_weight_bps <= p.max_value_weight_bps, EInvalidReputationParams);
+        assert!(p.max_value_weight_bps <= MAX_VALUE_WEIGHT_BPS, EInvalidReputationParams);
+        assert!(p.cred_base_bps > 0 && p.cred_base_bps <= p.cred_max_bps, EInvalidReputationParams);
+        assert!(p.cred_max_bps <= BPS_DENOMINATOR, EInvalidReputationParams);
+        assert!(p.cred_step_bps <= BPS_DENOMINATOR, EInvalidReputationParams);
+        assert!(p.cred_cap_n <= MAX_CRED_CAP_N, EInvalidReputationParams);
+        assert!(
+            p.overall_seller_weight_bps <= BPS_DENOMINATOR
+                && p.overall_buyer_weight_bps <= BPS_DENOMINATOR,
+            EInvalidReputationParams,
+        );
+        assert!(
+            p.overall_seller_weight_bps + p.overall_buyer_weight_bps == BPS_DENOMINATOR,
+            EInvalidReputationParams,
+        );
+    }
+
+    public fun reputation_prior_mean_milli(p: &ReputationParams): u64 { p.prior_mean_milli }
+    public fun reputation_prior_weight_bps(p: &ReputationParams): u64 { p.prior_weight_bps }
+    public fun reputation_value_ref_mist(p: &ReputationParams): u64 { p.value_ref_mist }
+    public fun reputation_min_value_weight_bps(p: &ReputationParams): u64 { p.min_value_weight_bps }
+    public fun reputation_max_value_weight_bps(p: &ReputationParams): u64 { p.max_value_weight_bps }
+    public fun reputation_cred_base_bps(p: &ReputationParams): u64 { p.cred_base_bps }
+    public fun reputation_cred_step_bps(p: &ReputationParams): u64 { p.cred_step_bps }
+    public fun reputation_cred_cap_n(p: &ReputationParams): u64 { p.cred_cap_n }
+    public fun reputation_cred_max_bps(p: &ReputationParams): u64 { p.cred_max_bps }
+    public fun reputation_overall_seller_weight_bps(p: &ReputationParams): u64 { p.overall_seller_weight_bps }
+    public fun reputation_overall_buyer_weight_bps(p: &ReputationParams): u64 { p.overall_buyer_weight_bps }
+
+    public fun role_seller(): u8 { ROLE_SELLER }
+    public fun role_buyer(): u8 { ROLE_BUYER }
+
+    public(package) fun empty_aggregate(): ReputationAggregate {
+        ReputationAggregate {
+            review_count: 0,
+            star_1: 0,
+            star_2: 0,
+            star_3: 0,
+            star_4: 0,
+            star_5: 0,
+            weight_sum_bps: 0,
+            weighted_star_sum: 0,
+            bayesian_score_milli: 0,
+            confidence_bps: 0,
+            updated_at_ms: 0,
+            last_receipt_id: option::none(),
+        }
+    }
+
+    public(package) fun empty_credibility(): CredibilityStats {
+        CredibilityStats { settled_count: 0, volume_mist: 0 }
+    }
+
+    // ---- Checked integer helpers (fee splits in agent_task and all reputation math) ----
+    // Move aborts on overflow already, but anonymously. These fail with named codes and keep the
+    // widening to u128 in one place.
+
+    public fun checked_add_u128(a: u128, b: u128): u128 {
+        assert!(a <= MAX_U128 - b, EArithmeticOverflow);
+        a + b
+    }
+
+    public fun checked_mul_u128(a: u128, b: u128): u128 {
+        assert!(a == 0 || b <= MAX_U128 / a, EArithmeticOverflow);
+        a * b
+    }
+
+    public fun checked_div_u128(a: u128, b: u128): u128 {
+        assert!(b > 0, EDivideByZero);
+        a / b
+    }
+
+    public fun checked_narrow_u64(v: u128): u64 {
+        assert!(v <= MAX_U64_AS_U128, EArithmeticOverflow);
+        v as u64
+    }
+
+    public fun checked_add_u64(a: u64, b: u64): u64 {
+        checked_narrow_u64(checked_add_u128(a as u128, b as u128))
+    }
+
+    public fun checked_mul_u64(a: u64, b: u64): u64 {
+        checked_narrow_u64(checked_mul_u128(a as u128, b as u128))
+    }
+
+    /// `amount * bps / 10_000` in u128, as used by every fee split in the fork.
+    public fun checked_bps_of(amount: u64, bps: u64): u64 {
+        checked_narrow_u64(checked_div_u128(checked_mul_u128(amount as u128, bps as u128), 10000))
+    }
+
+    // ---- Aggregate views (derive from sums with the live params) ----
+
+    public fun aggregate_review_count(a: &ReputationAggregate): u64 { a.review_count }
+    public fun aggregate_histogram(a: &ReputationAggregate): vector<u64> {
+        vector[a.star_1, a.star_2, a.star_3, a.star_4, a.star_5]
+    }
+    public fun aggregate_weight_sum_bps(a: &ReputationAggregate): u128 { a.weight_sum_bps }
+    public fun aggregate_weighted_star_sum(a: &ReputationAggregate): u128 { a.weighted_star_sum }
+    public fun aggregate_updated_at_ms(a: &ReputationAggregate): u64 { a.updated_at_ms }
+    public fun aggregate_last_receipt_id(a: &ReputationAggregate): Option<ID> { a.last_receipt_id }
+    /// Score cached at the last update. After a prior change, prefer [`aggregate_score_milli`].
+    public fun aggregate_cached_score_milli(a: &ReputationAggregate): u64 { a.bayesian_score_milli }
+
+    /// Bayesian score in milli-stars under the given params; the prior when there are no reviews.
+    public fun aggregate_score_milli(a: &ReputationAggregate, p: &ReputationParams): u64 {
+        let (score, _) = role_score(a.weight_sum_bps, a.weighted_star_sum, p);
+        score
+    }
+
+    /// Evidence share `W / (W + C)` in bps under the given params.
+    public fun aggregate_confidence_bps(a: &ReputationAggregate, p: &ReputationParams): u64 {
+        let (_, confidence) = role_score(a.weight_sum_bps, a.weighted_star_sum, p);
+        confidence
+    }
+
+    /// Weighted Bayesian average of the seller and buyer roles of one subject.
+    /// Returns `(score_milli, confidence_bps)`. A role with no reviews contributes nothing.
+    public fun overall_reputation(
+        seller: &ReputationAggregate,
+        buyer: &ReputationAggregate,
+        p: &ReputationParams,
+    ): (u64, u64) {
+        let c = p.prior_weight_bps as u128;
+        let m = p.prior_mean_milli as u128;
+        let a_s = p.overall_seller_weight_bps as u128;
+        let a_b = p.overall_buyer_weight_bps as u128;
+        let prior_num = checked_mul_u128(checked_mul_u128(c, m), BPS_DENOMINATOR_U128);
+        let prior_den = checked_mul_u128(c, BPS_DENOMINATOR_U128);
+        let num = checked_add_u128(
+            prior_num,
+            checked_add_u128(
+                checked_mul_u128(a_s, seller.weighted_star_sum),
+                checked_mul_u128(a_b, buyer.weighted_star_sum),
+            ),
+        );
+        let evidence = checked_add_u128(
+            checked_mul_u128(a_s, seller.weight_sum_bps),
+            checked_mul_u128(a_b, buyer.weight_sum_bps),
+        );
+        let den = checked_add_u128(prior_den, evidence);
+        finish_score(num, den, evidence)
+    }
+
+    /// Overall reputation of an agent: its own seller and buyer aggregates.
+    public fun agent_overall(agent: &SubAgent, p: &ReputationParams): (u64, u64) {
+        overall_reputation(&agent.as_seller, &agent.as_buyer, p)
+    }
+
+    public fun sub_agent_seller_reputation(agent: &SubAgent): ReputationAggregate { agent.as_seller }
+    public fun sub_agent_buyer_reputation(agent: &SubAgent): ReputationAggregate { agent.as_buyer }
+    public fun account_human_buyer_reputation(account: &MemoryAccount): ReputationAggregate {
+        account.human_as_buyer
+    }
+    public fun account_settled_count(account: &MemoryAccount): u64 { account.credibility.settled_count }
+    public fun account_settled_volume_mist(account: &MemoryAccount): u128 { account.credibility.volume_mist }
+
+    /// Principal credibility in bps derived from completed, paid transactions only.
+    public fun credibility_bps_for(settled_count: u64, p: &ReputationParams): u64 {
+        let capped = if (settled_count < p.cred_cap_n) { settled_count } else { p.cred_cap_n };
+        let raw = checked_add_u64(p.cred_base_bps, checked_mul_u64(capped, p.cred_step_bps));
+        if (raw < p.cred_max_bps) { raw } else { p.cred_max_bps }
+    }
+
+    public fun account_credibility_bps(account: &MemoryAccount, p: &ReputationParams): u64 {
+        credibility_bps_for(account.credibility.settled_count, p)
+    }
+
+    /// Reviews already given by `rater_principal` in `rater_role` to the owner of `account`.
+    public fun pair_review_count(
+        account: &MemoryAccount,
+        rater_principal: address,
+        rater_role: u8,
+    ): u64 {
+        let key = ReviewPairKey { rater_principal, rater_role };
+        if (df::exists_with_type<ReviewPairKey, u64>(&account.id, key)) {
+            *df::borrow<ReviewPairKey, u64>(&account.id, key)
+        } else {
+            0
+        }
+    }
+
+    /// `clamp(amount * 10000 / value_ref, min, max)`: caps a whale and floors dust.
+    public fun value_weight_bps(amount_mist: u64, p: &ReputationParams): u64 {
+        let raw = checked_narrow_u64(
+            checked_div_u128(
+                checked_mul_u128(amount_mist as u128, BPS_DENOMINATOR_U128),
+                p.value_ref_mist as u128,
+            ),
+        );
+        if (raw < p.min_value_weight_bps) {
+            p.min_value_weight_bps
+        } else if (raw > p.max_value_weight_bps) {
+            p.max_value_weight_bps
+        } else {
+            raw
+        }
+    }
+
+    // ---- Review outcome (returned to agent_task for its event) ----
+
+    public fun outcome_value_weight_bps(o: &ReviewOutcome): u64 { o.value_weight_bps }
+    public fun outcome_base_weight_bps(o: &ReviewOutcome): u64 { o.base_weight_bps }
+    public fun outcome_weight_bps(o: &ReviewOutcome): u64 { o.weight_bps }
+    public fun outcome_prior_pair_reviews(o: &ReviewOutcome): u64 { o.prior_pair_reviews }
+
+    // ---- Mutators (package-only; agent_task is the single caller) ----
+
+    /// Counts a completed, paid transaction toward the principal's credibility. Returns the
+    /// credibility in bps **before** this transaction, which the receipt snapshots so a party
+    /// cannot raise its own review weight with the transaction being reviewed.
+    public(package) fun record_settlement(
+        account: &mut MemoryAccount,
+        amount_mist: u64,
+        p: &ReputationParams,
+        clock: &Clock,
+    ): u64 {
+        assert_object_version(&account.id);
+        let before = credibility_bps_for(account.credibility.settled_count, p);
+        account.credibility.settled_count = checked_add_u64(account.credibility.settled_count, 1);
+        account.credibility.volume_mist =
+            checked_add_u128(account.credibility.volume_mist, amount_mist as u128);
+        event::emit(CredibilityUpdated {
+            account_id: object::id(account),
+            principal_owner: account.owner,
+            settled_count: account.credibility.settled_count,
+            volume_mist: account.credibility.volume_mist,
+            credibility_bps: credibility_bps_for(account.credibility.settled_count, p),
+            updated_at_ms: clock::timestamp_ms(clock),
+        });
+        before
+    }
+
+    /// Buyer reviews a seller agent. The pair counter lives on the seller principal's account.
+    public(package) fun apply_seller_review(
+        seller_agent: &mut SubAgent,
+        seller_account: &mut MemoryAccount,
+        buyer_principal: address,
+        stars: u8,
+        amount_mist: u64,
+        rater_credibility_bps: u64,
+        p: &ReputationParams,
+        receipt_id: ID,
+        clock: &Clock,
+    ): ReviewOutcome {
+        assert_object_version(&seller_account.id);
+        assert!(seller_agent.memory_account_id == object::id(seller_account), ESubAgentAccountMismatch);
+        let outcome = weigh_review(
+            &mut seller_account.id,
+            buyer_principal,
+            ROLE_BUYER,
+            stars,
+            amount_mist,
+            rater_credibility_bps,
+            p,
+        );
+        let now = clock::timestamp_ms(clock);
+        apply_to_aggregate(&mut seller_agent.as_seller, stars, outcome.weight_bps, p, receipt_id, now);
+        emit_reputation_updated(
+            SUBJECT_AGENT_SELLER,
+            object::id(seller_agent),
+            seller_agent.principal_owner,
+            option::some(seller_agent.organization_id),
+            ROLE_SELLER,
+            &seller_agent.as_seller,
+            receipt_id,
+        );
+        outcome
+    }
+
+    /// Seller reviews a buyer **agent**. The pair counter lives on the buyer principal's account.
+    public(package) fun apply_buyer_agent_review(
+        buyer_agent: &mut SubAgent,
+        buyer_account: &mut MemoryAccount,
+        seller_principal: address,
+        stars: u8,
+        amount_mist: u64,
+        rater_credibility_bps: u64,
+        p: &ReputationParams,
+        receipt_id: ID,
+        clock: &Clock,
+    ): ReviewOutcome {
+        assert_object_version(&buyer_account.id);
+        assert!(buyer_agent.memory_account_id == object::id(buyer_account), ESubAgentAccountMismatch);
+        let outcome = weigh_review(
+            &mut buyer_account.id,
+            seller_principal,
+            ROLE_SELLER,
+            stars,
+            amount_mist,
+            rater_credibility_bps,
+            p,
+        );
+        let now = clock::timestamp_ms(clock);
+        apply_to_aggregate(&mut buyer_agent.as_buyer, stars, outcome.weight_bps, p, receipt_id, now);
+        emit_reputation_updated(
+            SUBJECT_AGENT_BUYER,
+            object::id(buyer_agent),
+            buyer_agent.principal_owner,
+            option::some(buyer_agent.organization_id),
+            ROLE_BUYER,
+            &buyer_agent.as_buyer,
+            receipt_id,
+        );
+        outcome
+    }
+
+    /// Seller reviews a principal that bought directly (no buyer agent).
+    public(package) fun apply_human_buyer_review(
+        buyer_account: &mut MemoryAccount,
+        seller_principal: address,
+        stars: u8,
+        amount_mist: u64,
+        rater_credibility_bps: u64,
+        p: &ReputationParams,
+        receipt_id: ID,
+        clock: &Clock,
+    ): ReviewOutcome {
+        assert_object_version(&buyer_account.id);
+        let outcome = weigh_review(
+            &mut buyer_account.id,
+            seller_principal,
+            ROLE_SELLER,
+            stars,
+            amount_mist,
+            rater_credibility_bps,
+            p,
+        );
+        let now = clock::timestamp_ms(clock);
+        apply_to_aggregate(&mut buyer_account.human_as_buyer, stars, outcome.weight_bps, p, receipt_id, now);
+        emit_reputation_updated(
+            SUBJECT_HUMAN_BUYER,
+            object::id(buyer_account),
+            buyer_account.owner,
+            option::none(),
+            ROLE_BUYER,
+            &buyer_account.human_as_buyer,
+            receipt_id,
+        );
+        outcome
+    }
+
+    // ---- Internals ----
+
+    /// Computes the review weight and advances the directional pair counter.
+    /// `w = clamp(value) * credibility / 10000 / (1 + prior_pair_reviews)`; may floor to 0.
+    fun weigh_review(
+        reviewee_uid: &mut UID,
+        rater_principal: address,
+        rater_role: u8,
+        stars: u8,
+        amount_mist: u64,
+        rater_credibility_bps: u64,
+        p: &ReputationParams,
+    ): ReviewOutcome {
+        assert!(stars >= 1 && stars <= 5, EInvalidStars);
+        assert!(rater_credibility_bps <= BPS_DENOMINATOR, EInvalidReputationParams);
+        let value_weight = value_weight_bps(amount_mist, p);
+        let base_weight = checked_narrow_u64(
+            checked_div_u128(
+                checked_mul_u128(value_weight as u128, rater_credibility_bps as u128),
+                BPS_DENOMINATOR_U128,
+            ),
+        );
+        let key = ReviewPairKey { rater_principal, rater_role };
+        let prior = if (df::exists_with_type<ReviewPairKey, u64>(reviewee_uid, key)) {
+            let counter = df::borrow_mut<ReviewPairKey, u64>(reviewee_uid, key);
+            let seen = *counter;
+            *counter = checked_add_u64(seen, 1);
+            seen
+        } else {
+            df::add(reviewee_uid, key, 1u64);
+            0
+        };
+        let divisor = checked_add_u64(prior, 1);
+        let weight = checked_narrow_u64(checked_div_u128(base_weight as u128, divisor as u128));
+        ReviewOutcome {
+            value_weight_bps: value_weight,
+            base_weight_bps: base_weight,
+            weight_bps: weight,
+            prior_pair_reviews: prior,
+        }
+    }
+
+    fun apply_to_aggregate(
+        agg: &mut ReputationAggregate,
+        stars: u8,
+        weight_bps: u64,
+        p: &ReputationParams,
+        receipt_id: ID,
+        now_ms: u64,
+    ) {
+        assert!(stars >= 1 && stars <= 5, EInvalidStars);
+        agg.review_count = checked_add_u64(agg.review_count, 1);
+        if (stars == 1) { agg.star_1 = checked_add_u64(agg.star_1, 1); }
+        else if (stars == 2) { agg.star_2 = checked_add_u64(agg.star_2, 1); }
+        else if (stars == 3) { agg.star_3 = checked_add_u64(agg.star_3, 1); }
+        else if (stars == 4) { agg.star_4 = checked_add_u64(agg.star_4, 1); }
+        else { agg.star_5 = checked_add_u64(agg.star_5, 1); };
+        agg.weight_sum_bps = checked_add_u128(agg.weight_sum_bps, weight_bps as u128);
+        agg.weighted_star_sum = checked_add_u128(
+            agg.weighted_star_sum,
+            checked_mul_u128(weight_bps as u128, (stars as u128) * STAR_TO_MILLI),
+        );
+        let (score, confidence) = role_score(agg.weight_sum_bps, agg.weighted_star_sum, p);
+        agg.bayesian_score_milli = score;
+        agg.confidence_bps = confidence;
+        agg.updated_at_ms = now_ms;
+        agg.last_receipt_id = option::some(receipt_id);
+    }
+
+    /// `(C*m + S) / (C + W)` and `W*10000 / (C + W)`; the prior when nothing has been weighed.
+    fun role_score(weight_sum_bps: u128, weighted_star_sum: u128, p: &ReputationParams): (u64, u64) {
+        let c = p.prior_weight_bps as u128;
+        let num = checked_add_u128(checked_mul_u128(c, p.prior_mean_milli as u128), weighted_star_sum);
+        let den = checked_add_u128(c, weight_sum_bps);
+        finish_score(num, den, weight_sum_bps)
+    }
+
+    /// Shared tail: the score must land in [1000, 5000] and confidence in [0, 10000].
+    fun finish_score(num: u128, den: u128, evidence: u128): (u64, u64) {
+        let score = checked_narrow_u64(checked_div_u128(num, den));
+        assert!(score >= MIN_STAR_MILLI && score <= MAX_STAR_MILLI, EInvalidReputationParams);
+        let confidence = checked_narrow_u64(checked_div_u128(checked_mul_u128(evidence, BPS_DENOMINATOR_U128), den));
+        assert!(confidence <= BPS_DENOMINATOR, EInvalidReputationParams);
+        (score, confidence)
+    }
+
+    fun emit_reputation_updated(
+        subject_kind: u8,
+        subject_id: ID,
+        principal_owner: address,
+        organization_id: Option<ID>,
+        role: u8,
+        agg: &ReputationAggregate,
+        receipt_id: ID,
+    ) {
+        event::emit(ReputationUpdated {
+            subject_kind,
+            subject_id,
+            principal_owner,
+            organization_id,
+            role,
+            review_count: agg.review_count,
+            star_1: agg.star_1,
+            star_2: agg.star_2,
+            star_3: agg.star_3,
+            star_4: agg.star_4,
+            star_5: agg.star_5,
+            weight_sum_bps: agg.weight_sum_bps,
+            weighted_star_sum: agg.weighted_star_sum,
+            bayesian_score_milli: agg.bayesian_score_milli,
+            confidence_bps: agg.confidence_bps,
+            receipt_id,
+            updated_at_ms: agg.updated_at_ms,
+        });
+    }
+
+    // ============================================================
     // Key-server access policies
     // ============================================================
 
@@ -2305,6 +2937,8 @@ module social_contracts::memory {
             created_at: clock::timestamp_ms(clock),
             expires_at,
             active: true,
+            as_seller: empty_aggregate(),
+            as_buyer: empty_aggregate(),
         };
 
         emit_sub_agent_registered(account, &agent);
@@ -3193,4 +3827,16 @@ module social_contracts::memory {
 
     #[test_only]
     public fun error_cap_escalation(): u64 { ECapsNotSubset }
+
+    #[test_only]
+    public fun error_invalid_stars(): u64 { EInvalidStars }
+
+    #[test_only]
+    public fun error_arithmetic_overflow(): u64 { EArithmeticOverflow }
+
+    #[test_only]
+    public fun error_divide_by_zero(): u64 { EDivideByZero }
+
+    #[test_only]
+    public fun error_invalid_reputation_params(): u64 { EInvalidReputationParams }
 }

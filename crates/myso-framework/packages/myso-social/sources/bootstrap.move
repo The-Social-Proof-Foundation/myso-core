@@ -29,6 +29,7 @@ module social_contracts::bootstrap {
     use social_contracts::ai_credit::{Self, AiCreditOracleAdminCap};
     use social_contracts::subscription::{Self, SubscriptionAdminCap};
     use social_contracts::memory::{Self as memory_module, MemoryAdminCap};
+    use social_contracts::agent_task::{Self, TaskMarketCap};
     // Import framework coin module for coin creation admin cap
     use myso::coin::{Self, CoinCreationAdminCap};
     // Import framework package module for package publishing admin cap
@@ -65,6 +66,7 @@ module social_contracts::bootstrap {
         social_contracts::block_list::bootstrap_init(clock, ctx);
         social_contracts::mydata::bootstrap_init(clock, ctx);
         social_contracts::memory::bootstrap_init(clock, ctx);
+        social_contracts::agent_task::bootstrap_init(admin, clock, ctx);
         let gov_ids = social_contracts::governance::bootstrap_init(clock, ctx);
         social_contracts::post::bootstrap_init(clock, ctx);
         social_contracts::subscription::bootstrap_init(clock, ctx);
@@ -104,6 +106,7 @@ module social_contracts::bootstrap {
         transfer::public_transfer(profile::create_profile_admin_cap(ctx), admin);
         transfer::public_transfer(subscription::create_subscription_admin_cap(ctx), admin);
         transfer::public_transfer(memory_module::create_memory_admin_cap(ctx), admin);
+        transfer::public_transfer(agent_task::create_task_market_cap(ctx), admin);
         transfer::public_transfer(insurance::create_insurance_admin_cap(ctx), admin);
         transfer::public_transfer(ai_credit::create_oracle_admin_cap(ctx), admin);
         transfer::public_transfer(create_messaging_admin_cap(ctx), admin);

@@ -16,11 +16,11 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
+    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
     NewUnifiedRevenue, NewWalletMessagingPolicy,
 };
 use myso_indexer_alt_social_schema::schema::{
-    message_digests, messaging_agent_groups, messaging_config, paid_message_escrows,
+    agent_rooms, message_digests, messaging_agent_groups, messaging_config, paid_message_escrows,
     unified_revenue, wallet_messaging_policies,
 };
 
@@ -45,6 +45,7 @@ pub enum MessagingRow {
     PaidMessageEscrow(NewPaidMessageEscrow),
     MessageDigest(NewMessageDigest),
     MessagingAgentGroup(NewMessagingAgentGroup),
+    AgentRoom(NewAgentRoom),
     UnifiedRevenue(NewUnifiedRevenue),
     OrgOutboundSpend {
         payer: String,
@@ -201,6 +202,7 @@ fn convert_social_event_row(row: SocialEventRow) -> Vec<MessagingRow> {
         SocialEventRow::PaidMessageEscrow(e) => vec![MessagingRow::PaidMessageEscrow(e)],
         SocialEventRow::MessageDigest(e) => vec![MessagingRow::MessageDigest(e)],
         SocialEventRow::MessagingAgentGroup(g) => vec![MessagingRow::MessagingAgentGroup(g)],
+        SocialEventRow::AgentRoom(r) => vec![MessagingRow::AgentRoom(r)],
         SocialEventRow::UnifiedRevenue(r) => vec![MessagingRow::UnifiedRevenue(r)],
         SocialEventRow::MessagingOrgOutboundSpend {
             payer,
@@ -278,6 +280,15 @@ impl Handler for MessagingHandler {
                 MessagingRow::MessagingAgentGroup(g) => {
                     total += diesel::insert_into(messaging_agent_groups::table)
                         .values(g)
+                        .execute(conn)
+                        .await?;
+                }
+                MessagingRow::AgentRoom(r) => {
+                    // Emitted once per group; a replayed checkpoint must not fail the batch.
+                    total += diesel::insert_into(agent_rooms::table)
+                        .values(r)
+                        .on_conflict(agent_rooms::group_id)
+                        .do_nothing()
                         .execute(conn)
                         .await?;
                 }

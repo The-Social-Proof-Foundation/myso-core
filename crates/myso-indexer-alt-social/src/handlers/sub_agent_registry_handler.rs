@@ -15,8 +15,13 @@ use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
-use myso_indexer_alt_social_schema::models::{NewSubAgent, NewSubAgentEvent};
-use myso_indexer_alt_social_schema::schema::{memory_accounts, sub_agent_events, sub_agents};
+use diesel::upsert::excluded;
+use myso_indexer_alt_social_schema::models::{
+    NewCredibility, NewReputationAggregate, NewSubAgent, NewSubAgentEvent,
+};
+use myso_indexer_alt_social_schema::schema::{
+    credibility, memory_accounts, reputation_aggregates, sub_agent_events, sub_agents,
+};
 
 use super::common;
 use super::events;
@@ -32,6 +37,8 @@ const SUB_AGENT_REGISTRY_EVENTS: &[&str] = &[
     "SubAgentDeactivated",
     "SubAgentRevoked",
     "SubAgentsClearedOnTransfer",
+    "ReputationUpdated",
+    "CredibilityUpdated",
 ];
 
 #[derive(Debug, Clone)]
@@ -57,10 +64,88 @@ pub enum SubAgentRegistryRow {
         transaction_id: String,
     },
     Audit(NewSubAgentEvent),
+    /// Aggregate after one review; later reviews carry a larger `review_count`.
+    Reputation(NewReputationAggregate),
+    /// Principal credibility inputs; later settlements carry a larger `settled_count`.
+    Credibility(NewCredibility),
 }
 
 impl FieldCount for SubAgentRegistryRow {
-    const FIELD_COUNT: usize = 8;
+    const FIELD_COUNT: usize = 20;
+}
+
+fn str_field(data: &serde_json::Value, key: &str) -> Option<String> {
+    data.get(key).and_then(|v| v.as_str()).map(String::from)
+}
+
+fn opt_str_field(data: &serde_json::Value, key: &str) -> Option<String> {
+    data.get(key)
+        .filter(|v| !v.is_null())
+        .and_then(|v| v.as_str())
+        .map(String::from)
+}
+
+fn i64_field(data: &serde_json::Value, key: &str) -> Option<i64> {
+    let v = data.get(key)?;
+    v.as_i64().or_else(|| v.as_u64().and_then(|u| i64::try_from(u).ok()))
+}
+
+/// `u128` sums arrive as decimal strings (serde_json numbers stop at `u64`); anything else is
+/// rejected so a malformed event never stores a bogus aggregate.
+fn decimal_field(data: &serde_json::Value, key: &str) -> Option<String> {
+    let s = data.get(key)?.as_str()?;
+    (!s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())).then(|| s.to_string())
+}
+
+/// Pure builder for `memory::ReputationUpdated`.
+pub fn reputation_row(
+    data: &serde_json::Value,
+    event_id: &str,
+    transaction_id: &str,
+) -> Option<NewReputationAggregate> {
+    let updated_at_ms = i64_field(data, "updated_at_ms")?;
+    Some(NewReputationAggregate {
+        subject_id: str_field(data, "subject_id")?,
+        role: i64_field(data, "role")? as i16,
+        subject_kind: i64_field(data, "subject_kind")? as i16,
+        principal_owner: str_field(data, "principal_owner")?,
+        organization_id: opt_str_field(data, "organization_id"),
+        review_count: i64_field(data, "review_count")?,
+        star_1: i64_field(data, "star_1")?,
+        star_2: i64_field(data, "star_2")?,
+        star_3: i64_field(data, "star_3")?,
+        star_4: i64_field(data, "star_4")?,
+        star_5: i64_field(data, "star_5")?,
+        weight_sum_bps: decimal_field(data, "weight_sum_bps")?,
+        weighted_star_sum: decimal_field(data, "weighted_star_sum")?,
+        bayesian_score_milli: i64_field(data, "bayesian_score_milli")?,
+        confidence_bps: i64_field(data, "confidence_bps")?,
+        last_receipt_id: str_field(data, "receipt_id")?,
+        updated_at_ms,
+        event_id: event_id.to_string(),
+        transaction_id: transaction_id.to_string(),
+        time: common::chain_time_from_ms(updated_at_ms),
+    })
+}
+
+/// Pure builder for `memory::CredibilityUpdated`.
+pub fn credibility_row(
+    data: &serde_json::Value,
+    event_id: &str,
+    transaction_id: &str,
+) -> Option<NewCredibility> {
+    let updated_at_ms = i64_field(data, "updated_at_ms")?;
+    Some(NewCredibility {
+        account_id: str_field(data, "account_id")?,
+        principal_owner: str_field(data, "principal_owner")?,
+        settled_count: i64_field(data, "settled_count")?,
+        volume_mist: decimal_field(data, "volume_mist")?,
+        credibility_bps: i64_field(data, "credibility_bps")?,
+        updated_at_ms,
+        event_id: event_id.to_string(),
+        transaction_id: transaction_id.to_string(),
+        time: common::chain_time_from_ms(updated_at_ms),
+    })
 }
 
 pub struct SubAgentRegistryHandler;
@@ -125,6 +210,12 @@ fn handle_sub_agent_registry_event(
                 },
                 SubAgentRegistryRow::Audit(audit),
             ])
+        }
+        "ReputationUpdated" => {
+            reputation_row(data, event_id, &transaction_id).map(|r| vec![SubAgentRegistryRow::Reputation(r)])
+        }
+        "CredibilityUpdated" => {
+            credibility_row(data, event_id, &transaction_id).map(|r| vec![SubAgentRegistryRow::Credibility(r)])
         }
         _ => None,
     }
@@ -311,6 +402,36 @@ impl Handler for SubAgentRegistryHandler {
                         .execute(conn)
                         .await?;
                 }
+                SubAgentRegistryRow::Reputation(r) => {
+                    // Concurrent pipeline: never let an older aggregate overwrite a newer one.
+                    let upsert = diesel::insert_into(reputation_aggregates::table)
+                        .values(r)
+                        .on_conflict((reputation_aggregates::subject_id, reputation_aggregates::role))
+                        .do_update()
+                        .set(r);
+                    // Called by path: importing `FilterDsl` would make `.filter` on plain tables
+                    // ambiguous with `QueryDsl::filter` in this file.
+                    total += diesel::query_dsl::methods::FilterDsl::filter(
+                        upsert,
+                        reputation_aggregates::review_count
+                            .lt(excluded(reputation_aggregates::review_count)),
+                    )
+                    .execute(conn)
+                    .await?;
+                }
+                SubAgentRegistryRow::Credibility(c) => {
+                    let upsert = diesel::insert_into(credibility::table)
+                        .values(c)
+                        .on_conflict(credibility::account_id)
+                        .do_update()
+                        .set(c);
+                    total += diesel::query_dsl::methods::FilterDsl::filter(
+                        upsert,
+                        credibility::settled_count.lt(excluded(credibility::settled_count)),
+                    )
+                    .execute(conn)
+                    .await?;
+                }
             }
         }
         Ok(total)
@@ -405,6 +526,138 @@ mod tests {
                 assert_eq!(e.event_type, "SubAgentsClearedOnTransfer");
             }
             _ => panic!("expected BulkClear and Audit rows"),
+        }
+    }
+
+    fn parsed(event_name: &str, bytes: &[u8]) -> serde_json::Value {
+        events::parse_event_contents(MEMORY_MODULE, event_name, bytes)
+            .expect("BCS parse should succeed")
+    }
+
+    fn id(hex: &str) -> events::BcsMoveObjectId {
+        events::BcsMoveObjectId::from_address(
+            move_core_types::account_address::AccountAddress::from_hex_literal(hex).unwrap(),
+        )
+    }
+
+    fn address(hex: &str) -> move_core_types::account_address::AccountAddress {
+        move_core_types::account_address::AccountAddress::from_hex_literal(hex).unwrap()
+    }
+
+    #[test]
+    fn reputation_updated_becomes_an_aggregate_row_with_u128_sums_as_strings() {
+        let ev = events::BcsReputationUpdated {
+            subject_kind: 1,
+            subject_id: id("0x5ea"),
+            principal_owner: address("0x5e"),
+            organization_id: Some(id("0x0e9")),
+            role: 1,
+            review_count: 2,
+            star_1: 0,
+            star_2: 0,
+            star_3: 0,
+            star_4: 0,
+            star_5: 2,
+            // Beyond u64: must survive as an exact decimal string.
+            weight_sum_bps: 18_446_744_073_709_551_616u128,
+            weighted_star_sum: 340_282_366_920_938_463_463_374_607_431_768_211_455u128,
+            bayesian_score_milli: 3122,
+            confidence_bps: 609,
+            receipt_id: id("0x7a5c"),
+            updated_at_ms: 1_700_000_000_000,
+        };
+        let json = parsed("ReputationUpdated", &bcs::to_bytes(&ev).unwrap());
+        let rows = handle_sub_agent_registry_event("ReputationUpdated", &json, "digest:4")
+            .expect("handler should accept");
+        let [SubAgentRegistryRow::Reputation(row)] = rows.as_slice() else {
+            panic!("expected one Reputation row");
+        };
+        assert_eq!((row.role, row.subject_kind), (1, 1));
+        assert_eq!(row.review_count, 2);
+        assert_eq!(row.star_5, 2);
+        assert_eq!(row.weight_sum_bps, "18446744073709551616");
+        assert_eq!(
+            row.weighted_star_sum,
+            "340282366920938463463374607431768211455"
+        );
+        assert_eq!(row.bayesian_score_milli, 3122);
+        assert!(row.organization_id.is_some());
+        assert_eq!(row.transaction_id, "digest");
+    }
+
+    #[test]
+    fn a_human_buyer_aggregate_has_no_organization() {
+        let ev = events::BcsReputationUpdated {
+            subject_kind: 3,
+            subject_id: id("0xacc"),
+            principal_owner: address("0xb0b"),
+            organization_id: None,
+            role: 2,
+            review_count: 1,
+            star_1: 0,
+            star_2: 0,
+            star_3: 0,
+            star_4: 1,
+            star_5: 0,
+            weight_sum_bps: 2000,
+            weighted_star_sum: 8_000_000,
+            bayesian_score_milli: 3038,
+            confidence_bps: 384,
+            receipt_id: id("0x7a5c"),
+            updated_at_ms: 5,
+        };
+        let json = parsed("ReputationUpdated", &bcs::to_bytes(&ev).unwrap());
+        let rows = handle_sub_agent_registry_event("ReputationUpdated", &json, "d:0").unwrap();
+        let [SubAgentRegistryRow::Reputation(row)] = rows.as_slice() else {
+            panic!("expected one Reputation row");
+        };
+        assert_eq!((row.role, row.subject_kind), (2, 3));
+        assert!(row.organization_id.is_none());
+    }
+
+    #[test]
+    fn credibility_updated_becomes_a_credibility_row() {
+        let ev = events::BcsCredibilityUpdated {
+            account_id: id("0xacc"),
+            principal_owner: address("0xb0b"),
+            settled_count: 3,
+            volume_mist: 3_000_000_000,
+            credibility_bps: 3000,
+            updated_at_ms: 9,
+        };
+        let json = parsed("CredibilityUpdated", &bcs::to_bytes(&ev).unwrap());
+        let rows = handle_sub_agent_registry_event("CredibilityUpdated", &json, "d:1").unwrap();
+        let [SubAgentRegistryRow::Credibility(row)] = rows.as_slice() else {
+            panic!("expected one Credibility row");
+        };
+        assert_eq!(row.settled_count, 3);
+        assert_eq!(row.volume_mist, "3000000000");
+        assert_eq!(row.credibility_bps, 3000);
+    }
+
+    #[test]
+    fn a_non_decimal_sum_is_rejected_rather_than_stored() {
+        let data = serde_json::json!({
+            "subject_id": "0x1", "role": 1, "subject_kind": 1, "principal_owner": "0x2",
+            "organization_id": null, "review_count": 1, "star_1": 0, "star_2": 0, "star_3": 0,
+            "star_4": 0, "star_5": 1, "weight_sum_bps": "12x", "weighted_star_sum": "5",
+            "bayesian_score_milli": 3000, "confidence_bps": 1, "receipt_id": "0x3",
+            "updated_at_ms": 1
+        });
+        assert!(reputation_row(&data, "d:0", "d").is_none());
+    }
+
+    #[test]
+    fn every_memory_reputation_event_is_in_the_registry_event_list() {
+        let move_source = include_str!(
+            "../../../myso-framework/packages/myso-social/sources/memory.move"
+        );
+        for event in ["ReputationUpdated", "CredibilityUpdated"] {
+            assert!(
+                move_source.contains(&format!("public struct {event} has copy, drop")),
+                "{event} is not declared in memory.move"
+            );
+            assert!(SUB_AGENT_REGISTRY_EVENTS.contains(&event), "{event} has no handler entry");
         }
     }
 }

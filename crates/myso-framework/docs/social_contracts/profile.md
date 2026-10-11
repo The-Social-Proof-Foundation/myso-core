@@ -177,8 +177,8 @@ Handles user identity, profile creation, management, and username registration
 -  [Function `continuous_vesting_piece`](#social_contracts_profile_continuous_vesting_piece)
 -  [Function `cliff_lump_piece`](#social_contracts_profile_cliff_lump_piece)
 -  [Function `pieces_from_vectors`](#social_contracts_profile_pieces_from_vectors)
--  [Function `vest_myso`](#social_contracts_profile_vest_myso)
--  [Function `vest_myso_internal`](#social_contracts_profile_vest_myso_internal)
+-  [Function `vest_tokens`](#social_contracts_profile_vest_tokens)
+-  [Function `vest_tokens_internal`](#social_contracts_profile_vest_tokens_internal)
 -  [Function `claim_vested_tokens`](#social_contracts_profile_claim_vested_tokens)
 -  [Function `claimable`](#social_contracts_profile_claimable)
 -  [Function `calculate_claimable`](#social_contracts_profile_calculate_claimable)
@@ -1076,10 +1076,10 @@ One schedule piece: lump cliff unlock or continuous curved vesting.
 
 ## Struct `VestingWallet`
 
-Vesting Wallet contains MYSO coins released over a piecewise schedule.
+Vesting Wallet holds coins of any type <code>T</code> released over a piecewise schedule.
 
 
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> <b>has</b> key, store
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;<b>phantom</b> T&gt; <b>has</b> key, store
 </code></pre>
 
 
@@ -1095,7 +1095,7 @@ Vesting Wallet contains MYSO coins released over a piecewise schedule.
 <dd>
 </dd>
 <dt>
-<code>balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;</code>
+<code>balance: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;T&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -2273,7 +2273,7 @@ Copyable piece snapshot for vesting events
 
 ## Struct `TokensVestedEvent`
 
-Event emitted when MYSO tokens are vested
+Event emitted when tokens are vested
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/profile.md#social_contracts_profile_TokensVestedEvent">TokensVestedEvent</a> <b>has</b> <b>copy</b>, drop
@@ -2293,6 +2293,11 @@ Event emitted when MYSO tokens are vested
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
 </dt>
 <dd>
 </dd>
@@ -2354,6 +2359,11 @@ Event emitted when vested tokens are claimed
 <dd>
 </dd>
 <dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
 <code>claimed_amount: u64</code>
 </dt>
 <dd>
@@ -2397,6 +2407,11 @@ Event emitted when a vesting wallet is deleted
 </dd>
 <dt>
 <code><a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
 </dt>
 <dd>
 </dd>
@@ -7696,7 +7711,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, current_time: u64): u64
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>&lt;T&gt;(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;, current_time: u64): u64
 </code></pre>
 
 
@@ -7705,7 +7720,7 @@ Validate schedule pieces and return <code>schedule_end</code> (absolute ms times
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, current_time: u64): u64 {
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_total_vested">calculate_total_vested</a>&lt;T&gt;(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;, current_time: u64): u64 {
     <b>if</b> (current_time &lt; wallet.start_time) {
         <b>return</b> 0
     };
@@ -7896,15 +7911,15 @@ Build a cliff lump unlock piece.
 
 </details>
 
-<a name="social_contracts_profile_vest_myso"></a>
+<a name="social_contracts_profile_vest_tokens"></a>
 
-## Function `vest_myso`
+## Function `vest_tokens`
 
-Create a vesting wallet from parallel piece vectors (entry-compatible).
+Create a vesting wallet for any coin type <code>T</code> from parallel piece vectors (entry-compatible).
 Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest over <code>duration</code>.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso">vest_myso</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, recipient: <b>address</b>, start_time: u64, kinds: vector&lt;u8&gt;, time_offsets: vector&lt;u64&gt;, durations: vector&lt;u64&gt;, amount_bps_list: vector&lt;u64&gt;, curve_factors: vector&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_tokens">vest_tokens</a>&lt;T&gt;(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, recipient: <b>address</b>, start_time: u64, kinds: vector&lt;u8&gt;, time_offsets: vector&lt;u64&gt;, durations: vector&lt;u64&gt;, amount_bps_list: vector&lt;u64&gt;, curve_factors: vector&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -7913,9 +7928,9 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso">vest_myso</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_tokens">vest_tokens</a>&lt;T&gt;(
     config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
-    coin: Coin&lt;MYSO&gt;,
+    coin: Coin&lt;T&gt;,
     recipient: <b>address</b>,
     start_time: u64,
     kinds: vector&lt;u8&gt;,
@@ -7933,7 +7948,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
         amount_bps_list,
         curve_factors,
     );
-    <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(config, coin, recipient, start_time, pieces, clock, ctx);
+    <a href="../social_contracts/profile.md#social_contracts_profile_vest_tokens_internal">vest_tokens_internal</a>&lt;T&gt;(config, coin, recipient, start_time, pieces, clock, ctx);
 }
 </code></pre>
 
@@ -7941,13 +7956,13 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
 
 </details>
 
-<a name="social_contracts_profile_vest_myso_internal"></a>
+<a name="social_contracts_profile_vest_tokens_internal"></a>
 
-## Function `vest_myso_internal`
+## Function `vest_tokens_internal`
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, recipient: <b>address</b>, start_time: u64, pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_tokens_internal">vest_tokens_internal</a>&lt;T&gt;(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, coin: <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, recipient: <b>address</b>, start_time: u64, pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -7956,9 +7971,9 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_myso_internal">vest_myso_internal</a>(
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vest_tokens_internal">vest_tokens_internal</a>&lt;T&gt;(
     config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
-    coin: Coin&lt;MYSO&gt;,
+    coin: Coin&lt;T&gt;,
     recipient: <b>address</b>,
     start_time: u64,
     pieces: vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt;,
@@ -7970,7 +7985,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
     <b>let</b> total_amount = coin::value(&coin);
     <b>assert</b>!(total_amount &gt; 0, <a href="../social_contracts/profile.md#social_contracts_profile_EInsufficientTokens">EInsufficientTokens</a>);
     <b>let</b> schedule_end = <a href="../social_contracts/profile.md#social_contracts_profile_validate_schedule">validate_schedule</a>(config, start_time, total_amount, &pieces);
-    <b>let</b> wallet = <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> {
+    <b>let</b> wallet = <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt; {
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>: object::new(ctx),
         balance: coin::into_balance(coin),
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: recipient,
@@ -7998,6 +8013,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_TokensVestedEvent">TokensVestedEvent</a> {
         wallet_id,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: recipient,
+        coin_type: type_name::with_defining_ids&lt;T&gt;(),
         total_amount,
         start_time,
         schedule_end,
@@ -8019,7 +8035,7 @@ Cliff lumps unlock instantly at <code>time_offset</code>; continuous pieces vest
 Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>&lt;T&gt;(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -8028,9 +8044,9 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>(
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claim_vested_tokens">claim_vested_tokens</a>&lt;T&gt;(
     config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>,
-    wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>,
+    wallet: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
@@ -8040,7 +8056,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
     <b>if</b> (claimable_amount &gt; 0) {
         <b>assert</b>!(wallet.claimed_amount &lt;= <a href="../social_contracts/profile.md#social_contracts_profile_MAX_U64">MAX_U64</a> - claimable_amount, <a href="../social_contracts/profile.md#social_contracts_profile_EOverflow">EOverflow</a>);
         wallet.claimed_amount = wallet.claimed_amount + claimable_amount;
-        <b>let</b> claimed_coin = coin::from_balance&lt;MYSO&gt;(
+        <b>let</b> claimed_coin = coin::from_balance&lt;T&gt;(
             balance::split(&<b>mut</b> wallet.balance, claimable_amount),
             ctx
         );
@@ -8049,6 +8065,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
         event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_TokensClaimedEvent">TokensClaimedEvent</a> {
             wallet_id,
             <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: sender,
+            coin_type: type_name::with_defining_ids&lt;T&gt;(),
             claimed_amount: claimable_amount,
             remaining_balance,
             claimed_at: clock::timestamp_ms(clock),
@@ -8068,7 +8085,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>&lt;T&gt;(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
 </code></pre>
 
 
@@ -8077,7 +8094,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock): u64 {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_claimable">claimable</a>&lt;T&gt;(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;, clock: &Clock): u64 {
     <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(config, wallet, clock)
 }
 </code></pre>
@@ -8092,7 +8109,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>&lt;T&gt;(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">social_contracts::profile::ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
 </code></pre>
 
 
@@ -8101,7 +8118,7 @@ Claim vested tokens. Sub-threshold amounts during active vesting are no-ops.
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock): u64 {
+<pre><code><b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_calculate_claimable">calculate_claimable</a>&lt;T&gt;(config: &<a href="../social_contracts/profile.md#social_contracts_profile_ProfileConfig">ProfileConfig</a>, wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;, clock: &Clock): u64 {
     <b>let</b> current_time = clock::timestamp_ms(clock);
     <b>let</b> remaining_balance = balance::value(&wallet.balance);
     <b>if</b> (current_time &lt; wallet.start_time) {
@@ -8205,7 +8222,7 @@ Simple square root approximation using Newton's method
 Delete an empty vesting wallet
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>&lt;T&gt;(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -8214,12 +8231,12 @@ Delete an empty vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>, clock: &Clock, ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_delete_vesting_wallet">delete_vesting_wallet</a>&lt;T&gt;(wallet: <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;, clock: &Clock, ctx: &<b>mut</b> TxContext) {
     <b>let</b> sender = tx_context::sender(ctx);
     <b>assert</b>!(wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> == sender, <a href="../social_contracts/profile.md#social_contracts_profile_ENotVestingWalletOwner">ENotVestingWalletOwner</a>);
     <b>let</b> wallet_id = object::uid_to_address(&wallet.<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
     <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a> = wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>;
-    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a> {
+    <b>let</b> <a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt; {
         <a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>,
         balance,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>: _,
@@ -8233,6 +8250,7 @@ Delete an empty vesting wallet
     event::emit(<a href="../social_contracts/profile.md#social_contracts_profile_VestingWalletDeletedEvent">VestingWalletDeletedEvent</a> {
         wallet_id,
         <a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>,
+        coin_type: type_name::with_defining_ids&lt;T&gt;(),
         deleted_at: clock::timestamp_ms(clock),
     });
     object::delete(<a href="../social_contracts/profile.md#social_contracts_profile_id">id</a>);
@@ -8250,7 +8268,7 @@ Delete an empty vesting wallet
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_balance">vesting_balance</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_balance">vesting_balance</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;): u64
 </code></pre>
 
 
@@ -8259,7 +8277,7 @@ Delete an empty vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_balance">vesting_balance</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_balance">vesting_balance</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;): u64 {
     balance::value(&wallet.balance)
 }
 </code></pre>
@@ -8274,7 +8292,7 @@ Delete an empty vesting wallet
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_owner">vesting_owner</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): <b>address</b>
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_owner">vesting_owner</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;): <b>address</b>
 </code></pre>
 
 
@@ -8283,7 +8301,7 @@ Delete an empty vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_owner">vesting_owner</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): <b>address</b> {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_owner">vesting_owner</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;): <b>address</b> {
     wallet.<a href="../social_contracts/profile.md#social_contracts_profile_owner">owner</a>
 }
 </code></pre>
@@ -8298,7 +8316,7 @@ Delete an empty vesting wallet
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_start_time">vesting_start_time</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_start_time">vesting_start_time</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;): u64
 </code></pre>
 
 
@@ -8307,7 +8325,7 @@ Delete an empty vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_start_time">vesting_start_time</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_start_time">vesting_start_time</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;): u64 {
     wallet.start_time
 }
 </code></pre>
@@ -8322,7 +8340,7 @@ Delete an empty vesting wallet
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_schedule_end">vesting_schedule_end</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_schedule_end">vesting_schedule_end</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;): u64
 </code></pre>
 
 
@@ -8331,7 +8349,7 @@ Delete an empty vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_schedule_end">vesting_schedule_end</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_schedule_end">vesting_schedule_end</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;): u64 {
     wallet.schedule_end
 }
 </code></pre>
@@ -8346,7 +8364,7 @@ Delete an empty vesting wallet
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_total_amount">vesting_total_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_total_amount">vesting_total_amount</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;): u64
 </code></pre>
 
 
@@ -8355,7 +8373,7 @@ Delete an empty vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_total_amount">vesting_total_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_total_amount">vesting_total_amount</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;): u64 {
     wallet.total_amount
 }
 </code></pre>
@@ -8370,7 +8388,7 @@ Delete an empty vesting wallet
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_claimed_amount">vesting_claimed_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_claimed_amount">vesting_claimed_amount</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;): u64
 </code></pre>
 
 
@@ -8379,7 +8397,7 @@ Delete an empty vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_claimed_amount">vesting_claimed_amount</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_claimed_amount">vesting_claimed_amount</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;): u64 {
     wallet.claimed_amount
 }
 </code></pre>
@@ -8394,7 +8412,7 @@ Delete an empty vesting wallet
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_piece_count">vesting_piece_count</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_piece_count">vesting_piece_count</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;): u64
 </code></pre>
 
 
@@ -8403,7 +8421,7 @@ Delete an empty vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_piece_count">vesting_piece_count</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): u64 {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_piece_count">vesting_piece_count</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;): u64 {
     vector::length(&wallet.pieces)
 }
 </code></pre>
@@ -8418,7 +8436,7 @@ Delete an empty vesting wallet
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_pieces">vesting_pieces</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>): vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_pieces">vesting_pieces</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">social_contracts::profile::VestingWallet</a>&lt;T&gt;): vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">social_contracts::profile::VestingPiece</a>&gt;
 </code></pre>
 
 
@@ -8427,7 +8445,7 @@ Delete an empty vesting wallet
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_pieces">vesting_pieces</a>(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>): vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt; {
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/profile.md#social_contracts_profile_vesting_pieces">vesting_pieces</a>&lt;T&gt;(wallet: &<a href="../social_contracts/profile.md#social_contracts_profile_VestingWallet">VestingWallet</a>&lt;T&gt;): vector&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt; {
     <b>let</b> <b>mut</b> out = vector::empty&lt;<a href="../social_contracts/profile.md#social_contracts_profile_VestingPiece">VestingPiece</a>&gt;();
     <b>let</b> len = vector::length(&wallet.pieces);
     <b>let</b> <b>mut</b> i = 0;

@@ -3082,6 +3082,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    agent_rooms (group_id) {
+        group_id -> Text,
+        room_kind -> Int2,
+        task_id -> Nullable<Text>,
+        creator_actor -> Text,
+        creator_principal -> Text,
+        organization_id -> Nullable<Text>,
+        created_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
     messaging_agent_groups (id, time) {
         id -> Int4,
         group_id -> Text,
@@ -3174,6 +3189,204 @@ diesel::joinable!(ai_credit_balances -> memory_accounts (memory_account_id));
 diesel::joinable!(ai_spend_reservations -> ai_credit_balances (balance_id));
 diesel::joinable!(profiles -> ai_credit_balances (ai_credit_balance_id));
 diesel::joinable!(sub_agents -> memory_accounts (account_id));
+
+diesel::table! {
+    agent_tasks (task_id) {
+        task_id -> Text,
+        buyer_principal -> Text,
+        buyer_agent_id -> Nullable<Text>,
+        buyer_memory_account_id -> Text,
+        seller_principal -> Text,
+        seller_agent_id -> Text,
+        seller_memory_account_id -> Text,
+        organization_id -> Nullable<Text>,
+        room_group_id -> Nullable<Text>,
+        platform_id -> Nullable<Text>,
+        title -> Text,
+        scope_digest -> Text,
+        amount_mist -> Int8,
+        accept_window_ms -> Int8,
+        delivery_window_ms -> Int8,
+        settle_window_ms -> Int8,
+        platform_fee_bps -> Int8,
+        ecosystem_fee_bps -> Int8,
+        terms_digest -> Text,
+        status -> Int2,
+        close_kind -> Nullable<Int2>,
+        settlement_kind -> Nullable<Int2>,
+        refund_kind -> Nullable<Int2>,
+        created_at_ms -> Int8,
+        accept_deadline_ms -> Int8,
+        accepted_at_ms -> Nullable<Int8>,
+        delivery_deadline_ms -> Nullable<Int8>,
+        delivered_at_ms -> Nullable<Int8>,
+        settle_deadline_ms -> Nullable<Int8>,
+        settled_at_ms -> Nullable<Int8>,
+        refunded_at_ms -> Nullable<Int8>,
+        cancelled_at_ms -> Nullable<Int8>,
+        review_deadline_ms -> Nullable<Int8>,
+        deliverable_digest -> Nullable<Text>,
+        deliverable_uri -> Nullable<Text>,
+        platform_fee_mist -> Nullable<Int8>,
+        ecosystem_fee_mist -> Nullable<Int8>,
+        net_amount_mist -> Nullable<Int8>,
+        refund_proposer -> Int2,
+        refund_proposed_at_ms -> Nullable<Int8>,
+        buyer_credibility_bps -> Nullable<Int8>,
+        seller_credibility_bps -> Nullable<Int8>,
+        buyer_review_stars -> Nullable<Int2>,
+        seller_review_stars -> Nullable<Int2>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    task_receipts (task_id) {
+        task_id -> Text,
+        receipt_id -> Text,
+        buyer_principal -> Text,
+        buyer_agent_id -> Nullable<Text>,
+        seller_principal -> Text,
+        seller_agent_id -> Text,
+        organization_id -> Nullable<Text>,
+        room_group_id -> Nullable<Text>,
+        settlement_kind -> Int2,
+        amount_mist -> Int8,
+        platform_fee_mist -> Int8,
+        ecosystem_fee_mist -> Int8,
+        net_amount_mist -> Int8,
+        deliverable_digest -> Nullable<Text>,
+        deliverable_uri -> Nullable<Text>,
+        buyer_credibility_bps -> Int8,
+        seller_credibility_bps -> Int8,
+        settle_deadline_ms -> Int8,
+        review_deadline_ms -> Int8,
+        settled_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    task_reviews (task_id, rater_role) {
+        task_id -> Text,
+        rater_role -> Int2,
+        receipt_id -> Text,
+        rater_principal -> Text,
+        rater_agent_id -> Nullable<Text>,
+        reviewee_principal -> Text,
+        reviewee_agent_id -> Nullable<Text>,
+        stars -> Int2,
+        rater_credibility_bps -> Int8,
+        value_weight_bps -> Int8,
+        base_weight_bps -> Int8,
+        prior_pair_reviews -> Int8,
+        weight_bps -> Int8,
+        reviewed_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    task_config_history (id) {
+        id -> Int8,
+        updated_by -> Text,
+        platform_fee_bps -> Int8,
+        ecosystem_fee_bps -> Int8,
+        ecosystem_fee_recipient -> Text,
+        min_escrow_mist -> Int8,
+        accept_window_min_ms -> Int8,
+        accept_window_default_ms -> Int8,
+        accept_window_max_ms -> Int8,
+        delivery_window_min_ms -> Int8,
+        delivery_window_max_ms -> Int8,
+        settle_window_min_ms -> Int8,
+        settle_window_max_ms -> Int8,
+        release_grace_ms -> Int8,
+        review_window_ms -> Int8,
+        max_title_bytes -> Int8,
+        max_uri_bytes -> Int8,
+        active -> Bool,
+        prior_mean_milli -> Int8,
+        prior_weight_bps -> Int8,
+        value_ref_mist -> Int8,
+        min_value_weight_bps -> Int8,
+        max_value_weight_bps -> Int8,
+        cred_base_bps -> Int8,
+        cred_step_bps -> Int8,
+        cred_cap_n -> Int8,
+        cred_max_bps -> Int8,
+        overall_seller_weight_bps -> Int8,
+        overall_buyer_weight_bps -> Int8,
+        timestamp_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    reputation_aggregates (subject_id, role) {
+        subject_id -> Text,
+        role -> Int2,
+        subject_kind -> Int2,
+        principal_owner -> Text,
+        organization_id -> Nullable<Text>,
+        review_count -> Int8,
+        star_1 -> Int8,
+        star_2 -> Int8,
+        star_3 -> Int8,
+        star_4 -> Int8,
+        star_5 -> Int8,
+        weight_sum_bps -> Text,
+        weighted_star_sum -> Text,
+        bayesian_score_milli -> Int8,
+        confidence_bps -> Int8,
+        last_receipt_id -> Text,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    credibility (account_id) {
+        account_id -> Text,
+        principal_owner -> Text,
+        settled_count -> Int8,
+        volume_mist -> Text,
+        credibility_bps -> Int8,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    automation_event_outbox (id) {
+        id -> Int8,
+        dedup_key -> Text,
+        event_family -> Text,
+        event_type -> Text,
+        account_id -> Text,
+        agent_object_id -> Nullable<Text>,
+        payload -> Jsonb,
+        occurred_at_ms -> Int8,
+        source_event_id -> Text,
+        created_at -> Timestamptz,
+        sent_at -> Nullable<Timestamptz>,
+        attempts -> Int4,
+        last_error -> Nullable<Text>,
+        next_attempt_at -> Timestamptz,
+    }
+}
 
 diesel::allow_tables_to_appear_in_same_query!(
     ai_credit_agent_budgets,
@@ -3338,6 +3551,14 @@ diesel::allow_tables_to_appear_in_same_query!(
     paid_message_escrows,
     message_digests,
     messaging_agent_groups,
+    agent_rooms,
+    agent_tasks,
+    task_receipts,
+    task_reviews,
+    task_config_history,
+    reputation_aggregates,
+    credibility,
+    automation_event_outbox,
     memory_config,
     media_assets,
     media_asset_governance_links,

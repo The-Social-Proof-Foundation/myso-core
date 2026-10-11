@@ -64,6 +64,7 @@ Global configuration for paid messaging (fees, reply rules, dedupe limits).
 <b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
 <b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
 <b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
+<b>use</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task">social_contracts::agent_task</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">social_contracts::bootstrap</a>;

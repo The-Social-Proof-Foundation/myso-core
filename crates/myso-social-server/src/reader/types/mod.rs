@@ -1,6 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+mod agent_task;
 mod common;
 mod governance;
 mod insurance;
@@ -19,6 +20,10 @@ mod subscription;
 mod upgrade;
 mod vesting;
 
+pub use agent_task::{
+    AgentReputationInfo, AgentTaskInfo, CredibilityInfo, OverallScoreInfo, PrincipalReputationInfo,
+    ReputationScoreInfo, TaskConfigInfo, TaskDetailInfo, TaskReceiptInfo, TaskReviewInfo,
+};
 pub use common::{ChartSummary, DateRange, SystemStatsResponse};
 pub use governance::{
     AnonymousVoteRow, AnonymousVotingStatsRow, AnonymousVotingTrendRow, CommunityVoteRow,
@@ -32,7 +37,7 @@ pub use insurance::{
 };
 pub use memory::MemoryConfigInfo;
 pub use messaging::{
-    MessageDigestInfo, MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo,
+    AgentRoomInfo, MessageDigestInfo, MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo,
     PaidMessageEscrowInfo,
 };
 pub use mydata::{

@@ -11,7 +11,7 @@ pub use handlers::{
     AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler,
     MessagingHandler, MyDataHandler, PlatformHandler, PostsHandler, ProfilesHandler,
     SocialGraphHandler, SpotHandler, SptHandler, SubAgentRegistryHandler, SubscriptionHandler,
-    UpgradeHandler,
+    TaskMarketHandler, UpgradeHandler,
 };
 
 pub const MAINNET_REMOTE_STORE_URL: &str = "https://checkpoints.mainnet.mysocial.network";
@@ -128,6 +128,11 @@ pub async fn setup_social_indexer(
         .concurrent_pipeline(SubAgentRegistryHandler, Default::default())
         .await
         .context("Failed to add SubAgentRegistryHandler pipeline")?;
+    // Sequential: task lifecycle updates must apply in chain order.
+    indexer
+        .sequential_pipeline(TaskMarketHandler, Default::default())
+        .await
+        .context("Failed to add TaskMarketHandler pipeline")?;
     indexer
         .concurrent_pipeline(MemoryHandler, Default::default())
         .await

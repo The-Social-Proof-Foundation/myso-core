@@ -4,6 +4,7 @@
 use std::str::FromStr;
 
 use async_graphql::Object;
+use myso_indexer_alt_social_reader::task_market::{AgentReputation as AgentReputationRow, CredibilityRow, RoleReputation as RoleReputationRow};
 use myso_indexer_alt_social_reader::{SocialAttributionRow, SubAgentRow};
 use myso_indexer_alt_social_schema::models::MemoryAccountRow;
 
@@ -125,6 +126,20 @@ impl SubAgent {
 
     async fn organization_id(&self) -> Option<&str> {
         self.inner.organization_id.as_deref()
+    }
+
+    /// Reputation earned as a task seller and as a task buyer, the blended overall score, and
+    /// the principal's credibility. A new agent returns the prior with zero reviews.
+    async fn reputation(&self, ctx: &async_graphql::Context<'_>) -> Option<AgentReputation> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .get_agent_reputation(&self.inner.agent_object_id)
+            .await
+            .ok()
+            .flatten()
+            .map(|inner| AgentReputation { inner })
     }
 
     async fn budget(&self, ctx: &async_graphql::Context<'_>) -> Option<AiCreditAgentBudget> {
@@ -323,5 +338,120 @@ impl SocialAttribution {
 
     async fn organization_id(&self) -> Option<&str> {
         self.inner.organization_id.as_deref()
+    }
+}
+
+/// Reputation of one agent. Scores are derived from on-chain running sums with the market's
+/// current Bayesian prior.
+pub(crate) struct AgentReputation {
+    inner: AgentReputationRow,
+}
+
+#[Object]
+impl AgentReputation {
+    /// Reviews received from buyers.
+    async fn as_seller(&self) -> RoleReputation {
+        RoleReputation { inner: self.inner.as_seller.clone() }
+    }
+
+    /// Reviews received from sellers.
+    async fn as_buyer(&self) -> RoleReputation {
+        RoleReputation { inner: self.inner.as_buyer.clone() }
+    }
+
+    /// Weighted Bayesian average of the two roles.
+    async fn overall(&self) -> OverallReputation {
+        OverallReputation {
+            score_milli: self.inner.overall_score_milli,
+            confidence_bps: self.inner.overall_confidence_bps,
+        }
+    }
+
+    /// The agent's principal's credibility, earned from completed paid tasks in either role.
+    async fn credibility(&self) -> Option<Credibility> {
+        self.inner.credibility.clone().map(|inner| Credibility { inner })
+    }
+}
+
+pub(crate) struct RoleReputation {
+    inner: RoleReputationRow,
+}
+
+#[Object]
+impl RoleReputation {
+    async fn review_count(&self) -> i64 {
+        self.inner.review_count
+    }
+
+    /// Counts of 1 through 5 star reviews, in that order.
+    async fn histogram(&self) -> Vec<i64> {
+        self.inner.histogram.to_vec()
+    }
+
+    /// Bayesian score in milli-stars (3076 is 3.076 stars).
+    async fn score_milli(&self) -> i64 {
+        self.inner.score_milli
+    }
+
+    /// Bayesian score in stars.
+    async fn score(&self) -> f64 {
+        self.inner.score_milli as f64 / 1000.0
+    }
+
+    /// Share of the score that comes from reviews rather than the prior, in basis points.
+    async fn confidence_bps(&self) -> i64 {
+        self.inner.confidence_bps
+    }
+
+    async fn last_receipt_id(&self) -> Option<&str> {
+        self.inner.last_receipt_id.as_deref()
+    }
+
+    async fn updated_at(&self) -> Option<i64> {
+        self.inner.updated_at_ms
+    }
+}
+
+pub(crate) struct OverallReputation {
+    score_milli: i64,
+    confidence_bps: i64,
+}
+
+#[Object]
+impl OverallReputation {
+    async fn score_milli(&self) -> i64 {
+        self.score_milli
+    }
+
+    async fn score(&self) -> f64 {
+        self.score_milli as f64 / 1000.0
+    }
+
+    async fn confidence_bps(&self) -> i64 {
+        self.confidence_bps
+    }
+}
+
+pub(crate) struct Credibility {
+    inner: CredibilityRow,
+}
+
+#[Object]
+impl Credibility {
+    async fn account_id(&self) -> &str {
+        &self.inner.account_id
+    }
+
+    async fn settled_count(&self) -> i64 {
+        self.inner.settled_count
+    }
+
+    /// Total settled volume in MIST, as a decimal string (it is a u128 on-chain).
+    async fn volume_mist(&self) -> &str {
+        &self.inner.volume_mist
+    }
+
+    async fn credibility_bps(&self) -> i64 {
+        self.inner.credibility_bps
     }
 }

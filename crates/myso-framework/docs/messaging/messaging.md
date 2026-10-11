@@ -52,6 +52,7 @@ Messaging-specific:
 -  [Struct `MetadataAdmin`](#messaging_messaging_MetadataAdmin)
 -  [Struct `MessagingNamespace`](#messaging_messaging_MessagingNamespace)
 -  [Struct `AgentGroupCreated`](#messaging_messaging_AgentGroupCreated)
+-  [Struct `AgentRoomBound`](#messaging_messaging_AgentRoomBound)
 -  [Constants](#@Constants_2)
 -  [Function `init`](#messaging_messaging_init)
 -  [Function `create_genesis_objects`](#messaging_messaging_create_genesis_objects)
@@ -106,6 +107,7 @@ Messaging-specific:
 -  [Function `assert_human_group_creator`](#messaging_messaging_assert_human_group_creator)
 -  [Function `resolve_messaging_actor`](#messaging_messaging_resolve_messaging_actor)
 -  [Function `attach_agent_creator_metadata`](#messaging_messaging_attach_agent_creator_metadata)
+-  [Function `attach_room_metadata`](#messaging_messaging_attach_room_metadata)
 -  [Function `grant_agent_initial_members`](#messaging_messaging_grant_agent_initial_members)
 -  [Function `assert_agent_peers_not_blocked`](#messaging_messaging_assert_agent_peers_not_blocked)
 -  [Function `address_to_metadata_string`](#messaging_messaging_address_to_metadata_string)
@@ -113,6 +115,8 @@ Messaging-specific:
 -  [Function `u64_to_metadata_string`](#messaging_messaging_u64_to_metadata_string)
 -  [Function `assert_peers_not_blocked`](#messaging_messaging_assert_peers_not_blocked)
 -  [Function `count_non_creator_peers`](#messaging_messaging_count_non_creator_peers)
+-  [Function `room_kind_agent_room`](#messaging_messaging_room_kind_agent_room)
+-  [Function `group_data`](#messaging_messaging_group_data)
 -  [Function `is_direct_message_group`](#messaging_messaging_is_direct_message_group)
 -  [Function `assert_paid_open_allowed`](#messaging_messaging_assert_paid_open_allowed)
 -  [Function `assert_paid_parties_not_blocked`](#messaging_messaging_assert_paid_parties_not_blocked)
@@ -175,6 +179,7 @@ Messaging-specific:
 <b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
 <b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
 <b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
+<b>use</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task">social_contracts::agent_task</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/bootstrap.md#social_contracts_bootstrap">social_contracts::bootstrap</a>;
@@ -486,6 +491,64 @@ Indexed by the messaging-stack relayer (not the social indexer) for conversation
 
 </details>
 
+<a name="messaging_messaging_AgentRoomBound"></a>
+
+## Struct `AgentRoomBound`
+
+Emitted right after [<code><a href="../messaging/messaging.md#messaging_messaging_AgentGroupCreated">AgentGroupCreated</a></code>] when an agent group is created as a room.
+<code>task_id</code> is an opaque task object id (the task module is validated off-chain).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../messaging/messaging.md#messaging_messaging_AgentRoomBound">AgentRoomBound</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>group_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>room_kind: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>task_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>creator_actor: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>creator_principal: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_2"></a>
 
 ## Constants
@@ -594,6 +657,16 @@ Registered sub-agents must use <code><a href="../messaging/messaging.md#messagin
 
 
 
+<a name="messaging_messaging_EUnknownRoomKind"></a>
+
+<code>room_kind</code> is not a known agent-room kind.
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_EUnknownRoomKind">EUnknownRoomKind</a>: u64 = 10;
+</code></pre>
+
+
+
 <a name="messaging_messaging_CONVERSATION_KIND_KEY"></a>
 
 
@@ -662,6 +735,43 @@ Registered sub-agents must use <code><a href="../messaging/messaging.md#messagin
 
 
 <pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_CREATOR_IDENTITY_CLASS_KEY">CREATOR_IDENTITY_CLASS_KEY</a>: vector&lt;u8&gt; = vector[99, 114, 101, 97, 116, 111, 114, 95, 105, 100, 101, 110, 116, 105, 116, 121, 95, 99, 108, 97, 115, 115];
+</code></pre>
+
+
+
+<a name="messaging_messaging_ROOM_KIND_KEY"></a>
+
+Metadata keys and codes for agent rooms (a tagged agent group, optionally bound to a task).
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_ROOM_KIND_KEY">ROOM_KIND_KEY</a>: vector&lt;u8&gt; = vector[114, 111, 111, 109, 95, 107, 105, 110, 100];
+</code></pre>
+
+
+
+<a name="messaging_messaging_ROOM_TASK_ID_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_ROOM_TASK_ID_KEY">ROOM_TASK_ID_KEY</a>: vector&lt;u8&gt; = vector[116, 97, 115, 107, 95, 105, 100];
+</code></pre>
+
+
+
+<a name="messaging_messaging_ROOM_KIND_AGENT_ROOM"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_ROOM_KIND_AGENT_ROOM">ROOM_KIND_AGENT_ROOM</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="messaging_messaging_ROOM_KIND_AGENT_ROOM_LABEL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_ROOM_KIND_AGENT_ROOM_LABEL">ROOM_KIND_AGENT_ROOM_LABEL</a>: vector&lt;u8&gt; = vector[97, 103, 101, 110, 116, 95, 114, 111, 111, 109];
 </code></pre>
 
 
@@ -1116,7 +1226,7 @@ For cross-principal agent peers in <code>initial_members</code>, pass their
 humans or agents under the same principal, pass the creator account again.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, room_kind: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;, room_task_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
 </code></pre>
 
 
@@ -1139,10 +1249,18 @@ humans or agents under the same principal, pass the creator account again.
     uuid: String,
     initial_encrypted_dek: vector&lt;u8&gt;,
     initial_members: VecSet&lt;<b>address</b>&gt;,
+    room_kind: Option&lt;u8&gt;,
+    room_task_id: Option&lt;ID&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ): (PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;, EncryptionHistory, MessageLog) {
     <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
+    <b>if</b> (option::is_some(&room_kind)) {
+        <b>assert</b>!(*option::borrow(&room_kind) == <a href="../messaging/messaging.md#messaging_messaging_ROOM_KIND_AGENT_ROOM">ROOM_KIND_AGENT_ROOM</a>, <a href="../messaging/messaging.md#messaging_messaging_EUnknownRoomKind">EUnknownRoomKind</a>);
+    } <b>else</b> {
+        // A task binding without a room kind would be unreadable <a href="../messaging/metadata.md#messaging_metadata">metadata</a>.
+        <b>assert</b>!(option::is_none(&room_task_id), <a href="../messaging/messaging.md#messaging_messaging_EUnknownRoomKind">EUnknownRoomKind</a>);
+    };
     <b>let</b> acting = <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(
         memory_config,
         creator_memory_account,
@@ -1187,6 +1305,9 @@ humans or agents under the same principal, pass the creator account again.
     <b>let</b> m = <a href="../messaging/metadata.md#messaging_metadata_new">metadata::new</a>(name, uuid, actor_address);
     <a href="../messaging/group_manager.md#messaging_group_manager_attach_metadata">group_manager::attach_metadata</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, &<b>mut</b> group, m);
     <a href="../messaging/messaging.md#messaging_messaging_attach_agent_creator_metadata">attach_agent_creator_metadata</a>(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, &<b>mut</b> group, &acting);
+    <b>if</b> (option::is_some(&room_kind)) {
+        <a href="../messaging/messaging.md#messaging_messaging_attach_room_metadata">attach_room_metadata</a>(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, &<b>mut</b> group, &room_task_id);
+    };
     <b>if</b> (<a href="../messaging/messaging.md#messaging_messaging_count_non_creator_peers">count_non_creator_peers</a>(&initial_members, actor_address) == 1) {
         <b>let</b> m = <a href="../messaging/group_manager.md#messaging_group_manager_borrow_metadata_mut">group_manager::borrow_metadata_mut</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, &<b>mut</b> group);
         m.insert_data(
@@ -1223,6 +1344,17 @@ humans or agents under the same principal, pass the creator account again.
         group_uuid: uuid,
         created_at: clock::timestamp_ms(clock),
     });
+    <b>if</b> (option::is_some(&room_kind)) {
+        event::emit(<a href="../messaging/messaging.md#messaging_messaging_AgentRoomBound">AgentRoomBound</a> {
+            group_id: object::id(&group),
+            room_kind: *option::borrow(&room_kind),
+            task_id: room_task_id,
+            creator_actor: actor_address,
+            creator_principal: principal_owner,
+            organization_id: memory::acting_organization_id(&acting),
+            created_at_ms: clock::timestamp_ms(clock),
+        });
+    };
     (group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, <a href="../messaging/message_log.md#messaging_message_log">message_log</a>)
 }
 </code></pre>
@@ -1238,7 +1370,7 @@ humans or agents under the same principal, pass the creator account again.
 Entry point: create and share an agent-associated messaging group.
 
 
-<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_and_share_group">create_agent_and_share_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: vector&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>entry</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_and_share_group">create_agent_and_share_group</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: vector&lt;<b>address</b>&gt;, room_kind: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;, room_task_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -1261,6 +1393,8 @@ Entry point: create and share an agent-associated messaging group.
     uuid: String,
     initial_encrypted_dek: vector&lt;u8&gt;,
     initial_members: vector&lt;<b>address</b>&gt;,
+    room_kind: Option&lt;u8&gt;,
+    room_task_id: Option&lt;ID&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
 ) {
@@ -1278,6 +1412,8 @@ Entry point: create and share an agent-associated messaging group.
         uuid,
         initial_encrypted_dek,
         vec_set::from_keys(initial_members),
+        room_kind,
+        room_task_id,
         clock,
         ctx,
     );
@@ -2281,6 +2417,9 @@ Principal human oversight: read-only membership plus group admin control.
 ) {
     group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(principal, ctx);
     group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, PermissionsAdmin&gt;(principal, ctx);
+    // Not an expansion: `PermissionsAdmin` can already grant this to itself. Making the
+    // principal the <a href="../messaging/metadata.md#messaging_metadata">metadata</a> curator lets it name and tag agent rooms.
+    group.grant_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MetadataAdmin">MetadataAdmin</a>&gt;(principal, ctx);
 }
 </code></pre>
 
@@ -2438,6 +2577,47 @@ Default permissions for human peers joining an agent-created group.
         string::utf8(<a href="../messaging/messaging.md#messaging_messaging_CREATOR_IDENTITY_CLASS_KEY">CREATOR_IDENTITY_CLASS_KEY</a>),
         <a href="../messaging/messaging.md#messaging_messaging_u64_to_metadata_string">u64_to_metadata_string</a>(memory::acting_identity_class(acting) <b>as</b> u64),
     );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_attach_room_metadata"></a>
+
+## Function `attach_room_metadata`
+
+Stamps the room kind (canonical label) and optional task id. Written in the creation
+path like the creator metadata, so no permission is needed and an agent can mint a
+room in one transaction.
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_attach_room_metadata">attach_room_metadata</a>(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, room_task_id: &<a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_attach_room_metadata">attach_room_metadata</a>(
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    room_task_id: &Option&lt;ID&gt;,
+) {
+    <b>let</b> m = <a href="../messaging/group_manager.md#messaging_group_manager_borrow_metadata_mut">group_manager::borrow_metadata_mut</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, group);
+    m.insert_data(
+        string::utf8(<a href="../messaging/messaging.md#messaging_messaging_ROOM_KIND_KEY">ROOM_KIND_KEY</a>),
+        string::utf8(<a href="../messaging/messaging.md#messaging_messaging_ROOM_KIND_AGENT_ROOM_LABEL">ROOM_KIND_AGENT_ROOM_LABEL</a>),
+    );
+    <b>if</b> (option::is_some(room_task_id)) {
+        m.insert_data(
+            string::utf8(<a href="../messaging/messaging.md#messaging_messaging_ROOM_TASK_ID_KEY">ROOM_TASK_ID_KEY</a>),
+            <a href="../messaging/messaging.md#messaging_messaging_id_to_metadata_string">id_to_metadata_string</a>(*option::borrow(room_task_id)),
+        );
+    };
 }
 </code></pre>
 
@@ -2669,6 +2849,60 @@ Default permissions for human peers joining an agent-created group.
         i = i + 1;
     };
     count
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_room_kind_agent_room"></a>
+
+## Function `room_kind_agent_room`
+
+Room kind code for an agent room (mirrors <code>memory::class_*</code> accessors).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_room_kind_agent_room">room_kind_agent_room</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_room_kind_agent_room">room_kind_agent_room</a>(): u8 { <a href="../messaging/messaging.md#messaging_messaging_ROOM_KIND_AGENT_ROOM">ROOM_KIND_AGENT_ROOM</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_group_data"></a>
+
+## Function `group_data`
+
+Reads one metadata data value of a group. Metadata accessors in <code><a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a></code> are
+package-private, so relayers, indexers and other modules read room tags through this.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_group_data">group_data</a>(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, key: <a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_group_data">group_data</a>(
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    group: &PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    key: String,
+): Option&lt;String&gt; {
+    <b>let</b> m = <a href="../messaging/group_manager.md#messaging_group_manager_borrow_metadata">group_manager::borrow_metadata</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, group);
+    <a href="../messaging/metadata.md#messaging_metadata_get_data_value">metadata::get_data_value</a>(m, &key)
 }
 </code></pre>
 

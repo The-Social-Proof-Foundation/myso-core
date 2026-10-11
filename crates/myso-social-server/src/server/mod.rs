@@ -19,6 +19,7 @@ use tokio::sync::oneshot;
 use tower_http::cors::{AllowMethods, Any, CorsLayer};
 use url::Url;
 
+use crate::automation_forwarder::{self, ForwarderConfig};
 use crate::reader::Reader;
 use crate::workflow_client::WorkflowClient;
 use auth::{
@@ -361,6 +362,10 @@ pub async fn start_server(
     let metrics = MetricsService::new(MetricsArgs { metrics_address }, registry.clone());
 
     let reader = Reader::new(database_url, write_database_url, db_args).await?;
+    // Detached on purpose: a down engine must only delay event delivery, never stop the API.
+    if let Some(forwarder) = ForwarderConfig::from_env() {
+        tokio::spawn(automation_forwarder::run(reader.clone(), forwarder));
+    }
     let workflow = WorkflowClient::from_env();
     let state = Arc::new(AppState {
         reader,
@@ -992,6 +997,18 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/organizations/:organization_id/messaging-groups",
             get(get_agent_groups),
         )
+        .route("/agents/rooms", get(list_agent_rooms))
+        .route("/agents/:agent_object_id/receipts", get(list_agent_receipts))
+        .route("/agents/:agent_object_id/reputation", get(get_agent_reputation))
+        .route("/principals/:address/reputation", get(get_principal_reputation))
+        .route("/tasks", get(list_tasks))
+        .route("/tasks/:task_id", get(get_task))
+        .route("/task/config", get(get_task_config))
+        .route(
+            "/organizations/:organization_id/rooms",
+            get(list_organization_rooms),
+        )
+        .route("/groups/:group_id/digests", get(list_group_digests))
         .route("/spt/reservation-pools", get(list_spt_reservation_pools))
         .route("/spt/reservation-pools/:id", get(get_spt_reservation_pool))
         .route(

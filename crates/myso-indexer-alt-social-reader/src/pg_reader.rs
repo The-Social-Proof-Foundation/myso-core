@@ -2023,6 +2023,23 @@ impl SocialPgReader {
         get_ecosystem_treasury(&mut conn, &self.metrics).await
     }
 
+    /// Latest task market configuration (the most recent `TaskConfigUpdated`).
+    pub async fn get_task_config(
+        &self,
+    ) -> anyhow::Result<Option<crate::task_market::TaskConfigRow>> {
+        let mut conn = self.connect().await?;
+        crate::task_market::get_task_config(&mut conn, &self.metrics).await
+    }
+
+    /// An agent's seller and buyer reputation. `None` only for an unknown agent.
+    pub async fn get_agent_reputation(
+        &self,
+        agent_object_id: &str,
+    ) -> anyhow::Result<Option<crate::task_market::AgentReputation>> {
+        let mut conn = self.connect().await?;
+        crate::task_market::get_agent_reputation(&mut conn, agent_object_id, &self.metrics).await
+    }
+
     /// Get latest memory configuration.
     pub async fn get_memory_config(
         &self,

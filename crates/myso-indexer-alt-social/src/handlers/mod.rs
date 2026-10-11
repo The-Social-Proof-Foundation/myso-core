@@ -7,6 +7,7 @@
 //! profiles, social_graph_relationships, social_graph_events, etc.
 
 mod access;
+mod agent_task_handler;
 mod ai_credit;
 mod ai_credit_handler;
 mod blocking;
@@ -62,7 +63,7 @@ use myso_indexer_alt_social_schema::models::{
     NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
     NewInsuranceRouterConfig, NewInsuranceUserExposure, NewInsuranceVault,
     NewInsuranceVaultTransaction, NewMemoryAccount, NewMemoryConfig, NewMessageDigest,
-    NewMessagingAgentGroup, NewMessagingConfig, NewModerationEvent, NewMyDataAccessLog,
+    NewAgentRoom, NewMessagingAgentGroup, NewMessagingConfig, NewModerationEvent, NewMyDataAccessLog,
     NewMyDataBroadPool, NewMyDataClaim, NewMyDataConfig, NewMyDataData, NewMyDataDistributionRound,
     NewMyDataListingSubPool, NewMyDataMerkleRoot, NewMyDataPurchase, NewMyDataRegistry,
     NewMyDataRevenue, NewMyDataSnapshotAnchor, NewMyDataSubPool, NewMyDataSubscription,
@@ -91,6 +92,7 @@ use myso_indexer_alt_social_schema::models::{
     NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
 };
 
+pub use agent_task_handler::TaskMarketHandler;
 pub use ai_credit_handler::AiCreditHandler;
 pub use blocking_handler::BlockingHandler;
 pub use governance_handler::GovernanceHandler;
@@ -1139,6 +1141,7 @@ pub enum SocialEventRow {
     PaidMessageEscrow(NewPaidMessageEscrow),
     MessageDigest(NewMessageDigest),
     MessagingAgentGroup(NewMessagingAgentGroup),
+    AgentRoom(NewAgentRoom),
     MessagingOrgOutboundSpend {
         payer: String,
         amount: i64,

@@ -19,6 +19,24 @@ curl http://localhost:9009/health
 
 ---
 
+## Automation event forwarding
+
+Task market events are queued by the indexer (`automation_event_outbox`) and delivered to the
+automation engine by a background task in this server. It is off unless both variables are set, and
+a down engine only delays delivery.
+
+| Variable | Meaning |
+|----------|---------|
+| `AUTOMATION_EVENTS_URL` | Engine origin; events go to `POST {url}/internal/automation/events`. |
+| `AUTOMATION_EVENTS_SECRET` | Sent as `x-internal-sync-secret`. Falls back to `INTERNAL_SYNC_SECRET`. |
+| `AUTOMATION_FORWARDER_POLL_SECS` | Idle poll interval, default 2. |
+| `AUTOMATION_FORWARDER_BATCH` | Rows per pass, 1 to 500, default 50. |
+
+Besides forwarding, the task also queues the time-driven `expired_offer_due`, `refund_due` and
+`release_due` events every 30 seconds, because no chain event announces a deadline passing.
+
+---
+
 ## Platforms
 
 | Method | Endpoint | Description |

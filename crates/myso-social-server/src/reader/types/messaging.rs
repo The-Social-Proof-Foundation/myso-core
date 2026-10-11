@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::QueryableByName;
-use diesel::sql_types::{BigInt, Nullable, Text};
+use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
 use serde::Serialize;
 
 #[derive(Debug, Serialize, QueryableByName)]
@@ -97,6 +97,32 @@ pub struct MessagingAgentGroupInfo {
     pub group_name: String,
     #[diesel(sql_type = Text)]
     pub group_uuid: String,
+    #[diesel(sql_type = BigInt)]
+    pub created_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub transaction_id: String,
+}
+
+/// An agent room joined with the group name recorded at creation, when indexed.
+#[derive(Debug, Serialize, QueryableByName)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentRoomInfo {
+    #[diesel(sql_type = Text)]
+    pub group_id: String,
+    #[diesel(sql_type = SmallInt)]
+    pub room_kind: i16,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub task_id: Option<String>,
+    #[diesel(sql_type = Text)]
+    pub creator_actor: String,
+    #[diesel(sql_type = Text)]
+    pub creator_principal: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub organization_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub group_name: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub group_uuid: Option<String>,
     #[diesel(sql_type = BigInt)]
     pub created_at_ms: i64,
     #[diesel(sql_type = Text)]

@@ -86,6 +86,8 @@ const ENotSystemAddress: u64 = 7;
 const EAgentSenderMismatch: u64 = 8;
 /// Registered sub-agents must use `create_agent_group`, not human `create_group`.
 const ERegisteredAgentCannotCreateGroup: u64 = 9;
+/// `room_kind` is not a known agent-room kind.
+const EUnknownRoomKind: u64 = 10;
 
 const CONVERSATION_KIND_KEY: vector<u8> = b"conversation_kind";
 const CONVERSATION_KIND_DM: vector<u8> = b"dm";
@@ -96,6 +98,12 @@ const CREATOR_ACTOR_KEY: vector<u8> = b"creator_actor";
 const CREATOR_PRINCIPAL_KEY: vector<u8> = b"creator_principal";
 const CREATOR_SUB_AGENT_ID_KEY: vector<u8> = b"creator_sub_agent_id";
 const CREATOR_IDENTITY_CLASS_KEY: vector<u8> = b"creator_identity_class";
+
+/// Metadata keys and codes for agent rooms (a tagged agent group, optionally bound to a task).
+const ROOM_KIND_KEY: vector<u8> = b"room_kind";
+const ROOM_TASK_ID_KEY: vector<u8> = b"task_id";
+const ROOM_KIND_AGENT_ROOM: u8 = 1;
+const ROOM_KIND_AGENT_ROOM_LABEL: vector<u8> = b"agent_room";
 
 // === Witnesses ===
 
@@ -147,6 +155,18 @@ public struct AgentGroupCreated has copy, drop {
     group_name: String,
     group_uuid: String,
     created_at: u64,
+}
+
+/// Emitted right after [`AgentGroupCreated`] when an agent group is created as a room.
+/// `task_id` is an opaque task object id (the task module is validated off-chain).
+public struct AgentRoomBound has copy, drop {
+    group_id: ID,
+    room_kind: u8,
+    task_id: Option<ID>,
+    creator_actor: address,
+    creator_principal: address,
+    organization_id: Option<ID>,
+    created_at_ms: u64,
 }
 
 /// Singletons are shared from genesis via `create_genesis_objects`, not package init.
@@ -465,10 +485,18 @@ public fun create_agent_group(
     uuid: String,
     initial_encrypted_dek: vector<u8>,
     initial_members: VecSet<address>,
+    room_kind: Option<u8>,
+    room_task_id: Option<ID>,
     clock: &Clock,
     ctx: &mut TxContext,
 ): (PermissionedGroup<Messaging>, EncryptionHistory, MessageLog) {
     version.validate_version();
+    if (option::is_some(&room_kind)) {
+        assert!(*option::borrow(&room_kind) == ROOM_KIND_AGENT_ROOM, EUnknownRoomKind);
+    } else {
+        // A task binding without a room kind would be unreadable metadata.
+        assert!(option::is_none(&room_task_id), EUnknownRoomKind);
+    };
     let acting = resolve_messaging_actor(
         memory_config,
         creator_memory_account,
@@ -517,6 +545,9 @@ public fun create_agent_group(
     let m = metadata::new(name, uuid, actor_address);
     group_manager::attach_metadata<Messaging>(group_manager, &mut group, m);
     attach_agent_creator_metadata(group_manager, &mut group, &acting);
+    if (option::is_some(&room_kind)) {
+        attach_room_metadata(group_manager, &mut group, &room_task_id);
+    };
 
     if (count_non_creator_peers(&initial_members, actor_address) == 1) {
         let m = group_manager::borrow_metadata_mut<Messaging>(group_manager, &mut group);
@@ -560,6 +591,18 @@ public fun create_agent_group(
         created_at: clock::timestamp_ms(clock),
     });
 
+    if (option::is_some(&room_kind)) {
+        event::emit(AgentRoomBound {
+            group_id: object::id(&group),
+            room_kind: *option::borrow(&room_kind),
+            task_id: room_task_id,
+            creator_actor: actor_address,
+            creator_principal: principal_owner,
+            organization_id: memory::acting_organization_id(&acting),
+            created_at_ms: clock::timestamp_ms(clock),
+        });
+    };
+
     (group, encryption_history, message_log)
 }
 
@@ -579,6 +622,8 @@ entry fun create_agent_and_share_group(
     uuid: String,
     initial_encrypted_dek: vector<u8>,
     initial_members: vector<address>,
+    room_kind: Option<u8>,
+    room_task_id: Option<ID>,
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
@@ -596,6 +641,8 @@ entry fun create_agent_and_share_group(
         uuid,
         initial_encrypted_dek,
         vec_set::from_keys(initial_members),
+        room_kind,
+        room_task_id,
         clock,
         ctx,
     );
@@ -1139,6 +1186,9 @@ fun grant_principal_oversight(
 ) {
     group.grant_permission<Messaging, MessagingReader>(principal, ctx);
     group.grant_permission<Messaging, PermissionsAdmin>(principal, ctx);
+    // Not an expansion: `PermissionsAdmin` can already grant this to itself. Making the
+    // principal the metadata curator lets it name and tag agent rooms.
+    group.grant_permission<Messaging, MetadataAdmin>(principal, ctx);
 }
 
 /// Default permissions for human peers joining an agent-created group.
@@ -1216,6 +1266,27 @@ fun attach_agent_creator_metadata(
         string::utf8(CREATOR_IDENTITY_CLASS_KEY),
         u64_to_metadata_string(memory::acting_identity_class(acting) as u64),
     );
+}
+
+/// Stamps the room kind (canonical label) and optional task id. Written in the creation
+/// path like the creator metadata, so no permission is needed and an agent can mint a
+/// room in one transaction.
+fun attach_room_metadata(
+    group_manager: &GroupManager,
+    group: &mut PermissionedGroup<Messaging>,
+    room_task_id: &Option<ID>,
+) {
+    let m = group_manager::borrow_metadata_mut<Messaging>(group_manager, group);
+    m.insert_data(
+        string::utf8(ROOM_KIND_KEY),
+        string::utf8(ROOM_KIND_AGENT_ROOM_LABEL),
+    );
+    if (option::is_some(room_task_id)) {
+        m.insert_data(
+            string::utf8(ROOM_TASK_ID_KEY),
+            id_to_metadata_string(*option::borrow(room_task_id)),
+        );
+    };
 }
 
 fun grant_agent_initial_members(
@@ -1307,6 +1378,20 @@ fun count_non_creator_peers(members: &VecSet<address>, creator: address): u64 {
         i = i + 1;
     };
     count
+}
+
+/// Room kind code for an agent room (mirrors `memory::class_*` accessors).
+public fun room_kind_agent_room(): u8 { ROOM_KIND_AGENT_ROOM }
+
+/// Reads one metadata data value of a group. Metadata accessors in `group_manager` are
+/// package-private, so relayers, indexers and other modules read room tags through this.
+public fun group_data(
+    group_manager: &GroupManager,
+    group: &PermissionedGroup<Messaging>,
+    key: String,
+): Option<String> {
+    let m = group_manager::borrow_metadata<Messaging>(group_manager, group);
+    metadata::get_data_value(m, &key)
 }
 
 fun is_direct_message_group(

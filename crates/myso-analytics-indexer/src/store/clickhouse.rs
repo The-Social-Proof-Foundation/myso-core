@@ -65,7 +65,7 @@ pub struct NativeClientBridge {
 }
 
 fn http_port(native_port: u16) -> u16 {
-    if native_port == 9000 {
+    if matches!(native_port, 9000 | 9100) {
         8123
     } else {
         native_port

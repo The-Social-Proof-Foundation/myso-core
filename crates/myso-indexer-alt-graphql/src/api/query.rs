@@ -88,7 +88,7 @@ use crate::api::types::simulation_result::SimulationResult;
 use crate::api::types::social_config::{
     AiCreditConfig, EcosystemTreasury, InsuranceConfig, InsuranceConfiguration,
     InsuranceRouterConfig, MemoryConfig, MessagingConfig, MyDataConfig, PlatformConfig, PocConfig,
-    PostConfig, ProfileConfig, SpotConfig, SptExchangeConfig, SubscriptionConfig,
+    PostConfig, ProfileConfig, SpotConfig, SptExchangeConfig, SubscriptionConfig, TaskConfig,
 };
 use crate::api::types::spot::{
     SpotBet, SpotBetWithdrawal, SpotClaim, SpotCreatorStats, SpotMarket, SpotPayout,
@@ -2801,6 +2801,24 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(MemoryConfig::from_row)),
+        )
+    }
+
+    /// Task market configuration (fees, windows, reputation parameters). Returns null when the
+    /// social DB is not configured or no `TaskConfigUpdated` has been indexed.
+    async fn task_configuration(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Option<Result<Option<TaskConfig>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_task_config()
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(TaskConfig::from_row)),
         )
     }
 

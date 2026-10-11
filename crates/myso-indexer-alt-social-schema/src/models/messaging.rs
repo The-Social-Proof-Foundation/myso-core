@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    message_digests, messaging_agent_groups, messaging_config, paid_message_escrows,
+    agent_rooms, message_digests, messaging_agent_groups, messaging_config, paid_message_escrows,
 };
 
 pub const PAID_MESSAGE_STATUS_ESCROWED: &str = "escrowed";
@@ -107,4 +107,20 @@ pub struct NewMessagingAgentGroup {
     pub created_at_ms: i64,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+}
+
+/// One row per agent room (`messaging::AgentRoomBound`).
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = agent_rooms)]
+pub struct NewAgentRoom {
+    pub group_id: String,
+    pub room_kind: i16,
+    pub task_id: Option<String>,
+    pub creator_actor: String,
+    pub creator_principal: String,
+    pub organization_id: Option<String>,
+    pub created_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
 }

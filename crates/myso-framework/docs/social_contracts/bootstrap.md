@@ -59,6 +59,7 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
 <b>use</b> <a href="../orderbook/constants.md#orderbook_constants">orderbook::constants</a>;
 <b>use</b> <a href="../orderbook/registry.md#orderbook_registry">orderbook::registry</a>;
+<b>use</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task">social_contracts::agent_task</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_derivative_graph">social_contracts::derivative_graph</a>;
@@ -180,6 +181,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     <a href="../social_contracts/block_list.md#social_contracts_block_list_bootstrap_init">social_contracts::block_list::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">social_contracts::mydata::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/memory.md#social_contracts_memory_bootstrap_init">social_contracts::memory::bootstrap_init</a>(clock, ctx);
+    <a href="../social_contracts/agent_task.md#social_contracts_agent_task_bootstrap_init">social_contracts::agent_task::bootstrap_init</a>(admin, clock, ctx);
     <b>let</b> gov_ids = <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/subscription.md#social_contracts_subscription_bootstrap_init">social_contracts::subscription::bootstrap_init</a>(clock, ctx);
@@ -218,6 +220,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     transfer::public_transfer(<a href="../social_contracts/profile.md#social_contracts_profile_create_profile_admin_cap">profile::create_profile_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/subscription.md#social_contracts_subscription_create_subscription_admin_cap">subscription::create_subscription_admin_cap</a>(ctx), admin);
     transfer::public_transfer(memory_module::create_memory_admin_cap(ctx), admin);
+    transfer::public_transfer(<a href="../social_contracts/agent_task.md#social_contracts_agent_task_create_task_market_cap">agent_task::create_task_market_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_create_insurance_admin_cap">insurance::create_insurance_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_create_oracle_admin_cap">ai_credit::create_oracle_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_create_messaging_admin_cap">create_messaging_admin_cap</a>(ctx), admin);

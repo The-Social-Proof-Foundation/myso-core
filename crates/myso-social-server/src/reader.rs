@@ -1,7 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod agent_task;
 pub mod ai_credit;
+pub mod automation_outbox;
 pub mod enterprise;
 mod governance;
 mod insurance;
@@ -1923,6 +1925,44 @@ impl Reader {
         ai_credit::ingest_usage_line(&self.write_db, req).await
     }
 
+    // ==== Automation event outbox (task market events for the automation engine) ====
+
+    pub async fn claim_automation_events(
+        &self,
+        limit: i64,
+        lease_secs: i64,
+    ) -> Result<Vec<automation_outbox::ClaimedEvent>, crate::error::SocialError> {
+        automation_outbox::claim_batch(&self.write_db, limit, lease_secs).await
+    }
+
+    pub async fn automation_enrichment(
+        &self,
+        payload: &serde_json::Value,
+    ) -> Result<myso_indexer_alt_social_schema::models::Enrichment, crate::error::SocialError> {
+        automation_outbox::enrichment_for(&self.db, payload).await
+    }
+
+    pub async fn mark_automation_event_sent(&self, id: i64) -> Result<(), crate::error::SocialError> {
+        automation_outbox::mark_sent(&self.write_db, id).await
+    }
+
+    pub async fn mark_automation_event_failed(
+        &self,
+        id: i64,
+        error: &str,
+        retry_in_secs: i64,
+    ) -> Result<(), crate::error::SocialError> {
+        automation_outbox::mark_failed(&self.write_db, id, error, retry_in_secs).await
+    }
+
+    pub async fn enqueue_due_automation_events(
+        &self,
+        now_ms: i64,
+        batch: i64,
+    ) -> Result<usize, crate::error::SocialError> {
+        automation_outbox::enqueue_due_events(&self.write_db, now_ms, batch).await
+    }
+
     // ==== Enterprise workforce foundation ====
 
     pub async fn list_org_memory_permissions(
@@ -2388,6 +2428,49 @@ impl Reader {
         messaging::get_paid_message_escrows(&self.db, address, limit, offset).await
     }
 
+    pub async fn list_tasks(
+        &self,
+        filter: &agent_task::TaskFilter,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<AgentTaskInfo>, crate::error::SocialError> {
+        agent_task::list_tasks(&self.db, filter, limit, offset).await
+    }
+
+    pub async fn get_task(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<TaskDetailInfo>, crate::error::SocialError> {
+        agent_task::get_task(&self.db, task_id).await
+    }
+
+    pub async fn list_agent_receipts(
+        &self,
+        agent_object_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<TaskReceiptInfo>, crate::error::SocialError> {
+        agent_task::list_agent_receipts(&self.db, agent_object_id, limit, offset).await
+    }
+
+    pub async fn get_task_config(&self) -> Result<Option<TaskConfigInfo>, crate::error::SocialError> {
+        agent_task::get_task_config(&self.db).await
+    }
+
+    pub async fn get_agent_reputation(
+        &self,
+        agent_object_id: &str,
+    ) -> Result<Option<AgentReputationInfo>, crate::error::SocialError> {
+        agent_task::get_agent_reputation(&self.db, agent_object_id).await
+    }
+
+    pub async fn get_principal_reputation(
+        &self,
+        principal: &str,
+    ) -> Result<PrincipalReputationInfo, crate::error::SocialError> {
+        agent_task::get_principal_reputation(&self.db, principal).await
+    }
+
     pub async fn get_message_digests(
         &self,
         address: &str,
@@ -2404,6 +2487,25 @@ impl Reader {
         offset: i64,
     ) -> Result<Vec<MessagingAgentGroupInfo>, crate::error::SocialError> {
         messaging::get_messaging_agent_groups(&self.db, organization_id, limit, offset).await
+    }
+
+    pub async fn get_agent_rooms(
+        &self,
+        principal: Option<&str>,
+        organization_id: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<AgentRoomInfo>, crate::error::SocialError> {
+        messaging::get_agent_rooms(&self.db, principal, organization_id, limit, offset).await
+    }
+
+    pub async fn get_group_digests(
+        &self,
+        group_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MessageDigestInfo>, crate::error::SocialError> {
+        messaging::get_group_digests(&self.db, group_id, limit, offset).await
     }
 
     pub async fn get_messaging_revenue_summary(

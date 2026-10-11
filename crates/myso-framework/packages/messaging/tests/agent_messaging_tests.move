@@ -8,6 +8,8 @@ use std::unit_test::{assert_eq, destroy};
 
 use myso::clock::{Self, Clock};
 use myso::coin;
+use myso::event;
+use myso::hex;
 use myso::myso::MYSO;
 use myso::object;
 use myso::test_scenario as ts;
@@ -21,6 +23,7 @@ use messaging::messaging::{
     Self as msg,
     Messaging,
     MessagingNamespace,
+    MetadataAdmin,
     MessagingReader,
     MessagingSender,
 };
@@ -313,6 +316,8 @@ fun agent_creates_dm_with_human_peer() {
             string::utf8(TEST_UUID),
             TEST_ENCRYPTED_DEK,
             members,
+            option::none(),
+            option::none(),
             &clock,
             ts::ctx(&mut scenario),
         );
@@ -322,6 +327,9 @@ fun agent_creates_dm_with_human_peer() {
         assert!(!group.has_permission<Messaging, PermissionsAdmin>(AGENT_ADDR), 2);
         assert!(group.has_permission<Messaging, MessagingReader>(AUTHOR), 3);
         assert!(group.has_permission<Messaging, PermissionsAdmin>(AUTHOR), 4);
+        // The principal is the room curator; the agent creator is not.
+        assert!(group.has_permission<Messaging, MetadataAdmin>(AUTHOR), 40);
+        assert!(!group.has_permission<Messaging, MetadataAdmin>(AGENT_ADDR), 41);
         assert!(group.has_permission<Messaging, MessagingSender>(BOB), 5);
         assert!(group.has_permission<Messaging, MessagingReader>(BOB), 6);
         assert!(!group.has_permission<Messaging, MessagingSender>(AUTHOR), 7);
@@ -345,6 +353,166 @@ fun agent_creates_dm_with_human_peer() {
         destroy(msg_log);
     };
 
+    scenario.end();
+}
+
+const ROOM_UUID: vector<u8> = b"550e8400-e29b-41d4-a716-446655440020";
+
+/// Shared setup: messaging stack, an org, and a registered messaging agent for AUTHOR.
+fun prepare_agent(scenario: &mut ts::Scenario) {
+    setup(scenario);
+
+    ts::next_tx(scenario, AUTHOR);
+    {
+        memory_test_helpers::create_default_org_in_tx(scenario);
+    };
+
+    ts::next_tx(scenario, AUTHOR);
+    {
+        let platform_obj = ts::take_shared<Platform>(scenario);
+        let platform_id = object::uid_to_address(platform::id(&platform_obj));
+        let mut org = memory_test_helpers::take_created_org(scenario);
+        let mut memory_account = ts::take_shared<MemoryAccount>(scenario);
+        let clock = ts::take_shared<Clock>(scenario);
+        let memory_config = ts::take_shared<MemoryConfig>(scenario);
+        register_agent(&memory_config, &mut memory_account, &mut org, platform_id, &clock, ts::ctx(scenario));
+        ts::return_shared(memory_config);
+        ts::return_shared(clock);
+        ts::return_shared(memory_account);
+        ts::return_shared(org);
+        ts::return_shared(platform_obj);
+    };
+}
+
+/// Creates a group as the agent with the given room parameters and returns after
+/// running `check` against it (inlined by each test via the returned flag).
+fun agent_create_group(
+    scenario: &mut ts::Scenario,
+    room_kind: Option<u8>,
+    room_task_id: Option<ID>,
+    check_room: bool,
+    expect_task: bool,
+) {
+    ts::next_tx(scenario, AGENT_ADDR);
+    let version = ts::take_shared<Version>(scenario);
+    let mut namespace = ts::take_shared<MessagingNamespace>(scenario);
+    let group_manager = ts::take_shared<GroupManager>(scenario);
+    let group_leaver = ts::take_shared<GroupLeaver>(scenario);
+    let block_list = ts::take_shared<BlockListRegistry>(scenario);
+    let platform = ts::take_shared<Platform>(scenario);
+    let memory_account = ts::take_shared<MemoryAccount>(scenario);
+    let memory_config = ts::take_shared<MemoryConfig>(scenario);
+    let clock = ts::take_shared<Clock>(scenario);
+
+    let (group, encryption_history, msg_log) = msg::create_agent_group(
+        &version,
+        &mut namespace,
+        &group_manager,
+        &group_leaver,
+        &block_list,
+        &platform,
+        &memory_config,
+        &memory_account,
+        &memory_account,
+        string::utf8(TEST_GROUP_NAME),
+        string::utf8(ROOM_UUID),
+        TEST_ENCRYPTED_DEK,
+        vec_set::empty<address>(),
+        room_kind,
+        room_task_id,
+        &clock,
+        ts::ctx(scenario),
+    );
+
+    let kind_value = msg::group_data(&group_manager, &group, string::utf8(b"room_kind"));
+    let task_value = msg::group_data(&group_manager, &group, string::utf8(b"task_id"));
+    let bound_events = event::events_by_type<msg::AgentRoomBound>();
+    if (check_room) {
+        assert!(group.has_permission<Messaging, MetadataAdmin>(AUTHOR), 0);
+        assert!(option::is_some(&kind_value), 1);
+        assert!(*option::borrow(&kind_value) == string::utf8(b"agent_room"), 2);
+        assert_eq!(bound_events.length(), 1);
+        if (expect_task) {
+            let expected = string::utf8(hex::encode(option::borrow(&room_task_id).to_bytes()));
+            assert!(option::is_some(&task_value), 3);
+            assert!(*option::borrow(&task_value) == expected, 4);
+        } else {
+            assert!(option::is_none(&task_value), 5);
+        };
+        // The agent-chat tag is still present: a room is a tagged agent group.
+        let chat = msg::group_data(&group_manager, &group, string::utf8(b"agent_chat"));
+        assert!(option::is_some(&chat), 6);
+    } else {
+        assert!(option::is_none(&kind_value), 7);
+        assert!(option::is_none(&task_value), 8);
+        assert_eq!(bound_events.length(), 0);
+    };
+
+    ts::return_shared(clock);
+    ts::return_shared(memory_config);
+    ts::return_shared(memory_account);
+    ts::return_shared(platform);
+    ts::return_shared(block_list);
+    ts::return_shared(group_leaver);
+    ts::return_shared(group_manager);
+    ts::return_shared(namespace);
+    ts::return_shared(version);
+    destroy(group);
+    destroy(encryption_history);
+    destroy(msg_log);
+}
+
+#[test]
+fun agent_room_is_tagged_and_bound_to_task() {
+    let mut scenario = ts::begin(AUTHOR);
+    prepare_agent(&mut scenario);
+    agent_create_group(
+        &mut scenario,
+        option::some(msg::room_kind_agent_room()),
+        option::some(object::id_from_address(@0x7A5C)),
+        true,
+        true,
+    );
+    scenario.end();
+}
+
+#[test]
+fun agent_room_without_task_binding() {
+    let mut scenario = ts::begin(AUTHOR);
+    prepare_agent(&mut scenario);
+    agent_create_group(&mut scenario, option::some(1), option::none(), true, false);
+    scenario.end();
+}
+
+#[test]
+fun plain_agent_group_has_no_room_tags_and_no_room_event() {
+    let mut scenario = ts::begin(AUTHOR);
+    prepare_agent(&mut scenario);
+    agent_create_group(&mut scenario, option::none(), option::none(), false, false);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = msg::EUnknownRoomKind)]
+fun unmapped_room_kind_aborts() {
+    let mut scenario = ts::begin(AUTHOR);
+    prepare_agent(&mut scenario);
+    agent_create_group(&mut scenario, option::some(2), option::none(), false, false);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = msg::EUnknownRoomKind)]
+fun task_binding_without_room_kind_aborts() {
+    let mut scenario = ts::begin(AUTHOR);
+    prepare_agent(&mut scenario);
+    agent_create_group(
+        &mut scenario,
+        option::none(),
+        option::some(object::id_from_address(@0x7A5C)),
+        false,
+        false,
+    );
     scenario.end();
 }
 
@@ -420,6 +588,8 @@ fun agent_without_message_cap_cannot_create_group() {
             string::utf8(TEST_UUID),
             TEST_ENCRYPTED_DEK,
             members,
+            option::none(),
+            option::none(),
             &clock,
             ts::ctx(&mut scenario),
         );
@@ -493,6 +663,8 @@ fun principal_mydata_oversight_fallback() {
             string::utf8(TEST_UUID),
             TEST_ENCRYPTED_DEK,
             vector[],
+            option::none(),
+            option::none(),
             &clock,
             ts::ctx(&mut scenario),
         );
@@ -660,6 +832,8 @@ fun cross_principal_agent_peer_gets_permissions_and_oversight() {
             string::utf8(TEST_UUID_CROSS),
             TEST_ENCRYPTED_DEK,
             members,
+            option::none(),
+            option::none(),
             &clock,
             ts::ctx(&mut scenario),
         );
@@ -754,6 +928,8 @@ fun agent_paid_dm_stranger_at_min_succeeds() {
             string::utf8(TEST_UUID_PAID),
             TEST_ENCRYPTED_DEK,
             members,
+            option::none(),
+            option::none(),
             &clock,
             ts::ctx(&mut scenario),
         );
@@ -896,6 +1072,8 @@ fun agent_paid_dm_below_min_fails() {
             string::utf8(TEST_UUID_PAID),
             TEST_ENCRYPTED_DEK,
             vector[BOB],
+            option::none(),
+            option::none(),
             &clock,
             ts::ctx(&mut scenario),
         );
@@ -1037,6 +1215,8 @@ fun agent_paid_dm_principal_follower_bypass_fails() {
             string::utf8(TEST_UUID_FOLLOWER),
             TEST_ENCRYPTED_DEK,
             vector[BOB],
+            option::none(),
+            option::none(),
             &clock,
             ts::ctx(&mut scenario),
         );

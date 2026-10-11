@@ -15,6 +15,7 @@ use myso_indexer_alt_social_reader::profile::{EcosystemTreasuryRow, ProfileConfi
 use myso_indexer_alt_social_reader::spot::SpotConfigRow;
 use myso_indexer_alt_social_reader::spt::SptExchangeConfigRow;
 use myso_indexer_alt_social_reader::subscription::SubscriptionConfigRow;
+use myso_indexer_alt_social_reader::task_market::TaskConfigRow;
 use myso_indexer_alt_social_schema::models::PocConfigRow;
 
 #[derive(Clone)]
@@ -1389,5 +1390,175 @@ impl InsuranceConfiguration {
     /// Insurance router config (reserve limits, vault health, max route legs).
     async fn router(&self) -> Option<&InsuranceRouterConfig> {
         self.router.as_ref()
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct TaskConfig {
+    inner: TaskConfigRow,
+}
+
+impl TaskConfig {
+    pub(crate) fn from_row(inner: TaskConfigRow) -> Self {
+        Self { inner }
+    }
+}
+
+/// Task market configuration: fees, windows, and the reputation weighting parameters.
+#[Object]
+impl TaskConfig {
+    /// Address that last updated the configuration.
+    async fn updated_by(&self) -> &str {
+        &self.inner.updated_by
+    }
+
+    /// Recipient of the ecosystem fee.
+    async fn ecosystem_fee_recipient(&self) -> &str {
+        &self.inner.ecosystem_fee_recipient
+    }
+
+    /// Whether new offers are accepted. Existing tasks continue regardless.
+    async fn active(&self) -> bool {
+        self.inner.active
+    }
+
+    /// Platform fee in basis points, frozen into each offer.
+    async fn platform_fee_bps(&self) -> i64 {
+        self.inner.platform_fee_bps
+    }
+
+    /// Ecosystem fee in basis points, frozen into each offer.
+    async fn ecosystem_fee_bps(&self) -> i64 {
+        self.inner.ecosystem_fee_bps
+    }
+
+    /// Smallest escrow an offer may carry.
+    async fn min_escrow_mist(&self) -> i64 {
+        self.inner.min_escrow_mist
+    }
+
+    /// Shortest time a seller has to accept an offer.
+    async fn accept_window_min_ms(&self) -> i64 {
+        self.inner.accept_window_min_ms
+    }
+
+    /// Default acceptance window offered by clients.
+    async fn accept_window_default_ms(&self) -> i64 {
+        self.inner.accept_window_default_ms
+    }
+
+    /// Longest acceptance window.
+    async fn accept_window_max_ms(&self) -> i64 {
+        self.inner.accept_window_max_ms
+    }
+
+    /// Shortest delivery window after acceptance.
+    async fn delivery_window_min_ms(&self) -> i64 {
+        self.inner.delivery_window_min_ms
+    }
+
+    /// Longest delivery window.
+    async fn delivery_window_max_ms(&self) -> i64 {
+        self.inner.delivery_window_max_ms
+    }
+
+    /// Shortest settle window after delivery.
+    async fn settle_window_min_ms(&self) -> i64 {
+        self.inner.settle_window_min_ms
+    }
+
+    /// Longest settle window.
+    async fn settle_window_max_ms(&self) -> i64 {
+        self.inner.settle_window_max_ms
+    }
+
+    /// Grace period after the settle deadline before anyone may release payment to the seller.
+    async fn release_grace_ms(&self) -> i64 {
+        self.inner.release_grace_ms
+    }
+
+    /// How long after settlement either party may review.
+    async fn review_window_ms(&self) -> i64 {
+        self.inner.review_window_ms
+    }
+
+    /// Longest task title in bytes.
+    async fn max_title_bytes(&self) -> i64 {
+        self.inner.max_title_bytes
+    }
+
+    /// Longest deliverable URI in bytes.
+    async fn max_uri_bytes(&self) -> i64 {
+        self.inner.max_uri_bytes
+    }
+
+    /// Bayesian prior mean in milli-stars (3000 is 3.0 stars).
+    async fn prior_mean_milli(&self) -> i64 {
+        self.inner.prior_mean_milli
+    }
+
+    /// Bayesian prior weight in basis points of review weight.
+    async fn prior_weight_bps(&self) -> i64 {
+        self.inner.prior_weight_bps
+    }
+
+    /// Escrow that earns a full 1.0 review weight.
+    async fn value_ref_mist(&self) -> i64 {
+        self.inner.value_ref_mist
+    }
+
+    /// Floor on the value-derived review weight.
+    async fn min_value_weight_bps(&self) -> i64 {
+        self.inner.min_value_weight_bps
+    }
+
+    /// Cap on the value-derived review weight.
+    async fn max_value_weight_bps(&self) -> i64 {
+        self.inner.max_value_weight_bps
+    }
+
+    /// Credibility of a principal with no settled history.
+    async fn cred_base_bps(&self) -> i64 {
+        self.inner.cred_base_bps
+    }
+
+    /// Credibility gained per settled transaction.
+    async fn cred_step_bps(&self) -> i64 {
+        self.inner.cred_step_bps
+    }
+
+    /// Settled transactions after which credibility stops rising.
+    async fn cred_cap_n(&self) -> i64 {
+        self.inner.cred_cap_n
+    }
+
+    /// Credibility ceiling.
+    async fn cred_max_bps(&self) -> i64 {
+        self.inner.cred_max_bps
+    }
+
+    /// Share of the overall score given to the seller role.
+    async fn overall_seller_weight_bps(&self) -> i64 {
+        self.inner.overall_seller_weight_bps
+    }
+
+    /// Share of the overall score given to the buyer role.
+    async fn overall_buyer_weight_bps(&self) -> i64 {
+        self.inner.overall_buyer_weight_bps
+    }
+
+    /// Last update timestamp (epoch milliseconds).
+    async fn timestamp_ms(&self) -> i64 {
+        self.inner.timestamp_ms
+    }
+
+    /// When the configuration was last updated.
+    async fn time(&self) -> DateTime {
+        DateTime::from_chrono(self.inner.time)
+    }
+
+    /// Transaction ID of the last config update.
+    async fn transaction_id(&self) -> &str {
+        &self.inner.transaction_id
     }
 }

@@ -1,6 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+mod agent_task;
+mod automation_outbox;
 mod ai_credit;
 mod audit;
 mod blocked;
@@ -93,12 +95,22 @@ pub use media_asset::{
     MONETIZATION_NONE, MONETIZATION_PENDING, MONETIZATION_RESTRICTED, POC_REDIRECT_ESCROW,
     POC_REDIRECT_NONE, POC_REDIRECT_WALLET,
 };
+pub use agent_task::{
+    NewAgentTask, NewCredibility, NewReputationAggregate, NewTaskConfig, NewTaskReceipt,
+    NewTaskReview, TASK_STATUS_ACCEPTED, TASK_STATUS_CANCELLED, TASK_STATUS_DELIVERED,
+    TASK_STATUS_OFFERED, TASK_STATUS_REFUNDED, TASK_STATUS_SETTLED,
+};
+pub use automation_outbox::{
+    AUTOMATION_EVENT_SOURCE, AUTOMATION_FAMILY_TASK, AutomationEventPayload, DEFAULT_BASE_CREDIBILITY_BPS,
+    DEFAULT_PRIOR_SCORE_MILLI, Enrichment, NewAutomationEvent, PartyStats, TaskEventKind, TaskSnapshot,
+    build_task_events, platform_event, retry_delay_secs,
+};
 pub use memory::{
     AgentMemoryVaultRow, MemoryAccountRow, MemoryUsageStatsRow, NewAgentMemoryVault,
     NewMemoryAccount, NewMemoryConfig, NewSubAgent, NewSubAgentEvent, SubAgentRow,
 };
 pub use messaging::{
-    NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
+    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
     PAID_MESSAGE_STATUS_CLAIMED, PAID_MESSAGE_STATUS_ESCROWED, PAID_MESSAGE_STATUS_REFUNDED,
     PAID_MESSAGE_STATUS_SETTLED,
 };

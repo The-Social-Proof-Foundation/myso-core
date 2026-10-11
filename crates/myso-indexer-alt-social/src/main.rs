@@ -16,7 +16,7 @@ use social_indexer::{
     AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler,
     MessagingHandler, MyDataHandler, PlatformHandler, PostsHandler, ProfilesHandler, SocialEnv,
     SocialGraphHandler, SpotHandler, SptHandler, SubAgentRegistryHandler, SubscriptionHandler,
-    UpgradeHandler,
+    TaskMarketHandler, UpgradeHandler,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -201,6 +201,10 @@ async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
         .await?;
     indexer
         .concurrent_pipeline(SubAgentRegistryHandler, Default::default())
+        .await?;
+    // Sequential: task lifecycle updates must apply in chain order.
+    indexer
+        .sequential_pipeline(TaskMarketHandler, Default::default())
         .await?;
     indexer
         .concurrent_pipeline(MemoryHandler, Default::default())

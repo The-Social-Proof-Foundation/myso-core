@@ -13,7 +13,7 @@ use myso_indexer_alt_social_schema::schema::wallet_messaging_policies;
 
 use crate::error::SocialError;
 use crate::reader::types::{
-    MessageDigestInfo, MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo,
+    AgentRoomInfo, MessageDigestInfo, MessagingAgentGroupInfo, MessagingConfigInfo, MessagingRevenueSummaryInfo,
     PaidMessageEscrowInfo, WalletMessagingPolicyResponse,
 };
 use myso_pg_db::Db;
@@ -120,6 +120,67 @@ pub(crate) async fn get_messaging_agent_groups(
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<MessagingAgentGroupInfo>(&mut conn)
+        .await?;
+    Ok(rows)
+}
+
+/// Agent rooms, newest first. Exactly one of `principal` or `organization_id` filters the list;
+/// the left join tolerates a room whose `AgentGroupCreated` row is not indexed yet.
+pub(crate) async fn get_agent_rooms(
+    db: &Db,
+    principal: Option<&str>,
+    organization_id: Option<&str>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<AgentRoomInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT r.group_id, r.room_kind, r.task_id, r.creator_actor, r.creator_principal,
+               r.organization_id, g.group_name, g.group_uuid, r.created_at_ms, r.transaction_id
+        FROM agent_rooms r
+        LEFT JOIN LATERAL (
+            SELECT group_name, group_uuid
+            FROM messaging_agent_groups
+            WHERE group_id = r.group_id
+            ORDER BY time DESC
+            LIMIT 1
+        ) g ON TRUE
+        WHERE ($1::text IS NULL OR r.creator_principal = $1)
+          AND ($2::text IS NULL OR r.organization_id = $2)
+        ORDER BY r.created_at_ms DESC, r.group_id
+        LIMIT $3 OFFSET $4
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<diesel::sql_types::Nullable<Text>, _>(principal)
+        .bind::<diesel::sql_types::Nullable<Text>, _>(organization_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<AgentRoomInfo>(&mut conn)
+        .await?;
+    Ok(rows)
+}
+
+/// Message digests of one group in sequence order (the data `RoomVerifyPanel` checks).
+pub(crate) async fn get_group_digests(
+    db: &Db,
+    group_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<MessageDigestInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT group_id, seq, sender, recipient, content_digest, content_uri,
+               created_at_ms, transaction_id
+        FROM message_digests
+        WHERE group_id = $1
+        ORDER BY seq ASC
+        LIMIT $2 OFFSET $3
+    ";
+    let rows = diesel::sql_query(query)
+        .bind::<Text, _>(group_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<MessageDigestInfo>(&mut conn)
         .await?;
     Ok(rows)
 }

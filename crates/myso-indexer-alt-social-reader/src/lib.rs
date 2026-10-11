@@ -27,11 +27,13 @@ pub mod poc_username_beneficiary;
 pub mod post;
 pub mod profile;
 pub mod promotion;
+pub mod reputation;
 pub mod revenue;
 pub mod social_graph;
 pub mod spot;
 pub mod spt;
 pub mod subscription;
+pub mod task_market;
 pub mod username;
 pub mod vesting;
 
@@ -47,6 +49,7 @@ pub use insurance::{
     InsuranceVaultExposureRow, InsuranceVaultTransactionRow,
 };
 pub use memory::MemoryConfigRow;
+pub use task_market::{AgentReputation, CredibilityRow, RoleReputation, TaskConfigRow};
 pub use memory::{SocialAttributionRow, SubAgentListResult};
 pub use messaging::{MessagingAgentGroupRow, MessagingConfigRow, PaidMessageEscrowRow};
 pub use metrics::standalone_reader_metrics;

@@ -72,6 +72,60 @@ pub async fn get_agent_groups(
         .map(Json)
 }
 
+#[derive(Debug, Deserialize)]
+pub struct AgentRoomsQuery {
+    pub principal: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+pub async fn list_agent_rooms(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<AgentRoomsQuery>,
+) -> Result<Json<Vec<crate::reader::AgentRoomInfo>>, SocialError> {
+    // An unscoped listing would expose every principal's rooms; require a filter.
+    let principal = query
+        .principal
+        .as_deref()
+        .filter(|p| !p.is_empty())
+        .ok_or_else(|| SocialError::bad_request("principal query parameter is required"))?;
+    let (limit, offset) = pagination(&PaginationQuery {
+        limit: query.limit,
+        offset: query.offset,
+    });
+    state
+        .reader
+        .get_agent_rooms(Some(principal), None, limit, offset)
+        .await
+        .map(Json)
+}
+
+pub async fn list_organization_rooms(
+    State(state): State<Arc<AppState>>,
+    Path(organization_id): Path<String>,
+    Query(query): Query<PaginationQuery>,
+) -> Result<Json<Vec<crate::reader::AgentRoomInfo>>, SocialError> {
+    let (limit, offset) = pagination(&query);
+    state
+        .reader
+        .get_agent_rooms(None, Some(&organization_id), limit, offset)
+        .await
+        .map(Json)
+}
+
+pub async fn list_group_digests(
+    State(state): State<Arc<AppState>>,
+    Path(group_id): Path<String>,
+    Query(query): Query<PaginationQuery>,
+) -> Result<Json<Vec<crate::reader::MessageDigestInfo>>, SocialError> {
+    let (limit, offset) = pagination(&query);
+    state
+        .reader
+        .get_group_digests(&group_id, limit, offset)
+        .await
+        .map(Json)
+}
+
 pub async fn get_messaging_revenue_summary(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,

@@ -8,6 +8,7 @@ mod health;
 mod insurance;
 mod memory;
 mod messaging;
+mod agent_task;
 mod mydata;
 mod organization;
 mod platforms;
@@ -57,9 +58,13 @@ pub use memory::{
     get_sub_agent_pnl, list_profile_sub_agents, list_profile_sub_agents_pnl,
     list_sub_agent_children,
 };
+pub use agent_task::{
+    get_agent_reputation, get_principal_reputation, get_task, get_task_config, list_agent_receipts,
+    list_tasks,
+};
 pub use messaging::{
     get_agent_groups, get_message_history, get_messaging_config, get_messaging_revenue_summary,
-    get_paid_message_history,
+    get_paid_message_history, list_agent_rooms, list_group_digests, list_organization_rooms,
 };
 pub use mydata::{
     get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,

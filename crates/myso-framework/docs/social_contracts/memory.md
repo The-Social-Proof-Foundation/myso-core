@@ -57,6 +57,11 @@ computed off-chain (indexer/server).
 -  [Struct `OrgCustomRoleKey`](#social_contracts_memory_OrgCustomRoleKey)
 -  [Struct `OrgRoleAssignmentKey`](#social_contracts_memory_OrgRoleAssignmentKey)
 -  [Struct `SubAgentConstraints`](#social_contracts_memory_SubAgentConstraints)
+-  [Struct `ReputationParams`](#social_contracts_memory_ReputationParams)
+-  [Struct `ReputationAggregate`](#social_contracts_memory_ReputationAggregate)
+-  [Struct `CredibilityStats`](#social_contracts_memory_CredibilityStats)
+-  [Struct `ReviewPairKey`](#social_contracts_memory_ReviewPairKey)
+-  [Struct `ReviewOutcome`](#social_contracts_memory_ReviewOutcome)
 -  [Struct `OrgRegistryEntry`](#social_contracts_memory_OrgRegistryEntry)
 -  [Struct `AgenticOrganization`](#social_contracts_memory_AgenticOrganization)
 -  [Struct `AgentRegistryEntry`](#social_contracts_memory_AgentRegistryEntry)
@@ -65,6 +70,8 @@ computed off-chain (indexer/server).
 -  [Struct `ActingContext`](#social_contracts_memory_ActingContext)
 -  [Struct `MemoryAccount`](#social_contracts_memory_MemoryAccount)
 -  [Struct `MemoryAccountCreated`](#social_contracts_memory_MemoryAccountCreated)
+-  [Struct `ReputationUpdated`](#social_contracts_memory_ReputationUpdated)
+-  [Struct `CredibilityUpdated`](#social_contracts_memory_CredibilityUpdated)
 -  [Struct `SubAgentRegistered`](#social_contracts_memory_SubAgentRegistered)
 -  [Struct `SubAgentUpdated`](#social_contracts_memory_SubAgentUpdated)
 -  [Struct `SubAgentDeactivated`](#social_contracts_memory_SubAgentDeactivated)
@@ -123,6 +130,7 @@ computed off-chain (indexer/server).
 -  [Function `cap_ai_spend`](#social_contracts_memory_cap_ai_spend)
 -  [Function `cap_budget_manage`](#social_contracts_memory_cap_budget_manage)
 -  [Function `cap_social_graph`](#social_contracts_memory_cap_social_graph)
+-  [Function `cap_task_trade`](#social_contracts_memory_cap_task_trade)
 -  [Function `org_perm_memory_read`](#social_contracts_memory_org_perm_memory_read)
 -  [Function `org_perm_memory_write`](#social_contracts_memory_org_perm_memory_write)
 -  [Function `org_perm_agent_manager`](#social_contracts_memory_org_perm_agent_manager)
@@ -224,6 +232,63 @@ computed off-chain (indexer/server).
 -  [Function `account_version`](#social_contracts_memory_account_version)
 -  [Function `registry_version`](#social_contracts_memory_registry_version)
 -  [Function `current_contract_version`](#social_contracts_memory_current_contract_version)
+-  [Function `new_reputation_params`](#social_contracts_memory_new_reputation_params)
+-  [Function `assert_reputation_params`](#social_contracts_memory_assert_reputation_params)
+-  [Function `reputation_prior_mean_milli`](#social_contracts_memory_reputation_prior_mean_milli)
+-  [Function `reputation_prior_weight_bps`](#social_contracts_memory_reputation_prior_weight_bps)
+-  [Function `reputation_value_ref_mist`](#social_contracts_memory_reputation_value_ref_mist)
+-  [Function `reputation_min_value_weight_bps`](#social_contracts_memory_reputation_min_value_weight_bps)
+-  [Function `reputation_max_value_weight_bps`](#social_contracts_memory_reputation_max_value_weight_bps)
+-  [Function `reputation_cred_base_bps`](#social_contracts_memory_reputation_cred_base_bps)
+-  [Function `reputation_cred_step_bps`](#social_contracts_memory_reputation_cred_step_bps)
+-  [Function `reputation_cred_cap_n`](#social_contracts_memory_reputation_cred_cap_n)
+-  [Function `reputation_cred_max_bps`](#social_contracts_memory_reputation_cred_max_bps)
+-  [Function `reputation_overall_seller_weight_bps`](#social_contracts_memory_reputation_overall_seller_weight_bps)
+-  [Function `reputation_overall_buyer_weight_bps`](#social_contracts_memory_reputation_overall_buyer_weight_bps)
+-  [Function `role_seller`](#social_contracts_memory_role_seller)
+-  [Function `role_buyer`](#social_contracts_memory_role_buyer)
+-  [Function `empty_aggregate`](#social_contracts_memory_empty_aggregate)
+-  [Function `empty_credibility`](#social_contracts_memory_empty_credibility)
+-  [Function `checked_add_u128`](#social_contracts_memory_checked_add_u128)
+-  [Function `checked_mul_u128`](#social_contracts_memory_checked_mul_u128)
+-  [Function `checked_div_u128`](#social_contracts_memory_checked_div_u128)
+-  [Function `checked_narrow_u64`](#social_contracts_memory_checked_narrow_u64)
+-  [Function `checked_add_u64`](#social_contracts_memory_checked_add_u64)
+-  [Function `checked_mul_u64`](#social_contracts_memory_checked_mul_u64)
+-  [Function `checked_bps_of`](#social_contracts_memory_checked_bps_of)
+-  [Function `aggregate_review_count`](#social_contracts_memory_aggregate_review_count)
+-  [Function `aggregate_histogram`](#social_contracts_memory_aggregate_histogram)
+-  [Function `aggregate_weight_sum_bps`](#social_contracts_memory_aggregate_weight_sum_bps)
+-  [Function `aggregate_weighted_star_sum`](#social_contracts_memory_aggregate_weighted_star_sum)
+-  [Function `aggregate_updated_at_ms`](#social_contracts_memory_aggregate_updated_at_ms)
+-  [Function `aggregate_last_receipt_id`](#social_contracts_memory_aggregate_last_receipt_id)
+-  [Function `aggregate_cached_score_milli`](#social_contracts_memory_aggregate_cached_score_milli)
+-  [Function `aggregate_score_milli`](#social_contracts_memory_aggregate_score_milli)
+-  [Function `aggregate_confidence_bps`](#social_contracts_memory_aggregate_confidence_bps)
+-  [Function `overall_reputation`](#social_contracts_memory_overall_reputation)
+-  [Function `agent_overall`](#social_contracts_memory_agent_overall)
+-  [Function `sub_agent_seller_reputation`](#social_contracts_memory_sub_agent_seller_reputation)
+-  [Function `sub_agent_buyer_reputation`](#social_contracts_memory_sub_agent_buyer_reputation)
+-  [Function `account_human_buyer_reputation`](#social_contracts_memory_account_human_buyer_reputation)
+-  [Function `account_settled_count`](#social_contracts_memory_account_settled_count)
+-  [Function `account_settled_volume_mist`](#social_contracts_memory_account_settled_volume_mist)
+-  [Function `credibility_bps_for`](#social_contracts_memory_credibility_bps_for)
+-  [Function `account_credibility_bps`](#social_contracts_memory_account_credibility_bps)
+-  [Function `pair_review_count`](#social_contracts_memory_pair_review_count)
+-  [Function `value_weight_bps`](#social_contracts_memory_value_weight_bps)
+-  [Function `outcome_value_weight_bps`](#social_contracts_memory_outcome_value_weight_bps)
+-  [Function `outcome_base_weight_bps`](#social_contracts_memory_outcome_base_weight_bps)
+-  [Function `outcome_weight_bps`](#social_contracts_memory_outcome_weight_bps)
+-  [Function `outcome_prior_pair_reviews`](#social_contracts_memory_outcome_prior_pair_reviews)
+-  [Function `record_settlement`](#social_contracts_memory_record_settlement)
+-  [Function `apply_seller_review`](#social_contracts_memory_apply_seller_review)
+-  [Function `apply_buyer_agent_review`](#social_contracts_memory_apply_buyer_agent_review)
+-  [Function `apply_human_buyer_review`](#social_contracts_memory_apply_human_buyer_review)
+-  [Function `weigh_review`](#social_contracts_memory_weigh_review)
+-  [Function `apply_to_aggregate`](#social_contracts_memory_apply_to_aggregate)
+-  [Function `role_score`](#social_contracts_memory_role_score)
+-  [Function `finish_score`](#social_contracts_memory_finish_score)
+-  [Function `emit_reputation_updated`](#social_contracts_memory_emit_reputation_updated)
 -  [Function `approve_key_policy`](#social_contracts_memory_approve_key_policy)
 -  [Function `approve_key_write_policy`](#social_contracts_memory_approve_key_write_policy)
 -  [Function `owner_key_suffix_bytes`](#social_contracts_memory_owner_key_suffix_bytes)
@@ -958,6 +1023,275 @@ and to overlap with direct grants or other roles).
 
 </details>
 
+<a name="social_contracts_memory_ReputationParams"></a>
+
+## Struct `ReputationParams`
+
+Weighting and Bayesian prior parameters (owned by <code><a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskConfig">agent_task::TaskConfig</a></code>).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>prior_mean_milli: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>prior_weight_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>value_ref_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_value_weight_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>max_value_weight_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>cred_base_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>cred_step_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>cred_cap_n: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>cred_max_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>overall_seller_weight_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>overall_buyer_weight_bps: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_ReputationAggregate"></a>
+
+## Struct `ReputationAggregate`
+
+Running reputation sums for one subject and role. Nothing is stored per review.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>review_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_1: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_2: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_3: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_4: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_5: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>weight_sum_bps: u128</code>
+</dt>
+<dd>
+ Σ w (bps).
+</dd>
+<dt>
+<code>weighted_star_sum: u128</code>
+</dt>
+<dd>
+ Σ w * stars * 1000.
+</dd>
+<dt>
+<code>bayesian_score_milli: u64</code>
+</dt>
+<dd>
+ Score at the last update (milli-stars, 1000..5000).
+</dd>
+<dt>
+<code>confidence_bps: u64</code>
+</dt>
+<dd>
+ W / (W + C) at the last update (bps).
+</dd>
+<dt>
+<code>updated_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>last_receipt_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_CredibilityStats"></a>
+
+## Struct `CredibilityStats`
+
+Principal-level credibility inputs: completed, paid transactions in either role.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_CredibilityStats">CredibilityStats</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>settled_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>volume_mist: u128</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_ReviewPairKey"></a>
+
+## Struct `ReviewPairKey`
+
+Directional repeat-pair counter key, a dynamic field on the reviewee principal's account.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_ReviewPairKey">ReviewPairKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>rater_principal: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>rater_role: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_ReviewOutcome"></a>
+
+## Struct `ReviewOutcome`
+
+How a review was weighted; <code><a href="../social_contracts/agent_task.md#social_contracts_agent_task">agent_task</a></code> copies it into <code>TaskReviewSubmitted</code>.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_value_weight_bps">value_weight_bps</a>: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>base_weight_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>weight_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>prior_pair_reviews: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_memory_OrgRegistryEntry"></a>
 
 ## Struct `OrgRegistryEntry`
@@ -1270,6 +1604,18 @@ Shared derived sub-agent object (one per agent).
 </dt>
 <dd>
 </dd>
+<dt>
+<code>as_seller: <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a></code>
+</dt>
+<dd>
+ Reviews received as a task seller.
+</dd>
+<dt>
+<code>as_buyer: <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a></code>
+</dt>
+<dd>
+ Reviews received as a task buyer.
+</dd>
 </dl>
 
 
@@ -1440,6 +1786,17 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 </dt>
 <dd>
 </dd>
+<dt>
+<code>credibility: <a href="../social_contracts/memory.md#social_contracts_memory_CredibilityStats">social_contracts::memory::CredibilityStats</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>human_as_buyer: <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a></code>
+</dt>
+<dd>
+ Reputation as a buyer when this principal buys directly (no agent).
+</dd>
 </dl>
 
 
@@ -1473,6 +1830,168 @@ Human root plus on-chain agent auth index (shared [<code><a href="../social_cont
 </dd>
 <dt>
 <code><a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_ReputationUpdated"></a>
+
+## Struct `ReputationUpdated`
+
+One per aggregate update (a review). Flat: histogram counters are separate fields.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_ReputationUpdated">ReputationUpdated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>subject_kind: u8</code>
+</dt>
+<dd>
+ 1 agent as seller, 2 agent as buyer, 3 principal buying directly.
+</dd>
+<dt>
+<code>subject_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+ Agent object id, or the memory account id for subject kind 3.
+</dd>
+<dt>
+<code>principal_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>role: u8</code>
+</dt>
+<dd>
+ 1 seller, 2 buyer.
+</dd>
+<dt>
+<code>review_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_1: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_2: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_3: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_4: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>star_5: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>weight_sum_bps: u128</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>weighted_star_sum: u128</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>bayesian_score_milli: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>confidence_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>receipt_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_CredibilityUpdated"></a>
+
+## Struct `CredibilityUpdated`
+
+One per principal per settled receipt.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_CredibilityUpdated">CredibilityUpdated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>principal_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>settled_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>volume_mist: u128</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>credibility_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2905,6 +3424,16 @@ Follow, unfollow, block, and unblock on behalf of the principal profile.
 
 
 
+<a name="social_contracts_memory_CAP_TASK_TRADE"></a>
+
+Create, accept, deliver, settle, refund and review tasks in <code><a href="../social_contracts/agent_task.md#social_contracts_agent_task">agent_task</a></code>.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_CAP_TASK_TRADE">CAP_TASK_TRADE</a>: u64 = 131072;
+</code></pre>
+
+
+
 <a name="social_contracts_memory_ORG_PERM_MEMORY_READ"></a>
 
 
@@ -3744,6 +4273,42 @@ Governance permission bits (proposer + voter).
 
 
 
+<a name="social_contracts_memory_EInvalidStars"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidStars">EInvalidStars</a>: u64 = 61;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EInvalidReputationParams"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>: u64 = 62;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EArithmeticOverflow"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EArithmeticOverflow">EArithmeticOverflow</a>: u64 = 63;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EDivideByZero"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EDivideByZero">EDivideByZero</a>: u64 = 64;
+</code></pre>
+
+
+
 <a name="social_contracts_memory_ENoAccess"></a>
 
 
@@ -3831,6 +4396,142 @@ Default bootstrap values for MemoryConfig
 
 
 <pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_VERSION_DF_KEY">VERSION_DF_KEY</a>: vector&lt;u8&gt; = vector[109, 101, 109, 111, 114, 121, 95, 118, 101, 114, 115, 105, 111, 110];
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ROLE_SELLER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_SELLER">ROLE_SELLER</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_ROLE_BUYER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_BUYER">ROLE_BUYER</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_SUBJECT_AGENT_SELLER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_SUBJECT_AGENT_SELLER">SUBJECT_AGENT_SELLER</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_SUBJECT_AGENT_BUYER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_SUBJECT_AGENT_BUYER">SUBJECT_AGENT_BUYER</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_SUBJECT_HUMAN_BUYER"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_SUBJECT_HUMAN_BUYER">SUBJECT_HUMAN_BUYER</a>: u8 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_BPS_DENOMINATOR"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR">BPS_DENOMINATOR</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_BPS_DENOMINATOR_U128"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR_U128">BPS_DENOMINATOR_U128</a>: u128 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_STAR_TO_MILLI"></a>
+
+One star in the milli-star scale used by every aggregate.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_STAR_TO_MILLI">STAR_TO_MILLI</a>: u128 = 1000;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_MIN_STAR_MILLI"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MIN_STAR_MILLI">MIN_STAR_MILLI</a>: u64 = 1000;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_MAX_STAR_MILLI"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MAX_STAR_MILLI">MAX_STAR_MILLI</a>: u64 = 5000;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_MAX_PRIOR_WEIGHT_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MAX_PRIOR_WEIGHT_BPS">MAX_PRIOR_WEIGHT_BPS</a>: u64 = 1000000;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_MAX_VALUE_WEIGHT_BPS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MAX_VALUE_WEIGHT_BPS">MAX_VALUE_WEIGHT_BPS</a>: u64 = 100000;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_MAX_CRED_CAP_N"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MAX_CRED_CAP_N">MAX_CRED_CAP_N</a>: u64 = 10000;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_MAX_U64_AS_U128"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MAX_U64_AS_U128">MAX_U64_AS_U128</a>: u128 = 18446744073709551615;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_MAX_U128"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_MAX_U128">MAX_U128</a>: u128 = 340282366920938463463374607431768211455;
 </code></pre>
 
 
@@ -4599,6 +5300,28 @@ Default bootstrap values for MemoryConfig
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_social_graph">cap_social_graph</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_SOCIAL_GRAPH">CAP_SOCIAL_GRAPH</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_cap_task_trade"></a>
+
+## Function `cap_task_trade`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_task_trade">cap_task_trade</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_task_trade">cap_task_trade</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_TASK_TRADE">CAP_TASK_TRADE</a> }
 </code></pre>
 
 
@@ -5430,6 +6153,8 @@ Update global memory configuration (admin only).
         agent_ids: table::new(ctx),
         organizations: table::new(ctx),
         org_count: 0,
+        credibility: <a href="../social_contracts/memory.md#social_contracts_memory_empty_credibility">empty_credibility</a>(),
+        human_as_buyer: <a href="../social_contracts/memory.md#social_contracts_memory_empty_aggregate">empty_aggregate</a>(),
     };
     <a href="../social_contracts/memory.md#social_contracts_memory_set_version">set_version</a>(&<b>mut</b> account.id, <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>());
     <b>let</b> account_id = object::id(&account);
@@ -7937,6 +8662,1655 @@ True when <code>descendant_id</code> sits strictly below <code>ancestor_id</code
 
 </details>
 
+<a name="social_contracts_memory_new_reputation_params"></a>
+
+## Function `new_reputation_params`
+
+Weighting and Bayesian prior parameters; embedded in <code><a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskConfig">agent_task::TaskConfig</a></code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_new_reputation_params">new_reputation_params</a>(prior_mean_milli: u64, prior_weight_bps: u64, value_ref_mist: u64, min_value_weight_bps: u64, max_value_weight_bps: u64, cred_base_bps: u64, cred_step_bps: u64, cred_cap_n: u64, cred_max_bps: u64, overall_seller_weight_bps: u64, overall_buyer_weight_bps: u64): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_new_reputation_params">new_reputation_params</a>(
+    prior_mean_milli: u64,
+    prior_weight_bps: u64,
+    value_ref_mist: u64,
+    min_value_weight_bps: u64,
+    max_value_weight_bps: u64,
+    cred_base_bps: u64,
+    cred_step_bps: u64,
+    cred_cap_n: u64,
+    cred_max_bps: u64,
+    overall_seller_weight_bps: u64,
+    overall_buyer_weight_bps: u64,
+): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a> {
+    <b>let</b> params = <a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a> {
+        prior_mean_milli,
+        prior_weight_bps,
+        value_ref_mist,
+        min_value_weight_bps,
+        max_value_weight_bps,
+        cred_base_bps,
+        cred_step_bps,
+        cred_cap_n,
+        cred_max_bps,
+        overall_seller_weight_bps,
+        overall_buyer_weight_bps,
+    };
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_reputation_params">assert_reputation_params</a>(&params);
+    params
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_reputation_params"></a>
+
+## Function `assert_reputation_params`
+
+Bounds that keep every reputation computation inside <code>u128</code> and free of zero divisors.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_reputation_params">assert_reputation_params</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_reputation_params">assert_reputation_params</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>) {
+    <b>assert</b>!(
+        p.prior_mean_milli &gt;= <a href="../social_contracts/memory.md#social_contracts_memory_MIN_STAR_MILLI">MIN_STAR_MILLI</a> && p.prior_mean_milli &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_STAR_MILLI">MAX_STAR_MILLI</a>,
+        <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>,
+    );
+    <b>assert</b>!(p.prior_weight_bps &gt; 0 && p.prior_weight_bps &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_PRIOR_WEIGHT_BPS">MAX_PRIOR_WEIGHT_BPS</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>assert</b>!(p.value_ref_mist &gt; 0, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>assert</b>!(p.min_value_weight_bps &gt; 0, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>assert</b>!(p.min_value_weight_bps &lt;= p.max_value_weight_bps, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>assert</b>!(p.max_value_weight_bps &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_VALUE_WEIGHT_BPS">MAX_VALUE_WEIGHT_BPS</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>assert</b>!(p.cred_base_bps &gt; 0 && p.cred_base_bps &lt;= p.cred_max_bps, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>assert</b>!(p.cred_max_bps &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR">BPS_DENOMINATOR</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>assert</b>!(p.cred_step_bps &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR">BPS_DENOMINATOR</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>assert</b>!(p.cred_cap_n &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_CRED_CAP_N">MAX_CRED_CAP_N</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>assert</b>!(
+        p.overall_seller_weight_bps &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR">BPS_DENOMINATOR</a>
+            && p.overall_buyer_weight_bps &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR">BPS_DENOMINATOR</a>,
+        <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>,
+    );
+    <b>assert</b>!(
+        p.overall_seller_weight_bps + p.overall_buyer_weight_bps == <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR">BPS_DENOMINATOR</a>,
+        <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_prior_mean_milli"></a>
+
+## Function `reputation_prior_mean_milli`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_prior_mean_milli">reputation_prior_mean_milli</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_prior_mean_milli">reputation_prior_mean_milli</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.prior_mean_milli }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_prior_weight_bps"></a>
+
+## Function `reputation_prior_weight_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_prior_weight_bps">reputation_prior_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_prior_weight_bps">reputation_prior_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.prior_weight_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_value_ref_mist"></a>
+
+## Function `reputation_value_ref_mist`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_value_ref_mist">reputation_value_ref_mist</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_value_ref_mist">reputation_value_ref_mist</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.value_ref_mist }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_min_value_weight_bps"></a>
+
+## Function `reputation_min_value_weight_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_min_value_weight_bps">reputation_min_value_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_min_value_weight_bps">reputation_min_value_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.min_value_weight_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_max_value_weight_bps"></a>
+
+## Function `reputation_max_value_weight_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_max_value_weight_bps">reputation_max_value_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_max_value_weight_bps">reputation_max_value_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.max_value_weight_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_cred_base_bps"></a>
+
+## Function `reputation_cred_base_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_cred_base_bps">reputation_cred_base_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_cred_base_bps">reputation_cred_base_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.cred_base_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_cred_step_bps"></a>
+
+## Function `reputation_cred_step_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_cred_step_bps">reputation_cred_step_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_cred_step_bps">reputation_cred_step_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.cred_step_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_cred_cap_n"></a>
+
+## Function `reputation_cred_cap_n`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_cred_cap_n">reputation_cred_cap_n</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_cred_cap_n">reputation_cred_cap_n</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.cred_cap_n }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_cred_max_bps"></a>
+
+## Function `reputation_cred_max_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_cred_max_bps">reputation_cred_max_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_cred_max_bps">reputation_cred_max_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.cred_max_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_overall_seller_weight_bps"></a>
+
+## Function `reputation_overall_seller_weight_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_overall_seller_weight_bps">reputation_overall_seller_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_overall_seller_weight_bps">reputation_overall_seller_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.overall_seller_weight_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_reputation_overall_buyer_weight_bps"></a>
+
+## Function `reputation_overall_buyer_weight_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_overall_buyer_weight_bps">reputation_overall_buyer_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_reputation_overall_buyer_weight_bps">reputation_overall_buyer_weight_bps</a>(p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 { p.overall_buyer_weight_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_role_seller"></a>
+
+## Function `role_seller`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_seller">role_seller</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_seller">role_seller</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_SELLER">ROLE_SELLER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_role_buyer"></a>
+
+## Function `role_buyer`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_buyer">role_buyer</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_buyer">role_buyer</a>(): u8 { <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_BUYER">ROLE_BUYER</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_empty_aggregate"></a>
+
+## Function `empty_aggregate`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_empty_aggregate">empty_aggregate</a>(): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_empty_aggregate">empty_aggregate</a>(): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a> {
+    <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a> {
+        review_count: 0,
+        star_1: 0,
+        star_2: 0,
+        star_3: 0,
+        star_4: 0,
+        star_5: 0,
+        weight_sum_bps: 0,
+        weighted_star_sum: 0,
+        bayesian_score_milli: 0,
+        confidence_bps: 0,
+        updated_at_ms: 0,
+        last_receipt_id: option::none(),
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_empty_credibility"></a>
+
+## Function `empty_credibility`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_empty_credibility">empty_credibility</a>(): <a href="../social_contracts/memory.md#social_contracts_memory_CredibilityStats">social_contracts::memory::CredibilityStats</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_empty_credibility">empty_credibility</a>(): <a href="../social_contracts/memory.md#social_contracts_memory_CredibilityStats">CredibilityStats</a> {
+    <a href="../social_contracts/memory.md#social_contracts_memory_CredibilityStats">CredibilityStats</a> { settled_count: 0, volume_mist: 0 }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_checked_add_u128"></a>
+
+## Function `checked_add_u128`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(a: u128, b: u128): u128
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(a: u128, b: u128): u128 {
+    <b>assert</b>!(a &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_U128">MAX_U128</a> - b, <a href="../social_contracts/memory.md#social_contracts_memory_EArithmeticOverflow">EArithmeticOverflow</a>);
+    a + b
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_checked_mul_u128"></a>
+
+## Function `checked_mul_u128`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(a: u128, b: u128): u128
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(a: u128, b: u128): u128 {
+    <b>assert</b>!(a == 0 || b &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_U128">MAX_U128</a> / a, <a href="../social_contracts/memory.md#social_contracts_memory_EArithmeticOverflow">EArithmeticOverflow</a>);
+    a * b
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_checked_div_u128"></a>
+
+## Function `checked_div_u128`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_div_u128">checked_div_u128</a>(a: u128, b: u128): u128
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_div_u128">checked_div_u128</a>(a: u128, b: u128): u128 {
+    <b>assert</b>!(b &gt; 0, <a href="../social_contracts/memory.md#social_contracts_memory_EDivideByZero">EDivideByZero</a>);
+    a / b
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_checked_narrow_u64"></a>
+
+## Function `checked_narrow_u64`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(v: u128): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(v: u128): u64 {
+    <b>assert</b>!(v &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_U64_AS_U128">MAX_U64_AS_U128</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EArithmeticOverflow">EArithmeticOverflow</a>);
+    v <b>as</b> u64
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_checked_add_u64"></a>
+
+## Function `checked_add_u64`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(a: u64, b: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(a: u64, b: u64): u64 {
+    <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(a <b>as</b> u128, b <b>as</b> u128))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_checked_mul_u64"></a>
+
+## Function `checked_mul_u64`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u64">checked_mul_u64</a>(a: u64, b: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u64">checked_mul_u64</a>(a: u64, b: u64): u64 {
+    <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(a <b>as</b> u128, b <b>as</b> u128))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_checked_bps_of"></a>
+
+## Function `checked_bps_of`
+
+<code>amount * bps / 10_000</code> in u128, as used by every fee split in the fork.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_bps_of">checked_bps_of</a>(amount: u64, bps: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_checked_bps_of">checked_bps_of</a>(amount: u64, bps: u64): u64 {
+    <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_div_u128">checked_div_u128</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(amount <b>as</b> u128, bps <b>as</b> u128), 10000))
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_aggregate_review_count"></a>
+
+## Function `aggregate_review_count`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_review_count">aggregate_review_count</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_review_count">aggregate_review_count</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>): u64 { a.review_count }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_aggregate_histogram"></a>
+
+## Function `aggregate_histogram`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_histogram">aggregate_histogram</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>): vector&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_histogram">aggregate_histogram</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>): vector&lt;u64&gt; {
+    vector[a.star_1, a.star_2, a.star_3, a.star_4, a.star_5]
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_aggregate_weight_sum_bps"></a>
+
+## Function `aggregate_weight_sum_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_weight_sum_bps">aggregate_weight_sum_bps</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>): u128
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_weight_sum_bps">aggregate_weight_sum_bps</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>): u128 { a.weight_sum_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_aggregate_weighted_star_sum"></a>
+
+## Function `aggregate_weighted_star_sum`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_weighted_star_sum">aggregate_weighted_star_sum</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>): u128
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_weighted_star_sum">aggregate_weighted_star_sum</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>): u128 { a.weighted_star_sum }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_aggregate_updated_at_ms"></a>
+
+## Function `aggregate_updated_at_ms`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_updated_at_ms">aggregate_updated_at_ms</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_updated_at_ms">aggregate_updated_at_ms</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>): u64 { a.updated_at_ms }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_aggregate_last_receipt_id"></a>
+
+## Function `aggregate_last_receipt_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_last_receipt_id">aggregate_last_receipt_id</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_last_receipt_id">aggregate_last_receipt_id</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>): Option&lt;ID&gt; { a.last_receipt_id }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_aggregate_cached_score_milli"></a>
+
+## Function `aggregate_cached_score_milli`
+
+Score cached at the last update. After a prior change, prefer [<code><a href="../social_contracts/memory.md#social_contracts_memory_aggregate_score_milli">aggregate_score_milli</a></code>].
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_cached_score_milli">aggregate_cached_score_milli</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_cached_score_milli">aggregate_cached_score_milli</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>): u64 { a.bayesian_score_milli }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_aggregate_score_milli"></a>
+
+## Function `aggregate_score_milli`
+
+Bayesian score in milli-stars under the given params; the prior when there are no reviews.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_score_milli">aggregate_score_milli</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_score_milli">aggregate_score_milli</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 {
+    <b>let</b> (score, _) = <a href="../social_contracts/memory.md#social_contracts_memory_role_score">role_score</a>(a.weight_sum_bps, a.weighted_star_sum, p);
+    score
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_aggregate_confidence_bps"></a>
+
+## Function `aggregate_confidence_bps`
+
+Evidence share <code>W / (W + C)</code> in bps under the given params.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_confidence_bps">aggregate_confidence_bps</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_aggregate_confidence_bps">aggregate_confidence_bps</a>(a: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 {
+    <b>let</b> (_, confidence) = <a href="../social_contracts/memory.md#social_contracts_memory_role_score">role_score</a>(a.weight_sum_bps, a.weighted_star_sum, p);
+    confidence
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_overall_reputation"></a>
+
+## Function `overall_reputation`
+
+Weighted Bayesian average of the seller and buyer roles of one subject.
+Returns <code>(score_milli, confidence_bps)</code>. A role with no reviews contributes nothing.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_overall_reputation">overall_reputation</a>(seller: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>, buyer: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): (u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_overall_reputation">overall_reputation</a>(
+    seller: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>,
+    buyer: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>,
+    p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>,
+): (u64, u64) {
+    <b>let</b> c = p.prior_weight_bps <b>as</b> u128;
+    <b>let</b> m = p.prior_mean_milli <b>as</b> u128;
+    <b>let</b> a_s = p.overall_seller_weight_bps <b>as</b> u128;
+    <b>let</b> a_b = p.overall_buyer_weight_bps <b>as</b> u128;
+    <b>let</b> prior_num = <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(c, m), <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR_U128">BPS_DENOMINATOR_U128</a>);
+    <b>let</b> prior_den = <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(c, <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR_U128">BPS_DENOMINATOR_U128</a>);
+    <b>let</b> num = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(
+        prior_num,
+        <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(
+            <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(a_s, seller.weighted_star_sum),
+            <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(a_b, buyer.weighted_star_sum),
+        ),
+    );
+    <b>let</b> evidence = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(
+        <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(a_s, seller.weight_sum_bps),
+        <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(a_b, buyer.weight_sum_bps),
+    );
+    <b>let</b> den = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(prior_den, evidence);
+    <a href="../social_contracts/memory.md#social_contracts_memory_finish_score">finish_score</a>(num, den, evidence)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_agent_overall"></a>
+
+## Function `agent_overall`
+
+Overall reputation of an agent: its own seller and buyer aggregates.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_agent_overall">agent_overall</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): (u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_agent_overall">agent_overall</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): (u64, u64) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_overall_reputation">overall_reputation</a>(&agent.as_seller, &agent.as_buyer, p)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_seller_reputation"></a>
+
+## Function `sub_agent_seller_reputation`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_seller_reputation">sub_agent_seller_reputation</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_seller_reputation">sub_agent_seller_reputation</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a> { agent.as_seller }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_buyer_reputation"></a>
+
+## Function `sub_agent_buyer_reputation`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_buyer_reputation">sub_agent_buyer_reputation</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_buyer_reputation">sub_agent_buyer_reputation</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a> { agent.as_buyer }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_account_human_buyer_reputation"></a>
+
+## Function `account_human_buyer_reputation`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_account_human_buyer_reputation">account_human_buyer_reputation</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_account_human_buyer_reputation">account_human_buyer_reputation</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a> {
+    account.human_as_buyer
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_account_settled_count"></a>
+
+## Function `account_settled_count`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_account_settled_count">account_settled_count</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_account_settled_count">account_settled_count</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>): u64 { account.credibility.settled_count }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_account_settled_volume_mist"></a>
+
+## Function `account_settled_volume_mist`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_account_settled_volume_mist">account_settled_volume_mist</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>): u128
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_account_settled_volume_mist">account_settled_volume_mist</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>): u128 { account.credibility.volume_mist }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_credibility_bps_for"></a>
+
+## Function `credibility_bps_for`
+
+Principal credibility in bps derived from completed, paid transactions only.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_credibility_bps_for">credibility_bps_for</a>(settled_count: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_credibility_bps_for">credibility_bps_for</a>(settled_count: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 {
+    <b>let</b> capped = <b>if</b> (settled_count &lt; p.cred_cap_n) { settled_count } <b>else</b> { p.cred_cap_n };
+    <b>let</b> raw = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(p.cred_base_bps, <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u64">checked_mul_u64</a>(capped, p.cred_step_bps));
+    <b>if</b> (raw &lt; p.cred_max_bps) { raw } <b>else</b> { p.cred_max_bps }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_account_credibility_bps"></a>
+
+## Function `account_credibility_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_account_credibility_bps">account_credibility_bps</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_account_credibility_bps">account_credibility_bps</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 {
+    <a href="../social_contracts/memory.md#social_contracts_memory_credibility_bps_for">credibility_bps_for</a>(account.credibility.settled_count, p)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_pair_review_count"></a>
+
+## Function `pair_review_count`
+
+Reviews already given by <code>rater_principal</code> in <code>rater_role</code> to the owner of <code>account</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_pair_review_count">pair_review_count</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, rater_principal: <b>address</b>, rater_role: u8): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_pair_review_count">pair_review_count</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    rater_principal: <b>address</b>,
+    rater_role: u8,
+): u64 {
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_ReviewPairKey">ReviewPairKey</a> { rater_principal, rater_role };
+    <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_ReviewPairKey">ReviewPairKey</a>, u64&gt;(&account.id, key)) {
+        *df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_ReviewPairKey">ReviewPairKey</a>, u64&gt;(&account.id, key)
+    } <b>else</b> {
+        0
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_value_weight_bps"></a>
+
+## Function `value_weight_bps`
+
+<code>clamp(amount * 10000 / value_ref, min, max)</code>: caps a whale and floors dust.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_value_weight_bps">value_weight_bps</a>(amount_mist: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_value_weight_bps">value_weight_bps</a>(amount_mist: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): u64 {
+    <b>let</b> raw = <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(
+        <a href="../social_contracts/memory.md#social_contracts_memory_checked_div_u128">checked_div_u128</a>(
+            <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(amount_mist <b>as</b> u128, <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR_U128">BPS_DENOMINATOR_U128</a>),
+            p.value_ref_mist <b>as</b> u128,
+        ),
+    );
+    <b>if</b> (raw &lt; p.min_value_weight_bps) {
+        p.min_value_weight_bps
+    } <b>else</b> <b>if</b> (raw &gt; p.max_value_weight_bps) {
+        p.max_value_weight_bps
+    } <b>else</b> {
+        raw
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_outcome_value_weight_bps"></a>
+
+## Function `outcome_value_weight_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_outcome_value_weight_bps">outcome_value_weight_bps</a>(o: &<a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">social_contracts::memory::ReviewOutcome</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_outcome_value_weight_bps">outcome_value_weight_bps</a>(o: &<a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a>): u64 { o.<a href="../social_contracts/memory.md#social_contracts_memory_value_weight_bps">value_weight_bps</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_outcome_base_weight_bps"></a>
+
+## Function `outcome_base_weight_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_outcome_base_weight_bps">outcome_base_weight_bps</a>(o: &<a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">social_contracts::memory::ReviewOutcome</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_outcome_base_weight_bps">outcome_base_weight_bps</a>(o: &<a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a>): u64 { o.base_weight_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_outcome_weight_bps"></a>
+
+## Function `outcome_weight_bps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_outcome_weight_bps">outcome_weight_bps</a>(o: &<a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">social_contracts::memory::ReviewOutcome</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_outcome_weight_bps">outcome_weight_bps</a>(o: &<a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a>): u64 { o.weight_bps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_outcome_prior_pair_reviews"></a>
+
+## Function `outcome_prior_pair_reviews`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_outcome_prior_pair_reviews">outcome_prior_pair_reviews</a>(o: &<a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">social_contracts::memory::ReviewOutcome</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_outcome_prior_pair_reviews">outcome_prior_pair_reviews</a>(o: &<a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a>): u64 { o.prior_pair_reviews }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_record_settlement"></a>
+
+## Function `record_settlement`
+
+Counts a completed, paid transaction toward the principal's credibility. Returns the
+credibility in bps **before** this transaction, which the receipt snapshots so a party
+cannot raise its own review weight with the transaction being reviewed.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_record_settlement">record_settlement</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, amount_mist: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_record_settlement">record_settlement</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    amount_mist: u64,
+    p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>,
+    clock: &Clock,
+): u64 {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>let</b> before = <a href="../social_contracts/memory.md#social_contracts_memory_credibility_bps_for">credibility_bps_for</a>(account.credibility.settled_count, p);
+    account.credibility.settled_count = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(account.credibility.settled_count, 1);
+    account.credibility.volume_mist =
+        <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(account.credibility.volume_mist, amount_mist <b>as</b> u128);
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_CredibilityUpdated">CredibilityUpdated</a> {
+        account_id: object::id(account),
+        principal_owner: account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
+        settled_count: account.credibility.settled_count,
+        volume_mist: account.credibility.volume_mist,
+        credibility_bps: <a href="../social_contracts/memory.md#social_contracts_memory_credibility_bps_for">credibility_bps_for</a>(account.credibility.settled_count, p),
+        updated_at_ms: clock::timestamp_ms(clock),
+    });
+    before
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_apply_seller_review"></a>
+
+## Function `apply_seller_review`
+
+Buyer reviews a seller agent. The pair counter lives on the seller principal's account.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_apply_seller_review">apply_seller_review</a>(seller_agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, seller_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, buyer_principal: <b>address</b>, stars: u8, amount_mist: u64, rater_credibility_bps: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>, receipt_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">social_contracts::memory::ReviewOutcome</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_apply_seller_review">apply_seller_review</a>(
+    seller_agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    seller_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    buyer_principal: <b>address</b>,
+    stars: u8,
+    amount_mist: u64,
+    rater_credibility_bps: u64,
+    p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>,
+    receipt_id: ID,
+    clock: &Clock,
+): <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a> {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&seller_account.id);
+    <b>assert</b>!(seller_agent.memory_account_id == object::id(seller_account), <a href="../social_contracts/memory.md#social_contracts_memory_ESubAgentAccountMismatch">ESubAgentAccountMismatch</a>);
+    <b>let</b> outcome = <a href="../social_contracts/memory.md#social_contracts_memory_weigh_review">weigh_review</a>(
+        &<b>mut</b> seller_account.id,
+        buyer_principal,
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_BUYER">ROLE_BUYER</a>,
+        stars,
+        amount_mist,
+        rater_credibility_bps,
+        p,
+    );
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <a href="../social_contracts/memory.md#social_contracts_memory_apply_to_aggregate">apply_to_aggregate</a>(&<b>mut</b> seller_agent.as_seller, stars, outcome.weight_bps, p, receipt_id, now);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_reputation_updated">emit_reputation_updated</a>(
+        <a href="../social_contracts/memory.md#social_contracts_memory_SUBJECT_AGENT_SELLER">SUBJECT_AGENT_SELLER</a>,
+        object::id(seller_agent),
+        seller_agent.principal_owner,
+        option::some(seller_agent.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>),
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_SELLER">ROLE_SELLER</a>,
+        &seller_agent.as_seller,
+        receipt_id,
+    );
+    outcome
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_apply_buyer_agent_review"></a>
+
+## Function `apply_buyer_agent_review`
+
+Seller reviews a buyer **agent**. The pair counter lives on the buyer principal's account.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_apply_buyer_agent_review">apply_buyer_agent_review</a>(buyer_agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, buyer_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, seller_principal: <b>address</b>, stars: u8, amount_mist: u64, rater_credibility_bps: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>, receipt_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">social_contracts::memory::ReviewOutcome</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_apply_buyer_agent_review">apply_buyer_agent_review</a>(
+    buyer_agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    buyer_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    seller_principal: <b>address</b>,
+    stars: u8,
+    amount_mist: u64,
+    rater_credibility_bps: u64,
+    p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>,
+    receipt_id: ID,
+    clock: &Clock,
+): <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a> {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&buyer_account.id);
+    <b>assert</b>!(buyer_agent.memory_account_id == object::id(buyer_account), <a href="../social_contracts/memory.md#social_contracts_memory_ESubAgentAccountMismatch">ESubAgentAccountMismatch</a>);
+    <b>let</b> outcome = <a href="../social_contracts/memory.md#social_contracts_memory_weigh_review">weigh_review</a>(
+        &<b>mut</b> buyer_account.id,
+        seller_principal,
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_SELLER">ROLE_SELLER</a>,
+        stars,
+        amount_mist,
+        rater_credibility_bps,
+        p,
+    );
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <a href="../social_contracts/memory.md#social_contracts_memory_apply_to_aggregate">apply_to_aggregate</a>(&<b>mut</b> buyer_agent.as_buyer, stars, outcome.weight_bps, p, receipt_id, now);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_reputation_updated">emit_reputation_updated</a>(
+        <a href="../social_contracts/memory.md#social_contracts_memory_SUBJECT_AGENT_BUYER">SUBJECT_AGENT_BUYER</a>,
+        object::id(buyer_agent),
+        buyer_agent.principal_owner,
+        option::some(buyer_agent.<a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>),
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_BUYER">ROLE_BUYER</a>,
+        &buyer_agent.as_buyer,
+        receipt_id,
+    );
+    outcome
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_apply_human_buyer_review"></a>
+
+## Function `apply_human_buyer_review`
+
+Seller reviews a principal that bought directly (no buyer agent).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_apply_human_buyer_review">apply_human_buyer_review</a>(buyer_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, seller_principal: <b>address</b>, stars: u8, amount_mist: u64, rater_credibility_bps: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>, receipt_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">social_contracts::memory::ReviewOutcome</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_apply_human_buyer_review">apply_human_buyer_review</a>(
+    buyer_account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    seller_principal: <b>address</b>,
+    stars: u8,
+    amount_mist: u64,
+    rater_credibility_bps: u64,
+    p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>,
+    receipt_id: ID,
+    clock: &Clock,
+): <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a> {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&buyer_account.id);
+    <b>let</b> outcome = <a href="../social_contracts/memory.md#social_contracts_memory_weigh_review">weigh_review</a>(
+        &<b>mut</b> buyer_account.id,
+        seller_principal,
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_SELLER">ROLE_SELLER</a>,
+        stars,
+        amount_mist,
+        rater_credibility_bps,
+        p,
+    );
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <a href="../social_contracts/memory.md#social_contracts_memory_apply_to_aggregate">apply_to_aggregate</a>(&<b>mut</b> buyer_account.human_as_buyer, stars, outcome.weight_bps, p, receipt_id, now);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_reputation_updated">emit_reputation_updated</a>(
+        <a href="../social_contracts/memory.md#social_contracts_memory_SUBJECT_HUMAN_BUYER">SUBJECT_HUMAN_BUYER</a>,
+        object::id(buyer_account),
+        buyer_account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
+        option::none(),
+        <a href="../social_contracts/memory.md#social_contracts_memory_ROLE_BUYER">ROLE_BUYER</a>,
+        &buyer_account.human_as_buyer,
+        receipt_id,
+    );
+    outcome
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_weigh_review"></a>
+
+## Function `weigh_review`
+
+Computes the review weight and advances the directional pair counter.
+<code>w = clamp(value) * credibility / 10000 / (1 + prior_pair_reviews)</code>; may floor to 0.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_weigh_review">weigh_review</a>(reviewee_uid: &<b>mut</b> <a href="../myso/object.md#myso_object_UID">myso::object::UID</a>, rater_principal: <b>address</b>, rater_role: u8, stars: u8, amount_mist: u64, rater_credibility_bps: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">social_contracts::memory::ReviewOutcome</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_weigh_review">weigh_review</a>(
+    reviewee_uid: &<b>mut</b> UID,
+    rater_principal: <b>address</b>,
+    rater_role: u8,
+    stars: u8,
+    amount_mist: u64,
+    rater_credibility_bps: u64,
+    p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>,
+): <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a> {
+    <b>assert</b>!(stars &gt;= 1 && stars &lt;= 5, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidStars">EInvalidStars</a>);
+    <b>assert</b>!(rater_credibility_bps &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR">BPS_DENOMINATOR</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>let</b> value_weight = <a href="../social_contracts/memory.md#social_contracts_memory_value_weight_bps">value_weight_bps</a>(amount_mist, p);
+    <b>let</b> base_weight = <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(
+        <a href="../social_contracts/memory.md#social_contracts_memory_checked_div_u128">checked_div_u128</a>(
+            <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(value_weight <b>as</b> u128, rater_credibility_bps <b>as</b> u128),
+            <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR_U128">BPS_DENOMINATOR_U128</a>,
+        ),
+    );
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_ReviewPairKey">ReviewPairKey</a> { rater_principal, rater_role };
+    <b>let</b> prior = <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_ReviewPairKey">ReviewPairKey</a>, u64&gt;(reviewee_uid, key)) {
+        <b>let</b> counter = df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_ReviewPairKey">ReviewPairKey</a>, u64&gt;(reviewee_uid, key);
+        <b>let</b> seen = *counter;
+        *counter = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(seen, 1);
+        seen
+    } <b>else</b> {
+        df::add(reviewee_uid, key, 1u64);
+        0
+    };
+    <b>let</b> divisor = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(prior, 1);
+    <b>let</b> weight = <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_div_u128">checked_div_u128</a>(base_weight <b>as</b> u128, divisor <b>as</b> u128));
+    <a href="../social_contracts/memory.md#social_contracts_memory_ReviewOutcome">ReviewOutcome</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_value_weight_bps">value_weight_bps</a>: value_weight,
+        base_weight_bps: base_weight,
+        weight_bps: weight,
+        prior_pair_reviews: prior,
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_apply_to_aggregate"></a>
+
+## Function `apply_to_aggregate`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_apply_to_aggregate">apply_to_aggregate</a>(agg: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>, stars: u8, weight_bps: u64, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>, receipt_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, now_ms: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_apply_to_aggregate">apply_to_aggregate</a>(
+    agg: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>,
+    stars: u8,
+    weight_bps: u64,
+    p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>,
+    receipt_id: ID,
+    now_ms: u64,
+) {
+    <b>assert</b>!(stars &gt;= 1 && stars &lt;= 5, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidStars">EInvalidStars</a>);
+    agg.review_count = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(agg.review_count, 1);
+    <b>if</b> (stars == 1) { agg.star_1 = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(agg.star_1, 1); }
+    <b>else</b> <b>if</b> (stars == 2) { agg.star_2 = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(agg.star_2, 1); }
+    <b>else</b> <b>if</b> (stars == 3) { agg.star_3 = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(agg.star_3, 1); }
+    <b>else</b> <b>if</b> (stars == 4) { agg.star_4 = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(agg.star_4, 1); }
+    <b>else</b> { agg.star_5 = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">checked_add_u64</a>(agg.star_5, 1); };
+    agg.weight_sum_bps = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(agg.weight_sum_bps, weight_bps <b>as</b> u128);
+    agg.weighted_star_sum = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(
+        agg.weighted_star_sum,
+        <a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(weight_bps <b>as</b> u128, (stars <b>as</b> u128) * <a href="../social_contracts/memory.md#social_contracts_memory_STAR_TO_MILLI">STAR_TO_MILLI</a>),
+    );
+    <b>let</b> (score, confidence) = <a href="../social_contracts/memory.md#social_contracts_memory_role_score">role_score</a>(agg.weight_sum_bps, agg.weighted_star_sum, p);
+    agg.bayesian_score_milli = score;
+    agg.confidence_bps = confidence;
+    agg.updated_at_ms = now_ms;
+    agg.last_receipt_id = option::some(receipt_id);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_role_score"></a>
+
+## Function `role_score`
+
+<code>(C*m + S) / (C + W)</code> and <code>W*10000 / (C + W)</code>; the prior when nothing has been weighed.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_score">role_score</a>(weight_sum_bps: u128, weighted_star_sum: u128, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>): (u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_role_score">role_score</a>(weight_sum_bps: u128, weighted_star_sum: u128, p: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a>): (u64, u64) {
+    <b>let</b> c = p.prior_weight_bps <b>as</b> u128;
+    <b>let</b> num = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(c, p.prior_mean_milli <b>as</b> u128), weighted_star_sum);
+    <b>let</b> den = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u128">checked_add_u128</a>(c, weight_sum_bps);
+    <a href="../social_contracts/memory.md#social_contracts_memory_finish_score">finish_score</a>(num, den, weight_sum_bps)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_finish_score"></a>
+
+## Function `finish_score`
+
+Shared tail: the score must land in [1000, 5000] and confidence in [0, 10000].
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_finish_score">finish_score</a>(num: u128, den: u128, evidence: u128): (u64, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_finish_score">finish_score</a>(num: u128, den: u128, evidence: u128): (u64, u64) {
+    <b>let</b> score = <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_div_u128">checked_div_u128</a>(num, den));
+    <b>assert</b>!(score &gt;= <a href="../social_contracts/memory.md#social_contracts_memory_MIN_STAR_MILLI">MIN_STAR_MILLI</a> && score &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_MAX_STAR_MILLI">MAX_STAR_MILLI</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    <b>let</b> confidence = <a href="../social_contracts/memory.md#social_contracts_memory_checked_narrow_u64">checked_narrow_u64</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_div_u128">checked_div_u128</a>(<a href="../social_contracts/memory.md#social_contracts_memory_checked_mul_u128">checked_mul_u128</a>(evidence, <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR_U128">BPS_DENOMINATOR_U128</a>), den));
+    <b>assert</b>!(confidence &lt;= <a href="../social_contracts/memory.md#social_contracts_memory_BPS_DENOMINATOR">BPS_DENOMINATOR</a>, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidReputationParams">EInvalidReputationParams</a>);
+    (score, confidence)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_emit_reputation_updated"></a>
+
+## Function `emit_reputation_updated`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_emit_reputation_updated">emit_reputation_updated</a>(subject_kind: u8, subject_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, principal_owner: <b>address</b>, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, role: u8, agg: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">social_contracts::memory::ReputationAggregate</a>, receipt_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_emit_reputation_updated">emit_reputation_updated</a>(
+    subject_kind: u8,
+    subject_id: ID,
+    principal_owner: <b>address</b>,
+    <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: Option&lt;ID&gt;,
+    role: u8,
+    agg: &<a href="../social_contracts/memory.md#social_contracts_memory_ReputationAggregate">ReputationAggregate</a>,
+    receipt_id: ID,
+) {
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_ReputationUpdated">ReputationUpdated</a> {
+        subject_kind,
+        subject_id,
+        principal_owner,
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>,
+        role,
+        review_count: agg.review_count,
+        star_1: agg.star_1,
+        star_2: agg.star_2,
+        star_3: agg.star_3,
+        star_4: agg.star_4,
+        star_5: agg.star_5,
+        weight_sum_bps: agg.weight_sum_bps,
+        weighted_star_sum: agg.weighted_star_sum,
+        bayesian_score_milli: agg.bayesian_score_milli,
+        confidence_bps: agg.confidence_bps,
+        receipt_id,
+        updated_at_ms: agg.updated_at_ms,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_approve_key_policy"></a>
 
 ## Function `approve_key_policy`
@@ -8270,6 +10644,8 @@ True when <code>descendant_id</code> sits strictly below <code>ancestor_id</code
         created_at: clock::timestamp_ms(clock),
         expires_at,
         active: <b>true</b>,
+        as_seller: <a href="../social_contracts/memory.md#social_contracts_memory_empty_aggregate">empty_aggregate</a>(),
+        as_buyer: <a href="../social_contracts/memory.md#social_contracts_memory_empty_aggregate">empty_aggregate</a>(),
     };
     <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agent_registered">emit_sub_agent_registered</a>(account, &agent);
     <a href="../social_contracts/memory.md#social_contracts_memory_insert_registry_entry">insert_registry_entry</a>(account, &agent);
