@@ -167,6 +167,7 @@ Messaging-specific:
 <b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
 <b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
+<b>use</b> <a href="../myso/random.md#myso_random">myso::random</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/table_vec.md#myso_table_vec">myso::table_vec</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
@@ -186,6 +187,7 @@ Messaging-specific:
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_derivative_graph">social_contracts::derivative_graph</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/insurance.md#social_contracts_insurance">social_contracts::insurance</a>;
+<b>use</b> <a href="../social_contracts/jury.md#social_contracts_jury">social_contracts::jury</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_license_template">social_contracts::license_template</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset">social_contracts::media_asset</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;

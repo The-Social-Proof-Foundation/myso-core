@@ -327,6 +327,321 @@ pub struct BcsTaskRefunded {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct BcsJuryConfigUpdated {
+    pub updated_by: AccountAddress,
+    pub section: u8,
+    pub timestamp_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsRosterJoined {
+    pub agent_id: BcsMoveObjectId,
+    pub owner: AccountAddress,
+    pub memory_account_id: BcsMoveObjectId,
+    pub organization_id: BcsMoveObjectId,
+    pub payout_address: AccountAddress,
+    pub model_family: u8,
+    pub exempt: bool,
+    pub joined_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsRosterLeft {
+    pub agent_id: BcsMoveObjectId,
+    pub reason: u8,
+    pub left_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsRosterSuspended {
+    pub agent_id: BcsMoveObjectId,
+    pub until_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsDutyScoreChanged {
+    pub agent_id: BcsMoveObjectId,
+    pub score: u64,
+    pub strikes: u64,
+    pub reason: u8,
+    pub case_id: BcsMoveObjectId,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsCaseOpened {
+    pub case_id: BcsMoveObjectId,
+    pub subject_kind: u8,
+    pub subject_id: BcsMoveObjectId,
+    pub stage: u8,
+    pub menu_len: u8,
+    pub approval_bps: u64,
+    pub quorum: u64,
+    pub round_sizes: Vec<u64>,
+    pub appealable: bool,
+    pub failure_path: u8,
+    pub opened_by: AccountAddress,
+    pub fee_mist: u64,
+    pub created_at_ms: u64,
+    pub evidence_deadline_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsEvidenceSubmitted {
+    pub case_id: BcsMoveObjectId,
+    pub index: u64,
+    pub submitter: AccountAddress,
+    pub round: u64,
+    pub kind: u8,
+    pub digest: Vec<u8>,
+    pub uri: Vec<u8>,
+    pub submitted_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsJuryDrawn {
+    pub case_id: BcsMoveObjectId,
+    pub round: u64,
+    pub jurors: Vec<BcsMoveObjectId>,
+    pub accept_deadline_ms: u64,
+    pub replacement: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsAssignmentAccepted {
+    pub case_id: BcsMoveObjectId,
+    pub round: u64,
+    pub agent_id: BcsMoveObjectId,
+    pub accepted_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsJurorReplaced {
+    pub case_id: BcsMoveObjectId,
+    pub round: u64,
+    pub agent_id: BcsMoveObjectId,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsVotingStarted {
+    pub case_id: BcsMoveObjectId,
+    pub round: u64,
+    pub jurors: Vec<BcsMoveObjectId>,
+    pub commit_deadline_ms: u64,
+    pub reveal_deadline_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsVoteCommitted {
+    pub case_id: BcsMoveObjectId,
+    pub round: u64,
+    pub agent_id: BcsMoveObjectId,
+    pub commitment: Vec<u8>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsVoteRevealed {
+    pub case_id: BcsMoveObjectId,
+    pub round: u64,
+    pub agent_id: BcsMoveObjectId,
+    pub outcome: u8,
+    pub rationale_digest: Vec<u8>,
+    pub evidence_refs: Vec<u64>,
+    pub bundle_digest: Vec<u8>,
+    pub revealed_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsRoundFinalized {
+    pub case_id: BcsMoveObjectId,
+    pub round: u64,
+    pub tally: Vec<u64>,
+    pub abstain: u64,
+    pub revealed: u64,
+    pub decisive: bool,
+    pub leading: Option<u8>,
+    pub appeal_deadline_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsCaseAppealed {
+    pub case_id: BcsMoveObjectId,
+    pub by: AccountAddress,
+    pub round: u64,
+    pub prior_outcome: u8,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsCaseFinalized {
+    pub case_id: BcsMoveObjectId,
+    pub outcome: u8,
+    pub round: u64,
+    pub appeals_used: u64,
+    pub failed_appeal: bool,
+    pub participants: u64,
+    pub per_juror_fee: u64,
+    pub finalized_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsCaseFailed {
+    pub case_id: BcsMoveObjectId,
+    pub reason: u8,
+    pub round: u64,
+    pub participants: u64,
+    pub per_juror_fee: u64,
+    pub failed_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsCaseCancelled {
+    pub case_id: BcsMoveObjectId,
+    pub cancelled_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsJurorPaid {
+    pub case_id: BcsMoveObjectId,
+    pub agent_id: BcsMoveObjectId,
+    pub recipient: AccountAddress,
+    pub amount_mist: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsJuryPolicyUpdatedEvent {
+    pub registry_id: BcsMoveObjectId,
+    pub council_stage_enabled: bool,
+    pub community_stage_enabled: bool,
+    pub council_window_ms: u64,
+    pub jury_size: u64,
+    pub round2_size: u64,
+    pub jury_fee_bps: u64,
+    pub jury_fee_cap_mist: u64,
+    pub min_pool_for_jury_mist: u64,
+    pub quorum: u64,
+    pub approval_bps_council: u64,
+    pub approval_bps_community: u64,
+    pub updated_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsDelegateReferredToJuryEvent {
+    pub proposal_id: BcsMoveObjectId,
+    pub delegate_address: AccountAddress,
+    pub reason: Option<String>,
+    pub referral_count: u64,
+    pub majority_reached: bool,
+    pub referred_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsProposalEscalatedToJuryEvent {
+    pub proposal_id: BcsMoveObjectId,
+    pub stage: u8,
+    pub trigger: u8,
+    pub case_id: BcsMoveObjectId,
+    pub jury_fee_mist: u64,
+    pub pool_remaining_mist: u64,
+    pub escalated_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsCommunityVoteNeedsJuryEvent {
+    pub proposal_id: BcsMoveObjectId,
+    pub trigger: u8,
+    pub votes_for: u64,
+    pub votes_against: u64,
+    pub quorum_votes: u64,
+    pub time_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsJuryDecisionAppliedEvent {
+    pub proposal_id: BcsMoveObjectId,
+    pub stage: u8,
+    pub decision: u8,
+    pub failed: bool,
+    pub case_id: Option<BcsMoveObjectId>,
+    pub applied_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsProposalRejectedByJuryEvent {
+    pub proposal_id: BcsMoveObjectId,
+    pub stage: u8,
+    pub rejection_time: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskDisputed {
+    pub task_id: BcsMoveObjectId,
+    pub case_id: BcsMoveObjectId,
+    pub opened_by_role: u8,
+    pub fee_each_mist: u64,
+    pub opener_paid_mist: u64,
+    pub opened_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskDisputeFeePaid {
+    pub task_id: BcsMoveObjectId,
+    pub role: u8,
+    pub amount_mist: u64,
+    pub kind: u8,
+    pub buyer_paid_mist: u64,
+    pub seller_paid_mist: u64,
+    pub paid_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskDisputeCancelled {
+    pub task_id: BcsMoveObjectId,
+    pub case_id: BcsMoveObjectId,
+    pub settle_deadline_ms: u64,
+    pub cancelled_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskNeutralWindowOpened {
+    pub task_id: BcsMoveObjectId,
+    pub case_id: BcsMoveObjectId,
+    pub window_ends_ms: u64,
+    pub opened_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskDisputeSettlementProposed {
+    pub task_id: BcsMoveObjectId,
+    pub proposer_role: u8,
+    pub outcome: u8,
+    pub proposed_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskDisputeSettlementCleared {
+    pub task_id: BcsMoveObjectId,
+    pub cleared_by_role: u8,
+    pub cleared_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskDisputeResolved {
+    pub task_id: BcsMoveObjectId,
+    pub case_id: BcsMoveObjectId,
+    pub outcome: u8,
+    pub source: u8,
+    pub resolved_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskDisputeFeesSettled {
+    pub task_id: BcsMoveObjectId,
+    pub case_id: BcsMoveObjectId,
+    pub buyer_refund_mist: u64,
+    pub seller_refund_mist: u64,
+    pub settled_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BcsTaskReceiptSettled {
     pub task_id: BcsMoveObjectId,
     pub receipt_id: BcsMoveObjectId,
@@ -3441,6 +3756,7 @@ fn parse_event_contents_inner(
         "messaging_config" | "messaging" => parse_messaging_event(event_name, contents),
         "message_log" => parse_message_log_event(event_name, contents),
         "agent_task" => parse_agent_task_event(event_name, contents),
+        "jury" => parse_jury_event(event_name, contents),
         _ => Ok(None),
     };
 
@@ -3806,6 +4122,234 @@ fn hex_digest(bytes: &[u8]) -> String {
     hex::encode(bytes)
 }
 
+/// Every `jury` event. Digests are hex; ids and addresses are 0x-prefixed strings.
+fn parse_jury_event(
+    event_name: &str,
+    contents: &[u8],
+) -> Result<Option<serde_json::Value>, EventParseError> {
+    match event_name {
+        "JuryConfigUpdated" => {
+            let ev = bcs::from_bytes::<BcsJuryConfigUpdated>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "updated_by": addr_to_string(&ev.updated_by),
+                "section": ev.section,
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "RosterJoined" => {
+            let ev = bcs::from_bytes::<BcsRosterJoined>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+                "owner": addr_to_string(&ev.owner),
+                "memory_account_id": move_object_id_to_string(&ev.memory_account_id),
+                "organization_id": move_object_id_to_string(&ev.organization_id),
+                "payout_address": addr_to_string(&ev.payout_address),
+                "model_family": ev.model_family,
+                "exempt": ev.exempt,
+                "joined_at_ms": ev.joined_at_ms,
+            })))
+        }
+        "RosterLeft" => {
+            let ev = bcs::from_bytes::<BcsRosterLeft>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+                "reason": ev.reason,
+                "left_at_ms": ev.left_at_ms,
+            })))
+        }
+        "RosterSuspended" => {
+            let ev = bcs::from_bytes::<BcsRosterSuspended>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+                "until_ms": ev.until_ms,
+            })))
+        }
+        "DutyScoreChanged" => {
+            let ev = bcs::from_bytes::<BcsDutyScoreChanged>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+                "score": ev.score,
+                "strikes": ev.strikes,
+                "reason": ev.reason,
+                "case_id": move_object_id_to_string(&ev.case_id),
+            })))
+        }
+        "CaseOpened" => {
+            let ev = bcs::from_bytes::<BcsCaseOpened>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "subject_kind": ev.subject_kind,
+                "subject_id": move_object_id_to_string(&ev.subject_id),
+                "stage": ev.stage,
+                "menu_len": ev.menu_len,
+                "approval_bps": ev.approval_bps,
+                "quorum": ev.quorum,
+                "round_sizes": ev.round_sizes,
+                "appealable": ev.appealable,
+                "failure_path": ev.failure_path,
+                "opened_by": addr_to_string(&ev.opened_by),
+                "fee_mist": ev.fee_mist,
+                "created_at_ms": ev.created_at_ms,
+                "evidence_deadline_ms": ev.evidence_deadline_ms,
+            })))
+        }
+        "EvidenceSubmitted" => {
+            let ev = bcs::from_bytes::<BcsEvidenceSubmitted>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "index": ev.index,
+                "submitter": addr_to_string(&ev.submitter),
+                "round": ev.round,
+                "kind": ev.kind,
+                "digest": hex_digest(&ev.digest),
+                "uri": String::from_utf8_lossy(&ev.uri),
+                "submitted_at_ms": ev.submitted_at_ms,
+            })))
+        }
+        "JuryDrawn" => {
+            let ev = bcs::from_bytes::<BcsJuryDrawn>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "round": ev.round,
+                "jurors": move_object_ids_to_json(&ev.jurors),
+                "accept_deadline_ms": ev.accept_deadline_ms,
+                "replacement": ev.replacement,
+            })))
+        }
+        "AssignmentAccepted" => {
+            let ev = bcs::from_bytes::<BcsAssignmentAccepted>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "round": ev.round,
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+                "accepted_at_ms": ev.accepted_at_ms,
+            })))
+        }
+        "JurorReplaced" => {
+            let ev = bcs::from_bytes::<BcsJurorReplaced>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "round": ev.round,
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+            })))
+        }
+        "VotingStarted" => {
+            let ev = bcs::from_bytes::<BcsVotingStarted>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "round": ev.round,
+                "jurors": move_object_ids_to_json(&ev.jurors),
+                "commit_deadline_ms": ev.commit_deadline_ms,
+                "reveal_deadline_ms": ev.reveal_deadline_ms,
+            })))
+        }
+        "VoteCommitted" => {
+            let ev = bcs::from_bytes::<BcsVoteCommitted>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "round": ev.round,
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+                "commitment": hex_digest(&ev.commitment),
+            })))
+        }
+        "VoteRevealed" => {
+            let ev = bcs::from_bytes::<BcsVoteRevealed>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "round": ev.round,
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+                "outcome": ev.outcome,
+                "rationale_digest": hex_digest(&ev.rationale_digest),
+                "evidence_refs": ev.evidence_refs,
+                "bundle_digest": hex_digest(&ev.bundle_digest),
+                "revealed_at_ms": ev.revealed_at_ms,
+            })))
+        }
+        "RoundFinalized" => {
+            let ev = bcs::from_bytes::<BcsRoundFinalized>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "round": ev.round,
+                "tally": ev.tally,
+                "abstain": ev.abstain,
+                "revealed": ev.revealed,
+                "decisive": ev.decisive,
+                "leading": ev.leading,
+                "appeal_deadline_ms": ev.appeal_deadline_ms,
+            })))
+        }
+        "CaseAppealed" => {
+            let ev = bcs::from_bytes::<BcsCaseAppealed>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "by": addr_to_string(&ev.by),
+                "round": ev.round,
+                "prior_outcome": ev.prior_outcome,
+            })))
+        }
+        "CaseFinalized" => {
+            let ev = bcs::from_bytes::<BcsCaseFinalized>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "outcome": ev.outcome,
+                "round": ev.round,
+                "appeals_used": ev.appeals_used,
+                "failed_appeal": ev.failed_appeal,
+                "participants": ev.participants,
+                "per_juror_fee": ev.per_juror_fee,
+                "finalized_at_ms": ev.finalized_at_ms,
+            })))
+        }
+        "CaseFailed" => {
+            let ev = bcs::from_bytes::<BcsCaseFailed>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "reason": ev.reason,
+                "round": ev.round,
+                "participants": ev.participants,
+                "per_juror_fee": ev.per_juror_fee,
+                "failed_at_ms": ev.failed_at_ms,
+            })))
+        }
+        "CaseCancelled" => {
+            let ev = bcs::from_bytes::<BcsCaseCancelled>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "cancelled_at_ms": ev.cancelled_at_ms,
+            })))
+        }
+        "JurorPaid" => {
+            let ev = bcs::from_bytes::<BcsJurorPaid>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+                "recipient": addr_to_string(&ev.recipient),
+                "amount_mist": ev.amount_mist,
+            })))
+        }
+        _ => Ok(None),
+    }
+}
+
 /// Every `agent_task` event. u128 values never appear here; they are strings in the memory events.
 fn parse_agent_task_event(
     event_name: &str,
@@ -3982,6 +4526,92 @@ fn parse_agent_task_event(
                 "overall_seller_weight_bps": ev.overall_seller_weight_bps,
                 "overall_buyer_weight_bps": ev.overall_buyer_weight_bps,
                 "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "TaskDisputed" => {
+            let ev = bcs::from_bytes::<BcsTaskDisputed>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "opened_by_role": ev.opened_by_role,
+                "fee_each_mist": ev.fee_each_mist,
+                "opener_paid_mist": ev.opener_paid_mist,
+                "opened_at_ms": ev.opened_at_ms,
+            })))
+        }
+        "TaskDisputeFeePaid" => {
+            let ev = bcs::from_bytes::<BcsTaskDisputeFeePaid>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "role": ev.role,
+                "amount_mist": ev.amount_mist,
+                "kind": ev.kind,
+                "buyer_paid_mist": ev.buyer_paid_mist,
+                "seller_paid_mist": ev.seller_paid_mist,
+                "paid_at_ms": ev.paid_at_ms,
+            })))
+        }
+        "TaskDisputeCancelled" => {
+            let ev = bcs::from_bytes::<BcsTaskDisputeCancelled>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "settle_deadline_ms": ev.settle_deadline_ms,
+                "cancelled_at_ms": ev.cancelled_at_ms,
+            })))
+        }
+        "TaskNeutralWindowOpened" => {
+            let ev = bcs::from_bytes::<BcsTaskNeutralWindowOpened>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "window_ends_ms": ev.window_ends_ms,
+                "opened_at_ms": ev.opened_at_ms,
+            })))
+        }
+        "TaskDisputeSettlementProposed" => {
+            let ev = bcs::from_bytes::<BcsTaskDisputeSettlementProposed>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "proposer_role": ev.proposer_role,
+                "outcome": ev.outcome,
+                "proposed_at_ms": ev.proposed_at_ms,
+            })))
+        }
+        "TaskDisputeSettlementCleared" => {
+            let ev = bcs::from_bytes::<BcsTaskDisputeSettlementCleared>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "cleared_by_role": ev.cleared_by_role,
+                "cleared_at_ms": ev.cleared_at_ms,
+            })))
+        }
+        "TaskDisputeResolved" => {
+            let ev = bcs::from_bytes::<BcsTaskDisputeResolved>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "outcome": ev.outcome,
+                "source": ev.source,
+                "resolved_at_ms": ev.resolved_at_ms,
+            })))
+        }
+        "TaskDisputeFeesSettled" => {
+            let ev = bcs::from_bytes::<BcsTaskDisputeFeesSettled>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "buyer_refund_mist": ev.buyer_refund_mist,
+                "seller_refund_mist": ev.seller_refund_mist,
+                "settled_at_ms": ev.settled_at_ms,
             })))
         }
         _ => Ok(None),
@@ -4298,6 +4928,83 @@ fn parse_governance_event(
                 "rejection_time": ev.rejection_time,
                 "votes_for": ev.votes_for,
                 "votes_against": ev.votes_against,
+            })))
+        }
+        "JuryPolicyUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsJuryPolicyUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "registry_id": move_object_id_to_string(&ev.registry_id),
+                "council_stage_enabled": ev.council_stage_enabled,
+                "community_stage_enabled": ev.community_stage_enabled,
+                "council_window_ms": ev.council_window_ms,
+                "jury_size": ev.jury_size,
+                "round2_size": ev.round2_size,
+                "jury_fee_bps": ev.jury_fee_bps,
+                "jury_fee_cap_mist": ev.jury_fee_cap_mist,
+                "min_pool_for_jury_mist": ev.min_pool_for_jury_mist,
+                "quorum": ev.quorum,
+                "approval_bps_council": ev.approval_bps_council,
+                "approval_bps_community": ev.approval_bps_community,
+                "updated_at_ms": ev.updated_at_ms,
+            })))
+        }
+        "DelegateReferredToJuryEvent" => {
+            let ev = bcs::from_bytes::<BcsDelegateReferredToJuryEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": move_object_id_to_string(&ev.proposal_id),
+                "delegate_address": addr_to_string(&ev.delegate_address),
+                "reason": ev.reason,
+                "referral_count": ev.referral_count,
+                "majority_reached": ev.majority_reached,
+                "referred_at_ms": ev.referred_at_ms,
+            })))
+        }
+        "ProposalEscalatedToJuryEvent" => {
+            let ev = bcs::from_bytes::<BcsProposalEscalatedToJuryEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": move_object_id_to_string(&ev.proposal_id),
+                "stage": ev.stage,
+                "trigger": ev.trigger,
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "jury_fee_mist": ev.jury_fee_mist,
+                "pool_remaining_mist": ev.pool_remaining_mist,
+                "escalated_at_ms": ev.escalated_at_ms,
+            })))
+        }
+        "CommunityVoteNeedsJuryEvent" => {
+            let ev = bcs::from_bytes::<BcsCommunityVoteNeedsJuryEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": move_object_id_to_string(&ev.proposal_id),
+                "trigger": ev.trigger,
+                "votes_for": ev.votes_for,
+                "votes_against": ev.votes_against,
+                "quorum_votes": ev.quorum_votes,
+                "time_ms": ev.time_ms,
+            })))
+        }
+        "JuryDecisionAppliedEvent" => {
+            let ev = bcs::from_bytes::<BcsJuryDecisionAppliedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": move_object_id_to_string(&ev.proposal_id),
+                "stage": ev.stage,
+                "decision": ev.decision,
+                "failed": ev.failed,
+                "case_id": optional_move_object_id_json(&ev.case_id),
+                "applied_at_ms": ev.applied_at_ms,
+            })))
+        }
+        "ProposalRejectedByJuryEvent" => {
+            let ev = bcs::from_bytes::<BcsProposalRejectedByJuryEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": move_object_id_to_string(&ev.proposal_id),
+                "stage": ev.stage,
+                "rejection_time": ev.rejection_time,
             })))
         }
         "ProposalImplementedEvent" => {

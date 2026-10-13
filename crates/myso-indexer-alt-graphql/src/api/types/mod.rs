@@ -24,6 +24,7 @@ pub(crate) mod gas_effects;
 pub(crate) mod gas_input;
 pub(crate) mod governance;
 pub(crate) mod insurance;
+pub(crate) mod jury;
 mod linkage;
 pub(crate) mod lookups;
 pub(crate) mod media_asset;

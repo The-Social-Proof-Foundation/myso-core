@@ -8,6 +8,7 @@
 
 mod access;
 mod agent_task_handler;
+mod jury_handler;
 mod ai_credit;
 mod ai_credit_handler;
 mod blocking;
@@ -93,6 +94,7 @@ use myso_indexer_alt_social_schema::models::{
 };
 
 pub use agent_task_handler::TaskMarketHandler;
+pub use jury_handler::JuryHandler;
 pub use ai_credit_handler::AiCreditHandler;
 pub use blocking_handler::BlockingHandler;
 pub use governance_handler::GovernanceHandler;

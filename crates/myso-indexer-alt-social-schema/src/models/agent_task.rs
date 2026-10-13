@@ -5,8 +5,8 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    agent_tasks, credibility, reputation_aggregates, task_config_history, task_receipts,
-    task_reviews,
+    agent_tasks, credibility, reputation_aggregates, task_config_history, task_disputes,
+    task_receipts, task_reviews,
 };
 
 pub const TASK_STATUS_OFFERED: i16 = 0;
@@ -15,6 +15,12 @@ pub const TASK_STATUS_DELIVERED: i16 = 2;
 pub const TASK_STATUS_SETTLED: i16 = 3;
 pub const TASK_STATUS_REFUNDED: i16 = 4;
 pub const TASK_STATUS_CANCELLED: i16 = 5;
+/// Escrow frozen while a jury (or the settlement window after a failed jury) decides.
+pub const TASK_STATUS_DISPUTED: i16 = 6;
+
+pub const DISPUTE_STATE_OPEN: i16 = 1;
+pub const DISPUTE_STATE_CANCELLED: i16 = 2;
+pub const DISPUTE_STATE_RESOLVED: i16 = 3;
 
 /// Inserted by `TaskOffered`; later events update the row in order.
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -42,6 +48,23 @@ pub struct NewAgentTask {
     pub status: i16,
     pub created_at_ms: i64,
     pub accept_deadline_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+/// Inserted by `TaskDisputed`; later dispute events update it.
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = task_disputes)]
+pub struct NewTaskDispute {
+    pub task_id: String,
+    pub case_id: String,
+    pub opened_by_role: i16,
+    pub state: i16,
+    pub fee_each_mist: i64,
+    pub buyer_paid_mist: i64,
+    pub seller_paid_mist: i64,
+    pub opened_at_ms: i64,
     pub event_id: String,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,

@@ -48,6 +48,7 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
 <b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
+<b>use</b> <a href="../myso/random.md#myso_random">myso::random</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
 <b>use</b> <a href="../myso/tx_context.md#myso_tx_context">myso::tx_context</a>;
@@ -65,6 +66,7 @@ Uses the framework's centralized BootstrapKey for one-time initialization.
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_derivative_graph">social_contracts::derivative_graph</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
 <b>use</b> <a href="../social_contracts/insurance.md#social_contracts_insurance">social_contracts::insurance</a>;
+<b>use</b> <a href="../social_contracts/jury.md#social_contracts_jury">social_contracts::jury</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_license_template">social_contracts::license_template</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset">social_contracts::media_asset</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
@@ -182,6 +184,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">social_contracts::mydata::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/memory.md#social_contracts_memory_bootstrap_init">social_contracts::memory::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/agent_task.md#social_contracts_agent_task_bootstrap_init">social_contracts::agent_task::bootstrap_init</a>(admin, clock, ctx);
+    <a href="../social_contracts/jury.md#social_contracts_jury_bootstrap_init">social_contracts::jury::bootstrap_init</a>(clock, ctx);
     <b>let</b> gov_ids = <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/subscription.md#social_contracts_subscription_bootstrap_init">social_contracts::subscription::bootstrap_init</a>(clock, ctx);
@@ -221,6 +224,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     transfer::public_transfer(<a href="../social_contracts/subscription.md#social_contracts_subscription_create_subscription_admin_cap">subscription::create_subscription_admin_cap</a>(ctx), admin);
     transfer::public_transfer(memory_module::create_memory_admin_cap(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/agent_task.md#social_contracts_agent_task_create_task_market_cap">agent_task::create_task_market_cap</a>(ctx), admin);
+    transfer::public_transfer(<a href="../social_contracts/jury.md#social_contracts_jury_create_jury_admin_cap">jury::create_jury_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/insurance.md#social_contracts_insurance_create_insurance_admin_cap">insurance::create_insurance_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_create_oracle_admin_cap">ai_credit::create_oracle_admin_cap</a>(ctx), admin);
     transfer::public_transfer(<a href="../social_contracts/bootstrap.md#social_contracts_bootstrap_create_messaging_admin_cap">create_messaging_admin_cap</a>(ctx), admin);

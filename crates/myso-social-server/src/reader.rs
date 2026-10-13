@@ -4,9 +4,11 @@
 pub mod agent_task;
 pub mod ai_credit;
 pub mod automation_outbox;
+mod jury_outbox;
 pub mod enterprise;
 mod governance;
 mod insurance;
+pub mod jury;
 pub mod memory;
 mod messaging;
 mod mydata;
@@ -1931,8 +1933,9 @@ impl Reader {
         &self,
         limit: i64,
         lease_secs: i64,
+        include_jury: bool,
     ) -> Result<Vec<automation_outbox::ClaimedEvent>, crate::error::SocialError> {
-        automation_outbox::claim_batch(&self.write_db, limit, lease_secs).await
+        automation_outbox::claim_batch(&self.write_db, limit, lease_secs, include_jury).await
     }
 
     pub async fn automation_enrichment(
@@ -1953,6 +1956,29 @@ impl Reader {
         retry_in_secs: i64,
     ) -> Result<(), crate::error::SocialError> {
         automation_outbox::mark_failed(&self.write_db, id, error, retry_in_secs).await
+    }
+
+    /// Queues the jury's scan-driven events (keeper cranks, juror duty polls, fee claims).
+    pub async fn enqueue_due_jury_events(
+        &self,
+        now_ms: i64,
+        batch: i64,
+        keeper_accounts: &[String],
+    ) -> Result<usize, crate::error::SocialError> {
+        jury_outbox::enqueue_jury_events(&self.write_db, now_ms, batch, keeper_accounts).await
+    }
+
+    /// Everything a keeper could crank right now.
+    pub async fn list_jury_cranks(
+        &self,
+        now_ms: i64,
+        limit: i64,
+    ) -> Result<Vec<CrankInfo>, crate::error::SocialError> {
+        Ok(jury_outbox::list_cranks(&self.db, now_ms, limit)
+            .await?
+            .into_iter()
+            .map(CrankInfo::from)
+            .collect())
     }
 
     pub async fn enqueue_due_automation_events(
@@ -2263,28 +2289,73 @@ impl Reader {
         post::get_post_reposts(&self.db, post_id, limit, offset).await
     }
 
-    pub async fn list_promotions(
+    /// Campaigns matching `query`, each with aggregated views, spend, and remaining budget.
+    pub async fn list_campaigns(
         &self,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<PromotedPostRow>, crate::error::SocialError> {
-        promotion::list_promotions(&self.db, limit, offset).await
+        query: &PromotionListQuery,
+    ) -> Result<Vec<PromotedPostSummaryRow>, crate::error::SocialError> {
+        promotion::list_campaigns(&self.db, query).await
+    }
+
+    /// Advertiser-level rollup over the campaign set matching `query`.
+    ///
+    /// Its `campaign_count` is the pagination total for [`Self::list_campaigns`], since
+    /// both apply the same filters.
+    pub async fn get_promotion_rollup(
+        &self,
+        query: &PromotionListQuery,
+    ) -> Result<PromotionRollupRow, crate::error::SocialError> {
+        promotion::get_promotion_rollup(&self.db, query).await
+    }
+
+    /// Full campaign detail including the budget reconciliation check.
+    pub async fn get_promotion_detail(
+        &self,
+        promotion_id: &str,
+    ) -> Result<Option<PromotionDetailRow>, crate::error::SocialError> {
+        promotion::get_promotion_detail(&self.db, promotion_id).await
+    }
+
+    /// Budget ledger for a campaign plus its reconciliation check.
+    pub async fn get_promotion_budget_history(
+        &self,
+        promotion_id: &str,
+        query: &PromotionAnalyticsQuery,
+    ) -> Result<PromotionBudgetHistoryResponse, crate::error::SocialError> {
+        promotion::get_promotion_budget_history(&self.db, promotion_id, query).await
+    }
+
+    /// Activation and deactivation history for a campaign.
+    pub async fn get_promotion_status_history(
+        &self,
+        promotion_id: &str,
+        query: &PromotionAnalyticsQuery,
+    ) -> Result<PromotionStatusHistoryResponse, crate::error::SocialError> {
+        promotion::get_promotion_status_history(&self.db, promotion_id, query).await
+    }
+
+    /// Confirmed views for a campaign split by platform.
+    pub async fn get_promotion_platform_breakdown(
+        &self,
+        promotion_id: &str,
+        query: &PromotionAnalyticsQuery,
+    ) -> Result<PromotionPlatformBreakdownResponse, crate::error::SocialError> {
+        promotion::get_promotion_platform_breakdown(&self.db, promotion_id, query).await
     }
 
     pub async fn get_promotion_by_post_id(
         &self,
         post_id: &str,
-    ) -> Result<Option<PromotedPostRow>, crate::error::SocialError> {
+    ) -> Result<Option<PromotedPostSummaryRow>, crate::error::SocialError> {
         promotion::get_promotion_by_post_id(&self.db, post_id).await
     }
 
     pub async fn get_promotion_views(
         &self,
         promotion_id: &str,
-        limit: i64,
-        offset: i64,
+        query: &PromotionAnalyticsQuery,
     ) -> Result<Vec<PromotionViewRow>, crate::error::SocialError> {
-        promotion::get_promotion_views(&self.db, promotion_id, limit, offset).await
+        promotion::get_promotion_views(&self.db, promotion_id, query).await
     }
 
     pub async fn get_promotion_stats(
@@ -2297,31 +2368,31 @@ impl Reader {
     pub async fn get_promotion_time_series(
         &self,
         promotion_id: &str,
-        limit: i64,
+        query: &PromotionAnalyticsQuery,
     ) -> Result<Vec<PromotionTimeSeriesRow>, crate::error::SocialError> {
-        promotion::get_promotion_time_series(&self.db, promotion_id, limit).await
+        promotion::get_promotion_time_series(&self.db, promotion_id, query).await
     }
 
     pub async fn get_promotion_hourly(
         &self,
         promotion_id: &str,
-        limit: i64,
+        query: &PromotionAnalyticsQuery,
     ) -> Result<Vec<PromotionHourlyRow>, crate::error::SocialError> {
-        promotion::get_promotion_hourly(&self.db, promotion_id, limit).await
+        promotion::get_promotion_hourly(&self.db, promotion_id, query).await
     }
 
     pub async fn get_top_performing_promotions(
         &self,
         limit: i64,
-    ) -> Result<Vec<PromotedPostRow>, crate::error::SocialError> {
+    ) -> Result<Vec<PromotedPostSummaryRow>, crate::error::SocialError> {
         promotion::get_top_performing_promotions(&self.db, limit).await
     }
 
     pub async fn get_spending_trends(
         &self,
-        limit: i64,
+        query: &PromotionAnalyticsQuery,
     ) -> Result<Vec<PromotionTimeSeriesRow>, crate::error::SocialError> {
-        promotion::get_spending_trends(&self.db, limit).await
+        promotion::get_spending_trends(&self.db, query).await
     }
 
     pub async fn list_poc_badges(
@@ -2457,6 +2528,20 @@ impl Reader {
         agent_task::get_task_config(&self.db).await
     }
 
+    pub async fn get_task_stats(&self, now_ms: i64) -> Result<TaskStatsInfo, crate::error::SocialError> {
+        agent_task::get_task_stats(&self.db, now_ms).await
+    }
+
+    pub async fn list_top_agents(
+        &self,
+        sort: agent_task::TopAgentSort,
+        min_reviews: i64,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<TopAgentInfo>, crate::error::SocialError> {
+        agent_task::list_top_agents(&self.db, sort, min_reviews, limit, offset).await
+    }
+
     pub async fn get_agent_reputation(
         &self,
         agent_object_id: &str,
@@ -2469,6 +2554,91 @@ impl Reader {
         principal: &str,
     ) -> Result<PrincipalReputationInfo, crate::error::SocialError> {
         agent_task::get_principal_reputation(&self.db, principal).await
+    }
+
+    pub async fn list_jury_cases(
+        &self,
+        filter: &jury::CaseFilter,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<JuryCaseInfo>, crate::error::SocialError> {
+        jury::list_cases(&self.db, filter, limit, offset).await
+    }
+
+    pub async fn get_jury_case(
+        &self,
+        case_id: &str,
+    ) -> Result<Option<JuryCaseDetailInfo>, crate::error::SocialError> {
+        jury::get_case(&self.db, case_id).await
+    }
+
+    pub async fn jury_health(
+        &self,
+        min_roster: i64,
+    ) -> Result<JuryHealthInfo, crate::error::SocialError> {
+        jury_outbox::health(&self.db, chrono::Utc::now().timestamp_millis(), min_roster).await
+    }
+
+    pub async fn list_jury_rationales(
+        &self,
+        case_id: &str,
+    ) -> Result<Vec<JuryRationaleInfo>, crate::error::SocialError> {
+        jury::list_rationales(&self.db, case_id).await
+    }
+
+    pub async fn store_jury_rationale(
+        &self,
+        req: &StoreRationaleRequest,
+    ) -> Result<RationaleOutcome, crate::error::SocialError> {
+        jury::store_rationale(&self.write_db, req, chrono::Utc::now().timestamp_millis()).await
+    }
+
+    pub async fn get_task_dispute(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<TaskDisputeDetailInfo>, crate::error::SocialError> {
+        jury::get_task_dispute(&self.db, task_id).await
+    }
+
+    pub async fn list_jury_roster(
+        &self,
+        owner: Option<&str>,
+        statuses: &[i16],
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<JurorRosterInfo>, crate::error::SocialError> {
+        jury::list_roster(&self.db, owner, statuses, limit, offset).await
+    }
+
+    pub async fn get_proposal_jury(
+        &self,
+        proposal_id: &str,
+    ) -> Result<ProposalJuryInfo, crate::error::SocialError> {
+        jury::get_proposal_jury(&self.db, proposal_id).await
+    }
+
+    pub async fn get_registry_jury_policy(
+        &self,
+        registry_id: &str,
+    ) -> Result<Option<RegistryJuryPolicyView>, crate::error::SocialError> {
+        jury::get_registry_jury_policy(&self.db, registry_id).await
+    }
+
+    pub async fn get_juror(
+        &self,
+        agent_id: &str,
+    ) -> Result<Option<JurorRosterInfo>, crate::error::SocialError> {
+        jury::get_juror(&self.db, agent_id).await
+    }
+
+    pub async fn list_juror_assignments(
+        &self,
+        agent_id: &str,
+        statuses: &[i16],
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<JurorAssignmentInfo>, crate::error::SocialError> {
+        jury::list_assignments(&self.db, agent_id, statuses, limit, offset).await
     }
 
     pub async fn get_message_digests(

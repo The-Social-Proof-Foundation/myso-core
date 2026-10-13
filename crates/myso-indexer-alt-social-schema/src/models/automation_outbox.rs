@@ -92,6 +92,12 @@ pub enum TaskEventKind {
     Refunded,
     Settled,
     Reviewed { rater_role: i16 },
+    /// A party took the delivered work to a jury; the escrow is frozen.
+    Disputed,
+    /// The jury failed and the settlement window opened.
+    NeutralWindowOpened,
+    /// The dispute ended (verdict, agreement or the automatic split).
+    DisputeResolved,
     /// Time-driven: an unanswered offer is past its accept deadline.
     ExpiredOfferDue,
     /// Time-driven: an accepted task is past its delivery deadline.
@@ -173,6 +179,13 @@ fn targets(kind: TaskEventKind, task: &TaskSnapshot) -> Vec<Target> {
             ROLE_SELLER => vec![once("reviewed", Buyer)],
             _ => Vec::new(),
         },
+        TaskEventKind::Disputed => vec![once("disputed", Buyer), once("disputed", Seller)],
+        TaskEventKind::NeutralWindowOpened => {
+            vec![once("neutral_window_open", Buyer), once("neutral_window_open", Seller)]
+        }
+        TaskEventKind::DisputeResolved => {
+            vec![once("dispute_resolved", Buyer), once("dispute_resolved", Seller)]
+        }
         TaskEventKind::ExpiredOfferDue => vec![once("expired_offer_due", Buyer)],
         TaskEventKind::RefundDue => vec![once("refund_due", Buyer)],
         TaskEventKind::ReleaseDue => vec![once("release_due", Seller)],
@@ -416,6 +429,30 @@ mod tests {
             .iter()
             .map(|e| (e.event_type.clone(), e.account_id.clone()))
             .collect()
+    }
+
+    #[test]
+    fn a_dispute_reaches_both_parties_and_each_outcome_is_announced_once() {
+        let t = task();
+        for (kind, name) in [
+            (TaskEventKind::Disputed, "disputed"),
+            (TaskEventKind::NeutralWindowOpened, "neutral_window_open"),
+            (TaskEventKind::DisputeResolved, "dispute_resolved"),
+        ] {
+            let events = rows(kind, &t);
+            assert_eq!(
+                summary(&events),
+                vec![
+                    (name.to_string(), "0xbuyer_account".to_string()),
+                    (name.to_string(), "0xseller_account".to_string()),
+                ]
+            );
+            assert!(events.iter().all(|e| e.event_family == AUTOMATION_FAMILY_TASK));
+            assert_eq!(
+                events.iter().map(|e| e.dedup_key.clone()).collect::<Vec<_>>(),
+                vec![format!("task:0xtask:{name}:buyer"), format!("task:0xtask:{name}:seller")]
+            );
+        }
     }
 
     #[test]

@@ -56,6 +56,11 @@ Manages social media platforms and their timelines
 -  [Function `community_vote_anonymous_on_platform_governance_proposal`](#social_contracts_platform_community_vote_anonymous_on_platform_governance_proposal)
 -  [Function `finalize_platform_governance_proposal`](#social_contracts_platform_finalize_platform_governance_proposal)
 -  [Function `finalize_platform_governance_proposal_anonymous`](#social_contracts_platform_finalize_platform_governance_proposal_anonymous)
+-  [Function `assert_platform_registry`](#social_contracts_platform_assert_platform_registry)
+-  [Function `deposit_forfeited_pool`](#social_contracts_platform_deposit_forfeited_pool)
+-  [Function `set_platform_jury_policy`](#social_contracts_platform_set_platform_jury_policy)
+-  [Function `escalate_platform_proposal_to_jury`](#social_contracts_platform_escalate_platform_proposal_to_jury)
+-  [Function `apply_platform_jury_decision`](#social_contracts_platform_apply_platform_jury_decision)
 -  [Function `reject_platform_governance_proposal_manually`](#social_contracts_platform_reject_platform_governance_proposal_manually)
 -  [Function `grant_moderator_permission`](#social_contracts_platform_grant_moderator_permission)
 -  [Function `grant_all_moderator_permissions`](#social_contracts_platform_grant_all_moderator_permissions)
@@ -184,6 +189,7 @@ Manages social media platforms and their timelines
 <b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
 <b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
+<b>use</b> <a href="../myso/random.md#myso_random">myso::random</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
 <b>use</b> <a href="../myso/tx_context.md#myso_tx_context">myso::tx_context</a>;
@@ -192,10 +198,12 @@ Manages social media platforms and their timelines
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/block_list.md#social_contracts_block_list">social_contracts::block_list</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_derivative_graph">social_contracts::derivative_graph</a>;
 <b>use</b> <a href="../social_contracts/governance.md#social_contracts_governance">social_contracts::governance</a>;
+<b>use</b> <a href="../social_contracts/jury.md#social_contracts_jury">social_contracts::jury</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_license_template">social_contracts::license_template</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset">social_contracts::media_asset</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
@@ -3534,6 +3542,227 @@ Same constraints as [<code><a href="../social_contracts/governance.md#social_con
         } <b>else</b> {
             balance::destroy_zero(bal);
         };
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_assert_platform_registry"></a>
+
+## Function `assert_platform_registry`
+
+The platform's own governance registry, and nothing else.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry">assert_platform_registry</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry">assert_platform_registry</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>, registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>) {
+    <b>let</b> opt = <a href="../social_contracts/platform.md#social_contracts_platform_governance_registry_id">governance_registry_id</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>);
+    <b>assert</b>!(option::is_some(opt), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(*option::borrow(opt) == object::id(registry), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>assert</b>!(<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">governance::registry_type</a>(registry) == <a href="../social_contracts/governance.md#social_contracts_governance_proposal_type_platform_value">governance::proposal_type_platform_value</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_deposit_forfeited_pool"></a>
+
+## Function `deposit_forfeited_pool`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_deposit_forfeited_pool">deposit_forfeited_pool</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, bal: <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_deposit_forfeited_pool">deposit_forfeited_pool</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    bal: Balance&lt;MYSO&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>let</b> amt = balance::value(&bal);
+    <b>if</b> (amt &gt; 0) {
+        <b>let</b> <b>mut</b> c = coin::from_balance(bal, ctx);
+        <a href="../social_contracts/platform.md#social_contracts_platform_add_to_treasury">add_to_treasury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, &<b>mut</b> c, amt, clock, ctx);
+        coin::destroy_zero(c);
+    } <b>else</b> {
+        balance::destroy_zero(bal);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_set_platform_jury_policy"></a>
+
+## Function `set_platform_jury_policy`
+
+Switch the AI jury on or off for this platform's governance steps. Platform developer only.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_set_platform_jury_policy">set_platform_jury_policy</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, council_stage_enabled: bool, community_stage_enabled: bool, council_window_ms: u64, jury_size: u64, round2_size: u64, jury_fee_bps: u64, jury_fee_cap_mist: u64, min_pool_for_jury_mist: u64, quorum: u64, approval_bps_council: u64, approval_bps_community: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_set_platform_jury_policy">set_platform_jury_policy</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>,
+    council_stage_enabled: bool,
+    community_stage_enabled: bool,
+    council_window_ms: u64,
+    jury_size: u64,
+    round2_size: u64,
+    jury_fee_bps: u64,
+    jury_fee_cap_mist: u64,
+    min_pool_for_jury_mist: u64,
+    quorum: u64,
+    approval_bps_council: u64,
+    approval_bps_community: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>) == tx_context::sender(ctx), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry">assert_platform_registry</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, registry);
+    <a href="../social_contracts/governance.md#social_contracts_governance_set_jury_policy_internal">governance::set_jury_policy_internal</a>(
+        registry,
+        council_stage_enabled,
+        community_stage_enabled,
+        council_window_ms,
+        jury_size,
+        round2_size,
+        jury_fee_bps,
+        jury_fee_cap_mist,
+        min_pool_for_jury_mist,
+        quorum,
+        approval_bps_council,
+        approval_bps_community,
+        clock,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_escalate_platform_proposal_to_jury"></a>
+
+## Function `escalate_platform_proposal_to_jury`
+
+Anyone moves a platform proposal to the AI jury at the step that has earned it. The platform's
+developer is excluded from the jury, and unspent juror shares go to the platform treasury.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_escalate_platform_proposal_to_jury">escalate_platform_proposal_to_jury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, jury_config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, stage: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_escalate_platform_proposal_to_jury">escalate_platform_proposal_to_jury</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">governance::Proposal</a>,
+    jury_config: &JuryConfig,
+    stage: u8,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry">assert_platform_registry</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, registry);
+    <b>let</b> platform_addr = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>let</b> result = <a href="../social_contracts/governance.md#social_contracts_governance_open_jury_for_proposal">governance::open_jury_for_proposal</a>(
+        registry,
+        proposal,
+        jury_config,
+        stage,
+        platform_addr,
+        vector[<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>)],
+        clock,
+        ctx,
+    );
+    <b>if</b> (result == 1) {
+        <b>let</b> reason = <a href="../social_contracts/governance.md#social_contracts_governance_jury_default_forfeit_reason">governance::jury_default_forfeit_reason</a>(proposal);
+        <b>let</b> bal = <a href="../social_contracts/governance.md#social_contracts_governance_forfeit_proposal_pool_after_community_reject_to_platform_treasury">governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury</a>(
+            registry,
+            proposal,
+            platform_addr,
+            reason,
+            clock::timestamp_ms(clock),
+        );
+        <a href="../social_contracts/platform.md#social_contracts_platform_deposit_forfeited_pool">deposit_forfeited_pool</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, bal, clock, ctx);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_apply_platform_jury_decision"></a>
+
+## Function `apply_platform_jury_decision`
+
+Apply a finished jury case to its platform proposal. Permissionless.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_apply_platform_jury_decision">apply_platform_jury_decision</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_apply_platform_jury_decision">apply_platform_jury_decision</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">governance::Proposal</a>,
+    case: &<b>mut</b> JuryCase,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry">assert_platform_registry</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, registry);
+    <b>let</b> (action, now) = <a href="../social_contracts/governance.md#social_contracts_governance_apply_jury_case">governance::apply_jury_case</a>(registry, proposal, case, clock, ctx);
+    <b>if</b> (action == <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_reject_value">governance::jury_action_reject_value</a>()) {
+        <b>let</b> platform_addr = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+        <b>let</b> bal = <a href="../social_contracts/governance.md#social_contracts_governance_forfeit_proposal_pool_after_community_reject_to_platform_treasury">governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury</a>(
+            registry,
+            proposal,
+            platform_addr,
+            <a href="../social_contracts/governance.md#social_contracts_governance_forfeit_reason_jury_rejected_value">governance::forfeit_reason_jury_rejected_value</a>(),
+            now,
+        );
+        <a href="../social_contracts/platform.md#social_contracts_platform_deposit_forfeited_pool">deposit_forfeited_pool</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, bal, clock, ctx);
     };
 }
 </code></pre>

@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
@@ -23,12 +24,15 @@ use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use diesel::SelectableHelper;
 use myso_indexer_alt_social_schema::models::{
-    build_task_events, NewAgentTask, NewTaskConfig, NewTaskReceipt, NewTaskReview, TaskEventKind,
-    TaskSnapshot, TASK_STATUS_ACCEPTED, TASK_STATUS_CANCELLED, TASK_STATUS_DELIVERED,
-    TASK_STATUS_OFFERED, TASK_STATUS_REFUNDED, TASK_STATUS_SETTLED,
+    build_task_events, NewAgentTask, NewAutomationEvent, NewTaskConfig, NewTaskDispute,
+    NewTaskReceipt, NewTaskReview, TaskEventKind, TaskSnapshot, DISPUTE_STATE_CANCELLED,
+    DISPUTE_STATE_OPEN, DISPUTE_STATE_RESOLVED, TASK_STATUS_ACCEPTED, TASK_STATUS_CANCELLED,
+    TASK_STATUS_DELIVERED, TASK_STATUS_DISPUTED, TASK_STATUS_OFFERED, TASK_STATUS_REFUNDED,
+    TASK_STATUS_SETTLED,
 };
 use myso_indexer_alt_social_schema::schema::{
-    agent_tasks, automation_event_outbox, task_config_history, task_receipts, task_reviews,
+    agent_tasks, automation_event_outbox, task_config_history, task_disputes, task_receipts,
+    task_reviews,
 };
 
 use super::common;
@@ -50,6 +54,14 @@ pub const AGENT_TASK_EVENTS: &[&str] = &[
     "TaskReceiptSettled",
     "TaskReviewSubmitted",
     "TaskConfigUpdated",
+    "TaskDisputed",
+    "TaskDisputeFeePaid",
+    "TaskDisputeCancelled",
+    "TaskNeutralWindowOpened",
+    "TaskDisputeSettlementProposed",
+    "TaskDisputeSettlementCleared",
+    "TaskDisputeResolved",
+    "TaskDisputeFeesSettled",
 ];
 
 const REVIEW_ROLE_BUYER: i16 = 1;
@@ -115,6 +127,44 @@ pub enum TaskMarketRow {
     },
     Review(NewTaskReview),
     Config(NewTaskConfig),
+    Disputed(NewTaskDispute),
+    DisputeFeePaid {
+        task_id: String,
+        buyer_paid_mist: i64,
+        seller_paid_mist: i64,
+    },
+    DisputeCancelled {
+        task_id: String,
+        settle_deadline_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
+    NeutralWindowOpened {
+        task_id: String,
+        window_ends_ms: i64,
+        opened_at_ms: i64,
+        event_id: String,
+    },
+    DisputeSettlementProposed {
+        task_id: String,
+        outcome: i16,
+        proposer_role: i16,
+    },
+    DisputeSettlementCleared {
+        task_id: String,
+    },
+    DisputeResolved {
+        task_id: String,
+        outcome: i16,
+        source: i16,
+        resolved_at_ms: i64,
+        event_id: String,
+    },
+    DisputeFeesSettled {
+        task_id: String,
+        buyer_refund_mist: i64,
+        seller_refund_mist: i64,
+    },
 }
 
 impl FieldCount for TaskMarketRow {
@@ -334,6 +384,67 @@ pub fn task_market_rows(
                 time: common::chain_time_from_ms(timestamp_ms),
             })])
         }
+        "TaskDisputed" => {
+            let opened_at_ms = i64_field(data, "opened_at_ms")?;
+            let opened_by_role = i64_field(data, "opened_by_role")? as i16;
+            let opener_paid_mist = i64_field(data, "opener_paid_mist")?;
+            // The opener's payment is the only one on record until the other side matches it.
+            let (buyer_paid_mist, seller_paid_mist) = if opened_by_role == REVIEW_ROLE_BUYER {
+                (opener_paid_mist, 0)
+            } else {
+                (0, opener_paid_mist)
+            };
+            Some(vec![TaskMarketRow::Disputed(NewTaskDispute {
+                task_id: str_field(data, "task_id")?,
+                case_id: str_field(data, "case_id")?,
+                opened_by_role,
+                state: DISPUTE_STATE_OPEN,
+                fee_each_mist: i64_field(data, "fee_each_mist")?,
+                buyer_paid_mist,
+                seller_paid_mist,
+                opened_at_ms,
+                event_id,
+                transaction_id,
+                time: common::chain_time_from_ms(opened_at_ms),
+            })])
+        }
+        "TaskDisputeFeePaid" => Some(vec![TaskMarketRow::DisputeFeePaid {
+            task_id: str_field(data, "task_id")?,
+            buyer_paid_mist: i64_field(data, "buyer_paid_mist")?,
+            seller_paid_mist: i64_field(data, "seller_paid_mist")?,
+        }]),
+        "TaskDisputeCancelled" => Some(vec![TaskMarketRow::DisputeCancelled {
+            task_id: str_field(data, "task_id")?,
+            settle_deadline_ms: i64_field(data, "settle_deadline_ms")?,
+            event_id,
+            transaction_id,
+        }]),
+        "TaskNeutralWindowOpened" => Some(vec![TaskMarketRow::NeutralWindowOpened {
+            task_id: str_field(data, "task_id")?,
+            window_ends_ms: i64_field(data, "window_ends_ms")?,
+            opened_at_ms: i64_field(data, "opened_at_ms")?,
+            event_id,
+        }]),
+        "TaskDisputeSettlementProposed" => Some(vec![TaskMarketRow::DisputeSettlementProposed {
+            task_id: str_field(data, "task_id")?,
+            outcome: i64_field(data, "outcome")? as i16,
+            proposer_role: i64_field(data, "proposer_role")? as i16,
+        }]),
+        "TaskDisputeSettlementCleared" => Some(vec![TaskMarketRow::DisputeSettlementCleared {
+            task_id: str_field(data, "task_id")?,
+        }]),
+        "TaskDisputeResolved" => Some(vec![TaskMarketRow::DisputeResolved {
+            task_id: str_field(data, "task_id")?,
+            outcome: i64_field(data, "outcome")? as i16,
+            source: i64_field(data, "source")? as i16,
+            resolved_at_ms: i64_field(data, "resolved_at_ms")?,
+            event_id,
+        }]),
+        "TaskDisputeFeesSettled" => Some(vec![TaskMarketRow::DisputeFeesSettled {
+            task_id: str_field(data, "task_id")?,
+            buyer_refund_mist: i64_field(data, "buyer_refund_mist")?,
+            seller_refund_mist: i64_field(data, "seller_refund_mist")?,
+        }]),
         _ => None,
     }
 }
@@ -418,6 +529,45 @@ async fn enqueue_events<'a>(
         return Ok(0);
     };
     let events = build_task_events(kind, &task, occurred_at_ms, source_event_id);
+    if events.is_empty() {
+        return Ok(0);
+    }
+    Ok(diesel::insert_into(automation_event_outbox::table)
+        .values(&events)
+        .on_conflict(automation_event_outbox::dedup_key)
+        .do_nothing()
+        .execute(conn)
+        .await?)
+}
+
+/// Like `enqueue_events`, with `extra` merged into each payload for facts the task row does not
+/// hold (the dispute's case and who opened it).
+async fn enqueue_events_with<'a>(
+    conn: &mut Connection<'a>,
+    task_id: &str,
+    kind: TaskEventKind,
+    occurred_at_ms: i64,
+    source_event_id: &str,
+    extra: serde_json::Value,
+) -> Result<usize> {
+    let Some(task) = agent_tasks::table
+        .filter(agent_tasks::task_id.eq(task_id))
+        .select(TaskSnapshot::as_select())
+        .first::<TaskSnapshot>(conn)
+        .await
+        .optional()?
+    else {
+        return Ok(0);
+    };
+    let mut events: Vec<NewAutomationEvent> =
+        build_task_events(kind, &task, occurred_at_ms, source_event_id);
+    if let serde_json::Value::Object(extra) = extra {
+        for event in &mut events {
+            if let Some(payload) = event.payload.as_object_mut() {
+                payload.extend(extra.clone());
+            }
+        }
+    }
     if events.is_empty() {
         return Ok(0);
     }
@@ -598,7 +748,12 @@ impl Handler for TaskMarketHandler {
                     let changed = diesel::update(
                         agent_tasks::table
                             .filter(agent_tasks::task_id.eq(task_id))
-                            .filter(agent_tasks::status.eq(TASK_STATUS_DELIVERED)),
+                            // A dispute pays out from DISPUTED without passing through DELIVERED.
+                            .filter(
+                                agent_tasks::status
+                                    .eq(TASK_STATUS_DELIVERED)
+                                    .or(agent_tasks::status.eq(TASK_STATUS_DISPUTED)),
+                            ),
                     )
                     .set((
                         agent_tasks::status.eq(TASK_STATUS_SETTLED),
@@ -649,7 +804,11 @@ impl Handler for TaskMarketHandler {
                     let changed = diesel::update(
                         agent_tasks::table
                             .filter(agent_tasks::task_id.eq(task_id))
-                            .filter(agent_tasks::status.lt(TASK_STATUS_SETTLED)),
+                            .filter(
+                                agent_tasks::status
+                                    .lt(TASK_STATUS_SETTLED)
+                                    .or(agent_tasks::status.eq(TASK_STATUS_DISPUTED)),
+                            ),
                     )
                     .set((
                         agent_tasks::status.eq(TASK_STATUS_REFUNDED),
@@ -740,6 +899,189 @@ impl Handler for TaskMarketHandler {
                         .await?;
                     }
                 }
+                TaskMarketRow::Disputed(dispute) => {
+                    total += diesel::insert_into(task_disputes::table)
+                        .values(dispute)
+                        .on_conflict(task_disputes::task_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                    let changed = diesel::update(
+                        agent_tasks::table
+                            .filter(agent_tasks::task_id.eq(&dispute.task_id))
+                            .filter(agent_tasks::status.eq(TASK_STATUS_DELIVERED)),
+                    )
+                    .set((
+                        agent_tasks::status.eq(TASK_STATUS_DISPUTED),
+                        // The contract voids a pending refund proposal when a jury takes the task.
+                        agent_tasks::refund_proposer.eq(0i16),
+                        agent_tasks::refund_proposed_at_ms.eq(None::<i64>),
+                        agent_tasks::event_id.eq(&dispute.event_id),
+                        agent_tasks::transaction_id.eq(&dispute.transaction_id),
+                    ))
+                    .execute(conn)
+                    .await?;
+                    total += changed;
+                    if changed > 0 {
+                        total += enqueue_events_with(
+                            conn,
+                            &dispute.task_id,
+                            TaskEventKind::Disputed,
+                            dispute.opened_at_ms,
+                            &dispute.event_id,
+                            serde_json::json!({
+                                "case_id": dispute.case_id,
+                                "opened_by_role": if dispute.opened_by_role == REVIEW_ROLE_BUYER { "buyer" } else { "seller" },
+                                "fee_each_mist": dispute.fee_each_mist.to_string(),
+                            }),
+                        )
+                        .await?;
+                    }
+                }
+                TaskMarketRow::DisputeFeePaid {
+                    task_id,
+                    buyer_paid_mist,
+                    seller_paid_mist,
+                } => {
+                    total += diesel::update(task_disputes::table.find(task_id))
+                        .set((
+                            task_disputes::buyer_paid_mist.eq(*buyer_paid_mist),
+                            task_disputes::seller_paid_mist.eq(*seller_paid_mist),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                TaskMarketRow::DisputeCancelled {
+                    task_id,
+                    settle_deadline_ms,
+                    event_id,
+                    transaction_id,
+                } => {
+                    total += diesel::update(
+                        task_disputes::table
+                            .find(task_id)
+                            .filter(task_disputes::state.eq(DISPUTE_STATE_OPEN)),
+                    )
+                    .set((
+                        task_disputes::state.eq(DISPUTE_STATE_CANCELLED),
+                        task_disputes::agreement_proposer.eq(0i16),
+                        task_disputes::agreement_outcome.eq(None::<i16>),
+                    ))
+                    .execute(conn)
+                    .await?;
+                    // The release clock was re-based on chain; the task is payable the usual way again.
+                    total += diesel::update(
+                        agent_tasks::table
+                            .filter(agent_tasks::task_id.eq(task_id))
+                            .filter(agent_tasks::status.eq(TASK_STATUS_DISPUTED)),
+                    )
+                    .set((
+                        agent_tasks::status.eq(TASK_STATUS_DELIVERED),
+                        agent_tasks::settle_deadline_ms.eq(*settle_deadline_ms),
+                        agent_tasks::event_id.eq(event_id),
+                        agent_tasks::transaction_id.eq(transaction_id),
+                    ))
+                    .execute(conn)
+                    .await?;
+                }
+                TaskMarketRow::NeutralWindowOpened {
+                    task_id,
+                    window_ends_ms,
+                    opened_at_ms,
+                    event_id,
+                } => {
+                    let changed = diesel::update(
+                        task_disputes::table
+                            .find(task_id)
+                            .filter(task_disputes::neutral_window_ends_ms.is_null()),
+                    )
+                    .set(task_disputes::neutral_window_ends_ms.eq(*window_ends_ms))
+                    .execute(conn)
+                    .await?;
+                    total += changed;
+                    if changed > 0 {
+                        total += enqueue_events_with(
+                            conn,
+                            task_id,
+                            TaskEventKind::NeutralWindowOpened,
+                            *opened_at_ms,
+                            event_id,
+                            serde_json::json!({"window_ends_ms": window_ends_ms}),
+                        )
+                        .await?;
+                    }
+                }
+                TaskMarketRow::DisputeSettlementProposed {
+                    task_id,
+                    outcome,
+                    proposer_role,
+                } => {
+                    total += diesel::update(task_disputes::table.find(task_id))
+                        .set((
+                            task_disputes::agreement_proposer.eq(*proposer_role),
+                            task_disputes::agreement_outcome.eq(*outcome),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                TaskMarketRow::DisputeSettlementCleared { task_id } => {
+                    total += diesel::update(task_disputes::table.find(task_id))
+                        .set((
+                            task_disputes::agreement_proposer.eq(0i16),
+                            task_disputes::agreement_outcome.eq(None::<i16>),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                TaskMarketRow::DisputeResolved {
+                    task_id,
+                    outcome,
+                    source,
+                    resolved_at_ms,
+                    event_id,
+                } => {
+                    let changed = diesel::update(
+                        task_disputes::table
+                            .find(task_id)
+                            .filter(task_disputes::state.ne(DISPUTE_STATE_RESOLVED)),
+                    )
+                    .set((
+                        task_disputes::state.eq(DISPUTE_STATE_RESOLVED),
+                        task_disputes::resolved_outcome.eq(*outcome),
+                        task_disputes::resolved_source.eq(*source),
+                        task_disputes::resolved_at_ms.eq(*resolved_at_ms),
+                        task_disputes::agreement_proposer.eq(0i16),
+                        task_disputes::agreement_outcome.eq(None::<i16>),
+                    ))
+                    .execute(conn)
+                    .await?;
+                    total += changed;
+                    if changed > 0 {
+                        total += enqueue_events_with(
+                            conn,
+                            task_id,
+                            TaskEventKind::DisputeResolved,
+                            *resolved_at_ms,
+                            event_id,
+                            serde_json::json!({"outcome": outcome, "source": source}),
+                        )
+                        .await?;
+                    }
+                }
+                TaskMarketRow::DisputeFeesSettled {
+                    task_id,
+                    buyer_refund_mist,
+                    seller_refund_mist,
+                } => {
+                    total += diesel::update(task_disputes::table.find(task_id))
+                        .set((
+                            task_disputes::fees_settled.eq(true),
+                            task_disputes::buyer_fee_refund_mist.eq(*buyer_refund_mist),
+                            task_disputes::seller_fee_refund_mist.eq(*seller_refund_mist),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
                 TaskMarketRow::Config(config) => {
                     total += diesel::insert_into(task_config_history::table)
                         .values(config)
@@ -774,7 +1116,10 @@ mod tests {
 
     use super::super::events::{
         parse_event_contents, BcsMoveObjectId, BcsTaskAccepted, BcsTaskCancelled,
-        BcsTaskConfigUpdated, BcsTaskDelivered, BcsTaskOffered, BcsTaskReceiptSettled,
+        BcsTaskConfigUpdated, BcsTaskDelivered, BcsTaskDisputeCancelled,
+        BcsTaskDisputeFeePaid, BcsTaskDisputeFeesSettled, BcsTaskDisputeResolved,
+        BcsTaskDisputeSettlementCleared, BcsTaskDisputeSettlementProposed, BcsTaskDisputed,
+        BcsTaskNeutralWindowOpened, BcsTaskOffered, BcsTaskReceiptSettled,
         BcsTaskRefundProposalCleared, BcsTaskRefundProposed, BcsTaskRefunded,
         BcsTaskReviewSubmitted,
     };
@@ -947,6 +1292,155 @@ mod tests {
         assert!(matches!(
             cancelled.as_slice(),
             [TaskMarketRow::Cancelled { close_kind: 2, cancelled_at_ms: 80, .. }]
+        ));
+    }
+
+    #[test]
+    fn a_dispute_opens_with_only_the_openers_fee_on_record() {
+        let out = rows(
+            "TaskDisputed",
+            &bcs::to_bytes(&BcsTaskDisputed {
+                task_id: id("0x7a5c"),
+                case_id: id("0xca5e"),
+                opened_by_role: 2,
+                fee_each_mist: 30_000_000,
+                opener_paid_mist: 30_000_000,
+                opened_at_ms: 500,
+            })
+            .unwrap(),
+        );
+        let [TaskMarketRow::Disputed(d)] = out.as_slice() else {
+            panic!("expected Disputed");
+        };
+        assert_eq!((d.state, d.opened_by_role), (DISPUTE_STATE_OPEN, 2));
+        assert_eq!((d.buyer_paid_mist, d.seller_paid_mist), (0, 30_000_000));
+        assert!(d.case_id.ends_with("ca5e"));
+        assert_eq!(d.transaction_id, "digest");
+
+        let by_buyer = rows(
+            "TaskDisputed",
+            &bcs::to_bytes(&BcsTaskDisputed {
+                task_id: id("0x7a5c"),
+                case_id: id("0xca5e"),
+                opened_by_role: 1,
+                fee_each_mist: 30_000_000,
+                opener_paid_mist: 30_000_000,
+                opened_at_ms: 500,
+            })
+            .unwrap(),
+        );
+        let [TaskMarketRow::Disputed(d)] = by_buyer.as_slice() else {
+            panic!("expected Disputed");
+        };
+        assert_eq!((d.buyer_paid_mist, d.seller_paid_mist), (30_000_000, 0));
+    }
+
+    #[test]
+    fn dispute_follow_up_events_map_to_their_updates() {
+        let paid = rows(
+            "TaskDisputeFeePaid",
+            &bcs::to_bytes(&BcsTaskDisputeFeePaid {
+                task_id: id("0x7a5c"),
+                role: 1,
+                amount_mist: 30,
+                kind: 1,
+                buyer_paid_mist: 30,
+                seller_paid_mist: 30,
+                paid_at_ms: 510,
+            })
+            .unwrap(),
+        );
+        assert!(matches!(
+            paid.as_slice(),
+            [TaskMarketRow::DisputeFeePaid { buyer_paid_mist: 30, seller_paid_mist: 30, .. }]
+        ));
+
+        let cancelled = rows(
+            "TaskDisputeCancelled",
+            &bcs::to_bytes(&BcsTaskDisputeCancelled {
+                task_id: id("0x7a5c"),
+                case_id: id("0xca5e"),
+                settle_deadline_ms: 900,
+                cancelled_at_ms: 520,
+            })
+            .unwrap(),
+        );
+        assert!(matches!(
+            cancelled.as_slice(),
+            [TaskMarketRow::DisputeCancelled { settle_deadline_ms: 900, .. }]
+        ));
+
+        let window = rows(
+            "TaskNeutralWindowOpened",
+            &bcs::to_bytes(&BcsTaskNeutralWindowOpened {
+                task_id: id("0x7a5c"),
+                case_id: id("0xca5e"),
+                window_ends_ms: 600,
+                opened_at_ms: 530,
+            })
+            .unwrap(),
+        );
+        assert!(matches!(
+            window.as_slice(),
+            [TaskMarketRow::NeutralWindowOpened { window_ends_ms: 600, opened_at_ms: 530, .. }]
+        ));
+
+        let proposed = rows(
+            "TaskDisputeSettlementProposed",
+            &bcs::to_bytes(&BcsTaskDisputeSettlementProposed {
+                task_id: id("0x7a5c"),
+                proposer_role: 2,
+                outcome: 1,
+                proposed_at_ms: 540,
+            })
+            .unwrap(),
+        );
+        assert!(matches!(
+            proposed.as_slice(),
+            [TaskMarketRow::DisputeSettlementProposed { outcome: 1, proposer_role: 2, .. }]
+        ));
+
+        let cleared = rows(
+            "TaskDisputeSettlementCleared",
+            &bcs::to_bytes(&BcsTaskDisputeSettlementCleared {
+                task_id: id("0x7a5c"),
+                cleared_by_role: 1,
+                cleared_at_ms: 550,
+            })
+            .unwrap(),
+        );
+        assert!(matches!(cleared.as_slice(), [TaskMarketRow::DisputeSettlementCleared { .. }]));
+
+        let resolved = rows(
+            "TaskDisputeResolved",
+            &bcs::to_bytes(&BcsTaskDisputeResolved {
+                task_id: id("0x7a5c"),
+                case_id: id("0xca5e"),
+                outcome: 2,
+                source: 3,
+                resolved_at_ms: 560,
+            })
+            .unwrap(),
+        );
+        assert!(matches!(
+            resolved.as_slice(),
+            [TaskMarketRow::DisputeResolved { outcome: 2, source: 3, resolved_at_ms: 560, .. }]
+        ));
+
+        let settled = rows(
+            "TaskDisputeFeesSettled",
+            &bcs::to_bytes(&BcsTaskDisputeFeesSettled {
+                task_id: id("0x7a5c"),
+                case_id: id("0xca5e"),
+                buyer_refund_mist: 10,
+                seller_refund_mist: 20,
+                settled_at_ms: 570,
+            })
+            .unwrap(),
+        );
+        assert!(matches!(
+            settled.as_slice(),
+            [TaskMarketRow::DisputeFeesSettled { buyer_refund_mist: 10, seller_refund_mist: 20, .. }]
         ));
     }
 

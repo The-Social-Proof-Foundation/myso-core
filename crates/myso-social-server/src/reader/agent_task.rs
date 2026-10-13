@@ -7,20 +7,22 @@ use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::SelectableHelper;
+use diesel::sql_types::BigInt;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_reader::reputation::{
     Aggregate, ScoringParams, Score, overall_score, parse_sum, role_score,
 };
 use myso_indexer_alt_social_schema::schema::{
     agent_tasks, credibility, memory_accounts, reputation_aggregates, sub_agents, task_config_history,
-    task_receipts, task_reviews,
+    task_disputes, task_receipts, task_reviews,
 };
 use myso_pg_db::Db;
 
 use crate::error::SocialError;
 use crate::reader::types::{
     AgentReputationInfo, AgentTaskInfo, CredibilityInfo, OverallScoreInfo, PrincipalReputationInfo,
-    ReputationScoreInfo, TaskConfigInfo, TaskDetailInfo, TaskReceiptInfo, TaskReviewInfo,
+    ReputationScoreInfo, TaskConfigInfo, TaskDetailInfo, TaskDisputeInfo, TaskReceiptInfo,
+    TaskReviewInfo, TaskStatsInfo, TopAgentInfo,
 };
 
 const ROLE_SELLER: i16 = 1;
@@ -36,11 +38,17 @@ pub struct TaskFilter {
     pub seller_agent_id: Option<String>,
     pub organization_id: Option<String>,
     pub room_group_id: Option<String>,
-    /// Task status codes (0 offered ... 5 cancelled); empty means all.
+    /// Task status codes (0 offered ... 6 disputed); empty means all.
     pub statuses: Vec<i16>,
 }
 
 impl TaskFilter {
+    /// Whether the listing is narrow enough to serve: scoped to a party, organization or room, or
+    /// filtered by status (the public market feed, e.g. every open offer).
+    pub fn is_listable(&self) -> bool {
+        self.is_scoped() || !self.statuses.is_empty()
+    }
+
     pub fn is_scoped(&self) -> bool {
         self.buyer_principal.is_some()
             || self.buyer_agent_id.is_some()
@@ -107,7 +115,17 @@ pub(crate) async fn get_task(db: &Db, task_id: &str) -> Result<Option<TaskDetail
         .select(TaskReviewInfo::as_select())
         .load(&mut conn)
         .await?;
-    Ok(Some(TaskDetailInfo { task, reviews }))
+    let dispute = task_disputes::table
+        .filter(task_disputes::task_id.eq(task_id))
+        .select(TaskDisputeInfo::as_select())
+        .first(&mut conn)
+        .await
+        .optional()?;
+    Ok(Some(TaskDetailInfo {
+        task,
+        reviews,
+        dispute,
+    }))
 }
 
 /// Receipts where the agent was seller or buyer, newest first.
@@ -330,4 +348,143 @@ pub(crate) async fn get_principal_reputation(
         overall: overall_info(&Aggregate::default(), &buyer, &params),
         credibility,
     })
+}
+
+const DAY_MS: i64 = 86_400_000;
+
+/// Counts and volume across the whole market in one pass over `agent_tasks`.
+/// Status codes: 0 offered, 1 accepted, 2 delivered, 3 settled, 4 refunded, 5 cancelled, 6 disputed.
+pub(crate) async fn get_task_stats(db: &Db, now_ms: i64) -> Result<TaskStatsInfo, SocialError> {
+    let mut conn = db.connect().await?;
+    let stats = diesel::sql_query(
+        "SELECT
+            COUNT(*) FILTER (WHERE status = 0) AS open_offers,
+            COUNT(*) FILTER (WHERE status = 1) AS accepted,
+            COUNT(*) FILTER (WHERE status = 2) AS delivered,
+            COUNT(*) FILTER (WHERE status = 6) AS disputed,
+            COUNT(*) FILTER (WHERE status = 3) AS settled,
+            COUNT(*) FILTER (WHERE status = 4) AS refunded,
+            COUNT(*) FILTER (WHERE status = 5) AS cancelled,
+            COALESCE(SUM(amount_mist) FILTER (WHERE status IN (0, 1, 2, 6)), 0)::BIGINT AS total_escrowed_mist,
+            COALESCE(SUM(amount_mist) FILTER (WHERE status = 3), 0)::BIGINT AS total_settled_mist,
+            COUNT(*) FILTER (WHERE status = 3 AND settled_at_ms >= $1 - $2) AS settled_last_24h,
+            COUNT(DISTINCT seller_agent_id) FILTER (
+                WHERE status IN (0, 1, 2, 6) OR (status = 3 AND settled_at_ms >= $1 - $2)
+            ) AS active_agents
+         FROM agent_tasks",
+    )
+    .bind::<BigInt, _>(now_ms)
+    .bind::<BigInt, _>(DAY_MS)
+    .get_result::<TaskStatsInfo>(&mut conn)
+    .await?;
+    Ok(stats)
+}
+
+/// How `GET /agents/top` orders agents. Chosen from a closed set, so the SQL below never
+/// interpolates caller input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TopAgentSort {
+    #[default]
+    Score,
+    Reviews,
+    Volume,
+}
+
+impl TopAgentSort {
+    pub fn parse(raw: Option<&str>) -> Result<Self, SocialError> {
+        match raw.map(str::trim).filter(|s| !s.is_empty()) {
+            None | Some("score") => Ok(Self::Score),
+            Some("reviews") => Ok(Self::Reviews),
+            Some("volume") => Ok(Self::Volume),
+            Some(_) => Err(SocialError::bad_request("sort must be score, reviews or volume")),
+        }
+    }
+
+    fn order_by(self) -> &'static str {
+        match self {
+            Self::Score => "r.bayesian_score_milli DESC, r.review_count DESC",
+            Self::Reviews => "r.review_count DESC, r.bayesian_score_milli DESC",
+            Self::Volume => "COALESCE(c.volume_mist, '0')::NUMERIC DESC, r.bayesian_score_milli DESC",
+        }
+    }
+}
+
+/// Active seller agents ranked by their reputation as a seller (role 1), with their principal's
+/// credibility. `min_reviews` keeps unreviewed agents (who all sit at the prior) off the board.
+pub(crate) async fn list_top_agents(
+    db: &Db,
+    sort: TopAgentSort,
+    min_reviews: i64,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<TopAgentInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = format!(
+        "SELECT s.agent_object_id AS agent_object_id,
+                s.label AS label,
+                m.principal_owner AS principal,
+                s.organization_id AS organization_id,
+                r.review_count AS review_count,
+                r.bayesian_score_milli AS score_milli,
+                (r.bayesian_score_milli::DOUBLE PRECISION / 1000.0) AS score,
+                r.confidence_bps AS confidence_bps,
+                COALESCE(c.settled_count, 0) AS settled_count,
+                COALESCE(c.volume_mist, '0') AS volume_mist,
+                COALESCE(c.credibility_bps, 0) AS credibility_bps
+           FROM reputation_aggregates r
+           JOIN sub_agents s ON s.agent_object_id = r.subject_id
+           JOIN memory_accounts m ON m.account_id = s.account_id
+           LEFT JOIN credibility c ON c.account_id = s.account_id
+          WHERE r.role = 1 AND s.active = TRUE AND r.review_count >= $1
+          ORDER BY {}, s.agent_object_id
+          LIMIT $2 OFFSET $3",
+        sort.order_by()
+    );
+    let rows = diesel::sql_query(query)
+        .bind::<BigInt, _>(min_reviews)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<TopAgentInfo>(&mut conn)
+        .await?;
+    Ok(rows)
+}
+
+#[cfg(test)]
+mod market_tests {
+    use super::*;
+
+    #[test]
+    fn a_status_filter_makes_the_market_feed_listable_but_an_empty_filter_is_not() {
+        assert!(!TaskFilter::default().is_listable());
+        let by_status = TaskFilter {
+            statuses: vec![0],
+            ..Default::default()
+        };
+        assert!(by_status.is_listable());
+        assert!(!by_status.is_scoped(), "a status filter alone is not a party scope");
+        let by_party = TaskFilter {
+            seller_agent_id: Some("0xa".into()),
+            ..Default::default()
+        };
+        assert!(by_party.is_listable());
+    }
+
+    #[test]
+    fn top_agent_sorts_parse_from_a_closed_set() {
+        assert_eq!(TopAgentSort::parse(None).unwrap(), TopAgentSort::Score);
+        assert_eq!(TopAgentSort::parse(Some(" ")).unwrap(), TopAgentSort::Score);
+        assert_eq!(TopAgentSort::parse(Some("reviews")).unwrap(), TopAgentSort::Reviews);
+        assert_eq!(TopAgentSort::parse(Some("volume")).unwrap(), TopAgentSort::Volume);
+        assert!(TopAgentSort::parse(Some("score; DROP TABLE agent_tasks")).is_err());
+        assert!(TopAgentSort::parse(Some("price")).is_err());
+    }
+
+    #[test]
+    fn every_sort_has_a_stable_tie_break_and_no_user_input() {
+        for sort in [TopAgentSort::Score, TopAgentSort::Reviews, TopAgentSort::Volume] {
+            let clause = sort.order_by();
+            assert!(clause.contains("DESC"));
+            assert!(!clause.contains('$'), "ordering must not take parameters");
+        }
+    }
 }

@@ -7636,6 +7636,12 @@ cap_social_graph
 cap_task_trade
 	public fun
 	0x50c1::memory
+cap_jury
+	public fun
+	0x50c1::memory
+cap_jury_keeper
+	public fun
+	0x50c1::memory
 org_perm_memory_read
 	public fun
 	0x50c1::memory
@@ -7889,6 +7895,21 @@ sub_agent_parent_object_id
 	public fun
 	0x50c1::memory
 sub_agent_memory_account_id
+	public fun
+	0x50c1::memory
+sub_agent_principal_owner
+	public fun
+	0x50c1::memory
+sub_agent_identity_class
+	public fun
+	0x50c1::memory
+sub_agent_created_at
+	public fun
+	0x50c1::memory
+sub_agent_expires_at
+	public fun
+	0x50c1::memory
+agent_ancestor_ids
 	public fun
 	0x50c1::memory
 acting_principal_owner
@@ -10174,6 +10195,552 @@ vesting_piece_count
 vesting_pieces
 	public fun
 	0x50c1::profile
+JuryAdminCap
+	public struct
+	0x50c1::jury
+EligibilityParams
+	public struct
+	0x50c1::jury
+TimingParams
+	public struct
+	0x50c1::jury
+DutyParams
+	public struct
+	0x50c1::jury
+SelectionParams
+	public struct
+	0x50c1::jury
+JuryConfig
+	public struct
+	0x50c1::jury
+RosterEntry
+	public struct
+	0x50c1::jury
+JurorRoster
+	public struct
+	0x50c1::jury
+EvidenceItem
+	public struct
+	0x50c1::jury
+JurorSlot
+	public struct
+	0x50c1::jury
+RoundState
+	public struct
+	0x50c1::jury
+Exclusions
+	public struct
+	0x50c1::jury
+CaseFees
+	public struct
+	0x50c1::jury
+JuryCase
+	public struct
+	0x50c1::jury
+JuryConfigUpdated
+	public struct
+	0x50c1::jury
+RosterJoined
+	public struct
+	0x50c1::jury
+RosterLeft
+	public struct
+	0x50c1::jury
+RosterSuspended
+	public struct
+	0x50c1::jury
+DutyScoreChanged
+	public struct
+	0x50c1::jury
+CaseOpened
+	public struct
+	0x50c1::jury
+EvidenceSubmitted
+	public struct
+	0x50c1::jury
+JuryDrawn
+	public struct
+	0x50c1::jury
+AssignmentAccepted
+	public struct
+	0x50c1::jury
+JurorReplaced
+	public struct
+	0x50c1::jury
+VotingStarted
+	public struct
+	0x50c1::jury
+VoteCommitted
+	public struct
+	0x50c1::jury
+VoteRevealed
+	public struct
+	0x50c1::jury
+RoundFinalized
+	public struct
+	0x50c1::jury
+CaseAppealed
+	public struct
+	0x50c1::jury
+CaseFinalized
+	public struct
+	0x50c1::jury
+CaseFailed
+	public struct
+	0x50c1::jury
+CaseCancelled
+	public struct
+	0x50c1::jury
+JurorPaid
+	public struct
+	0x50c1::jury
+Snapshot
+	public struct
+	0x50c1::jury
+bootstrap_init
+	public(package) fun
+	0x50c1::jury
+create_jury_admin_cap
+	public(package) fun
+	0x50c1::jury
+validate_config
+	fun
+	0x50c1::jury
+assert_config_live
+	fun
+	0x50c1::jury
+set_active
+	public entry fun
+	0x50c1::jury
+set_eligibility
+	public entry fun
+	0x50c1::jury
+set_timing
+	public entry fun
+	0x50c1::jury
+set_duty
+	public entry fun
+	0x50c1::jury
+set_selection
+	public entry fun
+	0x50c1::jury
+set_reputation_params
+	public entry fun
+	0x50c1::jury
+set_genesis_sunset
+	public entry fun
+	0x50c1::jury
+add_genesis_agent
+	public entry fun
+	0x50c1::jury
+remove_genesis_agent
+	public entry fun
+	0x50c1::jury
+emit_config_updated
+	fun
+	0x50c1::jury
+migrate_jury_config
+	public entry fun
+	0x50c1::jury
+migrate_jury_roster
+	public entry fun
+	0x50c1::jury
+migrate_jury_case
+	public entry fun
+	0x50c1::jury
+join_roster
+	public entry fun
+	0x50c1::jury
+leave_roster
+	public entry fun
+	0x50c1::jury
+set_availability
+	public entry fun
+	0x50c1::jury
+refresh_roster_entry
+	public entry fun
+	0x50c1::jury
+evict_ineligible
+	public entry fun
+	0x50c1::jury
+add_to_roster
+	fun
+	0x50c1::jury
+remove_from_roster
+	fun
+	0x50c1::jury
+take_snapshot
+	fun
+	0x50c1::jury
+is_genesis_exempt
+	fun
+	0x50c1::jury
+meets_reputation
+	fun
+	0x50c1::jury
+draw_eligible
+	fun
+	0x50c1::jury
+eligible_count
+	public fun
+	0x50c1::jury
+assert_roster_ready
+	public(package) fun
+	0x50c1::jury
+open_case
+	public(package) fun
+	0x50c1::jury
+share_case
+	public(package) fun
+	0x50c1::jury
+add_evidence
+	public(package) fun
+	0x50c1::jury
+add_fee
+	public(package) fun
+	0x50c1::jury
+appeal
+	public(package) fun
+	0x50c1::jury
+cancel_case
+	public(package) fun
+	0x50c1::jury
+sweep_remainder
+	public(package) fun
+	0x50c1::jury
+mark_executed
+	public(package) fun
+	0x50c1::jury
+is_finished
+	fun
+	0x50c1::jury
+select_jury
+	entry fun
+	0x50c1::jury
+draw_jurors
+	fun
+	0x50c1::jury
+conflicted
+	fun
+	0x50c1::jury
+accept_assignment
+	public entry fun
+	0x50c1::jury
+all_seats_accepted
+	fun
+	0x50c1::jury
+start_voting
+	fun
+	0x50c1::jury
+replace_no_shows
+	entry fun
+	0x50c1::jury
+commit_vote
+	public entry fun
+	0x50c1::jury
+reveal_vote
+	public entry fun
+	0x50c1::jury
+none_uncommitted
+	fun
+	0x50c1::jury
+compute_commitment
+	public fun
+	0x50c1::jury
+finalize_round
+	public entry fun
+	0x50c1::jury
+all_revealed
+	fun
+	0x50c1::jury
+evaluate_round
+	fun
+	0x50c1::jury
+finalize_case
+	public entry fun
+	0x50c1::jury
+void_case
+	public entry fun
+	0x50c1::jury
+end_case_by_settlement
+	public(package) fun
+	0x50c1::jury
+force_end
+	fun
+	0x50c1::jury
+finalize_outcome
+	fun
+	0x50c1::jury
+end_failed
+	fun
+	0x50c1::jury
+close_round
+	fun
+	0x50c1::jury
+reward_duty
+	fun
+	0x50c1::jury
+penalize_duty
+	fun
+	0x50c1::jury
+release_seat
+	fun
+	0x50c1::jury
+settle_fees
+	fun
+	0x50c1::jury
+claim_juror_fee
+	public entry fun
+	0x50c1::jury
+assert_live
+	fun
+	0x50c1::jury
+assert_juror_actor
+	fun
+	0x50c1::jury
+subject_task
+	public fun
+	0x50c1::jury
+subject_governance
+	public fun
+	0x50c1::jury
+abstain
+	public fun
+	0x50c1::jury
+case_evidence
+	public fun
+	0x50c1::jury
+case_awaiting_draw
+	public fun
+	0x50c1::jury
+case_selecting
+	public fun
+	0x50c1::jury
+case_voting
+	public fun
+	0x50c1::jury
+case_tallied
+	public fun
+	0x50c1::jury
+case_final
+	public fun
+	0x50c1::jury
+case_failed
+	public fun
+	0x50c1::jury
+case_cancelled
+	public fun
+	0x50c1::jury
+fail_cannot_form
+	public fun
+	0x50c1::jury
+fail_cannot_decide
+	public fun
+	0x50c1::jury
+fail_timeout
+	public fun
+	0x50c1::jury
+fail_voided
+	public fun
+	0x50c1::jury
+slot_drafted
+	public fun
+	0x50c1::jury
+slot_accepted
+	public fun
+	0x50c1::jury
+slot_committed
+	public fun
+	0x50c1::jury
+slot_revealed
+	public fun
+	0x50c1::jury
+slot_replaced
+	public fun
+	0x50c1::jury
+slot_defaulted
+	public fun
+	0x50c1::jury
+roster_active
+	public fun
+	0x50c1::jury
+roster_paused
+	public fun
+	0x50c1::jury
+roster_suspended
+	public fun
+	0x50c1::jury
+config_active
+	public fun
+	0x50c1::jury
+max_exclusions
+	public fun
+	0x50c1::jury
+neutral_window_ms
+	public fun
+	0x50c1::jury
+accept_window_ms
+	public fun
+	0x50c1::jury
+commit_window_ms
+	public fun
+	0x50c1::jury
+reveal_window_ms
+	public fun
+	0x50c1::jury
+reveal_grace_ms
+	public fun
+	0x50c1::jury
+appeal_window_ms
+	public fun
+	0x50c1::jury
+max_case_duration_ms
+	public fun
+	0x50c1::jury
+min_eligible_roster
+	public fun
+	0x50c1::jury
+initial_duty_score
+	public fun
+	0x50c1::jury
+genesis_sunset_ms
+	public fun
+	0x50c1::jury
+roster_count
+	public fun
+	0x50c1::jury
+on_roster
+	public fun
+	0x50c1::jury
+entry_status
+	public fun
+	0x50c1::jury
+entry_duty_score
+	public fun
+	0x50c1::jury
+entry_strikes
+	public fun
+	0x50c1::jury
+entry_completed
+	public fun
+	0x50c1::jury
+entry_no_shows
+	public fun
+	0x50c1::jury
+entry_active_cases
+	public fun
+	0x50c1::jury
+entry_exempt
+	public fun
+	0x50c1::jury
+entry_owner
+	public fun
+	0x50c1::jury
+entry_suspended_until_ms
+	public fun
+	0x50c1::jury
+case_state
+	public fun
+	0x50c1::jury
+case_is_finished
+	public fun
+	0x50c1::jury
+case_undrawn
+	public fun
+	0x50c1::jury
+case_subject_kind
+	public fun
+	0x50c1::jury
+case_subject_id
+	public fun
+	0x50c1::jury
+case_stage
+	public fun
+	0x50c1::jury
+case_round
+	public fun
+	0x50c1::jury
+case_menu_len
+	public fun
+	0x50c1::jury
+case_failure_path
+	public fun
+	0x50c1::jury
+case_fail_reason
+	public fun
+	0x50c1::jury
+case_final_outcome
+	public fun
+	0x50c1::jury
+case_provisional_outcome
+	public fun
+	0x50c1::jury
+case_prior_outcome
+	public fun
+	0x50c1::jury
+case_executed
+	public fun
+	0x50c1::jury
+case_failed_appeal
+	public fun
+	0x50c1::jury
+case_appeals_used
+	public fun
+	0x50c1::jury
+case_appeal_deadline_ms
+	public fun
+	0x50c1::jury
+case_evidence_deadline_ms
+	public fun
+	0x50c1::jury
+case_evidence_count
+	public fun
+	0x50c1::jury
+case_participants
+	public fun
+	0x50c1::jury
+case_per_juror_fee
+	public fun
+	0x50c1::jury
+case_fee_pool_mist
+	public fun
+	0x50c1::jury
+case_fees_settled
+	public fun
+	0x50c1::jury
+case_sweep_to
+	public fun
+	0x50c1::jury
+finalized_outcome
+	public fun
+	0x50c1::jury
+round_jurors
+	public fun
+	0x50c1::jury
+round_tally
+	public fun
+	0x50c1::jury
+round_revealed
+	public fun
+	0x50c1::jury
+round_accept_deadline_ms
+	public fun
+	0x50c1::jury
+round_commit_deadline_ms
+	public fun
+	0x50c1::jury
+round_reveal_deadline_ms
+	public fun
+	0x50c1::jury
+has_slot
+	public fun
+	0x50c1::jury
+slot_status
+	public fun
+	0x50c1::jury
+slot_owner
+	public fun
+	0x50c1::jury
 GovernanceAdminCap
 	public struct
 	0x50c1::governance
@@ -10190,6 +10757,30 @@ Proposal
 	public struct
 	0x50c1::governance
 Vote
+	public struct
+	0x50c1::governance
+RegistryJuryPolicy
+	public struct
+	0x50c1::governance
+JuryReview
+	public struct
+	0x50c1::governance
+JuryPolicyUpdatedEvent
+	public struct
+	0x50c1::governance
+DelegateReferredToJuryEvent
+	public struct
+	0x50c1::governance
+ProposalEscalatedToJuryEvent
+	public struct
+	0x50c1::governance
+CommunityVoteNeedsJuryEvent
+	public struct
+	0x50c1::governance
+JuryDecisionAppliedEvent
+	public struct
+	0x50c1::governance
+ProposalRejectedByJuryEvent
 	public struct
 	0x50c1::governance
 DelegateElectedEvent
@@ -10345,6 +10936,9 @@ community_finalize_voting_reject_community_value
 community_finalize_voting_reject_quorum_value
 	public fun
 	0x50c1::governance
+community_finalize_voting_needs_jury_value
+	public fun
+	0x50c1::governance
 delegate_vote_outcome_reject_value
 	public fun
 	0x50c1::governance
@@ -10355,6 +10949,9 @@ forfeit_reason_community_rejected_value
 	public fun
 	0x50c1::governance
 forfeit_reason_delegate_rejected_value
+	public fun
+	0x50c1::governance
+forfeit_reason_jury_rejected_value
 	public fun
 	0x50c1::governance
 assert_platform_delegate_manual_reject
@@ -10500,6 +11097,99 @@ create_spot_governance_registry
 	0x50c1::governance
 create_governance_admin_cap
 	public(package) fun
+	0x50c1::governance
+jury_state
+	fun
+	0x50c1::governance
+council_jury_has_jurisdiction
+	fun
+	0x50c1::governance
+jury_policy_of
+	fun
+	0x50c1::governance
+community_jury_available
+	fun
+	0x50c1::governance
+set_registry_jury_policy
+	public entry fun
+	0x50c1::governance
+set_jury_policy_internal
+	public(package) fun
+	0x50c1::governance
+live_referrer_count
+	fun
+	0x50c1::governance
+live_voter_count
+	fun
+	0x50c1::governance
+delegate_refer_to_jury
+	public entry fun
+	0x50c1::governance
+council_trigger
+	fun
+	0x50c1::governance
+proposal_content_digest
+	fun
+	0x50c1::governance
+stakeholder_owners
+	fun
+	0x50c1::governance
+add_excluded_owner
+	fun
+	0x50c1::governance
+take_jury_fee
+	fun
+	0x50c1::governance
+open_jury_for_proposal
+	public(package) fun
+	0x50c1::governance
+jury_default_forfeit_reason
+	public(package) fun
+	0x50c1::governance
+remove_from_bucket
+	fun
+	0x50c1::governance
+apply_default_community_reject
+	fun
+	0x50c1::governance
+apply_jury_case
+	public(package) fun
+	0x50c1::governance
+escalate_to_jury
+	public entry fun
+	0x50c1::governance
+apply_jury_decision
+	public entry fun
+	0x50c1::governance
+sweep_jury_case
+	public entry fun
+	0x50c1::governance
+jury_policy_enabled
+	public fun
+	0x50c1::governance
+jury_council_state
+	public fun
+	0x50c1::governance
+jury_community_state
+	public fun
+	0x50c1::governance
+jury_stage_council_value
+	public fun
+	0x50c1::governance
+jury_stage_community_value
+	public fun
+	0x50c1::governance
+jury_action_advance_value
+	public fun
+	0x50c1::governance
+jury_action_approve_value
+	public fun
+	0x50c1::governance
+jury_action_reject_value
+	public fun
+	0x50c1::governance
+proposal_pool_value
+	public fun
 	0x50c1::governance
 BlockListRegistry
 	public struct
@@ -10689,6 +11379,21 @@ finalize_platform_governance_proposal
 	0x50c1::platform
 finalize_platform_governance_proposal_anonymous
 	public fun
+	0x50c1::platform
+assert_platform_registry
+	fun
+	0x50c1::platform
+deposit_forfeited_pool
+	fun
+	0x50c1::platform
+set_platform_jury_policy
+	public entry fun
+	0x50c1::platform
+escalate_platform_proposal_to_jury
+	public entry fun
+	0x50c1::platform
+apply_platform_jury_decision
+	public entry fun
 	0x50c1::platform
 reject_platform_governance_proposal_manually
 	public entry fun
@@ -10984,6 +11689,9 @@ TaskReviewState
 TaskEscrow
 	public struct
 	0x50c1::agent_task
+TaskDispute
+	public struct
+	0x50c1::agent_task
 TaskOffered
 	public struct
 	0x50c1::agent_task
@@ -11012,6 +11720,30 @@ TaskReviewSubmitted
 	public struct
 	0x50c1::agent_task
 TaskConfigUpdated
+	public struct
+	0x50c1::agent_task
+TaskDisputed
+	public struct
+	0x50c1::agent_task
+TaskDisputeFeePaid
+	public struct
+	0x50c1::agent_task
+TaskDisputeCancelled
+	public struct
+	0x50c1::agent_task
+TaskNeutralWindowOpened
+	public struct
+	0x50c1::agent_task
+TaskDisputeSettlementProposed
+	public struct
+	0x50c1::agent_task
+TaskDisputeSettlementCleared
+	public struct
+	0x50c1::agent_task
+TaskDisputeResolved
+	public struct
+	0x50c1::agent_task
+TaskDisputeFeesSettled
 	public struct
 	0x50c1::agent_task
 bootstrap_init
@@ -11065,6 +11797,12 @@ finalize_settlement
 pay_seller
 	fun
 	0x50c1::agent_task
+pay_split
+	fun
+	0x50c1::agent_task
+distribute_to_seller
+	fun
+	0x50c1::agent_task
 refund_task
 	public entry fun
 	0x50c1::agent_task
@@ -11087,6 +11825,75 @@ close_as_refunded
 	fun
 	0x50c1::agent_task
 pay_buyer_back
+	fun
+	0x50c1::agent_task
+enter_dispute
+	public(package) fun
+	0x50c1::agent_task
+cancel_dispute
+	public(package) fun
+	0x50c1::agent_task
+begin_neutral_window
+	public(package) fun
+	0x50c1::agent_task
+execute_neutral_resolution
+	public entry fun
+	0x50c1::agent_task
+propose_dispute_settlement
+	public entry fun
+	0x50c1::agent_task
+accept_dispute_settlement
+	public entry fun
+	0x50c1::agent_task
+clear_dispute_settlement
+	public entry fun
+	0x50c1::agent_task
+apply_dispute_outcome
+	public(package) fun
+	0x50c1::agent_task
+settle_split
+	fun
+	0x50c1::agent_task
+dispute_ref
+	fun
+	0x50c1::agent_task
+dispute_mut
+	fun
+	0x50c1::agent_task
+dispute_fee_mist
+	public fun
+	0x50c1::agent_task
+open_dispute
+	public entry fun
+	0x50c1::agent_task
+respond_dispute
+	public entry fun
+	0x50c1::agent_task
+submit_dispute_evidence
+	public entry fun
+	0x50c1::agent_task
+appeal_dispute
+	public entry fun
+	0x50c1::agent_task
+cancel_dispute_before_draw
+	public entry fun
+	0x50c1::agent_task
+execute_verdict
+	public entry fun
+	0x50c1::agent_task
+start_neutral_resolution
+	public entry fun
+	0x50c1::agent_task
+close_case_after_resolution
+	public entry fun
+	0x50c1::agent_task
+settle_dispute_fees
+	public entry fun
+	0x50c1::agent_task
+record_paid
+	fun
+	0x50c1::agent_task
+assert_case_matches
 	fun
 	0x50c1::agent_task
 review_seller
@@ -11135,6 +11942,30 @@ status_refunded
 	public fun
 	0x50c1::agent_task
 status_cancelled
+	public fun
+	0x50c1::agent_task
+status_disputed
+	public fun
+	0x50c1::agent_task
+outcome_pay_seller
+	public fun
+	0x50c1::agent_task
+outcome_refund_buyer
+	public fun
+	0x50c1::agent_task
+outcome_split_50_50
+	public fun
+	0x50c1::agent_task
+dispute_menu_len
+	public fun
+	0x50c1::agent_task
+source_verdict
+	public fun
+	0x50c1::agent_task
+source_agreement
+	public fun
+	0x50c1::agent_task
+source_neutral
 	public fun
 	0x50c1::agent_task
 status
@@ -11210,6 +12041,36 @@ buyer_review_stars
 	public fun
 	0x50c1::agent_task
 seller_review_stars
+	public fun
+	0x50c1::agent_task
+has_dispute
+	public fun
+	0x50c1::agent_task
+dispute_case_id
+	public fun
+	0x50c1::agent_task
+dispute_state
+	public fun
+	0x50c1::agent_task
+dispute_neutral_window_ends_ms
+	public fun
+	0x50c1::agent_task
+dispute_agreement_proposer
+	public fun
+	0x50c1::agent_task
+dispute_agreement_outcome
+	public fun
+	0x50c1::agent_task
+dispute_fee_each_mist
+	public fun
+	0x50c1::agent_task
+dispute_buyer_paid_mist
+	public fun
+	0x50c1::agent_task
+dispute_seller_paid_mist
+	public fun
+	0x50c1::agent_task
+dispute_fees_settled
 	public fun
 	0x50c1::agent_task
 config_active

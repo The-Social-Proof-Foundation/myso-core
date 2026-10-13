@@ -73,6 +73,7 @@ pub(crate) async fn claim_batch(
     db: &Db,
     limit: i64,
     lease_secs: i64,
+    include_jury: bool,
 ) -> Result<Vec<ClaimedEvent>, SocialError> {
     let mut conn = db.connect().await?;
     let rows = diesel::sql_query(
@@ -82,6 +83,7 @@ pub(crate) async fn claim_batch(
           WHERE id IN (
                 SELECT id FROM automation_event_outbox
                  WHERE sent_at IS NULL AND next_attempt_at <= NOW()
+                   AND ($3 OR event_family <> 'jury')
                  ORDER BY id
                  LIMIT $1
                  FOR UPDATE SKIP LOCKED)
@@ -90,6 +92,7 @@ pub(crate) async fn claim_batch(
     )
     .bind::<BigInt, _>(limit)
     .bind::<BigInt, _>(lease_secs)
+    .bind::<diesel::sql_types::Bool, _>(include_jury)
     .load::<ClaimedEvent>(&mut conn)
     .await?;
     let mut rows = rows;

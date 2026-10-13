@@ -8,6 +8,9 @@
 ///                         ├─ cancel_offer ─► CANCELLED │                               ├─ release_task ─┴─► SETTLED
 ///                         ├─ decline_task ─► CANCELLED └─ refund_task ─► REFUNDED       └─ propose/accept_refund ─► REFUNDED
 ///                         └─ expire_offer ─► CANCELLED
+/// DELIVERED ─► DISPUTED ─┬─ jury verdict ──────────────┬─► SETTLED (pay seller / split 50-50) or REFUNDED
+///                        ├─ both parties agree ────────┤
+///                        └─ jury failed ─► settlement window ─► neutral 50/50 split
 /// SETTLED ─► review_seller / review_buyer_agent / review_buyer_principal (once per direction)
 /// ```
 ///
@@ -15,6 +18,13 @@
 /// race on one shared object and exactly one wins. There is **no unilateral buyer refund after
 /// delivery**: the buyer settles (pays), a refund needs both parties, and an unattended delivered
 /// task is released to the seller after `settle_window + release_grace`.
+///
+/// A delivered task can be disputed once (`STATUS_DISPUTED`). Whoever resolves it (a jury, both
+/// parties, or the neutral split after a failed jury) can only pick one of three fixed outcomes:
+/// pay the seller, refund the buyer, or split 50/50. A failed jury never returns the task to
+/// DELIVERED (where `release_task` would pay the seller): it ends in the neutral split. Only the
+/// initiator's cancel before any juror is drawn returns it to DELIVERED, with the release clock
+/// re-based, and the task can never be disputed again.
 ///
 /// Fees, windows and the payout split are frozen into the offer, so a later `set_task_config`
 /// never changes a pending or accepted task. Reviews feed `memory`'s bidirectional reputation.
@@ -30,6 +40,7 @@ module social_contracts::agent_task {
         bcs,
         clock::{Self, Clock},
         coin::{Self, Coin},
+        dynamic_field,
         event,
         myso::MYSO,
         object::{Self, UID, ID},
@@ -37,6 +48,7 @@ module social_contracts::agent_task {
         tx_context::{Self, TxContext},
     };
 
+    use social_contracts::jury::{Self, JuryCase, JuryConfig, JurorRoster};
     use social_contracts::memory::{Self, ActingContext, MemoryAccount, MemoryConfig, ReputationParams, SubAgent};
     use social_contracts::platform::{Self, Platform};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
@@ -51,6 +63,7 @@ module social_contracts::agent_task {
     const STATUS_SETTLED: u8 = 3;
     const STATUS_REFUNDED: u8 = 4;
     const STATUS_CANCELLED: u8 = 5;
+    const STATUS_DISPUTED: u8 = 6;
 
     /// `close_kind` of a cancelled offer.
     const CLOSE_BUYER_CANCELLED: u8 = 0;
@@ -59,10 +72,53 @@ module social_contracts::agent_task {
 
     const SETTLED_BY_BUYER: u8 = 1;
     const SETTLED_AUTO_RELEASED: u8 = 2;
+    /// Dispute resolutions. A split gives neither side a credibility credit and opens no reviews.
+    const SETTLED_BY_VERDICT: u8 = 3;
+    const SETTLED_BY_DISPUTE_AGREEMENT: u8 = 4;
+    const SETTLED_SPLIT_BY_VERDICT: u8 = 5;
+    const SETTLED_SPLIT_BY_AGREEMENT: u8 = 6;
+    const SETTLED_BY_NEUTRAL_SPLIT: u8 = 7;
 
     /// `refund_kind`: the seller never delivered / both parties agreed after delivery.
     const REFUND_DELIVERY_MISSED: u8 = 0;
     const REFUND_MUTUAL: u8 = 1;
+    const REFUND_BY_VERDICT: u8 = 2;
+    const REFUND_BY_DISPUTE_AGREEMENT: u8 = 3;
+
+    /// The fixed menu every dispute resolves into. Nothing outside it can move the escrow.
+    const OUTCOME_PAY_SELLER: u8 = 0;
+    const OUTCOME_REFUND_BUYER: u8 = 1;
+    const OUTCOME_SPLIT_50_50: u8 = 2;
+    const DISPUTE_MENU_LEN: u64 = 3;
+
+    /// Who produced the outcome being applied.
+    const SOURCE_VERDICT: u8 = 1;
+    const SOURCE_AGREEMENT: u8 = 2;
+    const SOURCE_NEUTRAL: u8 = 3;
+
+    const DISPUTE_OPEN: u8 = 1;
+    const DISPUTE_CANCELLED: u8 = 2;
+    const DISPUTE_RESOLVED: u8 = 3;
+
+    const DISPUTE_FIELD: vector<u8> = b"dispute";
+
+    /// What a dispute costs each side, paid as a case fee (never a juror deposit): a share of the
+    /// escrow, bounded. An appeal costs a multiple of it. Jurors share the pool; see `settle_dispute_fees`.
+    const DISPUTE_FEE_BPS: u64 = 300;
+    const DISPUTE_FEE_MIN_MIST: u64 = 100_000_000;
+    const DISPUTE_FEE_MAX_MIST: u64 = 50_000_000_000;
+    const APPEAL_FEE_MULTIPLIER: u64 = 2;
+    const DISPUTE_EVIDENCE_WINDOW_MS: u64 = 2 * 86_400_000;
+    const DISPUTE_QUORUM: u64 = 2;
+    const DISPUTE_APPROVAL_BPS: u64 = 5000;
+    /// Jurors in the first round and on appeal. The appeal jury is 5 until the roster has enough
+    /// distinct owners for a larger one (each round needs fresh owners).
+    const DISPUTE_FIRST_JURY: u64 = 3;
+    const DISPUTE_APPEAL_JURY: u64 = 5;
+    /// `JuryCase.failure_path`: a failed task jury goes to the neutral split.
+    const FAILURE_PATH_NEUTRAL: u8 = 1;
+    const EVIDENCE_KIND_TASK_RECORD: u8 = 1;
+    const EVIDENCE_KIND_PARTY: u8 = 2;
 
     const PARTY_BUYER: u8 = 1;
     const PARTY_SELLER: u8 = 2;
@@ -104,6 +160,24 @@ module social_contracts::agent_task {
     const EInvalidTaskConfig: u64 = 26;
     const EWrongPlatform: u64 = 27;
     const EAccountInactive: u64 = 28;
+    const EDisputeWindowClosed: u64 = 29;
+    const EDisputeExists: u64 = 30;
+    const ENoDispute: u64 = 31;
+    const EDisputeNotOpen: u64 = 32;
+    const EInvalidOutcome: u64 = 33;
+    const EInvalidRole: u64 = 34;
+    const ENeutralWindowNotOpen: u64 = 35;
+    const ENeutralWindowOpen: u64 = 36;
+    const EWrongCase: u64 = 37;
+    const ENoVerdict: u64 = 38;
+    const ECaseNotFailed: u64 = 39;
+    const EAlreadyPaid: u64 = 40;
+    const EFeesSettled: u64 = 41;
+    const ECaseNotFinished: u64 = 42;
+    const ENotTallied: u64 = 43;
+    const ENotAppellant: u64 = 44;
+    const ENotInitiator: u64 = 45;
+    const ECaseDrawn: u64 = 46;
 
     // ============================================================
     // Genesis defaults
@@ -223,6 +297,28 @@ module social_contracts::agent_task {
         refund_proposed_at_ms: u64,
         /// Credibility snapshots and the stars each side gave.
         reviews: TaskReviewState,
+    }
+
+    /// Dispute state, kept as a dynamic field on the escrow (`DISPUTE_FIELD`) because the escrow
+    /// is already at the verifier's 32-field limit. Never removed, so a task is disputed once.
+    public struct TaskDispute has store, drop {
+        case_id: ID,
+        opened_by_role: u8,
+        opened_at_ms: u64,
+        state: u8,
+        /// Set when the jury failed: the settlement window ends here, then the neutral split runs.
+        neutral_window_ends_ms: u64,
+        /// Pending mutual agreement: who proposed it (0 none) and which menu outcome.
+        agreement_proposer: u8,
+        agreement_outcome: u8,
+        /// The case fee each side owes, what each has put in (appeals included), and how the dispute
+        /// ended, so the pool can be settled once the jury case is over.
+        fee_each: u64,
+        buyer_paid: u64,
+        seller_paid: u64,
+        resolved_source: u8,
+        resolved_outcome: u8,
+        fees_settled: bool,
     }
 
     // ============================================================
@@ -371,6 +467,74 @@ module social_contracts::agent_task {
         overall_seller_weight_bps: u64,
         overall_buyer_weight_bps: u64,
         timestamp_ms: u64,
+    }
+
+    // Dispute events. The jury module emits its own (roster, draw, votes, verdict); these carry the
+    // task's side of the story so the indexer can follow one task end to end.
+
+    public struct TaskDisputed has copy, drop {
+        task_id: ID,
+        case_id: ID,
+        opened_by_role: u8,
+        fee_each_mist: u64,
+        opener_paid_mist: u64,
+        opened_at_ms: u64,
+    }
+
+    /// `kind` 1: the other side matched the case fee. 2: an appeal fee.
+    public struct TaskDisputeFeePaid has copy, drop {
+        task_id: ID,
+        role: u8,
+        amount_mist: u64,
+        kind: u8,
+        buyer_paid_mist: u64,
+        seller_paid_mist: u64,
+        paid_at_ms: u64,
+    }
+
+    public struct TaskDisputeCancelled has copy, drop {
+        task_id: ID,
+        case_id: ID,
+        settle_deadline_ms: u64,
+        cancelled_at_ms: u64,
+    }
+
+    public struct TaskNeutralWindowOpened has copy, drop {
+        task_id: ID,
+        case_id: ID,
+        window_ends_ms: u64,
+        opened_at_ms: u64,
+    }
+
+    public struct TaskDisputeSettlementProposed has copy, drop {
+        task_id: ID,
+        proposer_role: u8,
+        outcome: u8,
+        proposed_at_ms: u64,
+    }
+
+    public struct TaskDisputeSettlementCleared has copy, drop {
+        task_id: ID,
+        cleared_by_role: u8,
+        cleared_at_ms: u64,
+    }
+
+    /// How the escrow was paid out: the menu `outcome` and its `source` (1 verdict, 2 agreement,
+    /// 3 neutral split). The payout itself is the existing `TaskReceiptSettled` or `TaskRefunded`.
+    public struct TaskDisputeResolved has copy, drop {
+        task_id: ID,
+        case_id: ID,
+        outcome: u8,
+        source: u8,
+        resolved_at_ms: u64,
+    }
+
+    public struct TaskDisputeFeesSettled has copy, drop {
+        task_id: ID,
+        case_id: ID,
+        buyer_refund_mist: u64,
+        seller_refund_mist: u64,
+        settled_at_ms: u64,
     }
 
     // ============================================================
@@ -960,10 +1124,36 @@ module social_contracts::agent_task {
     /// Splits the escrow with the frozen fee bps: platform treasury, ecosystem recipient, seller.
     /// Without a platform the platform share folds into the ecosystem fee.
     fun pay_seller(task: &mut TaskEscrow, platform: &mut Platform, clock: &Clock, ctx: &mut TxContext) {
-        let amount = task.amount_mist;
-        let platform_share = memory::checked_bps_of(amount, task.terms.platform_fee_bps);
-        let ecosystem_share = memory::checked_bps_of(amount, task.terms.ecosystem_fee_bps);
-        assert!(memory::checked_add_u64(platform_share, ecosystem_share) <= amount, EInvalidTaskConfig);
+        let payout = coin::from_balance(balance::withdraw_all(&mut task.escrowed), ctx);
+        let basis = task.amount_mist;
+        distribute_to_seller(task, platform, payout, basis, clock, ctx);
+    }
+
+    /// Buyer half back in full; the seller half pays the frozen fee bps on that half only (fees are
+    /// charged on money actually paid out). The seller keeps the odd unit.
+    fun pay_split(task: &mut TaskEscrow, platform: &mut Platform, clock: &Clock, ctx: &mut TxContext) {
+        let mut all = coin::from_balance(balance::withdraw_all(&mut task.escrowed), ctx);
+        let total = coin::value(&all);
+        let buyer_half = total / 2;
+        if (buyer_half > 0) {
+            transfer::public_transfer(coin::split(&mut all, buyer_half, ctx), task.buyer_principal);
+        };
+        distribute_to_seller(task, platform, all, total - buyer_half, clock, ctx);
+    }
+
+    /// Fees are `basis * bps`; `payout` is whatever the seller side received (the whole escrow, or
+    /// the seller half of a split).
+    fun distribute_to_seller(
+        task: &mut TaskEscrow,
+        platform: &mut Platform,
+        mut payout: Coin<MYSO>,
+        basis: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let platform_share = memory::checked_bps_of(basis, task.terms.platform_fee_bps);
+        let ecosystem_share = memory::checked_bps_of(basis, task.terms.ecosystem_fee_bps);
+        assert!(memory::checked_add_u64(platform_share, ecosystem_share) <= basis, EInvalidTaskConfig);
 
         let has_platform = option::is_some(&task.platform_id);
         let platform_fee = if (has_platform) { platform_share } else { 0 };
@@ -973,7 +1163,6 @@ module social_contracts::agent_task {
             memory::checked_add_u64(platform_share, ecosystem_share)
         };
 
-        let mut payout = coin::from_balance(balance::withdraw_all(&mut task.escrowed), ctx);
         if (platform_fee > 0) {
             let mut platform_coin = coin::split(&mut payout, platform_fee, ctx);
             platform::fund_platform_treasury_from_coin(platform, &mut platform_coin, platform_fee, clock, ctx);
@@ -1111,6 +1300,683 @@ module social_contracts::agent_task {
     fun pay_buyer_back(task: &mut TaskEscrow, ctx: &mut TxContext) {
         let refund = coin::from_balance(balance::withdraw_all(&mut task.escrowed), ctx);
         transfer::public_transfer(refund, task.buyer_principal);
+    }
+
+    // ============================================================
+    // Disputes
+    // ============================================================
+
+    /// Freezes a delivered task for a jury. Package-only: the jury integration calls it after it
+    /// has opened the case. Allowed once per task, and only until `settle_deadline + release_grace`
+    /// (after that anyone can already release the task to the seller).
+    public(package) fun enter_dispute(
+        config: &TaskConfig,
+        task: &mut TaskEscrow,
+        case_id: ID,
+        opened_by_role: u8,
+        fee_each: u64,
+        opener_paid: u64,
+        clock: &Clock,
+    ) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+        assert!(task.status == STATUS_DELIVERED, EWrongStatus);
+        assert!(opened_by_role == PARTY_BUYER || opened_by_role == PARTY_SELLER, EInvalidRole);
+        assert!(!dynamic_field::exists_(&task.id, DISPUTE_FIELD), EDisputeExists);
+        let now = clock::timestamp_ms(clock);
+        let window_end = memory::checked_add_u64(task.settle_deadline_ms, config.release_grace_ms);
+        assert!(now <= window_end, EDisputeWindowClosed);
+
+        task.status = STATUS_DISPUTED;
+        // A pending refund proposal is void once a jury has the task.
+        task.refund_proposer = 0;
+        task.refund_proposed_at_ms = 0;
+        dynamic_field::add(
+            &mut task.id,
+            DISPUTE_FIELD,
+            TaskDispute {
+                case_id,
+                opened_by_role,
+                opened_at_ms: now,
+                state: DISPUTE_OPEN,
+                neutral_window_ends_ms: 0,
+                agreement_proposer: 0,
+                agreement_outcome: 0,
+                fee_each,
+                buyer_paid: if (opened_by_role == PARTY_BUYER) { opener_paid } else { 0 },
+                seller_paid: if (opened_by_role == PARTY_SELLER) { opener_paid } else { 0 },
+                resolved_source: 0,
+                resolved_outcome: 0,
+                fees_settled: false,
+            },
+        );
+        event::emit(TaskDisputed {
+            task_id: object::id(task),
+            case_id,
+            opened_by_role,
+            fee_each_mist: fee_each,
+            opener_paid_mist: opener_paid,
+            opened_at_ms: now,
+        });
+    }
+
+    /// The initiator withdraws before any juror is drawn (the jury integration enforces that). The
+    /// task returns to DELIVERED with the release clock re-based, so the seller cannot collect
+    /// earlier than `release_grace` after the cancel; the dispute record stays, so it cannot be
+    /// repeated to restart the clock.
+    public(package) fun cancel_dispute(task: &mut TaskEscrow, clock: &Clock) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        let now = clock::timestamp_ms(clock);
+        let case_id = {
+            let dispute = dispute_mut(task);
+            assert!(dispute.state == DISPUTE_OPEN && dispute.neutral_window_ends_ms == 0, EDisputeNotOpen);
+            dispute.state = DISPUTE_CANCELLED;
+            dispute.agreement_proposer = 0;
+            dispute.agreement_outcome = 0;
+            dispute.case_id
+        };
+        task.status = STATUS_DELIVERED;
+        if (task.settle_deadline_ms < now) {
+            task.settle_deadline_ms = now;
+        };
+        event::emit(TaskDisputeCancelled {
+            task_id: object::id(task),
+            case_id,
+            settle_deadline_ms: task.settle_deadline_ms,
+            cancelled_at_ms: now,
+        });
+    }
+
+    /// The jury failed (could not form, could not decide, or ran out of time). Opens the
+    /// settlement window; the escrow stays frozen until a neutral split or an agreement.
+    public(package) fun begin_neutral_window(task: &mut TaskEscrow, window_ms: u64, clock: &Clock) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        assert!(window_ms > 0, EInvalidWindow);
+        let now = clock::timestamp_ms(clock);
+        let ends = memory::checked_add_u64(now, window_ms);
+        let task_id = object::id(task);
+        let dispute = dispute_mut(task);
+        assert!(dispute.state == DISPUTE_OPEN, EDisputeNotOpen);
+        assert!(dispute.neutral_window_ends_ms == 0, ENeutralWindowOpen);
+        dispute.neutral_window_ends_ms = ends;
+        event::emit(TaskNeutralWindowOpened {
+            task_id,
+            case_id: dispute.case_id,
+            window_ends_ms: ends,
+            opened_at_ms: now,
+        });
+    }
+
+    /// After a failed jury and its settlement window, anyone splits the escrow 50/50. Never pays
+    /// the seller in full and never refunds the buyer in full.
+    public entry fun execute_neutral_resolution(
+        config: &TaskConfig,
+        task: &mut TaskEscrow,
+        buyer_account: &mut MemoryAccount,
+        seller_account: &mut MemoryAccount,
+        platform: &mut Platform,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        let ends = dispute_ref(task).neutral_window_ends_ms;
+        assert!(ends != 0, ENeutralWindowNotOpen);
+        assert!(clock::timestamp_ms(clock) > ends, ETooEarly);
+        apply_dispute_outcome(
+            config, task, buyer_account, seller_account, platform,
+            OUTCOME_SPLIT_50_50, SOURCE_NEUTRAL, clock, ctx,
+        );
+    }
+
+    /// Either party proposes how the disputed escrow resolves, one of the three menu outcomes.
+    /// A party can refresh its own proposal but cannot override the counterparty's.
+    public entry fun propose_dispute_settlement(
+        task: &mut TaskEscrow,
+        memory_config: &MemoryConfig,
+        buyer_account: &MemoryAccount,
+        seller_agent: &SubAgent,
+        outcome: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        assert!(outcome <= OUTCOME_SPLIT_50_50, EInvalidOutcome);
+        let role = resolve_party(task, memory_config, buyer_account, seller_agent, clock, ctx);
+        let task_id = object::id(task);
+        let dispute = dispute_mut(task);
+        assert!(dispute.state == DISPUTE_OPEN, EDisputeNotOpen);
+        assert!(dispute.agreement_proposer == 0 || dispute.agreement_proposer == role, EProposalPending);
+        dispute.agreement_proposer = role;
+        dispute.agreement_outcome = outcome;
+        event::emit(TaskDisputeSettlementProposed {
+            task_id,
+            proposer_role: role,
+            outcome,
+            proposed_at_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// The counterparty accepts the pending proposal and the escrow resolves as proposed. Works
+    /// before and during the settlement window, so parties can settle at any point.
+    public entry fun accept_dispute_settlement(
+        config: &TaskConfig,
+        task: &mut TaskEscrow,
+        memory_config: &MemoryConfig,
+        buyer_account: &mut MemoryAccount,
+        seller_account: &mut MemoryAccount,
+        seller_agent: &SubAgent,
+        platform: &mut Platform,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        let role = resolve_party(task, memory_config, buyer_account, seller_agent, clock, ctx);
+        let (proposer, outcome) = {
+            let dispute = dispute_ref(task);
+            assert!(dispute.state == DISPUTE_OPEN, EDisputeNotOpen);
+            (dispute.agreement_proposer, dispute.agreement_outcome)
+        };
+        assert!(proposer != 0, ENoProposal);
+        assert!(role != proposer, ENotCounterparty);
+        apply_dispute_outcome(
+            config, task, buyer_account, seller_account, platform,
+            outcome, SOURCE_AGREEMENT, clock, ctx,
+        );
+    }
+
+    /// The proposer withdraws its proposal, or the counterparty turns it down.
+    public entry fun clear_dispute_settlement(
+        task: &mut TaskEscrow,
+        memory_config: &MemoryConfig,
+        buyer_account: &MemoryAccount,
+        seller_agent: &SubAgent,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        let role = resolve_party(task, memory_config, buyer_account, seller_agent, clock, ctx);
+        let task_id = object::id(task);
+        let dispute = dispute_mut(task);
+        assert!(dispute.state == DISPUTE_OPEN, EDisputeNotOpen);
+        assert!(dispute.agreement_proposer != 0, ENoProposal);
+        dispute.agreement_proposer = 0;
+        dispute.agreement_outcome = 0;
+        event::emit(TaskDisputeSettlementCleared {
+            task_id,
+            cleared_by_role: role,
+            cleared_at_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// The single place a dispute pays out. A jury verdict, an agreement and the neutral split all
+    /// land here, so each can only choose from the fixed menu. `source` only selects the kind
+    /// recorded on the receipt or refund; a neutral source may only be the 50/50 split.
+    public(package) fun apply_dispute_outcome(
+        config: &TaskConfig,
+        task: &mut TaskEscrow,
+        buyer_account: &mut MemoryAccount,
+        seller_account: &mut MemoryAccount,
+        platform: &mut Platform,
+        outcome: u8,
+        source: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        assert!(outcome <= OUTCOME_SPLIT_50_50, EInvalidOutcome);
+        assert!(source >= SOURCE_VERDICT && source <= SOURCE_NEUTRAL, EInvalidOutcome);
+        assert!(source != SOURCE_NEUTRAL || outcome == OUTCOME_SPLIT_50_50, EInvalidOutcome);
+        let case_id = {
+            let dispute = dispute_mut(task);
+            assert!(dispute.state == DISPUTE_OPEN, EDisputeNotOpen);
+            dispute.state = DISPUTE_RESOLVED;
+            dispute.agreement_proposer = 0;
+            dispute.agreement_outcome = 0;
+            dispute.resolved_source = source;
+            dispute.resolved_outcome = outcome;
+            dispute.case_id
+        };
+        event::emit(TaskDisputeResolved {
+            task_id: object::id(task),
+            case_id,
+            outcome,
+            source,
+            resolved_at_ms: clock::timestamp_ms(clock),
+        });
+
+        if (outcome == OUTCOME_REFUND_BUYER) {
+            let refund_kind = if (source == SOURCE_AGREEMENT) {
+                REFUND_BY_DISPUTE_AGREEMENT
+            } else {
+                REFUND_BY_VERDICT
+            };
+            close_as_refunded(task, refund_kind, clock, ctx);
+        } else if (outcome == OUTCOME_PAY_SELLER) {
+            let kind = if (source == SOURCE_AGREEMENT) { SETTLED_BY_DISPUTE_AGREEMENT } else { SETTLED_BY_VERDICT };
+            finalize_settlement(config, task, buyer_account, seller_account, platform, kind, clock, ctx);
+        } else {
+            let kind = if (source == SOURCE_NEUTRAL) {
+                SETTLED_BY_NEUTRAL_SPLIT
+            } else if (source == SOURCE_AGREEMENT) {
+                SETTLED_SPLIT_BY_AGREEMENT
+            } else {
+                SETTLED_SPLIT_BY_VERDICT
+            };
+            settle_split(task, buyer_account, seller_account, platform, kind, clock, ctx);
+        };
+    }
+
+    /// A split settles the task without crediting either side's reputation (no `record_settlement`)
+    /// and with the review window closed (`review_deadline_ms = 0`).
+    fun settle_split(
+        task: &mut TaskEscrow,
+        buyer_account: &MemoryAccount,
+        seller_account: &MemoryAccount,
+        platform: &mut Platform,
+        kind: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(object::id(buyer_account) == task.buyer_memory_account_id, EWrongTaskObject);
+        assert!(object::id(seller_account) == task.seller_memory_account_id, EWrongTaskObject);
+        if (option::is_some(&task.platform_id)) {
+            assert!(
+                object::uid_to_address(platform::id(platform)) == *option::borrow(&task.platform_id),
+                EWrongPlatform,
+            );
+        };
+
+        pay_split(task, platform, clock, ctx);
+
+        let now = clock::timestamp_ms(clock);
+        task.status = STATUS_SETTLED;
+        task.settlement_kind = kind;
+        task.settled_at_ms = now;
+        task.review_deadline_ms = 0;
+
+        event::emit(TaskReceiptSettled {
+            task_id: object::id(task),
+            receipt_id: object::id(task),
+            buyer_principal: task.buyer_principal,
+            buyer_agent_id: task.buyer_agent_id,
+            seller_principal: task.seller_principal,
+            seller_agent_id: task.seller_agent_id,
+            organization_id: task.organization_id,
+            room_group_id: task.room_group_id,
+            settlement_kind: kind,
+            amount_mist: task.amount_mist,
+            platform_fee_mist: task.payout.platform_fee_mist,
+            ecosystem_fee_mist: task.payout.ecosystem_fee_mist,
+            net_amount_mist: task.payout.net_amount_mist,
+            deliverable_digest: task.deliverable_digest,
+            deliverable_uri: task.deliverable_uri,
+            buyer_credibility_bps: task.reviews.buyer_credibility_bps,
+            seller_credibility_bps: task.reviews.seller_credibility_bps,
+            settle_deadline_ms: task.settle_deadline_ms,
+            review_deadline_ms: 0,
+            settled_at_ms: now,
+        });
+    }
+
+    fun dispute_ref(task: &TaskEscrow): &TaskDispute {
+        assert!(dynamic_field::exists_(&task.id, DISPUTE_FIELD), ENoDispute);
+        dynamic_field::borrow(&task.id, DISPUTE_FIELD)
+    }
+
+    fun dispute_mut(task: &mut TaskEscrow): &mut TaskDispute {
+        assert!(dynamic_field::exists_(&task.id, DISPUTE_FIELD), ENoDispute);
+        dynamic_field::borrow_mut(&mut task.id, DISPUTE_FIELD)
+    }
+
+    // ============================================================
+    // Disputes in front of a jury
+    // ============================================================
+
+    /// The fee each side owes for a dispute on an escrow of `amount_mist`.
+    public fun dispute_fee_mist(amount_mist: u64): u64 {
+        let raw = memory::checked_bps_of(amount_mist, DISPUTE_FEE_BPS);
+        if (raw < DISPUTE_FEE_MIN_MIST) {
+            DISPUTE_FEE_MIN_MIST
+        } else if (raw > DISPUTE_FEE_MAX_MIST) {
+            DISPUTE_FEE_MAX_MIST
+        } else {
+            raw
+        }
+    }
+
+    /// A party takes a delivered task to a jury. The opener pays the case fee; the other side may
+    /// match it before the jury is drawn. The case carries the task's own facts as its first
+    /// evidence (terms, scope and deliverable digests), so neither side can leave them out. Refused
+    /// while the roster is too thin to be fair.
+    public entry fun open_dispute(
+        config: &TaskConfig,
+        jury_config: &JuryConfig,
+        roster: &JurorRoster,
+        task: &mut TaskEscrow,
+        memory_config: &MemoryConfig,
+        buyer_account: &MemoryAccount,
+        seller_account: &MemoryAccount,
+        seller_agent: &SubAgent,
+        mut fee: Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+        assert!(task.status == STATUS_DELIVERED, EWrongStatus);
+        assert!(object::id(seller_account) == task.seller_memory_account_id, EWrongTaskObject);
+        let role = resolve_party(task, memory_config, buyer_account, seller_agent, clock, ctx);
+        jury::assert_roster_ready(jury_config, roster, clock);
+
+        let fee_each = dispute_fee_mist(task.amount_mist);
+        assert!(coin::value(&fee) >= fee_each, EInsufficientPayment);
+        let payment = coin::split(&mut fee, fee_each, ctx);
+        if (coin::value(&fee) > 0) {
+            transfer::public_transfer(fee, tx_context::sender(ctx));
+        } else {
+            coin::destroy_zero(fee);
+        };
+
+        let owners = vector[task.buyer_principal, task.seller_principal];
+        let mut orgs = vector[memory::sub_agent_organization_id(seller_agent)];
+        if (option::is_some(&task.organization_id)) {
+            vector::push_back(&mut orgs, *option::borrow(&task.organization_id));
+        };
+        let mut agents = vector[task.seller_agent_id];
+        vector::append(&mut agents, memory::agent_ancestor_ids(memory_config, seller_account, task.seller_agent_id));
+        if (option::is_some(&task.buyer_agent_id)) {
+            let buyer_agent = *option::borrow(&task.buyer_agent_id);
+            vector::push_back(&mut agents, buyer_agent);
+            vector::append(&mut agents, memory::agent_ancestor_ids(memory_config, buyer_account, buyer_agent));
+        };
+
+        let mut case = jury::open_case(
+            jury_config,
+            jury::subject_task(),
+            object::id(task),
+            0,
+            3,
+            DISPUTE_APPROVAL_BPS,
+            DISPUTE_QUORUM,
+            vector[DISPUTE_FIRST_JURY, DISPUTE_APPEAL_JURY],
+            true,
+            FAILURE_PATH_NEUTRAL,
+            DISPUTE_EVIDENCE_WINDOW_MS,
+            owners,
+            orgs,
+            agents,
+            coin::into_balance(payment),
+            fee_each / DISPUTE_FIRST_JURY,
+            object::uid_to_address(&task.id),
+            clock,
+            ctx,
+        );
+        let facts = object::uid_to_address(&task.id);
+        jury::add_evidence(jury_config, &mut case, facts, EVIDENCE_KIND_TASK_RECORD, task.terms.terms_digest, b"agent_task:terms", clock);
+        jury::add_evidence(jury_config, &mut case, facts, EVIDENCE_KIND_TASK_RECORD, task.scope_digest, b"agent_task:scope", clock);
+        jury::add_evidence(
+            jury_config,
+            &mut case,
+            facts,
+            EVIDENCE_KIND_TASK_RECORD,
+            *option::borrow(&task.deliverable_digest),
+            *string::as_bytes(option::borrow(&task.deliverable_uri)),
+            clock,
+        );
+        let case_id = jury::share_case(case);
+        enter_dispute(config, task, case_id, role, fee_each, fee_each, clock);
+    }
+
+    /// The other side matches the case fee. Only before the jury is drawn, so the pool is fixed
+    /// before anyone is seated.
+    public entry fun respond_dispute(
+        task: &mut TaskEscrow,
+        case: &mut JuryCase,
+        memory_config: &MemoryConfig,
+        buyer_account: &MemoryAccount,
+        seller_agent: &SubAgent,
+        mut fee: Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        assert_case_matches(task, case);
+        let role = resolve_party(task, memory_config, buyer_account, seller_agent, clock, ctx);
+        assert!(jury::case_undrawn(case), ECaseDrawn);
+        let (opener, fee_each, already_paid) = {
+            let dispute = dispute_ref(task);
+            assert!(dispute.state == DISPUTE_OPEN, EDisputeNotOpen);
+            (
+                dispute.opened_by_role,
+                dispute.fee_each,
+                if (role == PARTY_BUYER) { dispute.buyer_paid } else { dispute.seller_paid },
+            )
+        };
+        assert!(role != opener, ENotCounterparty);
+        assert!(already_paid == 0, EAlreadyPaid);
+        assert!(coin::value(&fee) >= fee_each, EInsufficientPayment);
+        let payment = coin::split(&mut fee, fee_each, ctx);
+        if (coin::value(&fee) > 0) {
+            transfer::public_transfer(fee, tx_context::sender(ctx));
+        } else {
+            coin::destroy_zero(fee);
+        };
+        jury::add_fee(case, coin::into_balance(payment));
+        record_paid(task, role, fee_each, 1, clock);
+    }
+
+    /// A party adds evidence while the evidence window is open (and for an appeal round, before its
+    /// draw). The jury module caps how much each side may add.
+    public entry fun submit_dispute_evidence(
+        jury_config: &JuryConfig,
+        task: &mut TaskEscrow,
+        case: &mut JuryCase,
+        memory_config: &MemoryConfig,
+        buyer_account: &MemoryAccount,
+        seller_agent: &SubAgent,
+        digest: vector<u8>,
+        uri: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        assert_case_matches(task, case);
+        let role = resolve_party(task, memory_config, buyer_account, seller_agent, clock, ctx);
+        let submitter = if (role == PARTY_BUYER) { task.buyer_principal } else { task.seller_principal };
+        jury::add_evidence(jury_config, case, submitter, EVIDENCE_KIND_PARTY, digest, uri, clock);
+    }
+
+    /// The side the verdict went against (either side, if it was a split) asks for a larger jury of
+    /// fresh owners. It pays a multiple of the case fee, which joins the pool.
+    public entry fun appeal_dispute(
+        task: &mut TaskEscrow,
+        case: &mut JuryCase,
+        memory_config: &MemoryConfig,
+        buyer_account: &MemoryAccount,
+        seller_agent: &SubAgent,
+        mut fee: Coin<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        assert_case_matches(task, case);
+        let role = resolve_party(task, memory_config, buyer_account, seller_agent, clock, ctx);
+        assert!(jury::case_state(case) == jury::case_tallied(), ENotTallied);
+        let outcome = *option::borrow(&jury::case_provisional_outcome(case));
+        let lost = if (outcome == OUTCOME_PAY_SELLER) {
+            role == PARTY_BUYER
+        } else if (outcome == OUTCOME_REFUND_BUYER) {
+            role == PARTY_SELLER
+        } else {
+            true
+        };
+        assert!(lost, ENotAppellant);
+        let appeal_fee = memory::checked_mul_u64(dispute_ref(task).fee_each, APPEAL_FEE_MULTIPLIER);
+        assert!(coin::value(&fee) >= appeal_fee, EInsufficientPayment);
+        let payment = coin::split(&mut fee, appeal_fee, ctx);
+        if (coin::value(&fee) > 0) {
+            transfer::public_transfer(fee, tx_context::sender(ctx));
+        } else {
+            coin::destroy_zero(fee);
+        };
+        jury::add_fee(case, coin::into_balance(payment));
+        record_paid(task, role, appeal_fee, 2, clock);
+        jury::appeal(case, tx_context::sender(ctx), clock);
+    }
+
+    /// The opener withdraws before any juror is drawn. Fees come back through `settle_dispute_fees`.
+    public entry fun cancel_dispute_before_draw(
+        task: &mut TaskEscrow,
+        case: &mut JuryCase,
+        memory_config: &MemoryConfig,
+        buyer_account: &MemoryAccount,
+        seller_agent: &SubAgent,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        assert_case_matches(task, case);
+        let role = resolve_party(task, memory_config, buyer_account, seller_agent, clock, ctx);
+        assert!(role == dispute_ref(task).opened_by_role, ENotInitiator);
+        jury::cancel_case(case, clock);
+        cancel_dispute(task, clock);
+    }
+
+    /// Anyone applies a final verdict: the jury's outcome index runs the one fixed action it names.
+    public entry fun execute_verdict(
+        config: &TaskConfig,
+        task: &mut TaskEscrow,
+        case: &mut JuryCase,
+        buyer_account: &mut MemoryAccount,
+        seller_account: &mut MemoryAccount,
+        platform: &mut Platform,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        assert_case_matches(task, case);
+        let verdict = jury::finalized_outcome(case);
+        assert!(option::is_some(&verdict), ENoVerdict);
+        jury::mark_executed(case);
+        apply_dispute_outcome(
+            config, task, buyer_account, seller_account, platform,
+            *option::borrow(&verdict), SOURCE_VERDICT, clock, ctx,
+        );
+    }
+
+    /// Anyone, once the jury failed (could not form, could not decide, timed out, or was voided):
+    /// opens the settlement window. Nothing is paid to either side by default.
+    public entry fun start_neutral_resolution(
+        jury_config: &JuryConfig,
+        task: &mut TaskEscrow,
+        case: &mut JuryCase,
+        clock: &Clock,
+    ) {
+        assert!(task.status == STATUS_DISPUTED, EWrongStatus);
+        assert_case_matches(task, case);
+        assert!(jury::case_state(case) == jury::case_failed(), ECaseNotFailed);
+        jury::mark_executed(case);
+        begin_neutral_window(task, jury::neutral_window_ms(jury_config), clock);
+    }
+
+    /// After the parties settled (or the dispute was cancelled) while the jury case is still open:
+    /// anyone ends the case so its seats are freed and its fee can be settled.
+    public entry fun close_case_after_resolution(
+        jury_config: &JuryConfig,
+        roster: &mut JurorRoster,
+        task: &TaskEscrow,
+        case: &mut JuryCase,
+        clock: &Clock,
+    ) {
+        assert!(task.status != STATUS_DISPUTED, EWrongStatus);
+        assert_case_matches(task, case);
+        assert!(!jury::case_is_finished(case), ECaseNotFinished);
+        jury::end_case_by_settlement(jury_config, roster, case, clock);
+    }
+
+    /// Anyone, once the dispute is over and the jury case is finished: jurors keep their shares,
+    /// and what is left goes back to the parties. After a verdict the loser pays: the winner's own
+    /// fee comes back first and the rest returns to the loser. After a split verdict, an agreement,
+    /// a cancel or a failed jury there is no loser, so the rest returns in proportion to what each
+    /// side put in (an equal share of the juror cost).
+    public entry fun settle_dispute_fees(task: &mut TaskEscrow, case: &mut JuryCase, clock: &Clock, ctx: &mut TxContext) {
+        assert!(task.status != STATUS_DISPUTED, EWrongStatus);
+        assert_case_matches(task, case);
+        assert!(jury::case_is_finished(case), ECaseNotFinished);
+        let (buyer_paid, seller_paid, source, outcome) = {
+            let dispute = dispute_mut(task);
+            assert!(dispute.state != DISPUTE_OPEN, EDisputeNotOpen);
+            assert!(!dispute.fees_settled, EFeesSettled);
+            dispute.fees_settled = true;
+            (dispute.buyer_paid, dispute.seller_paid, dispute.resolved_source, dispute.resolved_outcome)
+        };
+
+        let remainder = jury::sweep_remainder(case);
+        let total = balance::value(&remainder);
+        let paid_total = memory::checked_add_u64(buyer_paid, seller_paid);
+        let buyer_share = if (source == SOURCE_VERDICT && outcome != OUTCOME_SPLIT_50_50) {
+            let buyer_won = outcome == OUTCOME_REFUND_BUYER;
+            let (winner_paid, loser_paid) = if (buyer_won) { (buyer_paid, seller_paid) } else { (seller_paid, buyer_paid) };
+            let winner_back = if (winner_paid < total) { winner_paid } else { total };
+            let rest = total - winner_back;
+            // The rest goes to the loser, or to the winner if the loser never paid anything in.
+            let loser_back = if (loser_paid > 0) { rest } else { 0 };
+            let winner_total = winner_back + (rest - loser_back);
+            if (buyer_won) { winner_total } else { loser_back }
+        } else if (paid_total == 0) {
+            total
+        } else {
+            memory::checked_narrow_u64(
+                memory::checked_div_u128(
+                    memory::checked_mul_u128(total as u128, buyer_paid as u128),
+                    paid_total as u128,
+                ),
+            )
+        };
+
+        event::emit(TaskDisputeFeesSettled {
+            task_id: object::id(task),
+            case_id: object::id(case),
+            buyer_refund_mist: buyer_share,
+            seller_refund_mist: total - buyer_share,
+            settled_at_ms: clock::timestamp_ms(clock),
+        });
+        let mut pool = coin::from_balance(remainder, ctx);
+        if (buyer_share > 0) {
+            transfer::public_transfer(coin::split(&mut pool, buyer_share, ctx), task.buyer_principal);
+        };
+        if (coin::value(&pool) > 0) {
+            transfer::public_transfer(pool, task.seller_principal);
+        } else {
+            coin::destroy_zero(pool);
+        };
+    }
+
+    fun record_paid(task: &mut TaskEscrow, role: u8, amount: u64, kind: u8, clock: &Clock) {
+        let task_id = object::id(task);
+        let dispute = dispute_mut(task);
+        if (role == PARTY_BUYER) {
+            dispute.buyer_paid = memory::checked_add_u64(dispute.buyer_paid, amount);
+        } else {
+            dispute.seller_paid = memory::checked_add_u64(dispute.seller_paid, amount);
+        };
+        event::emit(TaskDisputeFeePaid {
+            task_id,
+            role,
+            amount_mist: amount,
+            kind,
+            buyer_paid_mist: dispute.buyer_paid,
+            seller_paid_mist: dispute.seller_paid,
+            paid_at_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// The case must be this task's own task-subject case, and the one the dispute recorded.
+    fun assert_case_matches(task: &TaskEscrow, case: &JuryCase) {
+        assert!(jury::case_subject_kind(case) == jury::subject_task(), EWrongCase);
+        assert!(jury::case_subject_id(case) == object::id(task), EWrongCase);
+        assert!(dispute_ref(task).case_id == object::id(case), EWrongCase);
     }
 
     // ============================================================
@@ -1408,6 +2274,15 @@ module social_contracts::agent_task {
     public fun status_settled(): u8 { STATUS_SETTLED }
     public fun status_refunded(): u8 { STATUS_REFUNDED }
     public fun status_cancelled(): u8 { STATUS_CANCELLED }
+    public fun status_disputed(): u8 { STATUS_DISPUTED }
+
+    public fun outcome_pay_seller(): u8 { OUTCOME_PAY_SELLER }
+    public fun outcome_refund_buyer(): u8 { OUTCOME_REFUND_BUYER }
+    public fun outcome_split_50_50(): u8 { OUTCOME_SPLIT_50_50 }
+    public fun dispute_menu_len(): u64 { DISPUTE_MENU_LEN }
+    public fun source_verdict(): u8 { SOURCE_VERDICT }
+    public fun source_agreement(): u8 { SOURCE_AGREEMENT }
+    public fun source_neutral(): u8 { SOURCE_NEUTRAL }
 
     public fun status(task: &TaskEscrow): u8 { task.status }
     public fun close_kind(task: &TaskEscrow): u8 { task.close_kind }
@@ -1434,6 +2309,22 @@ module social_contracts::agent_task {
     public fun seller_credibility_bps(task: &TaskEscrow): u64 { task.reviews.seller_credibility_bps }
     public fun buyer_review_stars(task: &TaskEscrow): u8 { task.reviews.buyer_review_stars }
     public fun seller_review_stars(task: &TaskEscrow): u8 { task.reviews.seller_review_stars }
+
+    public fun has_dispute(task: &TaskEscrow): bool { dynamic_field::exists_(&task.id, DISPUTE_FIELD) }
+    public fun dispute_case_id(task: &TaskEscrow): Option<ID> {
+        if (has_dispute(task)) { option::some(dispute_ref(task).case_id) } else { option::none() }
+    }
+    /// 0 when the task was never disputed; otherwise open (1), cancelled (2) or resolved (3).
+    public fun dispute_state(task: &TaskEscrow): u8 {
+        if (has_dispute(task)) { dispute_ref(task).state } else { 0 }
+    }
+    public fun dispute_neutral_window_ends_ms(task: &TaskEscrow): u64 { dispute_ref(task).neutral_window_ends_ms }
+    public fun dispute_agreement_proposer(task: &TaskEscrow): u8 { dispute_ref(task).agreement_proposer }
+    public fun dispute_agreement_outcome(task: &TaskEscrow): u8 { dispute_ref(task).agreement_outcome }
+    public fun dispute_fee_each_mist(task: &TaskEscrow): u64 { dispute_ref(task).fee_each }
+    public fun dispute_buyer_paid_mist(task: &TaskEscrow): u64 { dispute_ref(task).buyer_paid }
+    public fun dispute_seller_paid_mist(task: &TaskEscrow): u64 { dispute_ref(task).seller_paid }
+    public fun dispute_fees_settled(task: &TaskEscrow): bool { dispute_ref(task).fees_settled }
 
     public fun config_active(config: &TaskConfig): bool { config.active }
     public fun config_release_grace_ms(config: &TaskConfig): u64 { config.release_grace_ms }

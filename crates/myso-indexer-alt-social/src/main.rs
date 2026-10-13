@@ -13,10 +13,10 @@ use myso_indexer_alt_social_schema::MIGRATIONS;
 use myso_pg_db::{reset_database, Db, DbArgs};
 use prometheus::Registry;
 use social_indexer::{
-    AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler,
-    MessagingHandler, MyDataHandler, PlatformHandler, PostsHandler, ProfilesHandler, SocialEnv,
-    SocialGraphHandler, SpotHandler, SptHandler, SubAgentRegistryHandler, SubscriptionHandler,
-    TaskMarketHandler, UpgradeHandler,
+    AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, JuryHandler,
+    MemoryHandler, MessagingHandler, MyDataHandler, PlatformHandler, PostsHandler,
+    ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler, SptHandler,
+    SubAgentRegistryHandler, SubscriptionHandler, TaskMarketHandler, UpgradeHandler,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -205,6 +205,10 @@ async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
     // Sequential: task lifecycle updates must apply in chain order.
     indexer
         .sequential_pipeline(TaskMarketHandler, Default::default())
+        .await?;
+    // Sequential: a case's lifecycle updates must apply in chain order.
+    indexer
+        .sequential_pipeline(JuryHandler, Default::default())
         .await?;
     indexer
         .concurrent_pipeline(MemoryHandler, Default::default())

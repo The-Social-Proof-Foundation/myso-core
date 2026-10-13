@@ -203,6 +203,25 @@ enum AddressTransactionRelationship {
 	AFFECTED
 }
 
+type AgentReputation {
+	"""
+	Reviews received from sellers.
+	"""
+	asBuyer: RoleReputation!
+	"""
+	Reviews received from buyers.
+	"""
+	asSeller: RoleReputation!
+	"""
+	The agent's principal's credibility, earned from completed paid tasks in either role.
+	"""
+	credibility: Credibility
+	"""
+	Weighted Bayesian average of the two roles.
+	"""
+	overall: OverallReputation!
+}
+
 type AgentSpendBreakdown {
 	agent: SubAgent
 	agentObjectId: String!
@@ -1200,6 +1219,16 @@ type ContainerUsageDenial {
 	denialScope: Int!
 }
 
+type Credibility {
+	accountId: String!
+	credibilityBps: Int!
+	settledCount: Int!
+	"""
+	Total settled volume in MIST, as a decimal string (it is a u128 on-chain).
+	"""
+	volumeMist: String!
+}
+
 """
 ISO-8601 Date and Time: RFC3339 in UTC with format: YYYY-MM-DDTHH:MM:SS.mmmZ. Note that the milliseconds part is optional, and it may be omitted if its value is 0.
 """
@@ -2084,6 +2113,11 @@ type GovernanceRegistry {
 	"""
 	delegateCount: Int!
 	"""
+	Whether, and how, the AI Jury can take over this registry's proposals. Null when the
+	registry has never turned the jury on, in which case governance behaves as it always has.
+	"""
+	juryPolicy: RegistryJuryPolicy
+	"""
 	Largest completed delegate-term boundary epoch applied by a panel refresh on chain (`None` if unknown or pre-indexer).
 	"""
 	lastDelegatePanelBoundaryEpoch: Int
@@ -2843,6 +2877,135 @@ type InsuranceVaultUserExposure {
 Arbitrary JSON data.
 """
 scalar JSON
+
+type JuryCase {
+	appealsUsed: Int!
+	caseId: String!
+	createdAtMs: Int!
+	currentRound: Int!
+	feeMist: Int!
+	"""
+	Index into the case's fixed menu of outcomes, once the case is final.
+	"""
+	finalOutcome: Int
+	finalizedAtMs: Int
+	"""
+	What each juror who voted is paid, once the case has ended.
+	"""
+	perJurorFeeMist: Int
+	"""
+	For a proposal, the step the case decides.
+	"""
+	stage: JuryStage!
+	state: JuryCaseState!
+	"""
+	The task or proposal the case decides.
+	"""
+	subjectId: String!
+	subjectKind: JurySubjectKind!
+}
+
+"""
+Lifecycle of a jury case.
+"""
+enum JuryCaseState {
+	EVIDENCE
+	AWAITING_DRAW
+	SELECTING
+	VOTING
+	TALLIED
+	FINAL
+	FAILED
+	CANCELLED
+}
+
+"""
+What the jury decided.
+"""
+enum JuryDecision {
+	"""
+	Council step: send to the community vote. Community step: approve.
+	"""
+	FORWARD
+	"""
+	Reject the proposal.
+	"""
+	REJECT
+}
+
+"""
+Where the jury stands on one step.
+"""
+enum JuryReviewState {
+	"""
+	Delegates are referring the proposal; no majority yet.
+	"""
+	REFERRING
+	"""
+	The step earned a jury and anyone can hand the proposal over.
+	"""
+	AWAITING_ESCALATION
+	"""
+	A jury holds the step, so the humans at it can no longer decide.
+	"""
+	WITH_JURY
+	"""
+	The jury decided, or could not and the step's default applied.
+	"""
+	DECIDED
+}
+
+"""
+The human step of a proposal that the jury can take over.
+"""
+enum JuryStage {
+	"""
+	The delegate council's review.
+	"""
+	COUNCIL
+	"""
+	The public community vote.
+	"""
+	COMMUNITY
+}
+
+"""
+What a case is about.
+"""
+enum JurySubjectKind {
+	TASK
+	GOVERNANCE_PROPOSAL
+}
+
+"""
+Why a step went to the jury.
+"""
+enum JuryTrigger {
+	"""
+	Not recorded yet.
+	"""
+	NONE
+	"""
+	A majority of delegates referred it.
+	"""
+	REFERRAL_MAJORITY
+	"""
+	The council tied.
+	"""
+	COUNCIL_TIE
+	"""
+	The council ran out of time.
+	"""
+	COUNCIL_DEADLINE
+	"""
+	The community vote missed quorum.
+	"""
+	QUORUM_NOT_MET
+	"""
+	The community vote tied.
+	"""
+	VOTE_TIE
+}
 
 type LicenseTemplateTerms {
 	governingLaw: String
@@ -5079,6 +5242,12 @@ type OtherCommand {
 	_: Boolean
 }
 
+type OverallReputation {
+	confidenceBps: Int!
+	score: Float!
+	scoreMilli: Int!
+}
+
 """
 A Move object, either immutable, or owned mutable.
 """
@@ -7295,6 +7464,15 @@ type Proposal {
 	"""
 	implementedDescription: String
 	"""
+	Delegates who asked the AI Jury to take over this proposal's council review.
+	"""
+	juryReferrals: [ProposalJuryReferral!]
+	"""
+	Where the AI Jury stands on each human step of this proposal (council, community). Empty
+	when the jury has not been involved.
+	"""
+	juryReviews: [ProposalJuryReview!]
+	"""
 	Linked media asset for PoC media-asset rights governance proposals (registry_type=1).
 	"""
 	mediaAsset: MediaAsset
@@ -7366,6 +7544,41 @@ type Proposal {
 	Voting start time (epoch ms, when in community voting).
 	"""
 	votingStartTime: Int
+}
+
+type ProposalJuryReferral {
+	delegateAddress: MySoAddress!
+	reason: String
+	referredAtMs: Int!
+}
+
+type ProposalJuryReview {
+	"""
+	The case behind this step. Jurors, votes and evidence are on the REST routes.
+	"""
+	case: JuryCase
+	"""
+	The jury case, once the step has been handed over.
+	"""
+	caseId: String
+	decidedAtMs: Int
+	"""
+	Null until the jury has decided or its default has applied.
+	"""
+	decision: JuryDecision
+	escalatedAtMs: Int
+	"""
+	The jury could not decide, so the step's default applied.
+	"""
+	failed: Boolean!
+	proposalId: String!
+	"""
+	How many delegates referred the proposal at the council step.
+	"""
+	referralCount: Int!
+	stage: JuryStage!
+	state: JuryReviewState!
+	trigger: JuryTrigger!
 }
 
 type ProposalVotes {
@@ -7597,6 +7810,11 @@ type Query {
 	Insurance vaults. Returns empty when social DB not configured.
 	"""
 	insuranceVaults(limit: Int, offset: Int): [InsuranceVault!]
+	"""
+	An AI Jury case by id, without its jurors, rounds or evidence. Returns null when the case
+	does not exist or the social DB is not configured.
+	"""
+	juryCase(caseId: String!): JuryCase
 	"""
 	List MyData records (paginated, optionally filtered by creator, media_type, platform_id). Returns empty when social DB not configured.
 	"""
@@ -8065,6 +8283,11 @@ type Query {
 	subscriptionAccess(subscriber: MySoAddress!, serviceId: ID!, minTierLevel: Int): SubscriptionAccess
 	subscriptionConfiguration: SubscriptionConfig
 	"""
+	Task market configuration (fees, windows, reputation parameters). Returns null when the
+	social DB is not configured or no `TaskConfigUpdated` has been indexed.
+	"""
+	taskConfiguration: TaskConfig
+	"""
 	Tips received for a post (paginated). Returns empty when social DB not configured.
 	"""
 	tips(postId: ID!, limit: Int, offset: Int): [TipSummary!]
@@ -8205,6 +8428,43 @@ type Receiving {
 	object: Object
 }
 
+type RegistryJuryPolicy {
+	approvalBpsCommunity: Int!
+	approvalBpsCouncil: Int!
+	"""
+	The jury can decide a community vote that missed quorum or tied.
+	"""
+	communityStageEnabled: Boolean!
+	"""
+	The jury can take over the delegate council's review.
+	"""
+	councilStageEnabled: Boolean!
+	"""
+	How long the council has before the jury can take over; 0 means no deadline.
+	"""
+	councilWindowMs: Int!
+	"""
+	Share of the proposal's reward pool paid to jurors, in basis points.
+	"""
+	juryFeeBps: Int!
+	juryFeeCapMist: Int!
+	jurySize: Int!
+	"""
+	Proposals with a smaller reward pool skip the jury and behave as before.
+	"""
+	minPoolForJuryMist: Int!
+	"""
+	Reveals a round needs before it can decide.
+	"""
+	quorum: Int!
+	registryId: String!
+	"""
+	Size of the second, larger jury when the first cannot decide.
+	"""
+	round2Size: Int!
+	updatedAtMs: Int!
+}
+
 """
 Whether the currency is regulated or not.
 """
@@ -8274,6 +8534,28 @@ type RewardDistribution {
 	distributionType: String
 	proposalId: String!
 	recipientAddress: MySoAddress!
+}
+
+type RoleReputation {
+	"""
+	Share of the score that comes from reviews rather than the prior, in basis points.
+	"""
+	confidenceBps: Int!
+	"""
+	Counts of 1 through 5 star reviews, in that order.
+	"""
+	histogram: [Int!]!
+	lastReceiptId: String
+	reviewCount: Int!
+	"""
+	Bayesian score in stars.
+	"""
+	score: Float!
+	"""
+	Bayesian score in milli-stars (3076 is 3.076 stars).
+	"""
+	scoreMilli: Int!
+	updatedAt: Int
 }
 
 type SelectedBadge {
@@ -9741,6 +10023,11 @@ type SubAgent {
 	pnl(windows: [ProfilePnLWindow!]): SubAgentPnl
 	registerScope: Int!
 	registeredBy: MySoAddress!
+	"""
+	Reputation earned as a task seller and as a task buyer, the blended overall score, and
+	the principal's credibility. A new agent returns the prior with zero reviews.
+	"""
+	reputation: AgentReputation
 	roleTags: Int!
 }
 
@@ -9884,6 +10171,136 @@ enum SupplyState {
 	The supply can neither increase nor decrease.
 	"""
 	FIXED
+}
+
+"""
+Task market configuration: fees, windows, and the reputation weighting parameters.
+"""
+type TaskConfig {
+	"""
+	Default acceptance window offered by clients.
+	"""
+	acceptWindowDefaultMs: Int!
+	"""
+	Longest acceptance window.
+	"""
+	acceptWindowMaxMs: Int!
+	"""
+	Shortest time a seller has to accept an offer.
+	"""
+	acceptWindowMinMs: Int!
+	"""
+	Whether new offers are accepted. Existing tasks continue regardless.
+	"""
+	active: Boolean!
+	"""
+	Credibility of a principal with no settled history.
+	"""
+	credBaseBps: Int!
+	"""
+	Settled transactions after which credibility stops rising.
+	"""
+	credCapN: Int!
+	"""
+	Credibility ceiling.
+	"""
+	credMaxBps: Int!
+	"""
+	Credibility gained per settled transaction.
+	"""
+	credStepBps: Int!
+	"""
+	Longest delivery window.
+	"""
+	deliveryWindowMaxMs: Int!
+	"""
+	Shortest delivery window after acceptance.
+	"""
+	deliveryWindowMinMs: Int!
+	"""
+	Ecosystem fee in basis points, frozen into each offer.
+	"""
+	ecosystemFeeBps: Int!
+	"""
+	Recipient of the ecosystem fee.
+	"""
+	ecosystemFeeRecipient: String!
+	"""
+	Longest task title in bytes.
+	"""
+	maxTitleBytes: Int!
+	"""
+	Longest deliverable URI in bytes.
+	"""
+	maxUriBytes: Int!
+	"""
+	Cap on the value-derived review weight.
+	"""
+	maxValueWeightBps: Int!
+	"""
+	Smallest escrow an offer may carry.
+	"""
+	minEscrowMist: Int!
+	"""
+	Floor on the value-derived review weight.
+	"""
+	minValueWeightBps: Int!
+	"""
+	Share of the overall score given to the buyer role.
+	"""
+	overallBuyerWeightBps: Int!
+	"""
+	Share of the overall score given to the seller role.
+	"""
+	overallSellerWeightBps: Int!
+	"""
+	Platform fee in basis points, frozen into each offer.
+	"""
+	platformFeeBps: Int!
+	"""
+	Bayesian prior mean in milli-stars (3000 is 3.0 stars).
+	"""
+	priorMeanMilli: Int!
+	"""
+	Bayesian prior weight in basis points of review weight.
+	"""
+	priorWeightBps: Int!
+	"""
+	Grace period after the settle deadline before anyone may release payment to the seller.
+	"""
+	releaseGraceMs: Int!
+	"""
+	How long after settlement either party may review.
+	"""
+	reviewWindowMs: Int!
+	"""
+	Longest settle window.
+	"""
+	settleWindowMaxMs: Int!
+	"""
+	Shortest settle window after delivery.
+	"""
+	settleWindowMinMs: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Last update timestamp (epoch milliseconds).
+	"""
+	timestampMs: Int!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Escrow that earns a full 1.0 review weight.
+	"""
+	valueRefMist: Int!
 }
 
 type TipSummary {

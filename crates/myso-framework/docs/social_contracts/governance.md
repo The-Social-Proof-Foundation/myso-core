@@ -23,6 +23,14 @@ strict wall-clock guarantee when governance is idle.
 -  [Struct `NominatedDelegate`](#social_contracts_governance_NominatedDelegate)
 -  [Struct `Proposal`](#social_contracts_governance_Proposal)
 -  [Struct `Vote`](#social_contracts_governance_Vote)
+-  [Struct `RegistryJuryPolicy`](#social_contracts_governance_RegistryJuryPolicy)
+-  [Struct `JuryReview`](#social_contracts_governance_JuryReview)
+-  [Struct `JuryPolicyUpdatedEvent`](#social_contracts_governance_JuryPolicyUpdatedEvent)
+-  [Struct `DelegateReferredToJuryEvent`](#social_contracts_governance_DelegateReferredToJuryEvent)
+-  [Struct `ProposalEscalatedToJuryEvent`](#social_contracts_governance_ProposalEscalatedToJuryEvent)
+-  [Struct `CommunityVoteNeedsJuryEvent`](#social_contracts_governance_CommunityVoteNeedsJuryEvent)
+-  [Struct `JuryDecisionAppliedEvent`](#social_contracts_governance_JuryDecisionAppliedEvent)
+-  [Struct `ProposalRejectedByJuryEvent`](#social_contracts_governance_ProposalRejectedByJuryEvent)
 -  [Struct `DelegateElectedEvent`](#social_contracts_governance_DelegateElectedEvent)
 -  [Struct `DelegateNominatedEvent`](#social_contracts_governance_DelegateNominatedEvent)
 -  [Struct `DelegateVotedEvent`](#social_contracts_governance_DelegateVotedEvent)
@@ -75,10 +83,12 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `community_finalize_voting_approved_value`](#social_contracts_governance_community_finalize_voting_approved_value)
 -  [Function `community_finalize_voting_reject_community_value`](#social_contracts_governance_community_finalize_voting_reject_community_value)
 -  [Function `community_finalize_voting_reject_quorum_value`](#social_contracts_governance_community_finalize_voting_reject_quorum_value)
+-  [Function `community_finalize_voting_needs_jury_value`](#social_contracts_governance_community_finalize_voting_needs_jury_value)
 -  [Function `delegate_vote_outcome_reject_value`](#social_contracts_governance_delegate_vote_outcome_reject_value)
 -  [Function `forfeit_reason_quorum_not_met_value`](#social_contracts_governance_forfeit_reason_quorum_not_met_value)
 -  [Function `forfeit_reason_community_rejected_value`](#social_contracts_governance_forfeit_reason_community_rejected_value)
 -  [Function `forfeit_reason_delegate_rejected_value`](#social_contracts_governance_forfeit_reason_delegate_rejected_value)
+-  [Function `forfeit_reason_jury_rejected_value`](#social_contracts_governance_forfeit_reason_jury_rejected_value)
 -  [Function `assert_platform_delegate_manual_reject`](#social_contracts_governance_assert_platform_delegate_manual_reject)
 -  [Function `assert_shared_global_registry`](#social_contracts_governance_assert_shared_global_registry)
 -  [Function `forfeit_proposal_pool_to_treasury_address`](#social_contracts_governance_forfeit_proposal_pool_to_treasury_address)
@@ -127,6 +137,37 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `migrate_registry`](#social_contracts_governance_migrate_registry)
 -  [Function `create_spot_governance_registry`](#social_contracts_governance_create_spot_governance_registry)
 -  [Function `create_governance_admin_cap`](#social_contracts_governance_create_governance_admin_cap)
+-  [Function `jury_state`](#social_contracts_governance_jury_state)
+-  [Function `council_jury_has_jurisdiction`](#social_contracts_governance_council_jury_has_jurisdiction)
+-  [Function `jury_policy_of`](#social_contracts_governance_jury_policy_of)
+-  [Function `community_jury_available`](#social_contracts_governance_community_jury_available)
+-  [Function `set_registry_jury_policy`](#social_contracts_governance_set_registry_jury_policy)
+-  [Function `set_jury_policy_internal`](#social_contracts_governance_set_jury_policy_internal)
+-  [Function `live_referrer_count`](#social_contracts_governance_live_referrer_count)
+-  [Function `live_voter_count`](#social_contracts_governance_live_voter_count)
+-  [Function `delegate_refer_to_jury`](#social_contracts_governance_delegate_refer_to_jury)
+-  [Function `council_trigger`](#social_contracts_governance_council_trigger)
+-  [Function `proposal_content_digest`](#social_contracts_governance_proposal_content_digest)
+-  [Function `stakeholder_owners`](#social_contracts_governance_stakeholder_owners)
+-  [Function `add_excluded_owner`](#social_contracts_governance_add_excluded_owner)
+-  [Function `take_jury_fee`](#social_contracts_governance_take_jury_fee)
+-  [Function `open_jury_for_proposal`](#social_contracts_governance_open_jury_for_proposal)
+-  [Function `jury_default_forfeit_reason`](#social_contracts_governance_jury_default_forfeit_reason)
+-  [Function `remove_from_bucket`](#social_contracts_governance_remove_from_bucket)
+-  [Function `apply_default_community_reject`](#social_contracts_governance_apply_default_community_reject)
+-  [Function `apply_jury_case`](#social_contracts_governance_apply_jury_case)
+-  [Function `escalate_to_jury`](#social_contracts_governance_escalate_to_jury)
+-  [Function `apply_jury_decision`](#social_contracts_governance_apply_jury_decision)
+-  [Function `sweep_jury_case`](#social_contracts_governance_sweep_jury_case)
+-  [Function `jury_policy_enabled`](#social_contracts_governance_jury_policy_enabled)
+-  [Function `jury_council_state`](#social_contracts_governance_jury_council_state)
+-  [Function `jury_community_state`](#social_contracts_governance_jury_community_state)
+-  [Function `jury_stage_council_value`](#social_contracts_governance_jury_stage_council_value)
+-  [Function `jury_stage_community_value`](#social_contracts_governance_jury_stage_community_value)
+-  [Function `jury_action_advance_value`](#social_contracts_governance_jury_action_advance_value)
+-  [Function `jury_action_approve_value`](#social_contracts_governance_jury_action_approve_value)
+-  [Function `jury_action_reject_value`](#social_contracts_governance_jury_action_reject_value)
+-  [Function `proposal_pool_value`](#social_contracts_governance_proposal_pool_value)
 
 
 <pre><code><b>use</b> <a href="../mydata/bf_hmac_encryption.md#mydata_bf_hmac_encryption">mydata::bf_hmac_encryption</a>;
@@ -163,6 +204,7 @@ strict wall-clock guarantee when governance is idle.
 <b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
 <b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
 <b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
+<b>use</b> <a href="../myso/random.md#myso_random">myso::random</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
 <b>use</b> <a href="../myso/tx_context.md#myso_tx_context">myso::tx_context</a>;
@@ -171,8 +213,10 @@ strict wall-clock guarantee when governance is idle.
 <b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
+<b>use</b> <a href="../myso/versioned.md#myso_versioned">myso::versioned</a>;
 <b>use</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit">social_contracts::ai_credit</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_derivative_graph">social_contracts::derivative_graph</a>;
+<b>use</b> <a href="../social_contracts/jury.md#social_contracts_jury">social_contracts::jury</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_license_template">social_contracts::license_template</a>;
 <b>use</b> <a href="../social_contracts/media_asset.md#social_contracts_media_asset">social_contracts::media_asset</a>;
 <b>use</b> <a href="../social_contracts/memory.md#social_contracts_memory">social_contracts::memory</a>;
@@ -574,6 +618,489 @@ Vote struct for tracking individual votes - unused fields removed
 
 
 <dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_RegistryJuryPolicy"></a>
+
+## Struct `RegistryJuryPolicy`
+
+How the AI jury backs up the human steps of one registry. Stored as a dynamic field on the
+registry, so adding it changes no object layout.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">RegistryJuryPolicy</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>council_stage_enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>community_stage_enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>enabled_at_ms: u64</code>
+</dt>
+<dd>
+ A proposal's council window runs from the later of its submission and this time, so
+ proposals already waiting when the policy is switched on get a full window.
+</dd>
+<dt>
+<code>council_window_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>jury_size: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>round2_size: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>jury_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>jury_fee_cap_mist: u64</code>
+</dt>
+<dd>
+ 0 means no cap.
+</dd>
+<dt>
+<code>min_pool_for_jury_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quorum: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>approval_bps_council: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>approval_bps_community: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_JuryReview"></a>
+
+## Struct `JuryReview`
+
+One step of one proposal that the jury has taken, or may take, over.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> <b>has</b> drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>stage: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>state: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>trigger: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>referrers: vector&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+ Delegates who asked for the jury instead of voting (council step only).
+</dd>
+<dt>
+<code>case_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>escalated_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>decided_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>decision: u8</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_JuryPolicyUpdatedEvent"></a>
+
+## Struct `JuryPolicyUpdatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryPolicyUpdatedEvent">JuryPolicyUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>registry_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>council_stage_enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>community_stage_enabled: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>council_window_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>jury_size: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>round2_size: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>jury_fee_bps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>jury_fee_cap_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>min_pool_for_jury_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quorum: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>approval_bps_council: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>approval_bps_community: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_DelegateReferredToJuryEvent"></a>
+
+## Struct `DelegateReferredToJuryEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_DelegateReferredToJuryEvent">DelegateReferredToJuryEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>delegate_address: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>referral_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>majority_reached: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>referred_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_ProposalEscalatedToJuryEvent"></a>
+
+## Struct `ProposalEscalatedToJuryEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_ProposalEscalatedToJuryEvent">ProposalEscalatedToJuryEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>stage: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>trigger: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>case_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>jury_fee_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>pool_remaining_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>escalated_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_CommunityVoteNeedsJuryEvent"></a>
+
+## Struct `CommunityVoteNeedsJuryEvent`
+
+The community vote ended with no quorum or a tie, and the registry hands that to the jury.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_CommunityVoteNeedsJuryEvent">CommunityVoteNeedsJuryEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>trigger: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>votes_for: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>votes_against: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>quorum_votes: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>time_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_JuryDecisionAppliedEvent"></a>
+
+## Struct `JuryDecisionAppliedEvent`
+
+<code>decision</code>: 0 forward (advance or approve), 1 reject. <code>failed</code> means the jury could not
+decide and the step's default applied.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryDecisionAppliedEvent">JuryDecisionAppliedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>stage: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>decision: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>failed: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>case_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>applied_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_ProposalRejectedByJuryEvent"></a>
+
+## Struct `ProposalRejectedByJuryEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_ProposalRejectedByJuryEvent">ProposalRejectedByJuryEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>stage: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>rejection_time: u64</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -1787,6 +2314,96 @@ Error codes
 
 
 
+<a name="social_contracts_governance_EJuryHasJurisdiction"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EJuryHasJurisdiction">EJuryHasJurisdiction</a>: u64 = 24;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EJuryStageDisabled"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EJuryStageDisabled">EJuryStageDisabled</a>: u64 = 25;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EAlreadyReferred"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyReferred">EAlreadyReferred</a>: u64 = 26;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EDelegateAlreadyActed"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EDelegateAlreadyActed">EDelegateAlreadyActed</a>: u64 = 27;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ENoEscalationTrigger"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ENoEscalationTrigger">ENoEscalationTrigger</a>: u64 = 28;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EPoolTooSmallForJury"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EPoolTooSmallForJury">EPoolTooSmallForJury</a>: u64 = 29;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EWrongJuryCase"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EWrongJuryCase">EWrongJuryCase</a>: u64 = 30;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EJuryNotFinished"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EJuryNotFinished">EJuryNotFinished</a>: u64 = 31;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EInvalidJuryPolicy"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidJuryPolicy">EInvalidJuryPolicy</a>: u64 = 32;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ENoJuryRecord"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ENoJuryRecord">ENoJuryRecord</a>: u64 = 33;
+</code></pre>
+
+
+
 <a name="social_contracts_governance_FORFEIT_REASON_QUORUM_NOT_MET"></a>
 
 Forfeiture reason (indexer) — same values as old refund reason codes.
@@ -1811,6 +2428,15 @@ Forfeiture reason (indexer) — same values as old refund reason codes.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_FORFEIT_REASON_DELEGATE_REJECTED">FORFEIT_REASON_DELEGATE_REJECTED</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_FORFEIT_REASON_JURY_REJECTED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_FORFEIT_REASON_JURY_REJECTED">FORFEIT_REASON_JURY_REJECTED</a>: u8 = 3;
 </code></pre>
 
 
@@ -2001,6 +2627,209 @@ Field names for dynamic fields
 
 
 
+<a name="social_contracts_governance_JURY_POLICY_FIELD"></a>
+
+Per-registry jury policy; absent means the AI jury is off and governance behaves as it always has.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_POLICY_FIELD">JURY_POLICY_FIELD</a>: vector&lt;u8&gt; = vector[106, 117, 114, 121, 95, 112, 111, 108, 105, 99, 121];
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_COUNCIL_FIELD"></a>
+
+Per-proposal jury records, one per human step the jury can take over.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a>: vector&lt;u8&gt; = vector[106, 117, 114, 121, 95, 99, 111, 117, 110, 99, 105, 108];
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_COMMUNITY_FIELD"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>: vector&lt;u8&gt; = vector[106, 117, 114, 121, 95, 99, 111, 109, 109, 117, 110, 105, 116, 121];
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_STAGE_COUNCIL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_STAGE_COMMUNITY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COMMUNITY">JURY_STAGE_COMMUNITY</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_STATE_REFERRING"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_REFERRING">JURY_STATE_REFERRING</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_STATE_AWAITING"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_AWAITING">JURY_STATE_AWAITING</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_STATE_ESCALATED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_ESCALATED">JURY_STATE_ESCALATED</a>: u8 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_STATE_DECIDED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_DECIDED">JURY_STATE_DECIDED</a>: u8 = 4;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_TRIGGER_REFERRAL_MAJORITY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_REFERRAL_MAJORITY">JURY_TRIGGER_REFERRAL_MAJORITY</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_TRIGGER_COUNCIL_TIE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_COUNCIL_TIE">JURY_TRIGGER_COUNCIL_TIE</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_TRIGGER_COUNCIL_DEADLINE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_COUNCIL_DEADLINE">JURY_TRIGGER_COUNCIL_DEADLINE</a>: u8 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_TRIGGER_QUORUM_NOT_MET"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_QUORUM_NOT_MET">JURY_TRIGGER_QUORUM_NOT_MET</a>: u8 = 4;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_TRIGGER_VOTE_TIE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_VOTE_TIE">JURY_TRIGGER_VOTE_TIE</a>: u8 = 5;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_OUTCOME_FORWARD"></a>
+
+Jury menu: option 0 moves the proposal forward (council: to the community vote; community:
+approve), option 1 rejects it.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_FORWARD">JURY_OUTCOME_FORWARD</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_OUTCOME_REJECT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_REJECT">JURY_OUTCOME_REJECT</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_ACTION_ADVANCE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_ADVANCE">JURY_ACTION_ADVANCE</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_ACTION_APPROVE"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_APPROVE">JURY_ACTION_APPROVE</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_ACTION_REJECT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_EVIDENCE_KIND_PROPOSAL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_EVIDENCE_KIND_PROPOSAL">JURY_EVIDENCE_KIND_PROPOSAL</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_FAILURE_PATH_DEFAULT_DECISION"></a>
+
+Stored on a case so an indexer can tell it is not a task case's failure path.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_FAILURE_PATH_DEFAULT_DECISION">JURY_FAILURE_PATH_DEFAULT_DECISION</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_NO_DECISION"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_NO_DECISION">NO_DECISION</a>: u8 = 255;
+</code></pre>
+
+
+
 <a name="social_contracts_governance_DELEGATE_VOTE_STILL_IN_REVIEW"></a>
 
 
@@ -2051,6 +2880,16 @@ Field names for dynamic fields
 
 
 <pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_FINALIZE_OUTCOME_REJECT_QUORUM">FINALIZE_OUTCOME_REJECT_QUORUM</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_FINALIZE_OUTCOME_NEEDS_JURY"></a>
+
+The jury decides; no status, bucket or delegate statistic has changed.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_FINALIZE_OUTCOME_NEEDS_JURY">FINALIZE_OUTCOME_NEEDS_JURY</a>: u8 = 3;
 </code></pre>
 
 
@@ -3524,6 +4363,9 @@ Allow a proposal owner to rescind their proposal if it's still in the delegate r
     <b>assert</b>!(proposal.submitter == caller, <a href="../social_contracts/governance.md#social_contracts_governance_EUnauthorized">EUnauthorized</a>);
     // Verify proposal is still in delegate review stage
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+    // Once a <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> <b>has</b> the proposal the submitter cannot withdraw it (and the remaining pool)
+    // to dodge the verdict.
+    <b>assert</b>!(!<a href="../social_contracts/governance.md#social_contracts_governance_council_jury_has_jurisdiction">council_jury_has_jurisdiction</a>(proposal), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryHasJurisdiction">EJuryHasJurisdiction</a>);
     // Update proposals by status - remove from delegate review
     <b>let</b> from_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>);
     <b>let</b> <b>mut</b> index = 0;
@@ -3904,6 +4746,28 @@ eligibility (platform membership / blocks).
 
 </details>
 
+<a name="social_contracts_governance_community_finalize_voting_needs_jury_value"></a>
+
+## Function `community_finalize_voting_needs_jury_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_finalize_voting_needs_jury_value">community_finalize_voting_needs_jury_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_finalize_voting_needs_jury_value">community_finalize_voting_needs_jury_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_FINALIZE_OUTCOME_NEEDS_JURY">FINALIZE_OUTCOME_NEEDS_JURY</a> }
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_delegate_vote_outcome_reject_value"></a>
 
 ## Function `delegate_vote_outcome_reject_value`
@@ -3992,6 +4856,28 @@ eligibility (platform membership / blocks).
 
 </details>
 
+<a name="social_contracts_governance_forfeit_reason_jury_rejected_value"></a>
+
+## Function `forfeit_reason_jury_rejected_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_forfeit_reason_jury_rejected_value">forfeit_reason_jury_rejected_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_forfeit_reason_jury_rejected_value">forfeit_reason_jury_rejected_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_FORFEIT_REASON_JURY_REJECTED">FORFEIT_REASON_JURY_REJECTED</a> }
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_assert_platform_delegate_manual_reject"></a>
 
 ## Function `assert_platform_delegate_manual_reject`
@@ -4020,6 +4906,7 @@ eligibility (platform membership / blocks).
     <b>let</b> proposal_id = object::id(proposal);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+    <b>assert</b>!(!<a href="../social_contracts/governance.md#social_contracts_governance_council_jury_has_jurisdiction">council_jury_has_jurisdiction</a>(proposal), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryHasJurisdiction">EJuryHasJurisdiction</a>);
     clock::timestamp_ms(clock)
 }
 </code></pre>
@@ -4332,6 +5219,7 @@ Run delegate-in-review vote logic; returns 0=still in review, 1=advanced to comm
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     <b>assert</b>!(table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_ENotDelegate">ENotDelegate</a>);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+    <b>assert</b>!(!<a href="../social_contracts/governance.md#social_contracts_governance_council_jury_has_jurisdiction">council_jury_has_jurisdiction</a>(proposal), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryHasJurisdiction">EJuryHasJurisdiction</a>);
     <b>let</b> delegate_votes: &<b>mut</b> Table&lt;<b>address</b>, bool&gt; = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_DELEGATE_VOTES_FIELD">DELEGATE_VOTES_FIELD</a>);
     <b>assert</b>!(!table::contains(delegate_votes, caller), <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyVoted">EAlreadyVoted</a>);
     table::add(delegate_votes, caller, approve);
@@ -4496,7 +5384,41 @@ Ecosystem and proof-of-creativity only: <code>ecosystem_treasury</code> used whe
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
     <b>assert</b>!(current_time_ms &gt; proposal.voting_end_time, <a href="../social_contracts/governance.md#social_contracts_governance_EVotingPeriodNotEnded">EVotingPeriodNotEnded</a>);
+    <b>assert</b>!(!dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryHasJurisdiction">EJuryHasJurisdiction</a>);
     <b>let</b> total_votes = proposal.community_votes_for + proposal.community_votes_against;
+    // A quorum miss (including no votes at all) or a tie goes to the <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> instead of being
+    // rejected, when the registry <b>has</b> switched that on and the pool can pay jurors. Nothing
+    // <b>else</b> changes here: status, buckets and delegate stats wait <b>for</b> the <a href="../social_contracts/jury.md#social_contracts_jury">jury</a>'s decision.
+    {
+        <b>let</b> quorum_met = total_votes &gt;= registry.quorum_votes;
+        <b>let</b> tie = proposal.community_votes_for == proposal.community_votes_against;
+        <b>if</b> ((!quorum_met || tie) && <a href="../social_contracts/governance.md#social_contracts_governance_community_jury_available">community_jury_available</a>(registry, proposal)) {
+            <b>let</b> trigger = <b>if</b> (!quorum_met) { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_QUORUM_NOT_MET">JURY_TRIGGER_QUORUM_NOT_MET</a> } <b>else</b> { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_VOTE_TIE">JURY_TRIGGER_VOTE_TIE</a> };
+            dynamic_field::add(
+                &<b>mut</b> proposal.id,
+                <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>,
+                <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> {
+                    stage: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COMMUNITY">JURY_STAGE_COMMUNITY</a>,
+                    state: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_AWAITING">JURY_STATE_AWAITING</a>,
+                    trigger,
+                    referrers: vector::empty(),
+                    case_id: option::none(),
+                    escalated_at_ms: 0,
+                    decided_at_ms: 0,
+                    decision: <a href="../social_contracts/governance.md#social_contracts_governance_NO_DECISION">NO_DECISION</a>,
+                },
+            );
+            event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_CommunityVoteNeedsJuryEvent">CommunityVoteNeedsJuryEvent</a> {
+                proposal_id,
+                trigger,
+                votes_for: proposal.community_votes_for,
+                votes_against: proposal.community_votes_against,
+                quorum_votes: registry.quorum_votes,
+                time_ms: current_time_ms,
+            });
+            <b>return</b> (<a href="../social_contracts/governance.md#social_contracts_governance_FINALIZE_OUTCOME_NEEDS_JURY">FINALIZE_OUTCOME_NEEDS_JURY</a>, current_time_ms)
+        };
+    };
     <b>let</b> from_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>);
     <b>let</b> <b>mut</b> index = 0;
     <b>let</b> len = vector::length(from_status);
@@ -4704,6 +5626,9 @@ Decrypt anonymous votes, merge tallies, and resolve community finalization. Call
     <b>let</b> current_time_ms = clock::timestamp_ms(clock);
     <b>let</b> proposal_id = object::id(proposal);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
+    // The tally is merged into the proposal before finalizing; once the <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> is waiting a second
+    // pass would count every vote again.
+    <b>assert</b>!(!dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryHasJurisdiction">EJuryHasJurisdiction</a>);
     <b>let</b> <b>mut</b> votes_for = vector::empty&lt;<b>address</b>&gt;();
     <b>let</b> <b>mut</b> votes_against = vector::empty&lt;<b>address</b>&gt;();
     <b>let</b> <b>mut</b> invalid_votes = vector::empty&lt;<b>address</b>&gt;();
@@ -5670,6 +6595,7 @@ If more than half of delegates reject, reject the proposal manually (ecosystem /
     <b>let</b> proposal_id = object::id(proposal);
     <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
     <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+    <b>assert</b>!(!<a href="../social_contracts/governance.md#social_contracts_governance_council_jury_has_jurisdiction">council_jury_has_jurisdiction</a>(proposal), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryHasJurisdiction">EJuryHasJurisdiction</a>);
     <b>let</b> current_time = clock::timestamp_ms(clock);
     <a href="../social_contracts/governance.md#social_contracts_governance_complete_delegate_reject_to_ecosystem_treasury">complete_delegate_reject_to_ecosystem_treasury</a>(
         registry,
@@ -5975,6 +6901,1333 @@ This function is only callable by other modules in the same package
         id: object::new(ctx)
     }
 }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_state"></a>
+
+## Function `jury_state`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_state">jury_state</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, field: vector&lt;u8&gt;): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_state">jury_state</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>, field: vector&lt;u8&gt;): u8 {
+    <b>if</b> (!dynamic_field::exists_(&proposal.id, field)) {
+        <b>return</b> 0
+    };
+    <b>let</b> review: &<a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow(&proposal.id, field);
+    review.state
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_council_jury_has_jurisdiction"></a>
+
+## Function `council_jury_has_jurisdiction`
+
+True once the jury has the council step (or has already decided it): delegates can no longer
+vote, reject or rescind.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_council_jury_has_jurisdiction">council_jury_has_jurisdiction</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_council_jury_has_jurisdiction">council_jury_has_jurisdiction</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): bool {
+    <b>let</b> state = <a href="../social_contracts/governance.md#social_contracts_governance_jury_state">jury_state</a>(proposal, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a>);
+    state == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_ESCALATED">JURY_STATE_ESCALATED</a> || state == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_DECIDED">JURY_STATE_DECIDED</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_policy_of"></a>
+
+## Function `jury_policy_of`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_policy_of">jury_policy_of</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">social_contracts::governance::RegistryJuryPolicy</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_policy_of">jury_policy_of</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>): Option&lt;<a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">RegistryJuryPolicy</a>&gt; {
+    <b>if</b> (dynamic_field::exists_(&registry.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_POLICY_FIELD">JURY_POLICY_FIELD</a>)) {
+        <b>let</b> policy: &<a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">RegistryJuryPolicy</a> = dynamic_field::borrow(&registry.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_POLICY_FIELD">JURY_POLICY_FIELD</a>);
+        option::some(*policy)
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_community_jury_available"></a>
+
+## Function `community_jury_available`
+
+Whether a quorum miss or tie at the community step goes to the jury: the policy is on and the
+pool is big enough to pay jurors. Decided from the registry and proposal alone so the
+existing finalize entries need no new arguments.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_jury_available">community_jury_available</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_community_jury_available">community_jury_available</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>, proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): bool {
+    <b>let</b> policy = <a href="../social_contracts/governance.md#social_contracts_governance_jury_policy_of">jury_policy_of</a>(registry);
+    <b>if</b> (option::is_none(&policy)) {
+        <b>return</b> <b>false</b>
+    };
+    <b>let</b> policy = option::destroy_some(policy);
+    policy.community_stage_enabled
+        && balance::value(&proposal.reward_pool) &gt;= policy.min_pool_for_jury_mist
+        && policy.min_pool_for_jury_mist &gt; 0
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_set_registry_jury_policy"></a>
+
+## Function `set_registry_jury_policy`
+
+Set (or replace) a registry's jury policy. Until one is set the jury does nothing.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_set_registry_jury_policy">set_registry_jury_policy</a>(_: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">social_contracts::governance::GovernanceAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, council_stage_enabled: bool, community_stage_enabled: bool, council_window_ms: u64, jury_size: u64, round2_size: u64, jury_fee_bps: u64, jury_fee_cap_mist: u64, min_pool_for_jury_mist: u64, quorum: u64, approval_bps_council: u64, approval_bps_community: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_set_registry_jury_policy">set_registry_jury_policy</a>(
+    _: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceAdminCap">GovernanceAdminCap</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    council_stage_enabled: bool,
+    community_stage_enabled: bool,
+    council_window_ms: u64,
+    jury_size: u64,
+    round2_size: u64,
+    jury_fee_bps: u64,
+    jury_fee_cap_mist: u64,
+    min_pool_for_jury_mist: u64,
+    quorum: u64,
+    approval_bps_council: u64,
+    approval_bps_community: u64,
+    clock: &Clock,
+) {
+    <a href="../social_contracts/governance.md#social_contracts_governance_set_jury_policy_internal">set_jury_policy_internal</a>(
+        registry,
+        council_stage_enabled,
+        community_stage_enabled,
+        council_window_ms,
+        jury_size,
+        round2_size,
+        jury_fee_bps,
+        jury_fee_cap_mist,
+        min_pool_for_jury_mist,
+        quorum,
+        approval_bps_council,
+        approval_bps_community,
+        clock,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_set_jury_policy_internal"></a>
+
+## Function `set_jury_policy_internal`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_set_jury_policy_internal">set_jury_policy_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, council_stage_enabled: bool, community_stage_enabled: bool, council_window_ms: u64, jury_size: u64, round2_size: u64, jury_fee_bps: u64, jury_fee_cap_mist: u64, min_pool_for_jury_mist: u64, quorum: u64, approval_bps_council: u64, approval_bps_community: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_set_jury_policy_internal">set_jury_policy_internal</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    council_stage_enabled: bool,
+    community_stage_enabled: bool,
+    council_window_ms: u64,
+    jury_size: u64,
+    round2_size: u64,
+    jury_fee_bps: u64,
+    jury_fee_cap_mist: u64,
+    min_pool_for_jury_mist: u64,
+    quorum: u64,
+    approval_bps_council: u64,
+    approval_bps_community: u64,
+    clock: &Clock,
+) {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(quorum &gt;= 1 && jury_size &gt;= quorum && round2_size &gt;= quorum, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidJuryPolicy">EInvalidJuryPolicy</a>);
+    <b>assert</b>!(jury_fee_bps &lt;= 5000, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidJuryPolicy">EInvalidJuryPolicy</a>);
+    <b>assert</b>!(approval_bps_council &gt;= 5000 && approval_bps_council &lt;= 10000, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidJuryPolicy">EInvalidJuryPolicy</a>);
+    <b>assert</b>!(approval_bps_community &gt;= 5000 && approval_bps_community &lt;= 10000, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidJuryPolicy">EInvalidJuryPolicy</a>);
+    // A <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> that is switched on but cannot be paid would be a free vote.
+    <b>assert</b>!(
+        !(council_stage_enabled || community_stage_enabled) || (jury_fee_bps &gt; 0 && min_pool_for_jury_mist &gt; 0),
+        <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidJuryPolicy">EInvalidJuryPolicy</a>,
+    );
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>let</b> existing = <a href="../social_contracts/governance.md#social_contracts_governance_jury_policy_of">jury_policy_of</a>(registry);
+    <b>let</b> enabled_at_ms = <b>if</b> (option::is_some(&existing) && option::borrow(&existing).enabled_at_ms &gt; 0) {
+        option::borrow(&existing).enabled_at_ms
+    } <b>else</b> {
+        now
+    };
+    <b>let</b> policy = <a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">RegistryJuryPolicy</a> {
+        council_stage_enabled,
+        community_stage_enabled,
+        enabled_at_ms,
+        council_window_ms,
+        jury_size,
+        round2_size,
+        jury_fee_bps,
+        jury_fee_cap_mist,
+        min_pool_for_jury_mist,
+        quorum,
+        approval_bps_council,
+        approval_bps_community,
+    };
+    <b>if</b> (dynamic_field::exists_(&registry.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_POLICY_FIELD">JURY_POLICY_FIELD</a>)) {
+        <b>let</b> stored: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">RegistryJuryPolicy</a> = dynamic_field::borrow_mut(&<b>mut</b> registry.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_POLICY_FIELD">JURY_POLICY_FIELD</a>);
+        *stored = policy;
+    } <b>else</b> {
+        dynamic_field::add(&<b>mut</b> registry.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_POLICY_FIELD">JURY_POLICY_FIELD</a>, policy);
+    };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_JuryPolicyUpdatedEvent">JuryPolicyUpdatedEvent</a> {
+        registry_id: object::id(registry),
+        council_stage_enabled,
+        community_stage_enabled,
+        council_window_ms,
+        jury_size,
+        round2_size,
+        jury_fee_bps,
+        jury_fee_cap_mist,
+        min_pool_for_jury_mist,
+        quorum,
+        approval_bps_council,
+        approval_bps_community,
+        updated_at_ms: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_live_referrer_count"></a>
+
+## Function `live_referrer_count`
+
+Delegates in the registry who are among the referrers of this proposal's council step.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_live_referrer_count">live_referrer_count</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, review: &<a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">social_contracts::governance::JuryReview</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_live_referrer_count">live_referrer_count</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>, review: &<a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a>): u64 {
+    <b>let</b> <b>mut</b> count = 0;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(&review.referrers);
+    <b>while</b> (i &lt; len) {
+        <b>if</b> (table::contains(&registry.delegates, *vector::borrow(&review.referrers, i))) {
+            count = count + 1;
+        };
+        i = i + 1;
+    };
+    count
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_live_voter_count"></a>
+
+## Function `live_voter_count`
+
+Current delegates who have voted approve or reject on the proposal.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_live_voter_count">live_voter_count</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_live_voter_count">live_voter_count</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>, proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): u64 {
+    <b>let</b> votes: &Table&lt;<b>address</b>, bool&gt; = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_DELEGATE_VOTES_FIELD">DELEGATE_VOTES_FIELD</a>);
+    <b>let</b> addrs = vec_set::keys(&registry.delegate_addresses);
+    <b>let</b> <b>mut</b> count = 0;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(addrs);
+    <b>while</b> (i &lt; len) {
+        <b>let</b> addr = *vector::borrow(addrs, i);
+        <b>if</b> (table::contains(&registry.delegates, addr) && table::contains(votes, addr)) {
+            count = count + 1;
+        };
+        i = i + 1;
+    };
+    count
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_delegate_refer_to_jury"></a>
+
+## Function `delegate_refer_to_jury`
+
+A delegate asks the AI jury to take the council step instead of voting. When more than half
+of the current delegates have asked, anyone may escalate. Referrals never enter the delegate
+vote tables, so finalization statistics are unaffected.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_delegate_refer_to_jury">delegate_refer_to_jury</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_delegate_refer_to_jury">delegate_refer_to_jury</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    reason: Option&lt;String&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
+    <a href="../social_contracts/governance.md#social_contracts_governance_try_update_delegate_panel_if_due">try_update_delegate_panel_if_due</a>(registry, ctx);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>let</b> proposal_id = object::id(proposal);
+    <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
+    <b>assert</b>!(table::contains(&registry.delegates, caller), <a href="../social_contracts/governance.md#social_contracts_governance_ENotDelegate">ENotDelegate</a>);
+    <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+    <b>assert</b>!(!<a href="../social_contracts/governance.md#social_contracts_governance_council_jury_has_jurisdiction">council_jury_has_jurisdiction</a>(proposal), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryHasJurisdiction">EJuryHasJurisdiction</a>);
+    <b>let</b> policy = <a href="../social_contracts/governance.md#social_contracts_governance_jury_policy_of">jury_policy_of</a>(registry);
+    <b>assert</b>!(option::is_some(&policy), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryStageDisabled">EJuryStageDisabled</a>);
+    <b>let</b> policy = option::destroy_some(policy);
+    <b>assert</b>!(policy.council_stage_enabled, <a href="../social_contracts/governance.md#social_contracts_governance_EJuryStageDisabled">EJuryStageDisabled</a>);
+    <b>assert</b>!(balance::value(&proposal.reward_pool) &gt;= policy.min_pool_for_jury_mist, <a href="../social_contracts/governance.md#social_contracts_governance_EPoolTooSmallForJury">EPoolTooSmallForJury</a>);
+    {
+        <b>let</b> votes: &Table&lt;<b>address</b>, bool&gt; = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_DELEGATE_VOTES_FIELD">DELEGATE_VOTES_FIELD</a>);
+        <b>assert</b>!(!table::contains(votes, caller), <a href="../social_contracts/governance.md#social_contracts_governance_EDelegateAlreadyActed">EDelegateAlreadyActed</a>);
+    };
+    <b>if</b> (!dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a>)) {
+        dynamic_field::add(
+            &<b>mut</b> proposal.id,
+            <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a>,
+            <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> {
+                stage: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>,
+                state: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_REFERRING">JURY_STATE_REFERRING</a>,
+                trigger: 0,
+                referrers: vector::empty(),
+                case_id: option::none(),
+                escalated_at_ms: 0,
+                decided_at_ms: 0,
+                decision: <a href="../social_contracts/governance.md#social_contracts_governance_NO_DECISION">NO_DECISION</a>,
+            },
+        );
+    };
+    <b>let</b> total_delegates = table::length(&registry.delegates);
+    <b>let</b> (referral_count, majority_reached) = {
+        <b>let</b> review: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a>);
+        <b>assert</b>!(!vector::contains(&review.referrers, &caller), <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyReferred">EAlreadyReferred</a>);
+        vector::push_back(&<b>mut</b> review.referrers, caller);
+        <b>let</b> count = <a href="../social_contracts/governance.md#social_contracts_governance_live_referrer_count">live_referrer_count</a>(registry, review);
+        <b>let</b> majority = count &gt; total_delegates / 2;
+        <b>if</b> (majority && review.trigger == 0) {
+            review.trigger = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_REFERRAL_MAJORITY">JURY_TRIGGER_REFERRAL_MAJORITY</a>;
+        };
+        (count, majority)
+    };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_DelegateReferredToJuryEvent">DelegateReferredToJuryEvent</a> {
+        proposal_id,
+        delegate_address: caller,
+        reason,
+        referral_count,
+        majority_reached,
+        referred_at_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_council_trigger"></a>
+
+## Function `council_trigger`
+
+Why the council step may go to the jury now, or aborts if it may not: a referral majority,
+every current delegate having acted without a majority, or the council window running out.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_council_trigger">council_trigger</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, policy: &<a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">social_contracts::governance::RegistryJuryPolicy</a>, now: u64): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_council_trigger">council_trigger</a>(
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    policy: &<a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">RegistryJuryPolicy</a>,
+    now: u64,
+): u8 {
+    <b>let</b> total = table::length(&registry.delegates);
+    <b>let</b> referrers = <b>if</b> (dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a>)) {
+        <b>let</b> review: &<a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a>);
+        <a href="../social_contracts/governance.md#social_contracts_governance_live_referrer_count">live_referrer_count</a>(registry, review)
+    } <b>else</b> {
+        0
+    };
+    <b>if</b> (referrers &gt; total / 2) {
+        <b>return</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_REFERRAL_MAJORITY">JURY_TRIGGER_REFERRAL_MAJORITY</a>
+    };
+    <b>if</b> (total &gt; 0 && <a href="../social_contracts/governance.md#social_contracts_governance_live_voter_count">live_voter_count</a>(registry, proposal) + referrers &gt;= total) {
+        <b>return</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_COUNCIL_TIE">JURY_TRIGGER_COUNCIL_TIE</a>
+    };
+    <b>let</b> start = <b>if</b> (proposal.submission_time &gt; policy.enabled_at_ms) {
+        proposal.submission_time
+    } <b>else</b> {
+        policy.enabled_at_ms
+    };
+    <b>if</b> (policy.council_window_ms &gt; 0 && now &gt; start + policy.council_window_ms) {
+        <b>return</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_COUNCIL_DEADLINE">JURY_TRIGGER_COUNCIL_DEADLINE</a>
+    };
+    <b>abort</b> <a href="../social_contracts/governance.md#social_contracts_governance_ENoEscalationTrigger">ENoEscalationTrigger</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_proposal_content_digest"></a>
+
+## Function `proposal_content_digest`
+
+Content the jury judges, fixed on the case so it cannot be swapped later.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_content_digest">proposal_content_digest</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): vector&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_content_digest">proposal_content_digest</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): vector&lt;u8&gt; {
+    <b>let</b> <b>mut</b> bytes = vector::empty&lt;u8&gt;();
+    vector::append(&<b>mut</b> bytes, bcs::to_bytes(&proposal.title));
+    vector::append(&<b>mut</b> bytes, bcs::to_bytes(&proposal.description));
+    vector::append(&<b>mut</b> bytes, bcs::to_bytes(&proposal.metadata_json));
+    vector::append(&<b>mut</b> bytes, bcs::to_bytes(&proposal.reference_id));
+    hash::sha3_256(bytes)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_stakeholder_owners"></a>
+
+## Function `stakeholder_owners`
+
+Everyone who has a stake in this proposal's outcome, up to the jury's exclusion limit:
+the current delegates, the submitter, any extra addresses (a platform's owner) and, at the
+community step, the voters. The limit is a cap on a case, so on a very large vote only the
+first voters are excluded.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_stakeholder_owners">stakeholder_owners</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, extra: vector&lt;<b>address</b>&gt;, include_voters: bool, limit: u64): vector&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_stakeholder_owners">stakeholder_owners</a>(
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    extra: vector&lt;<b>address</b>&gt;,
+    include_voters: bool,
+    limit: u64,
+): vector&lt;<b>address</b>&gt; {
+    <b>let</b> <b>mut</b> out = vec_set::empty&lt;<b>address</b>&gt;();
+    <b>let</b> delegates = vec_set::keys(&registry.delegate_addresses);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; vector::length(delegates)) {
+        <a href="../social_contracts/governance.md#social_contracts_governance_add_excluded_owner">add_excluded_owner</a>(&<b>mut</b> out, *vector::borrow(delegates, i), limit);
+        i = i + 1;
+    };
+    <a href="../social_contracts/governance.md#social_contracts_governance_add_excluded_owner">add_excluded_owner</a>(&<b>mut</b> out, proposal.submitter, limit);
+    <b>let</b> <b>mut</b> j = 0;
+    <b>while</b> (j &lt; vector::length(&extra)) {
+        <a href="../social_contracts/governance.md#social_contracts_governance_add_excluded_owner">add_excluded_owner</a>(&<b>mut</b> out, *vector::borrow(&extra, j), limit);
+        j = j + 1;
+    };
+    <b>if</b> (include_voters) {
+        <b>if</b> (dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_COMMUNITY_FIELD">VOTED_COMMUNITY_FIELD</a>)) {
+            <b>let</b> voters: &VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTED_COMMUNITY_FIELD">VOTED_COMMUNITY_FIELD</a>);
+            <b>let</b> keys = vec_set::keys(voters);
+            <b>let</b> <b>mut</b> k = 0;
+            <b>while</b> (k &lt; vector::length(keys)) {
+                <a href="../social_contracts/governance.md#social_contracts_governance_add_excluded_owner">add_excluded_owner</a>(&<b>mut</b> out, *vector::borrow(keys, k), limit);
+                k = k + 1;
+            };
+        };
+        <b>if</b> (dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ANON_VOTERS_FIELD">ANON_VOTERS_FIELD</a>)) {
+            <b>let</b> voters: &VecSet&lt;<b>address</b>&gt; = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_ANON_VOTERS_FIELD">ANON_VOTERS_FIELD</a>);
+            <b>let</b> keys = vec_set::keys(voters);
+            <b>let</b> <b>mut</b> k = 0;
+            <b>while</b> (k &lt; vector::length(keys)) {
+                <a href="../social_contracts/governance.md#social_contracts_governance_add_excluded_owner">add_excluded_owner</a>(&<b>mut</b> out, *vector::borrow(keys, k), limit);
+                k = k + 1;
+            };
+        };
+    };
+    vec_set::into_keys(out)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_add_excluded_owner"></a>
+
+## Function `add_excluded_owner`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_add_excluded_owner">add_excluded_owner</a>(out: &<b>mut</b> <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, addr: <b>address</b>, limit: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_add_excluded_owner">add_excluded_owner</a>(out: &<b>mut</b> VecSet&lt;<b>address</b>&gt;, addr: <b>address</b>, limit: u64) {
+    <b>if</b> (vec_set::length(out) &lt; limit && !vec_set::contains(out, &addr)) {
+        vec_set::insert(out, addr);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_take_jury_fee"></a>
+
+## Function `take_jury_fee`
+
+Carve the jury fee out of the proposal's pool: <code>jury_fee_bps</code> of what is left, capped.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_take_jury_fee">take_jury_fee</a>(proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, policy: &<a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">social_contracts::governance::RegistryJuryPolicy</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_take_jury_fee">take_jury_fee</a>(proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>, policy: &<a href="../social_contracts/governance.md#social_contracts_governance_RegistryJuryPolicy">RegistryJuryPolicy</a>): Balance&lt;MYSO&gt; {
+    <b>let</b> pool = balance::value(&proposal.reward_pool);
+    <b>assert</b>!(pool &gt;= policy.min_pool_for_jury_mist, <a href="../social_contracts/governance.md#social_contracts_governance_EPoolTooSmallForJury">EPoolTooSmallForJury</a>);
+    <b>let</b> <b>mut</b> fee = ((((pool <b>as</b> u128) * (policy.jury_fee_bps <b>as</b> u128)) / 10000u128) <b>as</b> u64);
+    <b>if</b> (policy.jury_fee_cap_mist &gt; 0 && fee &gt; policy.jury_fee_cap_mist) {
+        fee = policy.jury_fee_cap_mist;
+    };
+    <b>assert</b>!(fee &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_EPoolTooSmallForJury">EPoolTooSmallForJury</a>);
+    balance::split(&<b>mut</b> proposal.reward_pool, fee)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_open_jury_for_proposal"></a>
+
+## Function `open_jury_for_proposal`
+
+Anyone moves a proposal to the jury at the step that has earned it: the council step once a
+referral majority, a tie, or the council window allows it, or the community step after a vote
+that ended with no quorum or a tie. Returns 0 when a case was opened, 1 when the jury is
+switched off and the community default (reject) applied instead; the caller then forfeits
+the pool for <code><a href="../social_contracts/governance.md#social_contracts_governance_jury_default_forfeit_reason">jury_default_forfeit_reason</a></code>.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_open_jury_for_proposal">open_jury_for_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, jury_config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, stage: u8, sweep_to: <b>address</b>, extra_exclusions: vector&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_open_jury_for_proposal">open_jury_for_proposal</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    jury_config: &JuryConfig,
+    stage: u8,
+    sweep_to: <b>address</b>,
+    extra_exclusions: vector&lt;<b>address</b>&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+): u8 {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>let</b> proposal_id = object::id(proposal);
+    <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
+    <b>let</b> policy = <a href="../social_contracts/governance.md#social_contracts_governance_jury_policy_of">jury_policy_of</a>(registry);
+    <b>assert</b>!(option::is_some(&policy), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryStageDisabled">EJuryStageDisabled</a>);
+    <b>let</b> policy = option::destroy_some(policy);
+    <b>let</b> trigger = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) {
+        <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+        <b>assert</b>!(policy.council_stage_enabled, <a href="../social_contracts/governance.md#social_contracts_governance_EJuryStageDisabled">EJuryStageDisabled</a>);
+        <b>assert</b>!(!<a href="../social_contracts/governance.md#social_contracts_governance_council_jury_has_jurisdiction">council_jury_has_jurisdiction</a>(proposal), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryHasJurisdiction">EJuryHasJurisdiction</a>);
+        <a href="../social_contracts/governance.md#social_contracts_governance_council_trigger">council_trigger</a>(registry, proposal, &policy, now)
+    } <b>else</b> {
+        <b>assert</b>!(stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COMMUNITY">JURY_STAGE_COMMUNITY</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidParameter">EInvalidParameter</a>);
+        <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+        <b>assert</b>!(<a href="../social_contracts/governance.md#social_contracts_governance_jury_state">jury_state</a>(proposal, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>) == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_AWAITING">JURY_STATE_AWAITING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_ENoJuryRecord">ENoJuryRecord</a>);
+        <b>let</b> review: &<a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>);
+        review.trigger
+    };
+    <b>if</b> (!<a href="../social_contracts/jury.md#social_contracts_jury_config_active">jury::config_active</a>(jury_config)) {
+        // A paused <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> must not strand a finished vote. The council step simply stays with the
+        // humans; the community step takes its default.
+        <b>assert</b>!(stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COMMUNITY">JURY_STAGE_COMMUNITY</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EJuryStageDisabled">EJuryStageDisabled</a>);
+        <a href="../social_contracts/governance.md#social_contracts_governance_apply_default_community_reject">apply_default_community_reject</a>(registry, proposal, now);
+        <b>return</b> 1
+    };
+    <b>let</b> fee = <a href="../social_contracts/governance.md#social_contracts_governance_take_jury_fee">take_jury_fee</a>(proposal, &policy);
+    <b>let</b> fee_mist = balance::value(&fee);
+    <b>let</b> approval_bps = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) { policy.approval_bps_council } <b>else</b> { policy.approval_bps_community };
+    <b>let</b> owners = <a href="../social_contracts/governance.md#social_contracts_governance_stakeholder_owners">stakeholder_owners</a>(
+        registry,
+        proposal,
+        extra_exclusions,
+        stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COMMUNITY">JURY_STAGE_COMMUNITY</a>,
+        <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">jury::max_exclusions</a>(jury_config),
+    );
+    <b>let</b> <b>mut</b> case = <a href="../social_contracts/jury.md#social_contracts_jury_open_case">jury::open_case</a>(
+        jury_config,
+        <a href="../social_contracts/jury.md#social_contracts_jury_subject_governance">jury::subject_governance</a>(),
+        proposal_id,
+        stage,
+        2,
+        approval_bps,
+        policy.quorum,
+        vector[policy.jury_size, policy.round2_size],
+        <b>false</b>,
+        <a href="../social_contracts/governance.md#social_contracts_governance_JURY_FAILURE_PATH_DEFAULT_DECISION">JURY_FAILURE_PATH_DEFAULT_DECISION</a>,
+        0,
+        owners,
+        vector::empty&lt;ID&gt;(),
+        vector::empty&lt;ID&gt;(),
+        fee,
+        fee_mist / policy.jury_size,
+        sweep_to,
+        clock,
+        ctx,
+    );
+    <a href="../social_contracts/jury.md#social_contracts_jury_add_evidence">jury::add_evidence</a>(
+        jury_config,
+        &<b>mut</b> case,
+        proposal.submitter,
+        <a href="../social_contracts/governance.md#social_contracts_governance_JURY_EVIDENCE_KIND_PROPOSAL">JURY_EVIDENCE_KIND_PROPOSAL</a>,
+        <a href="../social_contracts/governance.md#social_contracts_governance_proposal_content_digest">proposal_content_digest</a>(proposal),
+        b"<a href="../social_contracts/governance.md#social_contracts_governance">governance</a>:proposal",
+        clock,
+    );
+    <b>let</b> case_id = <a href="../social_contracts/jury.md#social_contracts_jury_share_case">jury::share_case</a>(case);
+    <b>let</b> field = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a> } <b>else</b> { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a> };
+    // A council step can reach the <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> by tie or deadline with no referral ever recorded.
+    <b>if</b> (!dynamic_field::exists_(&proposal.id, field)) {
+        dynamic_field::add(
+            &<b>mut</b> proposal.id,
+            field,
+            <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> {
+                stage,
+                state: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_REFERRING">JURY_STATE_REFERRING</a>,
+                trigger: 0,
+                referrers: vector::empty(),
+                case_id: option::none(),
+                escalated_at_ms: 0,
+                decided_at_ms: 0,
+                decision: <a href="../social_contracts/governance.md#social_contracts_governance_NO_DECISION">NO_DECISION</a>,
+            },
+        );
+    };
+    {
+        <b>let</b> review: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, field);
+        review.state = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_ESCALATED">JURY_STATE_ESCALATED</a>;
+        review.trigger = trigger;
+        review.case_id = option::some(case_id);
+        review.escalated_at_ms = now;
+    };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalEscalatedToJuryEvent">ProposalEscalatedToJuryEvent</a> {
+        proposal_id,
+        stage,
+        trigger,
+        case_id,
+        jury_fee_mist: fee_mist,
+        pool_remaining_mist: balance::value(&proposal.reward_pool),
+        escalated_at_ms: now,
+    });
+    0
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_default_forfeit_reason"></a>
+
+## Function `jury_default_forfeit_reason`
+
+Why a defaulted community rejection forfeits the pool: a tie is a community rejection, a
+quorum miss is what it always was.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_default_forfeit_reason">jury_default_forfeit_reason</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_default_forfeit_reason">jury_default_forfeit_reason</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): u8 {
+    <b>let</b> review: &<a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>);
+    <b>if</b> (review.trigger == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_TRIGGER_VOTE_TIE">JURY_TRIGGER_VOTE_TIE</a>) {
+        <a href="../social_contracts/governance.md#social_contracts_governance_FORFEIT_REASON_COMMUNITY_REJECTED">FORFEIT_REASON_COMMUNITY_REJECTED</a>
+    } <b>else</b> {
+        <a href="../social_contracts/governance.md#social_contracts_governance_FORFEIT_REASON_QUORUM_NOT_MET">FORFEIT_REASON_QUORUM_NOT_MET</a>
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_remove_from_bucket"></a>
+
+## Function `remove_from_bucket`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_remove_from_bucket">remove_from_bucket</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, status: u8, proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_remove_from_bucket">remove_from_bucket</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>, status: u8, proposal_id: ID) {
+    <b>let</b> from_status = table::borrow_mut(&<b>mut</b> registry.proposals_by_status, status);
+    <b>let</b> <b>mut</b> index = 0;
+    <b>let</b> len = vector::length(from_status);
+    <b>while</b> (index &lt; len) {
+        <b>if</b> (*vector::borrow(from_status, index) == proposal_id) {
+            vector::remove(from_status, index);
+            <b>break</b>
+        };
+        index = index + 1;
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_apply_default_community_reject"></a>
+
+## Function `apply_default_community_reject`
+
+The community step ended with the jury switched off: what the vote would have done anyway.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_apply_default_community_reject">apply_default_community_reject</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, now: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_apply_default_community_reject">apply_default_community_reject</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>, now: u64) {
+    <b>let</b> proposal_id = object::id(proposal);
+    <a href="../social_contracts/governance.md#social_contracts_governance_remove_from_bucket">remove_from_bucket</a>(registry, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, proposal_id);
+    proposal.status = <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_REJECTED">STATUS_REJECTED</a>;
+    vector::push_back(table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_REJECTED">STATUS_REJECTED</a>), proposal_id);
+    {
+        <b>let</b> review: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>);
+        review.state = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_DECIDED">JURY_STATE_DECIDED</a>;
+        review.decision = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_REJECT">JURY_OUTCOME_REJECT</a>;
+        review.decided_at_ms = now;
+    };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalRejectedByCommunityEvent">ProposalRejectedByCommunityEvent</a> {
+        proposal_id,
+        rejection_time: now,
+        votes_for: proposal.community_votes_for,
+        votes_against: proposal.community_votes_against,
+    });
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_JuryDecisionAppliedEvent">JuryDecisionAppliedEvent</a> {
+        proposal_id,
+        stage: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COMMUNITY">JURY_STAGE_COMMUNITY</a>,
+        decision: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_REJECT">JURY_OUTCOME_REJECT</a>,
+        failed: <b>true</b>,
+        case_id: option::none(),
+        applied_at_ms: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_apply_jury_case"></a>
+
+## Function `apply_jury_case`
+
+Apply a finished jury case to its proposal. Returns the action taken so the caller can route
+funds: <code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_ADVANCE">JURY_ACTION_ADVANCE</a></code> (the council step moved to the community vote),
+<code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_APPROVE">JURY_ACTION_APPROVE</a></code>, or <code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a></code> (the caller forfeits the pool).
+
+A jury that could not decide uses the step's default: the council step advances (humans
+decide), the community step rejects (what a no-quorum or tied vote did before). Delegate
+statistics are not touched: a jury decision says nothing about how delegates sided.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_apply_jury_case">apply_jury_case</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u8, u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_apply_jury_case">apply_jury_case</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    case: &<b>mut</b> JuryCase,
+    clock: &Clock,
+    ctx: &TxContext,
+): (u8, u64) {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>let</b> proposal_id = object::id(proposal);
+    <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
+    <b>assert</b>!(<a href="../social_contracts/jury.md#social_contracts_jury_case_subject_kind">jury::case_subject_kind</a>(case) == <a href="../social_contracts/jury.md#social_contracts_jury_subject_governance">jury::subject_governance</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongJuryCase">EWrongJuryCase</a>);
+    <b>assert</b>!(<a href="../social_contracts/jury.md#social_contracts_jury_case_subject_id">jury::case_subject_id</a>(case) == proposal_id, <a href="../social_contracts/governance.md#social_contracts_governance_EWrongJuryCase">EWrongJuryCase</a>);
+    <b>let</b> stage = <a href="../social_contracts/jury.md#social_contracts_jury_case_stage">jury::case_stage</a>(case);
+    <b>let</b> field = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a> } <b>else</b> { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a> };
+    <b>assert</b>!(<a href="../social_contracts/governance.md#social_contracts_governance_jury_state">jury_state</a>(proposal, field) == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_ESCALATED">JURY_STATE_ESCALATED</a>, <a href="../social_contracts/governance.md#social_contracts_governance_ENoJuryRecord">ENoJuryRecord</a>);
+    {
+        <b>let</b> review: &<a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow(&proposal.id, field);
+        <b>assert</b>!(*option::borrow(&review.case_id) == object::id(case), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongJuryCase">EWrongJuryCase</a>);
+    };
+    <b>assert</b>!(<a href="../social_contracts/jury.md#social_contracts_jury_case_is_finished">jury::case_is_finished</a>(case), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryNotFinished">EJuryNotFinished</a>);
+    <b>let</b> state = <a href="../social_contracts/jury.md#social_contracts_jury_case_state">jury::case_state</a>(case);
+    <b>assert</b>!(state == <a href="../social_contracts/jury.md#social_contracts_jury_case_final">jury::case_final</a>() || state == <a href="../social_contracts/jury.md#social_contracts_jury_case_failed">jury::case_failed</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryNotFinished">EJuryNotFinished</a>);
+    <a href="../social_contracts/jury.md#social_contracts_jury_mark_executed">jury::mark_executed</a>(case);
+    <b>let</b> failed = state == <a href="../social_contracts/jury.md#social_contracts_jury_case_failed">jury::case_failed</a>();
+    <b>let</b> forward = <b>if</b> (failed) {
+        stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>
+    } <b>else</b> {
+        *option::borrow(&<a href="../social_contracts/jury.md#social_contracts_jury_case_final_outcome">jury::case_final_outcome</a>(case)) == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_FORWARD">JURY_OUTCOME_FORWARD</a>
+    };
+    <b>let</b> case_id = object::id(case);
+    <b>let</b> action = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) {
+        <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+        <b>if</b> (forward) {
+            <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting">move_to_community_voting</a>(registry, proposal, clock, ctx);
+            <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_ADVANCE">JURY_ACTION_ADVANCE</a>
+        } <b>else</b> {
+            <a href="../social_contracts/governance.md#social_contracts_governance_transition_proposal_rejected_by_delegate_council">transition_proposal_rejected_by_delegate_council</a>(registry, proposal);
+            event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalRejectedEvent">ProposalRejectedEvent</a> { proposal_id, rejection_time: now });
+            <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a>
+        }
+    } <b>else</b> {
+        <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+        <a href="../social_contracts/governance.md#social_contracts_governance_remove_from_bucket">remove_from_bucket</a>(registry, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, proposal_id);
+        <b>if</b> (forward) {
+            proposal.status = <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_APPROVED">STATUS_APPROVED</a>;
+            vector::push_back(table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_APPROVED">STATUS_APPROVED</a>), proposal_id);
+            event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalApprovedEvent">ProposalApprovedEvent</a> {
+                proposal_id,
+                approval_time: now,
+                votes_for: proposal.community_votes_for,
+                votes_against: proposal.community_votes_against,
+            });
+            <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_APPROVE">JURY_ACTION_APPROVE</a>
+        } <b>else</b> {
+            proposal.status = <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_REJECTED">STATUS_REJECTED</a>;
+            vector::push_back(table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_REJECTED">STATUS_REJECTED</a>), proposal_id);
+            event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalRejectedByCommunityEvent">ProposalRejectedByCommunityEvent</a> {
+                proposal_id,
+                rejection_time: now,
+                votes_for: proposal.community_votes_for,
+                votes_against: proposal.community_votes_against,
+            });
+            <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a>
+        }
+    };
+    {
+        <b>let</b> review: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, field);
+        review.state = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_DECIDED">JURY_STATE_DECIDED</a>;
+        review.decision = <b>if</b> (forward) { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_FORWARD">JURY_OUTCOME_FORWARD</a> } <b>else</b> { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_REJECT">JURY_OUTCOME_REJECT</a> };
+        review.decided_at_ms = now;
+    };
+    <b>if</b> (action == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a>) {
+        event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalRejectedByJuryEvent">ProposalRejectedByJuryEvent</a> { proposal_id, stage, rejection_time: now });
+    };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_JuryDecisionAppliedEvent">JuryDecisionAppliedEvent</a> {
+        proposal_id,
+        stage,
+        decision: <b>if</b> (forward) { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_FORWARD">JURY_OUTCOME_FORWARD</a> } <b>else</b> { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_REJECT">JURY_OUTCOME_REJECT</a> },
+        failed,
+        case_id: option::some(case_id),
+        applied_at_ms: now,
+    });
+    (action, now)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_escalate_to_jury"></a>
+
+## Function `escalate_to_jury`
+
+Global registries (ecosystem, proof of creativity, SPoT): send a proposal to the jury at the
+step that has earned it. Permissionless. Unspent juror shares are swept to the ecosystem
+treasury. When the jury is switched off at the community step, the proposal is rejected as
+a no-quorum or tied vote always was.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_to_jury">escalate_to_jury</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, jury_config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, stage: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_to_jury">escalate_to_jury</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    jury_config: &JuryConfig,
+    ecosystem_treasury: &EcosystemTreasury,
+    stage: u8,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry);
+    <b>let</b> dest = <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(ecosystem_treasury);
+    <b>let</b> result = <a href="../social_contracts/governance.md#social_contracts_governance_open_jury_for_proposal">open_jury_for_proposal</a>(
+        registry,
+        proposal,
+        jury_config,
+        stage,
+        dest,
+        vector::empty&lt;<b>address</b>&gt;(),
+        clock,
+        ctx,
+    );
+    <b>if</b> (result == 1) {
+        <b>let</b> reason = <a href="../social_contracts/governance.md#social_contracts_governance_jury_default_forfeit_reason">jury_default_forfeit_reason</a>(proposal);
+        <a href="../social_contracts/governance.md#social_contracts_governance_forfeit_proposal_pool_to_treasury_address">forfeit_proposal_pool_to_treasury_address</a>(
+            registry,
+            proposal,
+            dest,
+            reason,
+            <a href="../social_contracts/governance.md#social_contracts_governance_TREASURY_ROUTE_ECOSYSTEM">TREASURY_ROUTE_ECOSYSTEM</a>,
+            clock::timestamp_ms(clock),
+            ctx,
+        );
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_apply_jury_decision"></a>
+
+## Function `apply_jury_decision`
+
+Global registries: apply a finished jury case to its proposal. Permissionless.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_apply_jury_decision">apply_jury_decision</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_apply_jury_decision">apply_jury_decision</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    case: &<b>mut</b> JuryCase,
+    ecosystem_treasury: &EcosystemTreasury,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry);
+    <b>let</b> (action, now) = <a href="../social_contracts/governance.md#social_contracts_governance_apply_jury_case">apply_jury_case</a>(registry, proposal, case, clock, ctx);
+    <b>if</b> (action == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a>) {
+        <b>let</b> dest = <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(ecosystem_treasury);
+        <a href="../social_contracts/governance.md#social_contracts_governance_forfeit_proposal_pool_to_treasury_address">forfeit_proposal_pool_to_treasury_address</a>(
+            registry,
+            proposal,
+            dest,
+            <a href="../social_contracts/governance.md#social_contracts_governance_FORFEIT_REASON_JURY_REJECTED">FORFEIT_REASON_JURY_REJECTED</a>,
+            <a href="../social_contracts/governance.md#social_contracts_governance_TREASURY_ROUTE_ECOSYSTEM">TREASURY_ROUTE_ECOSYSTEM</a>,
+            now,
+            ctx,
+        );
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_sweep_jury_case"></a>
+
+## Function `sweep_jury_case`
+
+Pay what the jurors did not claim back to the address the case named, once the case has ended
+and its fees are settled. Permissionless.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_sweep_jury_case">sweep_jury_case</a>(case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_sweep_jury_case">sweep_jury_case</a>(case: &<b>mut</b> JuryCase, ctx: &<b>mut</b> TxContext) {
+    <b>let</b> remainder = <a href="../social_contracts/jury.md#social_contracts_jury_sweep_remainder">jury::sweep_remainder</a>(case);
+    <b>if</b> (balance::value(&remainder) &gt; 0) {
+        transfer::public_transfer(coin::from_balance(remainder, ctx), <a href="../social_contracts/jury.md#social_contracts_jury_case_sweep_to">jury::case_sweep_to</a>(case));
+    } <b>else</b> {
+        balance::destroy_zero(remainder);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_policy_enabled"></a>
+
+## Function `jury_policy_enabled`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_policy_enabled">jury_policy_enabled</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_policy_enabled">jury_policy_enabled</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>): bool {
+    <b>let</b> policy = <a href="../social_contracts/governance.md#social_contracts_governance_jury_policy_of">jury_policy_of</a>(registry);
+    option::is_some(&policy) && {
+        <b>let</b> p = option::borrow(&policy);
+        p.council_stage_enabled || p.community_stage_enabled
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_council_state"></a>
+
+## Function `jury_council_state`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_council_state">jury_council_state</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_council_state">jury_council_state</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_jury_state">jury_state</a>(proposal, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a>) }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_community_state"></a>
+
+## Function `jury_community_state`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_community_state">jury_community_state</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_community_state">jury_community_state</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_jury_state">jury_state</a>(proposal, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>) }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_stage_council_value"></a>
+
+## Function `jury_stage_council_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_stage_council_value">jury_stage_council_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_stage_council_value">jury_stage_council_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_stage_community_value"></a>
+
+## Function `jury_stage_community_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_stage_community_value">jury_stage_community_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_stage_community_value">jury_stage_community_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COMMUNITY">JURY_STAGE_COMMUNITY</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_action_advance_value"></a>
+
+## Function `jury_action_advance_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_advance_value">jury_action_advance_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_advance_value">jury_action_advance_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_ADVANCE">JURY_ACTION_ADVANCE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_action_approve_value"></a>
+
+## Function `jury_action_approve_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_approve_value">jury_action_approve_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_approve_value">jury_action_approve_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_APPROVE">JURY_ACTION_APPROVE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_action_reject_value"></a>
+
+## Function `jury_action_reject_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_reject_value">jury_action_reject_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_reject_value">jury_action_reject_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_proposal_pool_value"></a>
+
+## Function `proposal_pool_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_pool_value">proposal_pool_value</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_proposal_pool_value">proposal_pool_value</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): u64 { balance::value(&proposal.reward_pool) }
 </code></pre>
 
 

@@ -37,7 +37,7 @@ fn check_sync_secret(
     Ok(())
 }
 
-fn check_required_sync_secret(
+pub(crate) fn check_required_sync_secret(
     headers: &HeaderMap,
     header_name: &str,
     env_var: &str,

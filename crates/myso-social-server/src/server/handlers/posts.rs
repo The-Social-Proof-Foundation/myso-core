@@ -98,7 +98,7 @@ pub async fn get_post_reposts(
 pub async fn get_post_promotion(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
-) -> Result<Json<crate::reader::PromotedPostRow>, SocialError> {
+) -> Result<Json<crate::reader::PromotedPostSummaryRow>, SocialError> {
     let promotion = state
         .reader
         .get_promotion_by_post_id(&id)

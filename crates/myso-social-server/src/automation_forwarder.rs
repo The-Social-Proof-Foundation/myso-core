@@ -38,6 +38,11 @@ pub struct ForwarderConfig {
     pub secret: String,
     pub poll_interval: Duration,
     pub batch: i64,
+    /// Jury events are queued and delivered only when this is on, so the jury can be built and
+    /// indexed without reaching the engine. Off by default.
+    pub jury_enabled: bool,
+    /// Memory accounts of the platform's keepers; each gets its own copy of every crank event.
+    pub jury_keeper_accounts: Vec<String>,
 }
 
 impl ForwarderConfig {
@@ -54,11 +59,24 @@ impl ForwarderConfig {
             .and_then(|v| v.parse::<i64>().ok())
             .filter(|v| (1..=500).contains(v))
             .unwrap_or(DEFAULT_BATCH);
+        let jury_enabled = get("JURY_AUTOMATION_ENABLED")
+            .is_some_and(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"));
+        let jury_keeper_accounts = get("JURY_KEEPER_ACCOUNT_IDS")
+            .map(|v| {
+                v.split(',')
+                    .map(str::trim)
+                    .filter(|id| !id.is_empty())
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default();
         Some(Self {
             events_url,
             secret,
             poll_interval: Duration::from_secs(poll_secs),
             batch,
+            jury_enabled,
+            jury_keeper_accounts,
         })
     }
 
@@ -99,7 +117,9 @@ async fn deliver_batch(
     client: &reqwest::Client,
     config: &ForwarderConfig,
 ) -> Result<usize> {
-    let rows = reader.claim_automation_events(config.batch, LEASE_SECS).await?;
+    let rows = reader
+        .claim_automation_events(config.batch, LEASE_SECS, config.jury_enabled)
+        .await?;
     let leased = rows.len();
     let endpoint = config.endpoint();
 
@@ -154,6 +174,16 @@ pub async fn run(reader: Reader, config: ForwarderConfig) {
                 Ok(0) => {}
                 Ok(queued) => tracing::info!(queued, "queued time-driven task events"),
                 Err(error) => tracing::warn!(%error, "scanning for due task events failed"),
+            }
+            if config.jury_enabled {
+                match reader
+                    .enqueue_due_jury_events(now_ms, DUE_BATCH, &config.jury_keeper_accounts)
+                    .await
+                {
+                    Ok(0) => {}
+                    Ok(queued) => tracing::info!(queued, "queued jury events"),
+                    Err(error) => tracing::warn!(%error, "scanning for due jury events failed"),
+                }
             }
         }
         match deliver_batch(&reader, &client, &config).await {
@@ -274,5 +304,38 @@ mod tests {
         assert_eq!(retry_in_secs(49), 600);
         assert_eq!(retry_in_secs(50), 86_400);
         assert_eq!(retry_in_secs(1_000), 86_400);
+    }
+
+    #[test]
+    fn jury_events_stay_off_until_explicitly_enabled() {
+        let base = [
+            ("AUTOMATION_EVENTS_URL", "http://engine:8010"),
+            ("AUTOMATION_EVENTS_SECRET", "s"),
+        ];
+        let off = ForwarderConfig::from_lookup(&lookup(&base)).unwrap();
+        assert!(!off.jury_enabled);
+        assert!(off.jury_keeper_accounts.is_empty());
+
+        for value in ["1", "true", "TRUE", "yes", "on"] {
+            let mut pairs = base.to_vec();
+            pairs.push(("JURY_AUTOMATION_ENABLED", value));
+            assert!(ForwarderConfig::from_lookup(&lookup(&pairs)).unwrap().jury_enabled, "{value}");
+        }
+        for value in ["0", "false", "", "maybe"] {
+            let mut pairs = base.to_vec();
+            pairs.push(("JURY_AUTOMATION_ENABLED", value));
+            assert!(!ForwarderConfig::from_lookup(&lookup(&pairs)).unwrap().jury_enabled, "{value}");
+        }
+    }
+
+    #[test]
+    fn keeper_accounts_are_a_trimmed_comma_list() {
+        let config = ForwarderConfig::from_lookup(&lookup(&[
+            ("AUTOMATION_EVENTS_URL", "http://engine:8010"),
+            ("AUTOMATION_EVENTS_SECRET", "s"),
+            ("JURY_KEEPER_ACCOUNT_IDS", " 0xaa , ,0xbb,"),
+        ]))
+        .unwrap();
+        assert_eq!(config.jury_keeper_accounts, vec!["0xaa".to_string(), "0xbb".to_string()]);
     }
 }

@@ -207,6 +207,25 @@ enum AddressTransactionRelationship {
 	AFFECTED
 }
 
+type AgentReputation {
+	"""
+	Reviews received from sellers.
+	"""
+	asBuyer: RoleReputation!
+	"""
+	Reviews received from buyers.
+	"""
+	asSeller: RoleReputation!
+	"""
+	The agent's principal's credibility, earned from completed paid tasks in either role.
+	"""
+	credibility: Credibility
+	"""
+	Weighted Bayesian average of the two roles.
+	"""
+	overall: OverallReputation!
+}
+
 type AgentSpendBreakdown {
 	agent: SubAgent
 	agentObjectId: String!
@@ -1072,6 +1091,10 @@ type CommunityVoteEligibility {
 
 enum CommunityVoteIneligibleReason {
 	"""
+	Wallet does not own a MySocial profile.
+	"""
+	NO_PROFILE
+	"""
 	Wallet has not joined (or has left) the platform that owns the registry.
 	"""
 	NOT_MEMBER
@@ -1198,6 +1221,16 @@ type ConsensusObjectRead {
 type ContainerUsageDenial {
 	bindingId: Int!
 	denialScope: Int!
+}
+
+type Credibility {
+	accountId: String!
+	credibilityBps: Int!
+	settledCount: Int!
+	"""
+	Total settled volume in MIST, as a decimal string (it is a u128 on-chain).
+	"""
+	volumeMist: String!
 }
 
 """
@@ -2084,6 +2117,11 @@ type GovernanceRegistry {
 	"""
 	delegateCount: Int!
 	"""
+	Whether, and how, the AI Jury can take over this registry's proposals. Null when the
+	registry has never turned the jury on, in which case governance behaves as it always has.
+	"""
+	juryPolicy: RegistryJuryPolicy
+	"""
 	Largest completed delegate-term boundary epoch applied by a panel refresh on chain (`None` if unknown or pre-indexer).
 	"""
 	lastDelegatePanelBoundaryEpoch: Int
@@ -2844,6 +2882,135 @@ Arbitrary JSON data.
 """
 scalar JSON
 
+type JuryCase {
+	appealsUsed: Int!
+	caseId: String!
+	createdAtMs: Int!
+	currentRound: Int!
+	feeMist: Int!
+	"""
+	Index into the case's fixed menu of outcomes, once the case is final.
+	"""
+	finalOutcome: Int
+	finalizedAtMs: Int
+	"""
+	What each juror who voted is paid, once the case has ended.
+	"""
+	perJurorFeeMist: Int
+	"""
+	For a proposal, the step the case decides.
+	"""
+	stage: JuryStage!
+	state: JuryCaseState!
+	"""
+	The task or proposal the case decides.
+	"""
+	subjectId: String!
+	subjectKind: JurySubjectKind!
+}
+
+"""
+Lifecycle of a jury case.
+"""
+enum JuryCaseState {
+	EVIDENCE
+	AWAITING_DRAW
+	SELECTING
+	VOTING
+	TALLIED
+	FINAL
+	FAILED
+	CANCELLED
+}
+
+"""
+What the jury decided.
+"""
+enum JuryDecision {
+	"""
+	Council step: send to the community vote. Community step: approve.
+	"""
+	FORWARD
+	"""
+	Reject the proposal.
+	"""
+	REJECT
+}
+
+"""
+Where the jury stands on one step.
+"""
+enum JuryReviewState {
+	"""
+	Delegates are referring the proposal; no majority yet.
+	"""
+	REFERRING
+	"""
+	The step earned a jury and anyone can hand the proposal over.
+	"""
+	AWAITING_ESCALATION
+	"""
+	A jury holds the step, so the humans at it can no longer decide.
+	"""
+	WITH_JURY
+	"""
+	The jury decided, or could not and the step's default applied.
+	"""
+	DECIDED
+}
+
+"""
+The human step of a proposal that the jury can take over.
+"""
+enum JuryStage {
+	"""
+	The delegate council's review.
+	"""
+	COUNCIL
+	"""
+	The public community vote.
+	"""
+	COMMUNITY
+}
+
+"""
+What a case is about.
+"""
+enum JurySubjectKind {
+	TASK
+	GOVERNANCE_PROPOSAL
+}
+
+"""
+Why a step went to the jury.
+"""
+enum JuryTrigger {
+	"""
+	Not recorded yet.
+	"""
+	NONE
+	"""
+	A majority of delegates referred it.
+	"""
+	REFERRAL_MAJORITY
+	"""
+	The council tied.
+	"""
+	COUNCIL_TIE
+	"""
+	The council ran out of time.
+	"""
+	COUNCIL_DEADLINE
+	"""
+	The community vote missed quorum.
+	"""
+	QUORUM_NOT_MET
+	"""
+	The community vote tied.
+	"""
+	VOTE_TIE
+}
+
 type LicenseTemplateTerms {
 	governingLaw: String
 	instanceRevocable: Boolean!
@@ -2888,6 +3055,10 @@ type MakeMoveVecCommand {
 
 type MediaAsset {
 	activeRightsProposal: Proposal
+	"""
+	Active rights dispute including the committed beneficiary target.
+	"""
+	activeRightsProposalLink: MediaAssetRightsProposalLink
 	ancestry: AncestrySnapshot
 	assetKind: MediaAssetKind!
 	authorizationVersion: Int!
@@ -2906,6 +3077,10 @@ type MediaAsset {
 	registeredBy: String!
 	resolvedPolicy: ResolvedPolicy
 	rightsDisputesSubmitted: Int
+	"""
+	Rights disputes for this asset, including the committed beneficiary target.
+	"""
+	rightsProposalLinks(limit: Int, offset: Int): [MediaAssetRightsProposalLink!]
 	rightsProposals(limit: Int, offset: Int): [Proposal!]
 	rightsUpdates(limit: Int, offset: Int): [MediaAssetRightsUpdate!]
 	rightsVersion: Int!
@@ -2956,6 +3131,22 @@ Move `media_asset::provenance_*` constants.
 enum MediaAssetProvenanceStatus {
 	UNVERIFIED
 	VERIFIED
+}
+
+type MediaAssetRightsProposalLink {
+	claimsCommitment: String!
+	proposal: Proposal!
+	status: Int!
+	target: MediaAssetRightsTarget!
+}
+
+type MediaAssetRightsTarget {
+	beneficiaryAddress: String!
+	identityHash: String
+	identitySource: Int
+	kind: Int!
+	username: String
+	vaultId: String
 }
 
 type MediaAssetRightsUpdate {
@@ -5055,6 +5246,12 @@ type OtherCommand {
 	_: Boolean
 }
 
+type OverallReputation {
+	confidenceBps: Int!
+	score: Float!
+	scoreMilli: Int!
+}
+
 """
 A Move object, either immutable, or owned mutable.
 """
@@ -6743,6 +6940,11 @@ type Profile implements Node {
 	Sub-agents registered under this profile's memory account.
 	"""
 	subAgents(activeOnly: Boolean, limit: Int, offset: Int): [SubAgent!]
+	"""
+	P&L of every sub-agent under this profile, with a roll-up across all of them.
+	Revoked and deactivated agents are included unless `activeOnly` is true.
+	"""
+	subAgentsPnl(activeOnly: Boolean, windows: [ProfilePnLWindow!], limit: Int, offset: Int): SubAgentPnlSummary
 	subAgentsTotalCount(activeOnly: Boolean): Int
 	"""
 	When the profile was last updated (Unix ms from chain Clock at 0x6).
@@ -6755,7 +6957,7 @@ type Profile implements Node {
 	"""
 	Vesting wallets owned by this profile (paginated).
 	"""
-	vestingWallets(limit: Int, offset: Int): [VestingWallet!]
+	vestingWallets(coinType: String, limit: Int, offset: Int): [VestingWallet!]
 	"""
 	The profile's website.
 	"""
@@ -7227,10 +7429,10 @@ type Proposal {
 	"""
 	anonymousVotes(limit: Int, offset: Int): [AnonymousVote!]
 	"""
-	Whether `address` may cast a community vote under the on-chain voter rules. Platform proposals
-	(registry_type=3) require an active platform membership and no platform block; other registries
-	are open to any wallet. Does not check lifecycle status or whether `address` already voted.
-	Returns null when the social DB is not configured.
+	Whether `address` may cast a community vote under the on-chain voter rules. Every registry
+	requires the voter to own a profile; platform proposals (registry_type=3) also require an
+	active platform membership and no platform block. Does not check lifecycle status or whether
+	`address` already voted. Returns null when the social DB is not configured.
 	"""
 	communityVoteEligibility(address: MySoAddress!): CommunityVoteEligibility
 	"""
@@ -7265,6 +7467,15 @@ type Proposal {
 	Implemented description (when status=implemented).
 	"""
 	implementedDescription: String
+	"""
+	Delegates who asked the AI Jury to take over this proposal's council review.
+	"""
+	juryReferrals: [ProposalJuryReferral!]
+	"""
+	Where the AI Jury stands on each human step of this proposal (council, community). Empty
+	when the jury has not been involved.
+	"""
+	juryReviews: [ProposalJuryReview!]
 	"""
 	Linked media asset for PoC media-asset rights governance proposals (registry_type=1).
 	"""
@@ -7337,6 +7548,41 @@ type Proposal {
 	Voting start time (epoch ms, when in community voting).
 	"""
 	votingStartTime: Int
+}
+
+type ProposalJuryReferral {
+	delegateAddress: MySoAddress!
+	reason: String
+	referredAtMs: Int!
+}
+
+type ProposalJuryReview {
+	"""
+	The case behind this step. Jurors, votes and evidence are on the REST routes.
+	"""
+	case: JuryCase
+	"""
+	The jury case, once the step has been handed over.
+	"""
+	caseId: String
+	decidedAtMs: Int
+	"""
+	Null until the jury has decided or its default has applied.
+	"""
+	decision: JuryDecision
+	escalatedAtMs: Int
+	"""
+	The jury could not decide, so the step's default applied.
+	"""
+	failed: Boolean!
+	proposalId: String!
+	"""
+	How many delegates referred the proposal at the council step.
+	"""
+	referralCount: Int!
+	stage: JuryStage!
+	state: JuryReviewState!
+	trigger: JuryTrigger!
 }
 
 type ProposalVotes {
@@ -7569,6 +7815,11 @@ type Query {
 	"""
 	insuranceVaults(limit: Int, offset: Int): [InsuranceVault!]
 	"""
+	An AI Jury case by id, without its jurors, rounds or evidence. Returns null when the case
+	does not exist or the social DB is not configured.
+	"""
+	juryCase(caseId: String!): JuryCase
+	"""
 	List MyData records (paginated, optionally filtered by creator, media_type, platform_id). Returns empty when social DB not configured.
 	"""
 	listMydata(creator: MySoAddress, mediaType: String, platformId: String, sortBy: String, limit: Int, offset: Int): [MyDataRecord!]
@@ -7576,6 +7827,10 @@ type Query {
 	Fetch a registered media asset by object id.
 	"""
 	mediaAsset(id: ID!): MediaAsset
+	"""
+	Rights dispute link for one proposal, including the committed beneficiary target.
+	"""
+	mediaAssetRightsProposal(proposalId: ID!): MediaAssetRightsProposalLink
 	"""
 	List governance proposals linked to a media asset rights dispute.
 	"""
@@ -7817,6 +8072,10 @@ type Query {
 	"""
 	pocUsernameBeneficiaryById(id: ID!): PocUsernameBeneficiary
 	"""
+	PoC username beneficiary provision by off-chain identity.
+	"""
+	pocUsernameBeneficiaryByIdentity(identitySource: Int!, identityHash: String!): PocUsernameBeneficiary
+	"""
 	PoC username beneficiary provision by username.
 	"""
 	pocUsernameBeneficiaryByUsername(username: String!): PocUsernameBeneficiary
@@ -8028,6 +8287,11 @@ type Query {
 	subscriptionAccess(subscriber: MySoAddress!, serviceId: ID!, minTierLevel: Int): SubscriptionAccess
 	subscriptionConfiguration: SubscriptionConfig
 	"""
+	Task market configuration (fees, windows, reputation parameters). Returns null when the
+	social DB is not configured or no `TaskConfigUpdated` has been indexed.
+	"""
+	taskConfiguration: TaskConfig
+	"""
 	Tips received for a post (paginated). Returns empty when social DB not configured.
 	"""
 	tips(postId: ID!, limit: Int, offset: Int): [TipSummary!]
@@ -8085,7 +8349,7 @@ type Query {
 	"""
 	Vesting leaderboard by total vested amount. Returns empty when social DB not configured.
 	"""
-	vestingLeaderboard(limit: Int, offset: Int): VestingLeaderboardResponse
+	vestingLeaderboard(coinType: String, limit: Int, offset: Int): VestingLeaderboardResponse
 	"""
 	Fetch a vesting wallet by ID. Returns null if social DB not configured or not found.
 	"""
@@ -8093,7 +8357,7 @@ type Query {
 	"""
 	List vesting wallets with optional owner and active-only filters. Returns empty when social DB not configured.
 	"""
-	vestingWallets(owner: MySoAddress, activeOnly: Boolean, limit: Int, offset: Int): [VestingWallet!]
+	vestingWallets(owner: MySoAddress, coinType: String, activeOnly: Boolean, limit: Int, offset: Int): [VestingWallet!]
 	"""
 	Wallet identity (always resolves). Distinct from chain `address(address:)`.
 	"""
@@ -8168,6 +8432,43 @@ type Receiving {
 	object: Object
 }
 
+type RegistryJuryPolicy {
+	approvalBpsCommunity: Int!
+	approvalBpsCouncil: Int!
+	"""
+	The jury can decide a community vote that missed quorum or tied.
+	"""
+	communityStageEnabled: Boolean!
+	"""
+	The jury can take over the delegate council's review.
+	"""
+	councilStageEnabled: Boolean!
+	"""
+	How long the council has before the jury can take over; 0 means no deadline.
+	"""
+	councilWindowMs: Int!
+	"""
+	Share of the proposal's reward pool paid to jurors, in basis points.
+	"""
+	juryFeeBps: Int!
+	juryFeeCapMist: Int!
+	jurySize: Int!
+	"""
+	Proposals with a smaller reward pool skip the jury and behave as before.
+	"""
+	minPoolForJuryMist: Int!
+	"""
+	Reveals a round needs before it can decide.
+	"""
+	quorum: Int!
+	registryId: String!
+	"""
+	Size of the second, larger jury when the first cannot decide.
+	"""
+	round2Size: Int!
+	updatedAtMs: Int!
+}
+
 """
 Whether the currency is regulated or not.
 """
@@ -8237,6 +8538,28 @@ type RewardDistribution {
 	distributionType: String
 	proposalId: String!
 	recipientAddress: MySoAddress!
+}
+
+type RoleReputation {
+	"""
+	Share of the score that comes from reviews rather than the prior, in basis points.
+	"""
+	confidenceBps: Int!
+	"""
+	Counts of 1 through 5 star reviews, in that order.
+	"""
+	histogram: [Int!]!
+	lastReceiptId: String
+	reviewCount: Int!
+	"""
+	Bayesian score in stars.
+	"""
+	score: Float!
+	"""
+	Bayesian score in milli-stars (3076 is 3.076 stars).
+	"""
+	scoreMilli: Int!
+	updatedAt: Int
 }
 
 type SelectedBadge {
@@ -9697,9 +10020,95 @@ type SubAgent {
 	organizationId: String
 	parentObjectId: String
 	platformScope: MySoAddress
+	"""
+	P&L for this agent (MYSO base units), net of its AI credit spend. Available for
+	revoked and deactivated agents too. `windows` defaults to 7d, 30d and all-time.
+	"""
+	pnl(windows: [ProfilePnLWindow!]): SubAgentPnl
 	registerScope: Int!
 	registeredBy: MySoAddress!
+	"""
+	Reputation earned as a task seller and as a task buyer, the blended overall score, and
+	the principal's credibility. A new agent returns the prior with zero reviews.
+	"""
+	reputation: AgentReputation
 	roleTags: Int!
+}
+
+"""
+Lifetime P&L: SPT trading P&L (realized + unrealized) + non-swap inbound payouts - AI spend.
+"""
+type SubAgentLifetimePnl {
+	aiSpendMyso: Int!
+	grossInboundMyso: Int!
+	netPnlMyso: Int!
+	realizedPlMyso: Int!
+	tradingPlMyso: Int!
+	unrealizedPlMyso: Int!
+}
+
+type SubAgentPnl {
+	agent: SubAgent!
+	lifetime: SubAgentLifetimePnl!
+	"""
+	SPT positions held at the agent's derived address (weighted-average cost).
+	"""
+	sptPortfolio: SptPortfolioMetrics!
+	status: SubAgentStatus!
+	"""
+	Per-window cash-flow P&L net of AI spend; empty when not requested.
+	"""
+	windows: [SubAgentWindowPnl!]!
+}
+
+type SubAgentPnlSummary {
+	"""
+	One page of agents with windowed stats.
+	"""
+	agents: [SubAgentPnl!]!
+	totalCount: Int!
+	"""
+	Roll-up over all agents, not just this page.
+	"""
+	totals: SubAgentPnlTotals!
+}
+
+"""
+Roll-up across every sub-agent of a principal, including revoked and deactivated ones.
+"""
+type SubAgentPnlTotals {
+	activeCount: Int!
+	agentCount: Int!
+	aiSpendMyso: Int!
+	deactivatedCount: Int!
+	grossInboundMyso: Int!
+	netPnlMyso: Int!
+	realizedPlMyso: Int!
+	revokedCount: Int!
+	tradingPlMyso: Int!
+	unrealizedPlMyso: Int!
+}
+
+enum SubAgentStatus {
+	ACTIVE
+	DEACTIVATED
+	REVOKED
+}
+
+"""
+One window of an agent's cash-flow P&L, net of its AI credit spend.
+"""
+type SubAgentWindowPnl {
+	"""
+	AI credit spend recorded for the agent in the window.
+	"""
+	aiSpendMyso: Int!
+	cashFlow: ProfilePnLWindowStats!
+	"""
+	`cashFlow.netCashFlowMyso - aiSpendMyso`.
+	"""
+	netCashFlowAfterAiMyso: Int!
+	window: ProfilePnLWindow!
 }
 
 type SubscriptionAccess {
@@ -9766,6 +10175,136 @@ enum SupplyState {
 	The supply can neither increase nor decrease.
 	"""
 	FIXED
+}
+
+"""
+Task market configuration: fees, windows, and the reputation weighting parameters.
+"""
+type TaskConfig {
+	"""
+	Default acceptance window offered by clients.
+	"""
+	acceptWindowDefaultMs: Int!
+	"""
+	Longest acceptance window.
+	"""
+	acceptWindowMaxMs: Int!
+	"""
+	Shortest time a seller has to accept an offer.
+	"""
+	acceptWindowMinMs: Int!
+	"""
+	Whether new offers are accepted. Existing tasks continue regardless.
+	"""
+	active: Boolean!
+	"""
+	Credibility of a principal with no settled history.
+	"""
+	credBaseBps: Int!
+	"""
+	Settled transactions after which credibility stops rising.
+	"""
+	credCapN: Int!
+	"""
+	Credibility ceiling.
+	"""
+	credMaxBps: Int!
+	"""
+	Credibility gained per settled transaction.
+	"""
+	credStepBps: Int!
+	"""
+	Longest delivery window.
+	"""
+	deliveryWindowMaxMs: Int!
+	"""
+	Shortest delivery window after acceptance.
+	"""
+	deliveryWindowMinMs: Int!
+	"""
+	Ecosystem fee in basis points, frozen into each offer.
+	"""
+	ecosystemFeeBps: Int!
+	"""
+	Recipient of the ecosystem fee.
+	"""
+	ecosystemFeeRecipient: String!
+	"""
+	Longest task title in bytes.
+	"""
+	maxTitleBytes: Int!
+	"""
+	Longest deliverable URI in bytes.
+	"""
+	maxUriBytes: Int!
+	"""
+	Cap on the value-derived review weight.
+	"""
+	maxValueWeightBps: Int!
+	"""
+	Smallest escrow an offer may carry.
+	"""
+	minEscrowMist: Int!
+	"""
+	Floor on the value-derived review weight.
+	"""
+	minValueWeightBps: Int!
+	"""
+	Share of the overall score given to the buyer role.
+	"""
+	overallBuyerWeightBps: Int!
+	"""
+	Share of the overall score given to the seller role.
+	"""
+	overallSellerWeightBps: Int!
+	"""
+	Platform fee in basis points, frozen into each offer.
+	"""
+	platformFeeBps: Int!
+	"""
+	Bayesian prior mean in milli-stars (3000 is 3.0 stars).
+	"""
+	priorMeanMilli: Int!
+	"""
+	Bayesian prior weight in basis points of review weight.
+	"""
+	priorWeightBps: Int!
+	"""
+	Grace period after the settle deadline before anyone may release payment to the seller.
+	"""
+	releaseGraceMs: Int!
+	"""
+	How long after settlement either party may review.
+	"""
+	reviewWindowMs: Int!
+	"""
+	Longest settle window.
+	"""
+	settleWindowMaxMs: Int!
+	"""
+	Shortest settle window after delivery.
+	"""
+	settleWindowMinMs: Int!
+	"""
+	When the configuration was last updated.
+	"""
+	time: DateTime!
+	"""
+	Last update timestamp (epoch milliseconds).
+	"""
+	timestampMs: Int!
+	"""
+	Transaction ID of the last config update.
+	"""
+	transactionId: String!
+	"""
+	Address that last updated the configuration.
+	"""
+	updatedBy: String!
+	"""
+	Escrow that earns a full 1.0 review weight.
+	"""
+	valueRefMist: Int!
 }
 
 type TipSummary {
@@ -10314,6 +10853,10 @@ input VersionFilter {
 
 type VestingLeaderboardEntry {
 	activeWallets: Int!
+	"""
+	Fully-qualified Move type of the vested coin; totals are per coin.
+	"""
+	coinType: String!
 	completedWallets: Int!
 	ownerAddress: MySoAddress!
 	totalClaimed: Int!
@@ -10330,6 +10873,10 @@ type VestingWallet {
 	claimableAmount: Int!
 	claimedAmount: Int!
 	claimedPercentage: Float!
+	"""
+	Fully-qualified Move type of the vested coin, e.g. `0x2::myso::MYSO`.
+	"""
+	coinType: String!
 	createdAt: Int!
 	endTime: Int!
 	hasEnded: Boolean!

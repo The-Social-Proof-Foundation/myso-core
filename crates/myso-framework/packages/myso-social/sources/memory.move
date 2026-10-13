@@ -93,6 +93,11 @@ module social_contracts::memory {
     const CAP_SOCIAL_GRAPH: u64 = 65536;
     /// Create, accept, deliver, settle, refund and review tasks in `agent_task`.
     const CAP_TASK_TRADE: u64 = 131072;
+    /// Serve on AI juries (`jury`): accept a drafted seat, commit and reveal a vote, claim the fee.
+    const CAP_JURY: u64 = 262144;
+    /// Run the permissionless jury cranks through sponsored gas. The Move crank entries need no cap;
+    /// this only gates which agents the relayer will drive them for.
+    const CAP_JURY_KEEPER: u64 = 524288;
 
     // ============================================================
     // Org permission bitmap (org memory share group + roles)
@@ -823,6 +828,8 @@ module social_contracts::memory {
     public fun cap_budget_manage(): u64 { CAP_BUDGET_MANAGE }
     public fun cap_social_graph(): u64 { CAP_SOCIAL_GRAPH }
     public fun cap_task_trade(): u64 { CAP_TASK_TRADE }
+    public fun cap_jury(): u64 { CAP_JURY }
+    public fun cap_jury_keeper(): u64 { CAP_JURY_KEEPER }
 
     public fun org_perm_memory_read(): u64 { ORG_PERM_MEMORY_READ }
     public fun org_perm_memory_write(): u64 { ORG_PERM_MEMORY_WRITE }
@@ -2126,6 +2133,38 @@ module social_contracts::memory {
     public fun sub_agent_depth(agent: &SubAgent): u8 { agent.depth }
     public fun sub_agent_parent_object_id(agent: &SubAgent): Option<ID> { agent.parent_object_id }
     public fun sub_agent_memory_account_id(agent: &SubAgent): ID { agent.memory_account_id }
+    public fun sub_agent_principal_owner(agent: &SubAgent): address { agent.principal_owner }
+    public fun sub_agent_identity_class(agent: &SubAgent): u8 { agent.identity_class }
+    public fun sub_agent_created_at(agent: &SubAgent): u64 { agent.created_at }
+    public fun sub_agent_expires_at(agent: &SubAgent): Option<u64> { agent.expires_at }
+
+    /// Ancestor agent ids of `agent_id`, nearest first, from the account's registry mirror (the same
+    /// walk as [`is_descendant_agent`], bounded by `max_agent_depth`). Empty for a root agent.
+    public fun agent_ancestor_ids(config: &MemoryConfig, account: &MemoryAccount, agent_id: ID): vector<ID> {
+        let mut out = vector::empty<ID>();
+        if (!table::contains(&account.agent_ids, agent_id)) {
+            return out
+        };
+        let derived = *table::borrow(&account.agent_ids, agent_id);
+        let entry = table::borrow(&account.agents, derived);
+        let mut current_parent = entry.parent_object_id;
+        let mut hops = 0u8;
+        while (option::is_some(&current_parent)) {
+            hops = hops + 1;
+            if (hops > config.max_agent_depth) {
+                return out
+            };
+            let parent_id = *option::borrow(&current_parent);
+            vector::push_back(&mut out, parent_id);
+            if (!table::contains(&account.agent_ids, parent_id)) {
+                return out
+            };
+            let parent_derived = *table::borrow(&account.agent_ids, parent_id);
+            let parent_entry = table::borrow(&account.agents, parent_derived);
+            current_parent = parent_entry.parent_object_id;
+        };
+        out
+    }
 
     public fun acting_principal_owner(acting: &ActingContext): address { acting.principal_owner }
     public fun acting_profile_id(acting: &ActingContext): address { acting.principal_profile_id }

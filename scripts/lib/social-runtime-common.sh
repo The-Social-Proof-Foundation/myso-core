@@ -54,6 +54,11 @@ POST_CONFIG_ID=''
 MYDATA_REGISTRY_ID=''
 MYDATA_CONFIG_ID=''
 MYDATA_ADMIN_CAP_ID=''
+TASK_CONFIG_ID=''
+TASK_MARKET_CAP_ID=''
+JURY_CONFIG_ID=''
+JUROR_ROSTER_ID=''
+JURY_ADMIN_CAP_ID=''
 
 SOCIAL_RUN_ID="${SOCIAL_RUN_ID:-$(date +%s)}"
 ASSUME_YES="${ASSUME_YES:-0}"
@@ -515,6 +520,11 @@ readonly SOCIAL_GQL_BATCH='query SocialE2ESessionObjects {
   subscriptionAdminCap: objects(filter: { type: "0x50c1::subscription::SubscriptionAdminCap" }, last: 1) { nodes { address } }
   platformAdminCap: objects(filter: { type: "0x50c1::platform::PlatformAdminCap" }, last: 1) { nodes { address } }
   platform: objects(filter: { type: "0x50c1::platform::Platform" }, last: 1) { nodes { address } }
+  taskConfig: objects(filter: { type: "0x50c1::agent_task::TaskConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
+  taskMarketCap: objects(filter: { type: "0x50c1::agent_task::TaskMarketCap" }, last: 1) { nodes { address } }
+  juryConfig: objects(filter: { type: "0x50c1::jury::JuryConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
+  jurorRoster: objects(filter: { type: "0x50c1::jury::JurorRoster", ownerKind: SHARED }, last: 1) { nodes { address } }
+  juryAdminCap: objects(filter: { type: "0x50c1::jury::JuryAdminCap" }, last: 1) { nodes { address } }
 }'
 
 gql_set_refresh() {
@@ -527,7 +537,8 @@ collect_social_gql_mappings() {
     local json="$1" alias val env_key
     for alias in ecosystemTreasury usernameRegistry usernameMarketplace profileConfig \
         memoryRegistry memoryConfig aiCreditConfig platformRegistry platformConfig blocklistRegistry \
-        mydataRegistry mydataConfig mydataAdminCap postConfig subscriptionConfig subscriptionAdminCap platformAdminCap platform; do
+        mydataRegistry mydataConfig mydataAdminCap postConfig subscriptionConfig subscriptionAdminCap platformAdminCap platform \
+        taskConfig taskMarketCap juryConfig jurorRoster juryAdminCap; do
         case "$alias" in
             ecosystemTreasury) env_key=ECOSYSTEM_TREASURY_ID ;;
             usernameRegistry) env_key=USERNAME_REGISTRY_ID ;;
@@ -547,6 +558,11 @@ collect_social_gql_mappings() {
             subscriptionAdminCap) env_key=SUBSCRIPTION_ADMIN_CAP_ID ;;
             platformAdminCap) env_key=PLATFORM_ADMIN_CAP_ID ;;
             platform) env_key=PLATFORM_OBJECT_ID ;;
+            taskConfig) env_key=TASK_CONFIG_ID ;;
+            taskMarketCap) env_key=TASK_MARKET_CAP_ID ;;
+            juryConfig) env_key=JURY_CONFIG_ID ;;
+            jurorRoster) env_key=JUROR_ROSTER_ID ;;
+            juryAdminCap) env_key=JURY_ADMIN_CAP_ID ;;
             *) continue ;;
         esac
         val="$(gql_object_address "$json" "$alias")"
@@ -694,7 +710,8 @@ social_refresh_session_from_graphql() {
             AI_CREDIT_CONFIG_ID MEMORY_REGISTRY_ID MEMORY_CONFIG_ID ECOSYSTEM_TREASURY_ID \
             PLATFORM_REGISTRY_ID PLATFORM_CONFIG_ID PLATFORM_OBJECT_ID PLATFORM_ADMIN_CAP_ID \
             BLOCK_LIST_REGISTRY_ID POST_CONFIG_ID MYDATA_REGISTRY_ID MYDATA_CONFIG_ID MYDATA_ADMIN_CAP_ID \
-            SUBSCRIPTION_CONFIG_ID SUBSCRIPTION_ADMIN_CAP_ID; do
+            SUBSCRIPTION_CONFIG_ID SUBSCRIPTION_ADMIN_CAP_ID \
+            TASK_CONFIG_ID TASK_MARKET_CAP_ID JURY_CONFIG_ID JUROR_ROSTER_ID JURY_ADMIN_CAP_ID; do
             printf '%s=%q\n' "$key" "${!key-}"
         done
     } > "${SOCIAL_SESSION_SAVE_PATH}.tmp"

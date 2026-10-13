@@ -28,6 +28,7 @@ module social_contracts::platform {
     
     use social_contracts::profile;
     use social_contracts::governance;
+    use social_contracts::jury::{JuryCase, JuryConfig};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::block_list;
 
@@ -1147,6 +1148,127 @@ module social_contracts::platform {
             } else {
                 balance::destroy_zero(bal);
             };
+        };
+    }
+
+    /// The platform's own governance registry, and nothing else.
+    fun assert_platform_registry(platform: &Platform, registry: &governance::GovernanceDAO) {
+        let opt = governance_registry_id(platform);
+        assert!(option::is_some(opt), EUnauthorized);
+        assert!(*option::borrow(opt) == object::id(registry), EUnauthorized);
+        assert!(governance::registry_type(registry) == governance::proposal_type_platform_value(), EUnauthorized);
+    }
+
+    fun deposit_forfeited_pool(
+        platform: &mut Platform,
+        bal: Balance<MYSO>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let amt = balance::value(&bal);
+        if (amt > 0) {
+            let mut c = coin::from_balance(bal, ctx);
+            add_to_treasury(platform, &mut c, amt, clock, ctx);
+            coin::destroy_zero(c);
+        } else {
+            balance::destroy_zero(bal);
+        };
+    }
+
+    /// Switch the AI jury on or off for this platform's governance steps. Platform developer only.
+    public entry fun set_platform_jury_policy(
+        platform: &Platform,
+        registry: &mut governance::GovernanceDAO,
+        council_stage_enabled: bool,
+        community_stage_enabled: bool,
+        council_window_ms: u64,
+        jury_size: u64,
+        round2_size: u64,
+        jury_fee_bps: u64,
+        jury_fee_cap_mist: u64,
+        min_pool_for_jury_mist: u64,
+        quorum: u64,
+        approval_bps_council: u64,
+        approval_bps_community: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(developer(platform) == tx_context::sender(ctx), EUnauthorized);
+        assert_platform_registry(platform, registry);
+        governance::set_jury_policy_internal(
+            registry,
+            council_stage_enabled,
+            community_stage_enabled,
+            council_window_ms,
+            jury_size,
+            round2_size,
+            jury_fee_bps,
+            jury_fee_cap_mist,
+            min_pool_for_jury_mist,
+            quorum,
+            approval_bps_council,
+            approval_bps_community,
+            clock,
+        );
+    }
+
+    /// Anyone moves a platform proposal to the AI jury at the step that has earned it. The platform's
+    /// developer is excluded from the jury, and unspent juror shares go to the platform treasury.
+    public entry fun escalate_platform_proposal_to_jury(
+        platform: &mut Platform,
+        registry: &mut governance::GovernanceDAO,
+        proposal: &mut governance::Proposal,
+        jury_config: &JuryConfig,
+        stage: u8,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_platform_registry(platform, registry);
+        let platform_addr = object::uid_to_address(&platform.id);
+        let result = governance::open_jury_for_proposal(
+            registry,
+            proposal,
+            jury_config,
+            stage,
+            platform_addr,
+            vector[developer(platform)],
+            clock,
+            ctx,
+        );
+        if (result == 1) {
+            let reason = governance::jury_default_forfeit_reason(proposal);
+            let bal = governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury(
+                registry,
+                proposal,
+                platform_addr,
+                reason,
+                clock::timestamp_ms(clock),
+            );
+            deposit_forfeited_pool(platform, bal, clock, ctx);
+        };
+    }
+
+    /// Apply a finished jury case to its platform proposal. Permissionless.
+    public entry fun apply_platform_jury_decision(
+        platform: &mut Platform,
+        registry: &mut governance::GovernanceDAO,
+        proposal: &mut governance::Proposal,
+        case: &mut JuryCase,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_platform_registry(platform, registry);
+        let (action, now) = governance::apply_jury_case(registry, proposal, case, clock, ctx);
+        if (action == governance::jury_action_reject_value()) {
+            let platform_addr = object::uid_to_address(&platform.id);
+            let bal = governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury(
+                registry,
+                proposal,
+                platform_addr,
+                governance::forfeit_reason_jury_rejected_value(),
+                now,
+            );
+            deposit_forfeited_pool(platform, bal, clock, ctx);
         };
     }
 

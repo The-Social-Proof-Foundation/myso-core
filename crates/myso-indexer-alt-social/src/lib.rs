@@ -8,8 +8,8 @@ pub mod metrics;
 pub mod position_accounting;
 
 pub use handlers::{
-    AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, MemoryHandler,
-    MessagingHandler, MyDataHandler, PlatformHandler, PostsHandler, ProfilesHandler,
+    AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, JuryHandler,
+    MemoryHandler, MessagingHandler, MyDataHandler, PlatformHandler, PostsHandler, ProfilesHandler,
     SocialGraphHandler, SpotHandler, SptHandler, SubAgentRegistryHandler, SubscriptionHandler,
     TaskMarketHandler, UpgradeHandler,
 };
@@ -133,6 +133,11 @@ pub async fn setup_social_indexer(
         .sequential_pipeline(TaskMarketHandler, Default::default())
         .await
         .context("Failed to add TaskMarketHandler pipeline")?;
+    // Sequential: a case's lifecycle updates must apply in chain order.
+    indexer
+        .sequential_pipeline(JuryHandler, Default::default())
+        .await
+        .context("Failed to add JuryHandler pipeline")?;
     indexer
         .concurrent_pipeline(MemoryHandler, Default::default())
         .await

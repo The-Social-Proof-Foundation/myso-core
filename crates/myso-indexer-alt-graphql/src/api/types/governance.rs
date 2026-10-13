@@ -24,6 +24,7 @@ use myso_indexer_alt_social_schema::{
 use crate::api::resolve_profile::resolve_profile_summary;
 use crate::api::scalars::json::Json;
 use crate::api::scalars::myso_address::MySoAddress;
+use crate::api::types::jury::{ProposalJuryReferral, ProposalJuryReview, RegistryJuryPolicy};
 use crate::api::types::media_asset::MediaAsset;
 use crate::api::types::media_asset_enums::GovernanceProposalStatus;
 use crate::api::types::platform::{Platform, resolve_platform_by_id};
@@ -250,6 +251,23 @@ impl Proposal {
             .await
             .ok()?;
         Some(rows.into_iter().map(DelegateVote::from_row).collect())
+    }
+
+    /// Where the AI Jury stands on each human step of this proposal (council, community). Empty
+    /// when the jury has not been involved.
+    async fn jury_reviews(&self, ctx: &Context<'_>) -> Option<Vec<ProposalJuryReview>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let rows = reader.get_proposal_jury_reviews(&self.inner.id).await.ok()?;
+        Some(rows.into_iter().map(ProposalJuryReview::from_row).collect())
+    }
+
+    /// Delegates who asked the AI Jury to take over this proposal's council review.
+    async fn jury_referrals(&self, ctx: &Context<'_>) -> Option<Vec<ProposalJuryReferral>> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let rows = reader.get_proposal_jury_referrals(&self.inner.id).await.ok()?;
+        Some(rows.into_iter().map(ProposalJuryReferral::from_row).collect())
     }
 
     /// Count of community votes on this proposal.
@@ -1076,6 +1094,18 @@ impl GovernanceRegistry {
             voting_period_ms: self.inner.voting_period_ms,
             quorum_votes: self.inner.quorum_votes,
         }
+    }
+
+    /// Whether, and how, the AI Jury can take over this registry's proposals. Null when the
+    /// registry has never turned the jury on, in which case governance behaves as it always has.
+    async fn jury_policy(&self, ctx: &Context<'_>) -> Option<RegistryJuryPolicy> {
+        let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let row = reader
+            .get_registry_jury_policy(&self.inner.registry_id)
+            .await
+            .ok()??;
+        Some(RegistryJuryPolicy::from_row(row))
     }
 
     /// Largest completed delegate-term boundary epoch applied by a panel refresh on chain (`None` if unknown or pre-indexer).

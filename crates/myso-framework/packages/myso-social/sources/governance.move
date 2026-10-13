@@ -17,7 +17,7 @@
 
 #[allow(duplicate_alias, unused_use, lint(public_entry))]
 module social_contracts::governance {
-    use std::{option, string::{Self, String}, vector};
+    use std::{bcs, hash, option, string::{Self, String}, vector};
     
     use myso::{
         object::{Self, UID, ID},
@@ -36,6 +36,7 @@ module social_contracts::governance {
     use mydata::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
     
     use social_contracts::profile::{Self as profile, EcosystemTreasury, UsernameRegistry};
+    use social_contracts::jury::{Self, JuryCase, JuryConfig};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     /// Error codes
@@ -61,11 +62,22 @@ module social_contracts::governance {
     const EWrongRegistryForTreasuryRoute: u64 = 21;
     const EUsePlatformVoteEntry: u64 = 22;
     const EProfileRequired: u64 = 23;
+    const EJuryHasJurisdiction: u64 = 24;
+    const EJuryStageDisabled: u64 = 25;
+    const EAlreadyReferred: u64 = 26;
+    const EDelegateAlreadyActed: u64 = 27;
+    const ENoEscalationTrigger: u64 = 28;
+    const EPoolTooSmallForJury: u64 = 29;
+    const EWrongJuryCase: u64 = 30;
+    const EJuryNotFinished: u64 = 31;
+    const EInvalidJuryPolicy: u64 = 32;
+    const ENoJuryRecord: u64 = 33;
 
     /// Forfeiture reason (indexer) — same values as old refund reason codes.
     const FORFEIT_REASON_QUORUM_NOT_MET: u8 = 0;
     const FORFEIT_REASON_COMMUNITY_REJECTED: u8 = 1;
     const FORFEIT_REASON_DELEGATE_REJECTED: u8 = 2;
+    const FORFEIT_REASON_JURY_REJECTED: u8 = 3;
     /// For [`ProposalRewardPoolForfeitedToTreasuryEvent`]: ecosystem treasury.
     const TREASURY_ROUTE_ECOSYSTEM: u8 = 0;
     /// Platform governance (on-platform treasury, not the shared ecosystem treasury object).
@@ -96,6 +108,39 @@ module social_contracts::governance {
     const DELEGATE_REASONS_FIELD: vector<u8> = b"delegate_reasons";
     const ENCRYPTED_VOTES_FIELD: vector<u8> = b"encrypted_votes";
     const ANON_VOTERS_FIELD: vector<u8> = b"anon_voters";
+    /// Per-registry jury policy; absent means the AI jury is off and governance behaves as it always has.
+    const JURY_POLICY_FIELD: vector<u8> = b"jury_policy";
+    /// Per-proposal jury records, one per human step the jury can take over.
+    const JURY_COUNCIL_FIELD: vector<u8> = b"jury_council";
+    const JURY_COMMUNITY_FIELD: vector<u8> = b"jury_community";
+
+    const JURY_STAGE_COUNCIL: u8 = 1;
+    const JURY_STAGE_COMMUNITY: u8 = 2;
+
+    const JURY_STATE_REFERRING: u8 = 1;
+    const JURY_STATE_AWAITING: u8 = 2;
+    const JURY_STATE_ESCALATED: u8 = 3;
+    const JURY_STATE_DECIDED: u8 = 4;
+
+    const JURY_TRIGGER_REFERRAL_MAJORITY: u8 = 1;
+    const JURY_TRIGGER_COUNCIL_TIE: u8 = 2;
+    const JURY_TRIGGER_COUNCIL_DEADLINE: u8 = 3;
+    const JURY_TRIGGER_QUORUM_NOT_MET: u8 = 4;
+    const JURY_TRIGGER_VOTE_TIE: u8 = 5;
+
+    /// Jury menu: option 0 moves the proposal forward (council: to the community vote; community:
+    /// approve), option 1 rejects it.
+    const JURY_OUTCOME_FORWARD: u8 = 0;
+    const JURY_OUTCOME_REJECT: u8 = 1;
+
+    const JURY_ACTION_ADVANCE: u8 = 0;
+    const JURY_ACTION_APPROVE: u8 = 1;
+    const JURY_ACTION_REJECT: u8 = 2;
+
+    const JURY_EVIDENCE_KIND_PROPOSAL: u8 = 1;
+    /// Stored on a case so an indexer can tell it is not a task case's failure path.
+    const JURY_FAILURE_PATH_DEFAULT_DECISION: u8 = 2;
+    const NO_DECISION: u8 = 255;
 
     /// Admin capability for Governance system management
     public struct GovernanceAdminCap has key, store {
@@ -173,6 +218,101 @@ module social_contracts::governance {
 
     /// Vote struct for tracking individual votes - unused fields removed
     public struct Vote has store, drop {}
+
+    /// How the AI jury backs up the human steps of one registry. Stored as a dynamic field on the
+    /// registry, so adding it changes no object layout.
+    public struct RegistryJuryPolicy has store, copy, drop {
+        council_stage_enabled: bool,
+        community_stage_enabled: bool,
+        /// A proposal's council window runs from the later of its submission and this time, so
+        /// proposals already waiting when the policy is switched on get a full window.
+        enabled_at_ms: u64,
+        council_window_ms: u64,
+        jury_size: u64,
+        round2_size: u64,
+        jury_fee_bps: u64,
+        /// 0 means no cap.
+        jury_fee_cap_mist: u64,
+        min_pool_for_jury_mist: u64,
+        quorum: u64,
+        approval_bps_council: u64,
+        approval_bps_community: u64,
+    }
+
+    /// One step of one proposal that the jury has taken, or may take, over.
+    public struct JuryReview has store, drop {
+        stage: u8,
+        state: u8,
+        trigger: u8,
+        /// Delegates who asked for the jury instead of voting (council step only).
+        referrers: vector<address>,
+        case_id: Option<ID>,
+        escalated_at_ms: u64,
+        decided_at_ms: u64,
+        decision: u8,
+    }
+
+    public struct JuryPolicyUpdatedEvent has copy, drop {
+        registry_id: ID,
+        council_stage_enabled: bool,
+        community_stage_enabled: bool,
+        council_window_ms: u64,
+        jury_size: u64,
+        round2_size: u64,
+        jury_fee_bps: u64,
+        jury_fee_cap_mist: u64,
+        min_pool_for_jury_mist: u64,
+        quorum: u64,
+        approval_bps_council: u64,
+        approval_bps_community: u64,
+        updated_at_ms: u64,
+    }
+
+    public struct DelegateReferredToJuryEvent has copy, drop {
+        proposal_id: ID,
+        delegate_address: address,
+        reason: Option<String>,
+        referral_count: u64,
+        majority_reached: bool,
+        referred_at_ms: u64,
+    }
+
+    public struct ProposalEscalatedToJuryEvent has copy, drop {
+        proposal_id: ID,
+        stage: u8,
+        trigger: u8,
+        case_id: ID,
+        jury_fee_mist: u64,
+        pool_remaining_mist: u64,
+        escalated_at_ms: u64,
+    }
+
+    /// The community vote ended with no quorum or a tie, and the registry hands that to the jury.
+    public struct CommunityVoteNeedsJuryEvent has copy, drop {
+        proposal_id: ID,
+        trigger: u8,
+        votes_for: u64,
+        votes_against: u64,
+        quorum_votes: u64,
+        time_ms: u64,
+    }
+
+    /// `decision`: 0 forward (advance or approve), 1 reject. `failed` means the jury could not
+    /// decide and the step's default applied.
+    public struct JuryDecisionAppliedEvent has copy, drop {
+        proposal_id: ID,
+        stage: u8,
+        decision: u8,
+        failed: bool,
+        case_id: Option<ID>,
+        applied_at_ms: u64,
+    }
+
+    public struct ProposalRejectedByJuryEvent has copy, drop {
+        proposal_id: ID,
+        stage: u8,
+        rejection_time: u64,
+    }
 
     /// Event emitted when a new delegate is elected
     public struct DelegateElectedEvent has copy, drop {
@@ -1518,6 +1658,9 @@ module social_contracts::governance {
         
         // Verify proposal is still in delegate review stage
         assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+        // Once a jury has the proposal the submitter cannot withdraw it (and the remaining pool)
+        // to dodge the verdict.
+        assert!(!council_jury_has_jurisdiction(proposal), EJuryHasJurisdiction);
         
         // Update proposals by status - remove from delegate review
         let from_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_DELEGATE_REVIEW);
@@ -1762,15 +1905,19 @@ module social_contracts::governance {
     const FINALIZE_OUTCOME_APPROVED: u8 = 0;
     const FINALIZE_OUTCOME_REJECT_COMMUNITY: u8 = 1;
     const FINALIZE_OUTCOME_REJECT_QUORUM: u8 = 2;
+    /// The jury decides; no status, bucket or delegate statistic has changed.
+    const FINALIZE_OUTCOME_NEEDS_JURY: u8 = 3;
 
     public fun community_finalize_voting_approved_value(): u8 { FINALIZE_OUTCOME_APPROVED }
     public fun community_finalize_voting_reject_community_value(): u8 { FINALIZE_OUTCOME_REJECT_COMMUNITY }
     public fun community_finalize_voting_reject_quorum_value(): u8 { FINALIZE_OUTCOME_REJECT_QUORUM }
+    public fun community_finalize_voting_needs_jury_value(): u8 { FINALIZE_OUTCOME_NEEDS_JURY }
     public fun delegate_vote_outcome_reject_value(): u8 { DELEGATE_VOTE_TO_REJECT }
 
     public fun forfeit_reason_quorum_not_met_value(): u8 { FORFEIT_REASON_QUORUM_NOT_MET }
     public fun forfeit_reason_community_rejected_value(): u8 { FORFEIT_REASON_COMMUNITY_REJECTED }
     public fun forfeit_reason_delegate_rejected_value(): u8 { FORFEIT_REASON_DELEGATE_REJECTED }
+    public fun forfeit_reason_jury_rejected_value(): u8 { FORFEIT_REASON_JURY_REJECTED }
 
     public(package) fun assert_platform_delegate_manual_reject(
         registry: &GovernanceDAO,
@@ -1785,6 +1932,7 @@ module social_contracts::governance {
         let proposal_id = object::id(proposal);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
         assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+        assert!(!council_jury_has_jurisdiction(proposal), EJuryHasJurisdiction);
         clock::timestamp_ms(clock)
     }
 
@@ -1937,6 +2085,7 @@ module social_contracts::governance {
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
         assert!(table::contains(&registry.delegates, caller), ENotDelegate);
         assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+        assert!(!council_jury_has_jurisdiction(proposal), EJuryHasJurisdiction);
 
         let delegate_votes: &mut Table<address, bool> = dynamic_field::borrow_mut(&mut proposal.id, DELEGATE_VOTES_FIELD);
         assert!(!table::contains(delegate_votes, caller), EAlreadyVoted);
@@ -2048,8 +2197,42 @@ module social_contracts::governance {
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
         assert!(proposal.status == STATUS_COMMUNITY_VOTING, EInvalidProposalStatus);
         assert!(current_time_ms > proposal.voting_end_time, EVotingPeriodNotEnded);
+        assert!(!dynamic_field::exists_(&proposal.id, JURY_COMMUNITY_FIELD), EJuryHasJurisdiction);
 
         let total_votes = proposal.community_votes_for + proposal.community_votes_against;
+        // A quorum miss (including no votes at all) or a tie goes to the jury instead of being
+        // rejected, when the registry has switched that on and the pool can pay jurors. Nothing
+        // else changes here: status, buckets and delegate stats wait for the jury's decision.
+        {
+            let quorum_met = total_votes >= registry.quorum_votes;
+            let tie = proposal.community_votes_for == proposal.community_votes_against;
+            if ((!quorum_met || tie) && community_jury_available(registry, proposal)) {
+                let trigger = if (!quorum_met) { JURY_TRIGGER_QUORUM_NOT_MET } else { JURY_TRIGGER_VOTE_TIE };
+                dynamic_field::add(
+                    &mut proposal.id,
+                    JURY_COMMUNITY_FIELD,
+                    JuryReview {
+                        stage: JURY_STAGE_COMMUNITY,
+                        state: JURY_STATE_AWAITING,
+                        trigger,
+                        referrers: vector::empty(),
+                        case_id: option::none(),
+                        escalated_at_ms: 0,
+                        decided_at_ms: 0,
+                        decision: NO_DECISION,
+                    },
+                );
+                event::emit(CommunityVoteNeedsJuryEvent {
+                    proposal_id,
+                    trigger,
+                    votes_for: proposal.community_votes_for,
+                    votes_against: proposal.community_votes_against,
+                    quorum_votes: registry.quorum_votes,
+                    time_ms: current_time_ms,
+                });
+                return (FINALIZE_OUTCOME_NEEDS_JURY, current_time_ms)
+            };
+        };
         let from_status = table::borrow_mut(&mut registry.proposals_by_status, STATUS_COMMUNITY_VOTING);
         let mut index = 0;
         let len = vector::length(from_status);
@@ -2198,6 +2381,9 @@ module social_contracts::governance {
         let current_time_ms = clock::timestamp_ms(clock);
         let proposal_id = object::id(proposal);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        // The tally is merged into the proposal before finalizing; once the jury is waiting a second
+        // pass would count every vote again.
+        assert!(!dynamic_field::exists_(&proposal.id, JURY_COMMUNITY_FIELD), EJuryHasJurisdiction);
         let mut votes_for = vector::empty<address>();
         let mut votes_against = vector::empty<address>();
         let mut invalid_votes = vector::empty<address>();
@@ -2665,6 +2851,7 @@ module social_contracts::governance {
         let proposal_id = object::id(proposal);
         assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
         assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+        assert!(!council_jury_has_jurisdiction(proposal), EJuryHasJurisdiction);
         let current_time = clock::timestamp_ms(clock);
         complete_delegate_reject_to_ecosystem_treasury(
             registry,
@@ -2843,6 +3030,734 @@ module social_contracts::governance {
         GovernanceAdminCap {
             id: object::new(ctx)
         }
+    }
+
+
+    // ============================================================
+    // AI jury: the fallback behind each human step
+    // ============================================================
+
+    fun jury_state(proposal: &Proposal, field: vector<u8>): u8 {
+        if (!dynamic_field::exists_(&proposal.id, field)) {
+            return 0
+        };
+        let review: &JuryReview = dynamic_field::borrow(&proposal.id, field);
+        review.state
+    }
+
+    /// True once the jury has the council step (or has already decided it): delegates can no longer
+    /// vote, reject or rescind.
+    fun council_jury_has_jurisdiction(proposal: &Proposal): bool {
+        let state = jury_state(proposal, JURY_COUNCIL_FIELD);
+        state == JURY_STATE_ESCALATED || state == JURY_STATE_DECIDED
+    }
+
+    fun jury_policy_of(registry: &GovernanceDAO): Option<RegistryJuryPolicy> {
+        if (dynamic_field::exists_(&registry.id, JURY_POLICY_FIELD)) {
+            let policy: &RegistryJuryPolicy = dynamic_field::borrow(&registry.id, JURY_POLICY_FIELD);
+            option::some(*policy)
+        } else {
+            option::none()
+        }
+    }
+
+    /// Whether a quorum miss or tie at the community step goes to the jury: the policy is on and the
+    /// pool is big enough to pay jurors. Decided from the registry and proposal alone so the
+    /// existing finalize entries need no new arguments.
+    fun community_jury_available(registry: &GovernanceDAO, proposal: &Proposal): bool {
+        let policy = jury_policy_of(registry);
+        if (option::is_none(&policy)) {
+            return false
+        };
+        let policy = option::destroy_some(policy);
+        policy.community_stage_enabled
+            && balance::value(&proposal.reward_pool) >= policy.min_pool_for_jury_mist
+            && policy.min_pool_for_jury_mist > 0
+    }
+
+    /// Set (or replace) a registry's jury policy. Until one is set the jury does nothing.
+    public entry fun set_registry_jury_policy(
+        _: &GovernanceAdminCap,
+        registry: &mut GovernanceDAO,
+        council_stage_enabled: bool,
+        community_stage_enabled: bool,
+        council_window_ms: u64,
+        jury_size: u64,
+        round2_size: u64,
+        jury_fee_bps: u64,
+        jury_fee_cap_mist: u64,
+        min_pool_for_jury_mist: u64,
+        quorum: u64,
+        approval_bps_council: u64,
+        approval_bps_community: u64,
+        clock: &Clock,
+    ) {
+        set_jury_policy_internal(
+            registry,
+            council_stage_enabled,
+            community_stage_enabled,
+            council_window_ms,
+            jury_size,
+            round2_size,
+            jury_fee_bps,
+            jury_fee_cap_mist,
+            min_pool_for_jury_mist,
+            quorum,
+            approval_bps_council,
+            approval_bps_community,
+            clock,
+        );
+    }
+
+    public(package) fun set_jury_policy_internal(
+        registry: &mut GovernanceDAO,
+        council_stage_enabled: bool,
+        community_stage_enabled: bool,
+        council_window_ms: u64,
+        jury_size: u64,
+        round2_size: u64,
+        jury_fee_bps: u64,
+        jury_fee_cap_mist: u64,
+        min_pool_for_jury_mist: u64,
+        quorum: u64,
+        approval_bps_council: u64,
+        approval_bps_community: u64,
+        clock: &Clock,
+    ) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        assert!(quorum >= 1 && jury_size >= quorum && round2_size >= quorum, EInvalidJuryPolicy);
+        assert!(jury_fee_bps <= 5000, EInvalidJuryPolicy);
+        assert!(approval_bps_council >= 5000 && approval_bps_council <= 10000, EInvalidJuryPolicy);
+        assert!(approval_bps_community >= 5000 && approval_bps_community <= 10000, EInvalidJuryPolicy);
+        // A jury that is switched on but cannot be paid would be a free vote.
+        assert!(
+            !(council_stage_enabled || community_stage_enabled) || (jury_fee_bps > 0 && min_pool_for_jury_mist > 0),
+            EInvalidJuryPolicy,
+        );
+        let now = clock::timestamp_ms(clock);
+        let existing = jury_policy_of(registry);
+        let enabled_at_ms = if (option::is_some(&existing) && option::borrow(&existing).enabled_at_ms > 0) {
+            option::borrow(&existing).enabled_at_ms
+        } else {
+            now
+        };
+        let policy = RegistryJuryPolicy {
+            council_stage_enabled,
+            community_stage_enabled,
+            enabled_at_ms,
+            council_window_ms,
+            jury_size,
+            round2_size,
+            jury_fee_bps,
+            jury_fee_cap_mist,
+            min_pool_for_jury_mist,
+            quorum,
+            approval_bps_council,
+            approval_bps_community,
+        };
+        if (dynamic_field::exists_(&registry.id, JURY_POLICY_FIELD)) {
+            let stored: &mut RegistryJuryPolicy = dynamic_field::borrow_mut(&mut registry.id, JURY_POLICY_FIELD);
+            *stored = policy;
+        } else {
+            dynamic_field::add(&mut registry.id, JURY_POLICY_FIELD, policy);
+        };
+        event::emit(JuryPolicyUpdatedEvent {
+            registry_id: object::id(registry),
+            council_stage_enabled,
+            community_stage_enabled,
+            council_window_ms,
+            jury_size,
+            round2_size,
+            jury_fee_bps,
+            jury_fee_cap_mist,
+            min_pool_for_jury_mist,
+            quorum,
+            approval_bps_council,
+            approval_bps_community,
+            updated_at_ms: now,
+        });
+    }
+
+    /// Delegates in the registry who are among the referrers of this proposal's council step.
+    fun live_referrer_count(registry: &GovernanceDAO, review: &JuryReview): u64 {
+        let mut count = 0;
+        let mut i = 0;
+        let len = vector::length(&review.referrers);
+        while (i < len) {
+            if (table::contains(&registry.delegates, *vector::borrow(&review.referrers, i))) {
+                count = count + 1;
+            };
+            i = i + 1;
+        };
+        count
+    }
+
+    /// Current delegates who have voted approve or reject on the proposal.
+    fun live_voter_count(registry: &GovernanceDAO, proposal: &Proposal): u64 {
+        let votes: &Table<address, bool> = dynamic_field::borrow(&proposal.id, DELEGATE_VOTES_FIELD);
+        let addrs = vec_set::keys(&registry.delegate_addresses);
+        let mut count = 0;
+        let mut i = 0;
+        let len = vector::length(addrs);
+        while (i < len) {
+            let addr = *vector::borrow(addrs, i);
+            if (table::contains(&registry.delegates, addr) && table::contains(votes, addr)) {
+                count = count + 1;
+            };
+            i = i + 1;
+        };
+        count
+    }
+
+    /// A delegate asks the AI jury to take the council step instead of voting. When more than half
+    /// of the current delegates have asked, anyone may escalate. Referrals never enter the delegate
+    /// vote tables, so finalization statistics are unaffected.
+    public entry fun delegate_refer_to_jury(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        reason: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        try_update_delegate_panel_if_due(registry, ctx);
+        let caller = tx_context::sender(ctx);
+        let proposal_id = object::id(proposal);
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        assert!(table::contains(&registry.delegates, caller), ENotDelegate);
+        assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+        assert!(!council_jury_has_jurisdiction(proposal), EJuryHasJurisdiction);
+        let policy = jury_policy_of(registry);
+        assert!(option::is_some(&policy), EJuryStageDisabled);
+        let policy = option::destroy_some(policy);
+        assert!(policy.council_stage_enabled, EJuryStageDisabled);
+        assert!(balance::value(&proposal.reward_pool) >= policy.min_pool_for_jury_mist, EPoolTooSmallForJury);
+        {
+            let votes: &Table<address, bool> = dynamic_field::borrow(&proposal.id, DELEGATE_VOTES_FIELD);
+            assert!(!table::contains(votes, caller), EDelegateAlreadyActed);
+        };
+        if (!dynamic_field::exists_(&proposal.id, JURY_COUNCIL_FIELD)) {
+            dynamic_field::add(
+                &mut proposal.id,
+                JURY_COUNCIL_FIELD,
+                JuryReview {
+                    stage: JURY_STAGE_COUNCIL,
+                    state: JURY_STATE_REFERRING,
+                    trigger: 0,
+                    referrers: vector::empty(),
+                    case_id: option::none(),
+                    escalated_at_ms: 0,
+                    decided_at_ms: 0,
+                    decision: NO_DECISION,
+                },
+            );
+        };
+        let total_delegates = table::length(&registry.delegates);
+        let (referral_count, majority_reached) = {
+            let review: &mut JuryReview = dynamic_field::borrow_mut(&mut proposal.id, JURY_COUNCIL_FIELD);
+            assert!(!vector::contains(&review.referrers, &caller), EAlreadyReferred);
+            vector::push_back(&mut review.referrers, caller);
+            let count = live_referrer_count(registry, review);
+            let majority = count > total_delegates / 2;
+            if (majority && review.trigger == 0) {
+                review.trigger = JURY_TRIGGER_REFERRAL_MAJORITY;
+            };
+            (count, majority)
+        };
+        event::emit(DelegateReferredToJuryEvent {
+            proposal_id,
+            delegate_address: caller,
+            reason,
+            referral_count,
+            majority_reached,
+            referred_at_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Why the council step may go to the jury now, or aborts if it may not: a referral majority,
+    /// every current delegate having acted without a majority, or the council window running out.
+    fun council_trigger(
+        registry: &GovernanceDAO,
+        proposal: &Proposal,
+        policy: &RegistryJuryPolicy,
+        now: u64,
+    ): u8 {
+        let total = table::length(&registry.delegates);
+        let referrers = if (dynamic_field::exists_(&proposal.id, JURY_COUNCIL_FIELD)) {
+            let review: &JuryReview = dynamic_field::borrow(&proposal.id, JURY_COUNCIL_FIELD);
+            live_referrer_count(registry, review)
+        } else {
+            0
+        };
+        if (referrers > total / 2) {
+            return JURY_TRIGGER_REFERRAL_MAJORITY
+        };
+        if (total > 0 && live_voter_count(registry, proposal) + referrers >= total) {
+            return JURY_TRIGGER_COUNCIL_TIE
+        };
+        let start = if (proposal.submission_time > policy.enabled_at_ms) {
+            proposal.submission_time
+        } else {
+            policy.enabled_at_ms
+        };
+        if (policy.council_window_ms > 0 && now > start + policy.council_window_ms) {
+            return JURY_TRIGGER_COUNCIL_DEADLINE
+        };
+        abort ENoEscalationTrigger
+    }
+
+    /// Content the jury judges, fixed on the case so it cannot be swapped later.
+    fun proposal_content_digest(proposal: &Proposal): vector<u8> {
+        let mut bytes = vector::empty<u8>();
+        vector::append(&mut bytes, bcs::to_bytes(&proposal.title));
+        vector::append(&mut bytes, bcs::to_bytes(&proposal.description));
+        vector::append(&mut bytes, bcs::to_bytes(&proposal.metadata_json));
+        vector::append(&mut bytes, bcs::to_bytes(&proposal.reference_id));
+        hash::sha3_256(bytes)
+    }
+
+    /// Everyone who has a stake in this proposal's outcome, up to the jury's exclusion limit:
+    /// the current delegates, the submitter, any extra addresses (a platform's owner) and, at the
+    /// community step, the voters. The limit is a cap on a case, so on a very large vote only the
+    /// first voters are excluded.
+    fun stakeholder_owners(
+        registry: &GovernanceDAO,
+        proposal: &Proposal,
+        extra: vector<address>,
+        include_voters: bool,
+        limit: u64,
+    ): vector<address> {
+        let mut out = vec_set::empty<address>();
+        let delegates = vec_set::keys(&registry.delegate_addresses);
+        let mut i = 0;
+        while (i < vector::length(delegates)) {
+            add_excluded_owner(&mut out, *vector::borrow(delegates, i), limit);
+            i = i + 1;
+        };
+        add_excluded_owner(&mut out, proposal.submitter, limit);
+        let mut j = 0;
+        while (j < vector::length(&extra)) {
+            add_excluded_owner(&mut out, *vector::borrow(&extra, j), limit);
+            j = j + 1;
+        };
+        if (include_voters) {
+            if (dynamic_field::exists_(&proposal.id, VOTED_COMMUNITY_FIELD)) {
+                let voters: &VecSet<address> = dynamic_field::borrow(&proposal.id, VOTED_COMMUNITY_FIELD);
+                let keys = vec_set::keys(voters);
+                let mut k = 0;
+                while (k < vector::length(keys)) {
+                    add_excluded_owner(&mut out, *vector::borrow(keys, k), limit);
+                    k = k + 1;
+                };
+            };
+            if (dynamic_field::exists_(&proposal.id, ANON_VOTERS_FIELD)) {
+                let voters: &VecSet<address> = dynamic_field::borrow(&proposal.id, ANON_VOTERS_FIELD);
+                let keys = vec_set::keys(voters);
+                let mut k = 0;
+                while (k < vector::length(keys)) {
+                    add_excluded_owner(&mut out, *vector::borrow(keys, k), limit);
+                    k = k + 1;
+                };
+            };
+        };
+        vec_set::into_keys(out)
+    }
+
+    fun add_excluded_owner(out: &mut VecSet<address>, addr: address, limit: u64) {
+        if (vec_set::length(out) < limit && !vec_set::contains(out, &addr)) {
+            vec_set::insert(out, addr);
+        };
+    }
+
+    /// Carve the jury fee out of the proposal's pool: `jury_fee_bps` of what is left, capped.
+    fun take_jury_fee(proposal: &mut Proposal, policy: &RegistryJuryPolicy): Balance<MYSO> {
+        let pool = balance::value(&proposal.reward_pool);
+        assert!(pool >= policy.min_pool_for_jury_mist, EPoolTooSmallForJury);
+        let mut fee = ((((pool as u128) * (policy.jury_fee_bps as u128)) / 10000u128) as u64);
+        if (policy.jury_fee_cap_mist > 0 && fee > policy.jury_fee_cap_mist) {
+            fee = policy.jury_fee_cap_mist;
+        };
+        assert!(fee > 0, EPoolTooSmallForJury);
+        balance::split(&mut proposal.reward_pool, fee)
+    }
+
+    /// Anyone moves a proposal to the jury at the step that has earned it: the council step once a
+    /// referral majority, a tie, or the council window allows it, or the community step after a vote
+    /// that ended with no quorum or a tie. Returns 0 when a case was opened, 1 when the jury is
+    /// switched off and the community default (reject) applied instead; the caller then forfeits
+    /// the pool for `jury_default_forfeit_reason`.
+    public(package) fun open_jury_for_proposal(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        jury_config: &JuryConfig,
+        stage: u8,
+        sweep_to: address,
+        extra_exclusions: vector<address>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): u8 {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        let now = clock::timestamp_ms(clock);
+        let proposal_id = object::id(proposal);
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        let policy = jury_policy_of(registry);
+        assert!(option::is_some(&policy), EJuryStageDisabled);
+        let policy = option::destroy_some(policy);
+
+        let trigger = if (stage == JURY_STAGE_COUNCIL) {
+            assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+            assert!(policy.council_stage_enabled, EJuryStageDisabled);
+            assert!(!council_jury_has_jurisdiction(proposal), EJuryHasJurisdiction);
+            council_trigger(registry, proposal, &policy, now)
+        } else {
+            assert!(stage == JURY_STAGE_COMMUNITY, EInvalidParameter);
+            assert!(proposal.status == STATUS_COMMUNITY_VOTING, EInvalidProposalStatus);
+            assert!(jury_state(proposal, JURY_COMMUNITY_FIELD) == JURY_STATE_AWAITING, ENoJuryRecord);
+            let review: &JuryReview = dynamic_field::borrow(&proposal.id, JURY_COMMUNITY_FIELD);
+            review.trigger
+        };
+
+        if (!jury::config_active(jury_config)) {
+            // A paused jury must not strand a finished vote. The council step simply stays with the
+            // humans; the community step takes its default.
+            assert!(stage == JURY_STAGE_COMMUNITY, EJuryStageDisabled);
+            apply_default_community_reject(registry, proposal, now);
+            return 1
+        };
+
+        let fee = take_jury_fee(proposal, &policy);
+        let fee_mist = balance::value(&fee);
+        let approval_bps = if (stage == JURY_STAGE_COUNCIL) { policy.approval_bps_council } else { policy.approval_bps_community };
+        let owners = stakeholder_owners(
+            registry,
+            proposal,
+            extra_exclusions,
+            stage == JURY_STAGE_COMMUNITY,
+            jury::max_exclusions(jury_config),
+        );
+        let mut case = jury::open_case(
+            jury_config,
+            jury::subject_governance(),
+            proposal_id,
+            stage,
+            2,
+            approval_bps,
+            policy.quorum,
+            vector[policy.jury_size, policy.round2_size],
+            false,
+            JURY_FAILURE_PATH_DEFAULT_DECISION,
+            0,
+            owners,
+            vector::empty<ID>(),
+            vector::empty<ID>(),
+            fee,
+            fee_mist / policy.jury_size,
+            sweep_to,
+            clock,
+            ctx,
+        );
+        jury::add_evidence(
+            jury_config,
+            &mut case,
+            proposal.submitter,
+            JURY_EVIDENCE_KIND_PROPOSAL,
+            proposal_content_digest(proposal),
+            b"governance:proposal",
+            clock,
+        );
+        let case_id = jury::share_case(case);
+
+        let field = if (stage == JURY_STAGE_COUNCIL) { JURY_COUNCIL_FIELD } else { JURY_COMMUNITY_FIELD };
+        // A council step can reach the jury by tie or deadline with no referral ever recorded.
+        if (!dynamic_field::exists_(&proposal.id, field)) {
+            dynamic_field::add(
+                &mut proposal.id,
+                field,
+                JuryReview {
+                    stage,
+                    state: JURY_STATE_REFERRING,
+                    trigger: 0,
+                    referrers: vector::empty(),
+                    case_id: option::none(),
+                    escalated_at_ms: 0,
+                    decided_at_ms: 0,
+                    decision: NO_DECISION,
+                },
+            );
+        };
+        {
+            let review: &mut JuryReview = dynamic_field::borrow_mut(&mut proposal.id, field);
+            review.state = JURY_STATE_ESCALATED;
+            review.trigger = trigger;
+            review.case_id = option::some(case_id);
+            review.escalated_at_ms = now;
+        };
+        event::emit(ProposalEscalatedToJuryEvent {
+            proposal_id,
+            stage,
+            trigger,
+            case_id,
+            jury_fee_mist: fee_mist,
+            pool_remaining_mist: balance::value(&proposal.reward_pool),
+            escalated_at_ms: now,
+        });
+        0
+    }
+
+    /// Why a defaulted community rejection forfeits the pool: a tie is a community rejection, a
+    /// quorum miss is what it always was.
+    public(package) fun jury_default_forfeit_reason(proposal: &Proposal): u8 {
+        let review: &JuryReview = dynamic_field::borrow(&proposal.id, JURY_COMMUNITY_FIELD);
+        if (review.trigger == JURY_TRIGGER_VOTE_TIE) {
+            FORFEIT_REASON_COMMUNITY_REJECTED
+        } else {
+            FORFEIT_REASON_QUORUM_NOT_MET
+        }
+    }
+
+    fun remove_from_bucket(registry: &mut GovernanceDAO, status: u8, proposal_id: ID) {
+        let from_status = table::borrow_mut(&mut registry.proposals_by_status, status);
+        let mut index = 0;
+        let len = vector::length(from_status);
+        while (index < len) {
+            if (*vector::borrow(from_status, index) == proposal_id) {
+                vector::remove(from_status, index);
+                break
+            };
+            index = index + 1;
+        };
+    }
+
+    /// The community step ended with the jury switched off: what the vote would have done anyway.
+    fun apply_default_community_reject(registry: &mut GovernanceDAO, proposal: &mut Proposal, now: u64) {
+        let proposal_id = object::id(proposal);
+        remove_from_bucket(registry, STATUS_COMMUNITY_VOTING, proposal_id);
+        proposal.status = STATUS_REJECTED;
+        vector::push_back(table::borrow_mut(&mut registry.proposals_by_status, STATUS_REJECTED), proposal_id);
+        {
+            let review: &mut JuryReview = dynamic_field::borrow_mut(&mut proposal.id, JURY_COMMUNITY_FIELD);
+            review.state = JURY_STATE_DECIDED;
+            review.decision = JURY_OUTCOME_REJECT;
+            review.decided_at_ms = now;
+        };
+        event::emit(ProposalRejectedByCommunityEvent {
+            proposal_id,
+            rejection_time: now,
+            votes_for: proposal.community_votes_for,
+            votes_against: proposal.community_votes_against,
+        });
+        event::emit(JuryDecisionAppliedEvent {
+            proposal_id,
+            stage: JURY_STAGE_COMMUNITY,
+            decision: JURY_OUTCOME_REJECT,
+            failed: true,
+            case_id: option::none(),
+            applied_at_ms: now,
+        });
+    }
+
+    /// Apply a finished jury case to its proposal. Returns the action taken so the caller can route
+    /// funds: `JURY_ACTION_ADVANCE` (the council step moved to the community vote),
+    /// `JURY_ACTION_APPROVE`, or `JURY_ACTION_REJECT` (the caller forfeits the pool).
+    ///
+    /// A jury that could not decide uses the step's default: the council step advances (humans
+    /// decide), the community step rejects (what a no-quorum or tied vote did before). Delegate
+    /// statistics are not touched: a jury decision says nothing about how delegates sided.
+    public(package) fun apply_jury_case(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        case: &mut JuryCase,
+        clock: &Clock,
+        ctx: &TxContext,
+    ): (u8, u64) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        let now = clock::timestamp_ms(clock);
+        let proposal_id = object::id(proposal);
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        assert!(jury::case_subject_kind(case) == jury::subject_governance(), EWrongJuryCase);
+        assert!(jury::case_subject_id(case) == proposal_id, EWrongJuryCase);
+        let stage = jury::case_stage(case);
+        let field = if (stage == JURY_STAGE_COUNCIL) { JURY_COUNCIL_FIELD } else { JURY_COMMUNITY_FIELD };
+        assert!(jury_state(proposal, field) == JURY_STATE_ESCALATED, ENoJuryRecord);
+        {
+            let review: &JuryReview = dynamic_field::borrow(&proposal.id, field);
+            assert!(*option::borrow(&review.case_id) == object::id(case), EWrongJuryCase);
+        };
+        assert!(jury::case_is_finished(case), EJuryNotFinished);
+        let state = jury::case_state(case);
+        assert!(state == jury::case_final() || state == jury::case_failed(), EJuryNotFinished);
+        jury::mark_executed(case);
+
+        let failed = state == jury::case_failed();
+        let forward = if (failed) {
+            stage == JURY_STAGE_COUNCIL
+        } else {
+            *option::borrow(&jury::case_final_outcome(case)) == JURY_OUTCOME_FORWARD
+        };
+        let case_id = object::id(case);
+
+        let action = if (stage == JURY_STAGE_COUNCIL) {
+            assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+            if (forward) {
+                move_to_community_voting(registry, proposal, clock, ctx);
+                JURY_ACTION_ADVANCE
+            } else {
+                transition_proposal_rejected_by_delegate_council(registry, proposal);
+                event::emit(ProposalRejectedEvent { proposal_id, rejection_time: now });
+                JURY_ACTION_REJECT
+            }
+        } else {
+            assert!(proposal.status == STATUS_COMMUNITY_VOTING, EInvalidProposalStatus);
+            remove_from_bucket(registry, STATUS_COMMUNITY_VOTING, proposal_id);
+            if (forward) {
+                proposal.status = STATUS_APPROVED;
+                vector::push_back(table::borrow_mut(&mut registry.proposals_by_status, STATUS_APPROVED), proposal_id);
+                event::emit(ProposalApprovedEvent {
+                    proposal_id,
+                    approval_time: now,
+                    votes_for: proposal.community_votes_for,
+                    votes_against: proposal.community_votes_against,
+                });
+                JURY_ACTION_APPROVE
+            } else {
+                proposal.status = STATUS_REJECTED;
+                vector::push_back(table::borrow_mut(&mut registry.proposals_by_status, STATUS_REJECTED), proposal_id);
+                event::emit(ProposalRejectedByCommunityEvent {
+                    proposal_id,
+                    rejection_time: now,
+                    votes_for: proposal.community_votes_for,
+                    votes_against: proposal.community_votes_against,
+                });
+                JURY_ACTION_REJECT
+            }
+        };
+        {
+            let review: &mut JuryReview = dynamic_field::borrow_mut(&mut proposal.id, field);
+            review.state = JURY_STATE_DECIDED;
+            review.decision = if (forward) { JURY_OUTCOME_FORWARD } else { JURY_OUTCOME_REJECT };
+            review.decided_at_ms = now;
+        };
+        if (action == JURY_ACTION_REJECT) {
+            event::emit(ProposalRejectedByJuryEvent { proposal_id, stage, rejection_time: now });
+        };
+        event::emit(JuryDecisionAppliedEvent {
+            proposal_id,
+            stage,
+            decision: if (forward) { JURY_OUTCOME_FORWARD } else { JURY_OUTCOME_REJECT },
+            failed,
+            case_id: option::some(case_id),
+            applied_at_ms: now,
+        });
+        (action, now)
+    }
+
+    /// Global registries (ecosystem, proof of creativity, SPoT): send a proposal to the jury at the
+    /// step that has earned it. Permissionless. Unspent juror shares are swept to the ecosystem
+    /// treasury. When the jury is switched off at the community step, the proposal is rejected as
+    /// a no-quorum or tied vote always was.
+    public entry fun escalate_to_jury(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        jury_config: &JuryConfig,
+        ecosystem_treasury: &EcosystemTreasury,
+        stage: u8,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_shared_global_registry(registry);
+        let dest = profile::get_treasury_address(ecosystem_treasury);
+        let result = open_jury_for_proposal(
+            registry,
+            proposal,
+            jury_config,
+            stage,
+            dest,
+            vector::empty<address>(),
+            clock,
+            ctx,
+        );
+        if (result == 1) {
+            let reason = jury_default_forfeit_reason(proposal);
+            forfeit_proposal_pool_to_treasury_address(
+                registry,
+                proposal,
+                dest,
+                reason,
+                TREASURY_ROUTE_ECOSYSTEM,
+                clock::timestamp_ms(clock),
+                ctx,
+            );
+        };
+    }
+
+    /// Global registries: apply a finished jury case to its proposal. Permissionless.
+    public entry fun apply_jury_decision(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        case: &mut JuryCase,
+        ecosystem_treasury: &EcosystemTreasury,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_shared_global_registry(registry);
+        let (action, now) = apply_jury_case(registry, proposal, case, clock, ctx);
+        if (action == JURY_ACTION_REJECT) {
+            let dest = profile::get_treasury_address(ecosystem_treasury);
+            forfeit_proposal_pool_to_treasury_address(
+                registry,
+                proposal,
+                dest,
+                FORFEIT_REASON_JURY_REJECTED,
+                TREASURY_ROUTE_ECOSYSTEM,
+                now,
+                ctx,
+            );
+        };
+    }
+
+    /// Pay what the jurors did not claim back to the address the case named, once the case has ended
+    /// and its fees are settled. Permissionless.
+    public entry fun sweep_jury_case(case: &mut JuryCase, ctx: &mut TxContext) {
+        let remainder = jury::sweep_remainder(case);
+        if (balance::value(&remainder) > 0) {
+            transfer::public_transfer(coin::from_balance(remainder, ctx), jury::case_sweep_to(case));
+        } else {
+            balance::destroy_zero(remainder);
+        };
+    }
+
+    // Views
+    public fun jury_policy_enabled(registry: &GovernanceDAO): bool {
+        let policy = jury_policy_of(registry);
+        option::is_some(&policy) && {
+            let p = option::borrow(&policy);
+            p.council_stage_enabled || p.community_stage_enabled
+        }
+    }
+    public fun jury_council_state(proposal: &Proposal): u8 { jury_state(proposal, JURY_COUNCIL_FIELD) }
+    public fun jury_community_state(proposal: &Proposal): u8 { jury_state(proposal, JURY_COMMUNITY_FIELD) }
+    public fun jury_stage_council_value(): u8 { JURY_STAGE_COUNCIL }
+    public fun jury_stage_community_value(): u8 { JURY_STAGE_COMMUNITY }
+    public fun jury_action_advance_value(): u8 { JURY_ACTION_ADVANCE }
+    public fun jury_action_approve_value(): u8 { JURY_ACTION_APPROVE }
+    public fun jury_action_reject_value(): u8 { JURY_ACTION_REJECT }
+    public fun proposal_pool_value(proposal: &Proposal): u64 { balance::value(&proposal.reward_pool) }
+
+    #[test_only]
+    /// Seat `addr` on the delegate council (unit tests only).
+    public fun test_add_delegate(registry: &mut GovernanceDAO, addr: address) {
+        table::add(&mut registry.delegates, addr, Delegate {
+            address: addr,
+            upvotes: 0,
+            downvotes: 0,
+            proposals_reviewed: 0,
+            proposals_submitted: 0,
+            sided_winning_proposals: 0,
+            sided_losing_proposals: 0,
+            term_start: 0,
+            term_end: 1000000,
+        });
+        vec_set::insert(&mut registry.delegate_addresses, addr);
     }
 
     #[test_only]

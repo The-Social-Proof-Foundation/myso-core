@@ -8,6 +8,8 @@ mod audit;
 mod blocked;
 mod governance;
 mod insurance;
+mod jury;
+mod jury_outbox;
 mod media_asset;
 mod memory;
 mod messaging;
@@ -95,10 +97,26 @@ pub use media_asset::{
     MONETIZATION_NONE, MONETIZATION_PENDING, MONETIZATION_RESTRICTED, POC_REDIRECT_ESCROW,
     POC_REDIRECT_NONE, POC_REDIRECT_WALLET,
 };
+pub use jury_outbox::{
+    AUTOMATION_FAMILY_JURY, CRANK_RETRY_BUCKET_MS, Crank, CrankKind, CrankRefs, UPKEEP_RETRY_BUCKET_MS,
+    DUTY_POLL_BUCKET_MS,
+    DutyKind, JurorSeat, duty_drafted_event, duty_poll_event, fee_claimable_event, keeper_event,
+    voting_started_event,
+};
+pub use jury::{
+    NewProposalJuryReferral, NewProposalJuryReview, NewRegistryJuryPolicy, REVIEW_STAGE_COMMUNITY,
+    REVIEW_STAGE_COUNCIL, REVIEW_STATE_AWAITING, REVIEW_STATE_DECIDED, REVIEW_STATE_ESCALATED,
+    REVIEW_STATE_REFERRING, NewJuryCase, NewJuryEvidence, NewJuryPayout, NewJuryRosterEntry, NewJuryRound, NewJurySlot,
+    CASE_STATE_AWAITING_DRAW, CASE_STATE_CANCELLED, CASE_STATE_EVIDENCE, CASE_STATE_FAILED,
+    CASE_STATE_FINAL, CASE_STATE_SELECTING, CASE_STATE_TALLIED, CASE_STATE_VOTING,
+    DUTY_NO_REVEAL, ROSTER_ACTIVE, ROSTER_LEFT, ROSTER_SUSPENDED, SLOT_ACCEPTED, SLOT_COMMITTED,
+    SLOT_DEFAULTED, SLOT_DRAFTED, SLOT_REPLACED, SLOT_REVEALED,
+};
 pub use agent_task::{
-    NewAgentTask, NewCredibility, NewReputationAggregate, NewTaskConfig, NewTaskReceipt,
+    DISPUTE_STATE_CANCELLED, DISPUTE_STATE_OPEN, DISPUTE_STATE_RESOLVED, NewAgentTask,
+    NewCredibility, NewReputationAggregate, NewTaskConfig, NewTaskDispute, NewTaskReceipt,
     NewTaskReview, TASK_STATUS_ACCEPTED, TASK_STATUS_CANCELLED, TASK_STATUS_DELIVERED,
-    TASK_STATUS_OFFERED, TASK_STATUS_REFUNDED, TASK_STATUS_SETTLED,
+    TASK_STATUS_DISPUTED, TASK_STATUS_OFFERED, TASK_STATUS_REFUNDED, TASK_STATUS_SETTLED,
 };
 pub use automation_outbox::{
     AUTOMATION_EVENT_SOURCE, AUTOMATION_FAMILY_TASK, AutomationEventPayload, DEFAULT_BASE_CREDIBILITY_BPS,

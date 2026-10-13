@@ -1,6 +1,5 @@
 ---
 source: crates/myso-indexer-alt-graphql/src/api/types/available_range.rs
-assertion_line: 619
 expression: output
 ---
 AccumulatorRootCreateTransaction._
@@ -73,6 +72,18 @@ AddressAliasStateCreateTransaction._
   => {}
 
 AddressOwner.address
+  => {}
+
+AgentReputation.asSeller
+  => {}
+
+AgentReputation.asBuyer
+  => {}
+
+AgentReputation.overall
+  => {}
+
+AgentReputation.credibility
   => {}
 
 AgentSpendBreakdown.agentObjectId
@@ -753,6 +764,12 @@ CommunityVote.voteTime
 CommunityVote.voteCost
   => {}
 
+CommunityVoteEligibility.eligible
+  => {}
+
+CommunityVoteEligibility.reason
+  => {}
+
 CompositionAnalysis.postId
   => {}
 
@@ -808,6 +825,18 @@ ContainerUsageDenial.bindingId
   => {}
 
 ContainerUsageDenial.denialScope
+  => {}
+
+Credibility.accountId
+  => {}
+
+Credibility.settledCount
+  => {}
+
+Credibility.volumeMist
+  => {}
+
+Credibility.credibilityBps
   => {}
 
 Delegate.address
@@ -1297,6 +1326,9 @@ GovernanceRegistry.delegateCount
   => {}
 
 GovernanceRegistry.config
+  => {}
+
+GovernanceRegistry.juryPolicy
   => {}
 
 GovernanceRegistry.lastDelegatePanelBoundaryEpoch
@@ -1983,6 +2015,63 @@ InsuranceVaultUserExposure.insured
 InsuranceVaultUserExposure.totalReserved
   => {}
 
+JuryCase.caseId
+  => {}
+
+JuryCase.subjectKind
+  => {}
+
+JuryCase.subjectId
+  => {}
+
+JuryCase.stage
+  => {}
+
+JuryCase.state
+  => {}
+
+JuryCase.currentRound
+  => {}
+
+JuryCase.finalOutcome
+  => {}
+
+JuryCase.appealsUsed
+  => {}
+
+JuryCase.feeMist
+  => {}
+
+JuryCase.perJurorFeeMist
+  => {}
+
+JuryCase.createdAtMs
+  => {}
+
+JuryCase.finalizedAtMs
+  => {}
+
+LicenseTemplateTerms.templateVersionId
+  => {}
+
+LicenseTemplateTerms.version
+  => {}
+
+LicenseTemplateTerms.legalTermsUri
+  => {}
+
+LicenseTemplateTerms.legalTermsHash
+  => {}
+
+LicenseTemplateTerms.governingLaw
+  => {}
+
+LicenseTemplateTerms.licenseSchemaVersion
+  => {}
+
+LicenseTemplateTerms.instanceRevocable
+  => {}
+
 Linkage.originalId
   => {}
 
@@ -2070,40 +2159,10 @@ MediaAsset.rightsProposals
 MediaAsset.rightsUpdates
   => {}
 
-MediaAssetRightsUpdate.mediaAssetId
+MediaAsset.activeRightsProposalLink
   => {}
 
-MediaAssetRightsUpdate.rightsVersion
-  => {}
-
-MediaAssetRightsUpdate.proposalId
-  => {}
-
-MediaAssetRightsUpdate.transactionId
-  => {}
-
-MediaAssetRightsUpdate.time
-  => {}
-
-LicenseTemplateTerms.templateVersionId
-  => {}
-
-LicenseTemplateTerms.version
-  => {}
-
-LicenseTemplateTerms.legalTermsUri
-  => {}
-
-LicenseTemplateTerms.legalTermsHash
-  => {}
-
-LicenseTemplateTerms.governingLaw
-  => {}
-
-LicenseTemplateTerms.licenseSchemaVersion
-  => {}
-
-LicenseTemplateTerms.instanceRevocable
+MediaAsset.rightsProposalLinks
   => {}
 
 MediaAssetLicenseInstance.licenseInstanceId
@@ -2119,6 +2178,51 @@ MediaAssetLicenseInstance.status
   => {}
 
 MediaAssetLicenseInstance.acceptedAt
+  => {}
+
+MediaAssetRightsProposalLink.proposal
+  => {}
+
+MediaAssetRightsProposalLink.target
+  => {}
+
+MediaAssetRightsProposalLink.status
+  => {}
+
+MediaAssetRightsProposalLink.claimsCommitment
+  => {}
+
+MediaAssetRightsTarget.kind
+  => {}
+
+MediaAssetRightsTarget.beneficiaryAddress
+  => {}
+
+MediaAssetRightsTarget.vaultId
+  => {}
+
+MediaAssetRightsTarget.username
+  => {}
+
+MediaAssetRightsTarget.identityHash
+  => {}
+
+MediaAssetRightsTarget.identitySource
+  => {}
+
+MediaAssetRightsUpdate.mediaAssetId
+  => {}
+
+MediaAssetRightsUpdate.rightsVersion
+  => {}
+
+MediaAssetRightsUpdate.proposalId
+  => {}
+
+MediaAssetRightsUpdate.transactionId
+  => {}
+
+MediaAssetRightsUpdate.time
   => {}
 
 MediaAssetUsage.containerId
@@ -3385,6 +3489,15 @@ OrganizationCategory.displayName
   => {}
 
 OtherCommand._
+  => {}
+
+OverallReputation.scoreMilli
+  => {}
+
+OverallReputation.score
+  => {}
+
+OverallReputation.confidenceBps
   => {}
 
 OwnedOrImmutable.object
@@ -4728,6 +4841,9 @@ Profile.website
 Profile.createdAt
   => {}
 
+Profile.deletedAt
+  => {}
+
 Profile.contractVersion
   => {}
 
@@ -4861,6 +4977,9 @@ Profile.mydataRecords
   => {}
 
 Profile.pnl
+  => {}
+
+Profile.subAgentsPnl
   => {}
 
 Profile.sptPortfolioMetrics
@@ -5343,6 +5462,12 @@ Proposal.metadataJson
 Proposal.delegateVotes
   => {}
 
+Proposal.juryReviews
+  => {}
+
+Proposal.juryReferrals
+  => {}
+
 Proposal.communityVotesCount
   => {}
 
@@ -5359,6 +5484,51 @@ Proposal.anonymousVotes
   => {}
 
 Proposal.decryptionFailures
+  => {}
+
+Proposal.communityVoteEligibility
+  => {}
+
+ProposalJuryReferral.delegateAddress
+  => {}
+
+ProposalJuryReferral.reason
+  => {}
+
+ProposalJuryReferral.referredAtMs
+  => {}
+
+ProposalJuryReview.proposalId
+  => {}
+
+ProposalJuryReview.stage
+  => {}
+
+ProposalJuryReview.state
+  => {}
+
+ProposalJuryReview.trigger
+  => {}
+
+ProposalJuryReview.caseId
+  => {}
+
+ProposalJuryReview.referralCount
+  => {}
+
+ProposalJuryReview.escalatedAtMs
+  => {}
+
+ProposalJuryReview.decidedAtMs
+  => {}
+
+ProposalJuryReview.decision
+  => {}
+
+ProposalJuryReview.failed
+  => {}
+
+ProposalJuryReview.case
   => {}
 
 ProposalVotes.delegateFor
@@ -5425,6 +5595,9 @@ Query.post
   => {}
 
 Query.mediaAsset
+  => {}
+
+Query.mediaAssetRightsProposal
   => {}
 
 Query.mediaAssetRightsProposals
@@ -5658,6 +5831,9 @@ Query.pocBeneficiaryVaultByVaultId
 Query.pocBeneficiaryVaultByBeneficiary
   => {}
 
+Query.pocUsernameBeneficiaryByIdentity
+  => {}
+
 Query.pocUsernameBeneficiaryByUsername
   => {}
 
@@ -5713,6 +5889,12 @@ Query.profileConfiguration
   => {}
 
 Query.memoryConfiguration
+  => {}
+
+Query.taskConfiguration
+  => {}
+
+Query.juryCase
   => {}
 
 Query.platformConfiguration
@@ -5904,6 +6086,45 @@ ReadConsensusStreamEnded.sequenceNumber
 Receiving.object
   => {}
 
+RegistryJuryPolicy.registryId
+  => {}
+
+RegistryJuryPolicy.councilStageEnabled
+  => {}
+
+RegistryJuryPolicy.communityStageEnabled
+  => {}
+
+RegistryJuryPolicy.councilWindowMs
+  => {}
+
+RegistryJuryPolicy.jurySize
+  => {}
+
+RegistryJuryPolicy.round2Size
+  => {}
+
+RegistryJuryPolicy.juryFeeBps
+  => {}
+
+RegistryJuryPolicy.juryFeeCapMist
+  => {}
+
+RegistryJuryPolicy.minPoolForJuryMist
+  => {}
+
+RegistryJuryPolicy.quorum
+  => {}
+
+RegistryJuryPolicy.approvalBpsCouncil
+  => {}
+
+RegistryJuryPolicy.approvalBpsCommunity
+  => {}
+
+RegistryJuryPolicy.updatedAtMs
+  => {}
+
 RepostSummary.repostId
   => {}
 
@@ -6001,6 +6222,27 @@ RewardDistribution.distributionTime
   => {}
 
 RewardDistribution.distributionType
+  => {}
+
+RoleReputation.reviewCount
+  => {}
+
+RoleReputation.histogram
+  => {}
+
+RoleReputation.scoreMilli
+  => {}
+
+RoleReputation.score
+  => {}
+
+RoleReputation.confidenceBps
+  => {}
+
+RoleReputation.lastReceiptId
+  => {}
+
+RoleReputation.updatedAt
   => {}
 
 SelectedBadge.badgeId
@@ -7215,6 +7457,9 @@ SubAgent.derivedAddress
 SubAgent.label
   => {}
 
+SubAgent.pnl
+  => {}
+
 SubAgent.memoryVaultId
   => {}
 
@@ -7260,6 +7505,9 @@ SubAgent.createdAt
 SubAgent.organizationId
   => {}
 
+SubAgent.reputation
+  => {}
+
 SubAgent.budget
   => {}
 
@@ -7270,6 +7518,90 @@ SubAgent.orgRoles
   => {}
 
 SubAgent.children
+  => {}
+
+SubAgentLifetimePnl.realizedPlMyso
+  => {}
+
+SubAgentLifetimePnl.unrealizedPlMyso
+  => {}
+
+SubAgentLifetimePnl.tradingPlMyso
+  => {}
+
+SubAgentLifetimePnl.grossInboundMyso
+  => {}
+
+SubAgentLifetimePnl.aiSpendMyso
+  => {}
+
+SubAgentLifetimePnl.netPnlMyso
+  => {}
+
+SubAgentPnl.agent
+  => {}
+
+SubAgentPnl.status
+  => {}
+
+SubAgentPnl.lifetime
+  => {}
+
+SubAgentPnl.sptPortfolio
+  => {}
+
+SubAgentPnl.windows
+  => {}
+
+SubAgentPnlSummary.agents
+  => {}
+
+SubAgentPnlSummary.totals
+  => {}
+
+SubAgentPnlSummary.totalCount
+  => {}
+
+SubAgentPnlTotals.agentCount
+  => {}
+
+SubAgentPnlTotals.activeCount
+  => {}
+
+SubAgentPnlTotals.deactivatedCount
+  => {}
+
+SubAgentPnlTotals.revokedCount
+  => {}
+
+SubAgentPnlTotals.realizedPlMyso
+  => {}
+
+SubAgentPnlTotals.unrealizedPlMyso
+  => {}
+
+SubAgentPnlTotals.tradingPlMyso
+  => {}
+
+SubAgentPnlTotals.grossInboundMyso
+  => {}
+
+SubAgentPnlTotals.aiSpendMyso
+  => {}
+
+SubAgentPnlTotals.netPnlMyso
+  => {}
+
+SubAgentWindowPnl.window
+  => {}
+
+SubAgentWindowPnl.cashFlow
+  => {}
+
+SubAgentWindowPnl.aiSpendMyso
+  => {}
+
+SubAgentWindowPnl.netCashFlowAfterAiMyso
   => {}
 
 SubscriptionAccess.hasAccess
@@ -7309,6 +7641,99 @@ SubscriptionConfig.time
   => {}
 
 SubscriptionConfig.transactionId
+  => {}
+
+TaskConfig.updatedBy
+  => {}
+
+TaskConfig.ecosystemFeeRecipient
+  => {}
+
+TaskConfig.active
+  => {}
+
+TaskConfig.platformFeeBps
+  => {}
+
+TaskConfig.ecosystemFeeBps
+  => {}
+
+TaskConfig.minEscrowMist
+  => {}
+
+TaskConfig.acceptWindowMinMs
+  => {}
+
+TaskConfig.acceptWindowDefaultMs
+  => {}
+
+TaskConfig.acceptWindowMaxMs
+  => {}
+
+TaskConfig.deliveryWindowMinMs
+  => {}
+
+TaskConfig.deliveryWindowMaxMs
+  => {}
+
+TaskConfig.settleWindowMinMs
+  => {}
+
+TaskConfig.settleWindowMaxMs
+  => {}
+
+TaskConfig.releaseGraceMs
+  => {}
+
+TaskConfig.reviewWindowMs
+  => {}
+
+TaskConfig.maxTitleBytes
+  => {}
+
+TaskConfig.maxUriBytes
+  => {}
+
+TaskConfig.priorMeanMilli
+  => {}
+
+TaskConfig.priorWeightBps
+  => {}
+
+TaskConfig.valueRefMist
+  => {}
+
+TaskConfig.minValueWeightBps
+  => {}
+
+TaskConfig.maxValueWeightBps
+  => {}
+
+TaskConfig.credBaseBps
+  => {}
+
+TaskConfig.credStepBps
+  => {}
+
+TaskConfig.credCapN
+  => {}
+
+TaskConfig.credMaxBps
+  => {}
+
+TaskConfig.overallSellerWeightBps
+  => {}
+
+TaskConfig.overallBuyerWeightBps
+  => {}
+
+TaskConfig.timestampMs
+  => {}
+
+TaskConfig.time
+  => {}
+
+TaskConfig.transactionId
   => {}
 
 TipSummary.tipper
@@ -7551,6 +7976,9 @@ ValidatorSet.contents
 VestingLeaderboardEntry.ownerAddress
   => {}
 
+VestingLeaderboardEntry.coinType
+  => {}
+
 VestingLeaderboardEntry.totalVested
   => {}
 
@@ -7573,6 +8001,9 @@ VestingLeaderboardResponse.total
   => {}
 
 VestingWallet.walletId
+  => {}
+
+VestingWallet.coinType
   => {}
 
 VestingWallet.ownerAddress

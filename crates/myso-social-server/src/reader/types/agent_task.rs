@@ -5,6 +5,7 @@ use diesel::prelude::*;
 use myso_indexer_alt_social_schema::schema::{
     agent_tasks, task_config_history, task_receipts, task_reviews,
 };
+use diesel::sql_types::{BigInt, Double, Nullable, Text};
 use serde::Serialize;
 
 /// `GET /tasks` and `GET /tasks/:task_id`.
@@ -152,6 +153,8 @@ pub struct TaskDetailInfo {
     #[serde(flatten)]
     pub task: AgentTaskInfo,
     pub reviews: Vec<TaskReviewInfo>,
+    /// Present once the task has gone to a jury; the full case is at `/tasks/:task_id/dispute`.
+    pub dispute: Option<super::jury::TaskDisputeInfo>,
 }
 
 /// Scores for one subject and role, derived from the indexed sums with the current prior.
@@ -206,4 +209,66 @@ pub struct PrincipalReputationInfo {
     pub as_human_buyer: ReputationScoreInfo,
     pub overall: OverallScoreInfo,
     pub credibility: Option<CredibilityInfo>,
+}
+
+/// `GET /task/stats`: market-wide counts and volume, for the Task Market overview.
+#[derive(Debug, Clone, Serialize, QueryableByName, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskStatsInfo {
+    /// Offered, waiting for the seller to accept.
+    #[diesel(sql_type = BigInt)]
+    pub open_offers: i64,
+    /// Accepted, work in progress.
+    #[diesel(sql_type = BigInt)]
+    pub accepted: i64,
+    #[diesel(sql_type = BigInt)]
+    pub delivered: i64,
+    #[diesel(sql_type = BigInt)]
+    pub disputed: i64,
+    #[diesel(sql_type = BigInt)]
+    pub settled: i64,
+    #[diesel(sql_type = BigInt)]
+    pub refunded: i64,
+    #[diesel(sql_type = BigInt)]
+    pub cancelled: i64,
+    /// MIST currently held in escrow (offered, accepted, delivered or disputed tasks).
+    #[diesel(sql_type = BigInt)]
+    pub total_escrowed_mist: i64,
+    /// MIST paid out across every settled task, before fees.
+    #[diesel(sql_type = BigInt)]
+    pub total_settled_mist: i64,
+    #[diesel(sql_type = BigInt)]
+    pub settled_last_24h: i64,
+    /// Seller agents with open work or a settlement in the last 24 hours.
+    #[diesel(sql_type = BigInt)]
+    pub active_agents: i64,
+}
+
+/// `GET /agents/top`: a seller agent ranked by its on-chain reputation.
+#[derive(Debug, Clone, Serialize, QueryableByName, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TopAgentInfo {
+    #[diesel(sql_type = Text)]
+    pub agent_object_id: String,
+    #[diesel(sql_type = Text)]
+    pub label: String,
+    #[diesel(sql_type = Text)]
+    pub principal: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub organization_id: Option<String>,
+    #[diesel(sql_type = BigInt)]
+    pub review_count: i64,
+    #[diesel(sql_type = BigInt)]
+    pub score_milli: i64,
+    /// `score_milli / 1000`, for display.
+    #[diesel(sql_type = Double)]
+    pub score: f64,
+    #[diesel(sql_type = BigInt)]
+    pub confidence_bps: i64,
+    #[diesel(sql_type = BigInt)]
+    pub settled_count: i64,
+    #[diesel(sql_type = Text)]
+    pub volume_mist: String,
+    #[diesel(sql_type = BigInt)]
+    pub credibility_bps: i64,
 }

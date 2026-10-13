@@ -5,6 +5,7 @@ mod agent_task;
 mod common;
 mod governance;
 mod insurance;
+mod jury;
 mod memory;
 mod messaging;
 mod mydata;
@@ -23,6 +24,13 @@ mod vesting;
 pub use agent_task::{
     AgentReputationInfo, AgentTaskInfo, CredibilityInfo, OverallScoreInfo, PrincipalReputationInfo,
     ReputationScoreInfo, TaskConfigInfo, TaskDetailInfo, TaskReceiptInfo, TaskReviewInfo,
+    TaskStatsInfo, TopAgentInfo,
+};
+pub use jury::{
+    CrankInfo, ProposalJuryInfo, ProposalJuryReferralInfo, ProposalJuryReviewInfo,
+    JuryHealthInfo, JuryRationaleInfo, OverdueCrank, RationaleOutcome, RosterHealth, StoreRationaleRequest, RegistryJuryPolicyInfo, RegistryJuryPolicyView, JuryCaseDetailInfo, JuryCaseInfo, JuryCaseRow, JuryEvidenceInfo, JuryPayoutInfo, JuryRoundInfo,
+    JuryRoundRow, JurorAssignmentInfo, JurorRosterInfo, JurySlotInfo, JurySlotRow,
+    TaskDisputeDetailInfo, TaskDisputeInfo,
 };
 pub use common::{ChartSummary, DateRange, SystemStatsResponse};
 pub use governance::{
@@ -62,8 +70,12 @@ pub use poc::{
     PocVaultDepositRow,
 };
 pub use post::{
-    BlockedEventRow, CommentRow, PostBasicRow, PostConfigRow, PromotedPostRow, PromotionHourlyRow,
-    PromotionStatsRow, PromotionTimeSeriesRow, PromotionViewRow, ReactionRow, RepostRow,
+    BlockedEventRow, CommentRow, PostBasicRow, PostConfigRow, PromotedPostSummaryRow,
+    PromotionAnalyticsQuery, PromotionBudgetEventRow, PromotionBudgetHistoryResponse,
+    PromotionDetailRow, PromotionHourlyRow, PromotionListQuery, PromotionPlatformBreakdownResponse,
+    PromotionPlatformBreakdownRow, PromotionReconciliation, PromotionRollupRow, PromotionStatsRow,
+    PromotionStatusEventRow, PromotionStatusHistoryResponse, PromotionTimeSeriesRow,
+    PromotionViewRow, PromotionWindowInfo, ReactionRow, RepostRow,
 };
 pub use profile::{
     ProfileBadgeRow, ProfileConfigInfo, ProfileDailyStatsChartData, ProfileDailyStatsSummary,

@@ -706,6 +706,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/posts/:id/deletion-events", get(get_post_deletion_events))
         .route("/promotions", get(list_promotions))
         .route(
+            "/promotions/analytics/summary",
+            get(get_promotion_rollup),
+        )
+        .route(
             "/promotions/analytics/top-performing",
             get(get_top_performing_promotions),
         )
@@ -713,8 +717,17 @@ fn make_router(state: Arc<AppState>) -> Router {
             "/promotions/analytics/spending-trends",
             get(get_spending_trends),
         )
+        .route("/promotions/:id", get(get_promotion))
         .route("/promotions/:id/views", get(get_promotion_views))
         .route("/promotions/:id/stats", get(get_promotion_stats))
+        .route(
+            "/promotions/:id/budget-events",
+            get(get_promotion_budget_events),
+        )
+        .route(
+            "/promotions/:id/status-events",
+            get(get_promotion_status_events),
+        )
         .route(
             "/promotions/:id/analytics/time-series",
             get(get_promotion_time_series),
@@ -722,6 +735,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/promotions/:id/analytics/hourly",
             get(get_promotion_hourly),
+        )
+        .route(
+            "/promotions/:id/analytics/platforms",
+            get(get_promotion_platform_breakdown),
         )
         .route("/poc/badges", get(list_poc_badges))
         .route("/poc/badges/:id", get(get_poc_badge_by_id))
@@ -998,12 +1015,32 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_agent_groups),
         )
         .route("/agents/rooms", get(list_agent_rooms))
+        .route("/agents/top", get(list_top_agents))
         .route("/agents/:agent_object_id/receipts", get(list_agent_receipts))
         .route("/agents/:agent_object_id/reputation", get(get_agent_reputation))
         .route("/principals/:address/reputation", get(get_principal_reputation))
         .route("/tasks", get(list_tasks))
         .route("/tasks/:task_id", get(get_task))
+        .route("/tasks/:task_id/dispute", get(get_task_dispute))
         .route("/task/config", get(get_task_config))
+        .route("/task/stats", get(get_task_stats))
+        .route("/jury/cases", get(list_jury_cases))
+        .route("/jury/cases/:case_id", get(get_jury_case))
+        .route("/jury/cases/:case_id/rationales", get(list_jury_rationales))
+        .route("/internal/jury/rationales", post(store_jury_rationale))
+        .route("/jury/roster", get(list_jury_roster))
+        .route("/jury/cranks", get(list_jury_cranks))
+        .route("/jury/health", get(get_jury_health))
+        .route("/governance/proposals/:id/jury", get(get_proposal_jury))
+        .route(
+            "/governance/registries/:registry_type/jury-policy",
+            get(get_registry_jury_policy),
+        )
+        .route("/jury/jurors/:agent_id", get(get_juror))
+        .route(
+            "/jury/jurors/:agent_id/assignments",
+            get(list_juror_assignments),
+        )
         .route(
             "/organizations/:organization_id/rooms",
             get(list_organization_rooms),

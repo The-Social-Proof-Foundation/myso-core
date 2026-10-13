@@ -9,6 +9,7 @@ mod insurance;
 mod memory;
 mod messaging;
 mod agent_task;
+mod jury;
 mod mydata;
 mod organization;
 mod platforms;
@@ -58,9 +59,14 @@ pub use memory::{
     get_sub_agent_pnl, list_profile_sub_agents, list_profile_sub_agents_pnl,
     list_sub_agent_children,
 };
+pub use jury::{
+    get_jury_case, get_juror, get_task_dispute, list_juror_assignments, list_jury_cases,
+    get_jury_health, get_proposal_jury, get_registry_jury_policy, list_jury_cranks, list_jury_rationales,
+    list_jury_roster, store_jury_rationale,
+};
 pub use agent_task::{
-    get_agent_reputation, get_principal_reputation, get_task, get_task_config, list_agent_receipts,
-    list_tasks,
+    get_agent_reputation, get_principal_reputation, get_task, get_task_config, get_task_stats,
+    list_agent_receipts, list_tasks, list_top_agents,
 };
 pub use messaging::{
     get_agent_groups, get_message_history, get_messaging_config, get_messaging_revenue_summary,
@@ -110,7 +116,9 @@ pub use profiles::{
     get_wallet_messaging_policy, latest_profiles,
 };
 pub use promotions::{
-    get_promotion_hourly, get_promotion_stats, get_promotion_time_series, get_promotion_views,
+    get_promotion, get_promotion_budget_events, get_promotion_hourly,
+    get_promotion_platform_breakdown, get_promotion_rollup, get_promotion_stats,
+    get_promotion_status_events, get_promotion_time_series, get_promotion_views,
     get_spending_trends, get_top_performing_promotions, list_promotions,
 };
 pub use revenue::{

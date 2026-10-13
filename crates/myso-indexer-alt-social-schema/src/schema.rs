@@ -3189,6 +3189,7 @@ diesel::joinable!(ai_credit_balances -> memory_accounts (memory_account_id));
 diesel::joinable!(ai_spend_reservations -> ai_credit_balances (balance_id));
 diesel::joinable!(profiles -> ai_credit_balances (ai_credit_balance_id));
 diesel::joinable!(sub_agents -> memory_accounts (account_id));
+diesel::joinable!(jury_slots -> jury_cases (case_id));
 
 diesel::table! {
     agent_tasks (task_id) {
@@ -3289,6 +3290,200 @@ diesel::table! {
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    task_disputes (task_id) {
+        task_id -> Text,
+        case_id -> Text,
+        opened_by_role -> Int2,
+        state -> Int2,
+        fee_each_mist -> Int8,
+        buyer_paid_mist -> Int8,
+        seller_paid_mist -> Int8,
+        opened_at_ms -> Int8,
+        neutral_window_ends_ms -> Nullable<Int8>,
+        agreement_proposer -> Int2,
+        agreement_outcome -> Nullable<Int2>,
+        resolved_outcome -> Nullable<Int2>,
+        resolved_source -> Nullable<Int2>,
+        resolved_at_ms -> Nullable<Int8>,
+        fees_settled -> Bool,
+        buyer_fee_refund_mist -> Nullable<Int8>,
+        seller_fee_refund_mist -> Nullable<Int8>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    jury_cases (case_id) {
+        case_id -> Text,
+        subject_kind -> Int2,
+        subject_id -> Text,
+        stage -> Int2,
+        menu_len -> Int2,
+        approval_bps -> Int8,
+        quorum -> Int8,
+        round_sizes -> Text,
+        appealable -> Bool,
+        failure_path -> Int2,
+        opened_by -> Text,
+        fee_mist -> Int8,
+        created_at_ms -> Int8,
+        evidence_deadline_ms -> Int8,
+        state -> Int2,
+        current_round -> Int8,
+        final_outcome -> Nullable<Int2>,
+        appeals_used -> Int8,
+        failed_appeal -> Bool,
+        participants -> Nullable<Int8>,
+        per_juror_fee_mist -> Nullable<Int8>,
+        fail_reason -> Nullable<Int2>,
+        finalized_at_ms -> Nullable<Int8>,
+        cancelled_at_ms -> Nullable<Int8>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    jury_rounds (case_id, round) {
+        case_id -> Text,
+        round -> Int8,
+        accept_deadline_ms -> Int8,
+        commit_deadline_ms -> Nullable<Int8>,
+        reveal_deadline_ms -> Nullable<Int8>,
+        tally -> Nullable<Text>,
+        abstain -> Nullable<Int8>,
+        revealed -> Nullable<Int8>,
+        decisive -> Nullable<Bool>,
+        leading -> Nullable<Int2>,
+        appeal_deadline_ms -> Nullable<Int8>,
+    }
+}
+
+diesel::table! {
+    jury_slots (case_id, round, agent_id) {
+        case_id -> Text,
+        round -> Int8,
+        agent_id -> Text,
+        status -> Int2,
+        accept_deadline_ms -> Int8,
+        accepted_at_ms -> Nullable<Int8>,
+        commitment -> Nullable<Text>,
+        outcome -> Nullable<Int2>,
+        rationale_digest -> Nullable<Text>,
+        evidence_refs -> Nullable<Text>,
+        bundle_digest -> Nullable<Text>,
+        revealed_at_ms -> Nullable<Int8>,
+    }
+}
+
+diesel::table! {
+    jury_evidence (case_id, idx) {
+        case_id -> Text,
+        idx -> Int8,
+        submitter -> Text,
+        round -> Int8,
+        kind -> Int2,
+        digest -> Text,
+        uri -> Text,
+        submitted_at_ms -> Int8,
+    }
+}
+
+diesel::table! {
+    jury_payouts (case_id, agent_id) {
+        case_id -> Text,
+        agent_id -> Text,
+        recipient -> Text,
+        amount_mist -> Int8,
+    }
+}
+
+diesel::table! {
+    jury_roster (agent_id) {
+        agent_id -> Text,
+        owner -> Text,
+        memory_account_id -> Text,
+        organization_id -> Text,
+        payout_address -> Text,
+        model_family -> Int2,
+        exempt -> Bool,
+        status -> Int2,
+        suspended_until_ms -> Nullable<Int8>,
+        duty_score -> Nullable<Int8>,
+        strikes -> Int8,
+        joined_at_ms -> Int8,
+        left_at_ms -> Nullable<Int8>,
+        left_reason -> Nullable<Int2>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    jury_rationales (case_id, round, agent_id) {
+        case_id -> Text,
+        round -> Int8,
+        agent_id -> Text,
+        rationale -> Text,
+        rationale_digest -> Text,
+        stored_at_ms -> Int8,
+    }
+}
+
+diesel::table! {
+    registry_jury_policies (registry_id) {
+        registry_id -> Text,
+        council_stage_enabled -> Bool,
+        community_stage_enabled -> Bool,
+        council_window_ms -> Int8,
+        jury_size -> Int8,
+        round2_size -> Int8,
+        jury_fee_bps -> Int8,
+        jury_fee_cap_mist -> Int8,
+        min_pool_for_jury_mist -> Int8,
+        quorum -> Int8,
+        approval_bps_council -> Int8,
+        approval_bps_community -> Int8,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    proposal_jury_reviews (proposal_id, stage) {
+        proposal_id -> Text,
+        stage -> Int2,
+        state -> Int2,
+        trigger -> Int2,
+        case_id -> Nullable<Text>,
+        referral_count -> Int8,
+        escalated_at_ms -> Nullable<Int8>,
+        decided_at_ms -> Nullable<Int8>,
+        decision -> Nullable<Int2>,
+        failed -> Bool,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    proposal_jury_referrals (proposal_id, delegate_address) {
+        proposal_id -> Text,
+        delegate_address -> Text,
+        reason -> Nullable<Text>,
+        referred_at_ms -> Int8,
+        event_id -> Text,
     }
 }
 
@@ -3555,6 +3750,17 @@ diesel::allow_tables_to_appear_in_same_query!(
     agent_tasks,
     task_receipts,
     task_reviews,
+    task_disputes,
+    jury_cases,
+    jury_rounds,
+    jury_slots,
+    jury_evidence,
+    jury_payouts,
+    jury_rationales,
+    jury_roster,
+    registry_jury_policies,
+    proposal_jury_reviews,
+    proposal_jury_referrals,
     task_config_history,
     reputation_aggregates,
     credibility,

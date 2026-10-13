@@ -2031,6 +2031,42 @@ impl SocialPgReader {
         crate::task_market::get_task_config(&mut conn, &self.metrics).await
     }
 
+    /// A proposal's jury records, one per human step it reached.
+    pub async fn get_proposal_jury_reviews(
+        &self,
+        proposal_id: &str,
+    ) -> anyhow::Result<Vec<crate::jury::ProposalJuryReviewRow>> {
+        let mut conn = self.connect().await?;
+        crate::jury::get_proposal_jury_reviews(&mut conn, proposal_id, &self.metrics).await
+    }
+
+    /// The delegates who referred a proposal to the jury, oldest first.
+    pub async fn get_proposal_jury_referrals(
+        &self,
+        proposal_id: &str,
+    ) -> anyhow::Result<Vec<crate::jury::ProposalJuryReferralRow>> {
+        let mut conn = self.connect().await?;
+        crate::jury::get_proposal_jury_referrals(&mut conn, proposal_id, &self.metrics).await
+    }
+
+    /// A registry's jury policy. `None` when the registry never turned the jury on.
+    pub async fn get_registry_jury_policy(
+        &self,
+        registry_id: &str,
+    ) -> anyhow::Result<Option<crate::jury::RegistryJuryPolicyRow>> {
+        let mut conn = self.connect().await?;
+        crate::jury::get_registry_jury_policy(&mut conn, registry_id, &self.metrics).await
+    }
+
+    /// A jury case without its jurors, rounds or evidence.
+    pub async fn get_jury_case(
+        &self,
+        case_id: &str,
+    ) -> anyhow::Result<Option<crate::jury::JuryCaseSummaryRow>> {
+        let mut conn = self.connect().await?;
+        crate::jury::get_jury_case(&mut conn, case_id, &self.metrics).await
+    }
+
     /// An agent's seller and buyer reputation. `None` only for an unknown agent.
     pub async fn get_agent_reputation(
         &self,

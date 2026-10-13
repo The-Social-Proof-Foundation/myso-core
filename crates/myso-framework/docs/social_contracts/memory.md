@@ -131,6 +131,8 @@ computed off-chain (indexer/server).
 -  [Function `cap_budget_manage`](#social_contracts_memory_cap_budget_manage)
 -  [Function `cap_social_graph`](#social_contracts_memory_cap_social_graph)
 -  [Function `cap_task_trade`](#social_contracts_memory_cap_task_trade)
+-  [Function `cap_jury`](#social_contracts_memory_cap_jury)
+-  [Function `cap_jury_keeper`](#social_contracts_memory_cap_jury_keeper)
 -  [Function `org_perm_memory_read`](#social_contracts_memory_org_perm_memory_read)
 -  [Function `org_perm_memory_write`](#social_contracts_memory_org_perm_memory_write)
 -  [Function `org_perm_agent_manager`](#social_contracts_memory_org_perm_agent_manager)
@@ -216,6 +218,11 @@ computed off-chain (indexer/server).
 -  [Function `sub_agent_depth`](#social_contracts_memory_sub_agent_depth)
 -  [Function `sub_agent_parent_object_id`](#social_contracts_memory_sub_agent_parent_object_id)
 -  [Function `sub_agent_memory_account_id`](#social_contracts_memory_sub_agent_memory_account_id)
+-  [Function `sub_agent_principal_owner`](#social_contracts_memory_sub_agent_principal_owner)
+-  [Function `sub_agent_identity_class`](#social_contracts_memory_sub_agent_identity_class)
+-  [Function `sub_agent_created_at`](#social_contracts_memory_sub_agent_created_at)
+-  [Function `sub_agent_expires_at`](#social_contracts_memory_sub_agent_expires_at)
+-  [Function `agent_ancestor_ids`](#social_contracts_memory_agent_ancestor_ids)
 -  [Function `acting_principal_owner`](#social_contracts_memory_acting_principal_owner)
 -  [Function `acting_profile_id`](#social_contracts_memory_acting_profile_id)
 -  [Function `acting_actor_address`](#social_contracts_memory_acting_actor_address)
@@ -3434,6 +3441,27 @@ Create, accept, deliver, settle, refund and review tasks in <code><a href="../so
 
 
 
+<a name="social_contracts_memory_CAP_JURY"></a>
+
+Serve on AI juries (<code><a href="../social_contracts/jury.md#social_contracts_jury">jury</a></code>): accept a drafted seat, commit and reveal a vote, claim the fee.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_CAP_JURY">CAP_JURY</a>: u64 = 262144;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_CAP_JURY_KEEPER"></a>
+
+Run the permissionless jury cranks through sponsored gas. The Move crank entries need no cap;
+this only gates which agents the relayer will drive them for.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_CAP_JURY_KEEPER">CAP_JURY_KEEPER</a>: u64 = 524288;
+</code></pre>
+
+
+
 <a name="social_contracts_memory_ORG_PERM_MEMORY_READ"></a>
 
 
@@ -5322,6 +5350,50 @@ One star in the milli-star scale used by every aggregate.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_task_trade">cap_task_trade</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_TASK_TRADE">CAP_TASK_TRADE</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_cap_jury"></a>
+
+## Function `cap_jury`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_jury">cap_jury</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_jury">cap_jury</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_JURY">CAP_JURY</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_cap_jury_keeper"></a>
+
+## Function `cap_jury_keeper`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_jury_keeper">cap_jury_keeper</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_jury_keeper">cap_jury_keeper</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_JURY_KEEPER">CAP_JURY_KEEPER</a> }
 </code></pre>
 
 
@@ -8262,6 +8334,142 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_memory_account_id">sub_agent_memory_account_id</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): ID { agent.memory_account_id }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_principal_owner"></a>
+
+## Function `sub_agent_principal_owner`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_principal_owner">sub_agent_principal_owner</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_principal_owner">sub_agent_principal_owner</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): <b>address</b> { agent.principal_owner }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_identity_class"></a>
+
+## Function `sub_agent_identity_class`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_identity_class">sub_agent_identity_class</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_identity_class">sub_agent_identity_class</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): u8 { agent.identity_class }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_created_at"></a>
+
+## Function `sub_agent_created_at`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_created_at">sub_agent_created_at</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_created_at">sub_agent_created_at</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): u64 { agent.created_at }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_expires_at"></a>
+
+## Function `sub_agent_expires_at`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_expires_at">sub_agent_expires_at</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_expires_at">sub_agent_expires_at</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): Option&lt;u64&gt; { agent.expires_at }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_agent_ancestor_ids"></a>
+
+## Function `agent_ancestor_ids`
+
+Ancestor agent ids of <code>agent_id</code>, nearest first, from the account's registry mirror (the same
+walk as [<code><a href="../social_contracts/memory.md#social_contracts_memory_is_descendant_agent">is_descendant_agent</a></code>], bounded by <code>max_agent_depth</code>). Empty for a root agent.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_agent_ancestor_ids">agent_ancestor_ids</a>(config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>): vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_agent_ancestor_ids">agent_ancestor_ids</a>(config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">MemoryConfig</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>, agent_id: ID): vector&lt;ID&gt; {
+    <b>let</b> <b>mut</b> out = vector::empty&lt;ID&gt;();
+    <b>if</b> (!table::contains(&account.agent_ids, agent_id)) {
+        <b>return</b> out
+    };
+    <b>let</b> derived = *table::borrow(&account.agent_ids, agent_id);
+    <b>let</b> <b>entry</b> = table::borrow(&account.agents, derived);
+    <b>let</b> <b>mut</b> current_parent = <b>entry</b>.parent_object_id;
+    <b>let</b> <b>mut</b> hops = 0u8;
+    <b>while</b> (option::is_some(&current_parent)) {
+        hops = hops + 1;
+        <b>if</b> (hops &gt; config.max_agent_depth) {
+            <b>return</b> out
+        };
+        <b>let</b> parent_id = *option::borrow(&current_parent);
+        vector::push_back(&<b>mut</b> out, parent_id);
+        <b>if</b> (!table::contains(&account.agent_ids, parent_id)) {
+            <b>return</b> out
+        };
+        <b>let</b> parent_derived = *table::borrow(&account.agent_ids, parent_id);
+        <b>let</b> parent_entry = table::borrow(&account.agents, parent_derived);
+        current_parent = parent_entry.parent_object_id;
+    };
+    out
+}
 </code></pre>
 
 

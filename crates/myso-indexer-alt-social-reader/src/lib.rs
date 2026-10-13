@@ -9,6 +9,7 @@ pub mod agent_pnl;
 pub mod ai_credit;
 pub mod enterprise;
 pub mod insurance;
+pub mod jury;
 pub mod media_asset;
 pub mod media_asset_graph;
 pub mod memory;
@@ -42,6 +43,9 @@ pub use access::{
     resolve_mydata_access_configuration_kind, resolve_post_access,
 };
 pub use ai_credit::AiCreditConfigRow;
+pub use jury::{
+    JuryCaseSummaryRow, ProposalJuryReferralRow, ProposalJuryReviewRow, RegistryJuryPolicyRow,
+};
 pub use enterprise::{AgentSpendBreakdownEntry, AuditLogFilter};
 pub use insurance::{
     InsuranceCoverageRouteRow, InsuranceModuleEventRow, InsurancePolicyEventHistoryRow,

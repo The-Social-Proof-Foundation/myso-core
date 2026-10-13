@@ -117,6 +117,7 @@ use crate::error::upcast;
 use crate::pagination::Page;
 use crate::pagination::PaginationConfig;
 use crate::scope::Scope;
+use crate::api::types::jury::JuryCase;
 use crate::task::chain_identifier::ChainIdentifier;
 
 fn normalize_identity_hash(raw: &str) -> String {
@@ -2819,6 +2820,25 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(TaskConfig::from_row)),
+        )
+    }
+
+    /// An AI Jury case by id, without its jurors, rounds or evidence. Returns null when the case
+    /// does not exist or the social DB is not configured.
+    async fn jury_case(
+        &self,
+        ctx: &Context<'_>,
+        case_id: String,
+    ) -> Option<Result<Option<JuryCase>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .get_jury_case(&case_id)
+                .await
+                .map_err(Into::into)
+                .map(|opt| opt.map(JuryCase::from_row)),
         )
     }
 

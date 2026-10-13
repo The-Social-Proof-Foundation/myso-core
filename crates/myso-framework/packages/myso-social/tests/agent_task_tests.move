@@ -665,7 +665,7 @@ module social_contracts::agent_task_tests {
     // ------------------------------------------------------------
 
     /// Offer, accept and deliver as the default parties. Returns the task id.
-    fun delivered_task(sc: &mut Scenario, fx: &Fixture, amount: u64): ID {
+    public fun delivered_task(sc: &mut Scenario, fx: &Fixture, amount: u64): ID {
         offer(sc, fx, buyer(), amount);
         let task_id = latest_task();
         accept_ok(sc, fx, task_id);
@@ -1885,5 +1885,711 @@ module social_contracts::agent_task_tests {
     #[expected_failure(abort_code = social_contracts::memory::EDivideByZero)]
     fun division_by_zero_aborts_with_a_named_code() {
         memory::checked_div_u128(1, 0);
+    }
+
+    // ------------------------------------------------------------
+    // Disputes: helpers
+    // ------------------------------------------------------------
+
+    /// `enter_dispute` is package-private (the jury integration calls it), so the tests drive it
+    /// directly. Roles: 1 buyer, 2 seller.
+    public fun open_dispute_for(sc: &mut Scenario, task_id: ID, role: u8) {
+        ts::next_tx(sc, admin());
+        let config = ts::take_shared<TaskConfig>(sc);
+        let mut task = ts::take_shared_by_id<TaskEscrow>(sc, task_id);
+        let clock = ts::take_shared<Clock>(sc);
+        agent_task::enter_dispute(&config, &mut task, object::id_from_address(@0xCA5E), role, 0, 0, &clock);
+        ts::return_shared(clock);
+        ts::return_shared(task);
+        ts::return_shared(config);
+    }
+
+    public fun cancel_dispute_for(sc: &mut Scenario, task_id: ID) {
+        ts::next_tx(sc, admin());
+        let mut task = ts::take_shared_by_id<TaskEscrow>(sc, task_id);
+        let clock = ts::take_shared<Clock>(sc);
+        agent_task::cancel_dispute(&mut task, &clock);
+        ts::return_shared(clock);
+        ts::return_shared(task);
+    }
+
+    public fun begin_neutral_for(sc: &mut Scenario, task_id: ID, window_ms: u64) {
+        ts::next_tx(sc, admin());
+        let mut task = ts::take_shared_by_id<TaskEscrow>(sc, task_id);
+        let clock = ts::take_shared<Clock>(sc);
+        agent_task::begin_neutral_window(&mut task, window_ms, &clock);
+        ts::return_shared(clock);
+        ts::return_shared(task);
+    }
+
+    public fun execute_neutral(sc: &mut Scenario, fx: &Fixture, sender: address, task_id: ID) {
+        ts::next_tx(sc, sender);
+        let config = ts::take_shared<TaskConfig>(sc);
+        let mut task = ts::take_shared_by_id<TaskEscrow>(sc, task_id);
+        let mut buyer_account = ts::take_shared_by_id<MemoryAccount>(sc, fx.buyer_account);
+        let mut seller_account = ts::take_shared_by_id<MemoryAccount>(sc, fx.seller_account);
+        let mut platform_obj = ts::take_shared_by_id<Platform>(sc, object::id_from_address(fx.platform));
+        let clock = ts::take_shared<Clock>(sc);
+        agent_task::execute_neutral_resolution(
+            &config, &mut task, &mut buyer_account, &mut seller_account,
+            &mut platform_obj, &clock, ts::ctx(sc),
+        );
+        ts::return_shared(clock);
+        ts::return_shared(platform_obj);
+        ts::return_shared(seller_account);
+        ts::return_shared(buyer_account);
+        ts::return_shared(task);
+        ts::return_shared(config);
+    }
+
+    public fun propose_settlement(sc: &mut Scenario, fx: &Fixture, sender: address, task_id: ID, outcome: u8) {
+        ts::next_tx(sc, sender);
+        let mut task = ts::take_shared_by_id<TaskEscrow>(sc, task_id);
+        let memory_config = ts::take_shared<MemoryConfig>(sc);
+        let buyer_account = ts::take_shared_by_id<MemoryAccount>(sc, fx.buyer_account);
+        let seller_agent = ts::take_shared_by_id<SubAgent>(sc, fx.seller_agent);
+        let clock = ts::take_shared<Clock>(sc);
+        agent_task::propose_dispute_settlement(
+            &mut task, &memory_config, &buyer_account, &seller_agent, outcome, &clock, ts::ctx(sc),
+        );
+        ts::return_shared(clock);
+        ts::return_shared(seller_agent);
+        ts::return_shared(buyer_account);
+        ts::return_shared(memory_config);
+        ts::return_shared(task);
+    }
+
+    public fun accept_settlement(sc: &mut Scenario, fx: &Fixture, sender: address, task_id: ID) {
+        ts::next_tx(sc, sender);
+        let config = ts::take_shared<TaskConfig>(sc);
+        let mut task = ts::take_shared_by_id<TaskEscrow>(sc, task_id);
+        let memory_config = ts::take_shared<MemoryConfig>(sc);
+        let mut buyer_account = ts::take_shared_by_id<MemoryAccount>(sc, fx.buyer_account);
+        let mut seller_account = ts::take_shared_by_id<MemoryAccount>(sc, fx.seller_account);
+        let seller_agent = ts::take_shared_by_id<SubAgent>(sc, fx.seller_agent);
+        let mut platform_obj = ts::take_shared_by_id<Platform>(sc, object::id_from_address(fx.platform));
+        let clock = ts::take_shared<Clock>(sc);
+        agent_task::accept_dispute_settlement(
+            &config, &mut task, &memory_config, &mut buyer_account, &mut seller_account,
+            &seller_agent, &mut platform_obj, &clock, ts::ctx(sc),
+        );
+        ts::return_shared(clock);
+        ts::return_shared(platform_obj);
+        ts::return_shared(seller_agent);
+        ts::return_shared(seller_account);
+        ts::return_shared(buyer_account);
+        ts::return_shared(memory_config);
+        ts::return_shared(task);
+        ts::return_shared(config);
+    }
+
+    public fun clear_settlement(sc: &mut Scenario, fx: &Fixture, sender: address, task_id: ID) {
+        ts::next_tx(sc, sender);
+        let mut task = ts::take_shared_by_id<TaskEscrow>(sc, task_id);
+        let memory_config = ts::take_shared<MemoryConfig>(sc);
+        let buyer_account = ts::take_shared_by_id<MemoryAccount>(sc, fx.buyer_account);
+        let seller_agent = ts::take_shared_by_id<SubAgent>(sc, fx.seller_agent);
+        let clock = ts::take_shared<Clock>(sc);
+        agent_task::clear_dispute_settlement(
+            &mut task, &memory_config, &buyer_account, &seller_agent, &clock, ts::ctx(sc),
+        );
+        ts::return_shared(clock);
+        ts::return_shared(seller_agent);
+        ts::return_shared(buyer_account);
+        ts::return_shared(memory_config);
+        ts::return_shared(task);
+    }
+
+    /// What the jury integration will call with a verdict (or the agreement/neutral paths do
+    /// themselves); package-private, so driven directly here.
+    public fun apply_outcome(sc: &mut Scenario, fx: &Fixture, task_id: ID, outcome: u8, source: u8) {
+        ts::next_tx(sc, admin());
+        let config = ts::take_shared<TaskConfig>(sc);
+        let mut task = ts::take_shared_by_id<TaskEscrow>(sc, task_id);
+        let mut buyer_account = ts::take_shared_by_id<MemoryAccount>(sc, fx.buyer_account);
+        let mut seller_account = ts::take_shared_by_id<MemoryAccount>(sc, fx.seller_account);
+        let mut platform_obj = ts::take_shared_by_id<Platform>(sc, object::id_from_address(fx.platform));
+        let clock = ts::take_shared<Clock>(sc);
+        agent_task::apply_dispute_outcome(
+            &config, &mut task, &mut buyer_account, &mut seller_account,
+            &mut platform_obj, outcome, source, &clock, ts::ctx(sc),
+        );
+        ts::return_shared(clock);
+        ts::return_shared(platform_obj);
+        ts::return_shared(seller_account);
+        ts::return_shared(buyer_account);
+        ts::return_shared(task);
+        ts::return_shared(config);
+    }
+
+    /// Delivered and then frozen for a jury, opened by the buyer.
+    public fun disputed_task(sc: &mut Scenario, fx: &Fixture, amount: u64): ID {
+        let task_id = delivered_task(sc, fx, amount);
+        open_dispute_for(sc, task_id, 1);
+        task_id
+    }
+
+    // ------------------------------------------------------------
+    // Disputes: entering, freezing, cancelling
+    // ------------------------------------------------------------
+
+    #[test]
+    fun a_delivered_task_enters_a_dispute_and_reports_it() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        let task = take_task(&mut sc, task_id);
+        assert!(!agent_task::has_dispute(&task), 0);
+        assert!(agent_task::dispute_state(&task) == 0, 1);
+        ts::return_shared(task);
+
+        open_dispute_for(&mut sc, task_id, 1);
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::status(&task) == agent_task::status_disputed(), 2);
+        assert!(agent_task::has_dispute(&task), 3);
+        assert!(agent_task::dispute_state(&task) == 1, 4);
+        assert!(agent_task::dispute_case_id(&task) == option::some(object::id_from_address(@0xCA5E)), 5);
+        assert!(agent_task::escrowed_mist(&task) == one_myso(), 6);
+        ts::return_shared(task);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun a_pending_refund_proposal_is_voided_when_a_jury_takes_the_task() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        propose_refund(&mut sc, &fx, buyer(), task_id);
+        open_dispute_for(&mut sc, task_id, 1);
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::refund_proposer(&task) == 0, 0);
+        ts::return_shared(task);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun a_task_must_be_delivered_to_be_disputed() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        offer(&mut sc, &fx, buyer(), one_myso());
+        let task_id = latest_task();
+        accept_ok(&mut sc, &fx, task_id);
+        open_dispute_for(&mut sc, task_id, 1);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EInvalidRole)]
+    fun a_dispute_needs_a_buyer_or_seller_opener() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        open_dispute_for(&mut sc, task_id, 3);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EDisputeWindowClosed)]
+    fun a_dispute_cannot_open_once_the_task_is_releasable() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        advance(&mut sc, 4 * day() + 1);
+        open_dispute_for(&mut sc, task_id, 1);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun a_disputed_task_cannot_be_settled() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        settle(&mut sc, &fx, buyer(), task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun a_disputed_task_cannot_be_released_however_long_it_waits() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        advance(&mut sc, 30 * day());
+        release(&mut sc, &fx, @0xCAFE, task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun a_disputed_task_cannot_be_refunded_by_the_delivery_path() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        advance(&mut sc, 30 * day());
+        refund(&mut sc, @0xCAFE, task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun a_disputed_task_takes_no_new_refund_proposals() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        propose_refund(&mut sc, &fx, buyer(), task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun cancelling_returns_the_task_to_delivered_and_rebases_the_release_clock() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        // Settle window 1 day + grace 3 days: originally releasable after day 4.
+        advance(&mut sc, 3 * day());
+        open_dispute_for(&mut sc, task_id, 2);
+        cancel_dispute_for(&mut sc, task_id);
+
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::status(&task) == agent_task::status_delivered(), 0);
+        assert!(agent_task::dispute_state(&task) == 2, 1);
+        ts::return_shared(task);
+
+        // Re-based to the cancel time: releasable only 3 days after it, i.e. after day 6.
+        advance(&mut sc, 3 * day() + 1);
+        release(&mut sc, &fx, @0xCAFE, task_id);
+        assert!(status_of(&mut sc, task_id) == agent_task::status_settled(), 2);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::ETooEarly)]
+    fun a_cancelled_dispute_still_delays_the_release_by_a_full_grace_period() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        advance(&mut sc, 3 * day());
+        open_dispute_for(&mut sc, task_id, 2);
+        cancel_dispute_for(&mut sc, task_id);
+        // Day 4 + 1ms: the original release time, but the clock was re-based.
+        advance(&mut sc, day() + 1);
+        release(&mut sc, &fx, @0xCAFE, task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EDisputeExists)]
+    fun a_task_can_only_be_disputed_once() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        open_dispute_for(&mut sc, task_id, 1);
+        cancel_dispute_for(&mut sc, task_id);
+        open_dispute_for(&mut sc, task_id, 1);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun only_a_disputed_task_can_be_cancelled_back() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        cancel_dispute_for(&mut sc, task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EDisputeNotOpen)]
+    fun a_dispute_cannot_be_cancelled_after_the_jury_failed() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        begin_neutral_for(&mut sc, task_id, 3 * day());
+        cancel_dispute_for(&mut sc, task_id);
+        ts::end(sc);
+    }
+
+    // ------------------------------------------------------------
+    // Disputes: mutual agreement
+    // ------------------------------------------------------------
+
+    #[test]
+    fun an_agreed_refund_returns_the_whole_escrow_to_the_buyer() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        propose_settlement(&mut sc, &fx, seller_agent_addr(), task_id, 1);
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::dispute_agreement_proposer(&task) == 2, 0);
+        assert!(agent_task::dispute_agreement_outcome(&task) == 1, 1);
+        ts::return_shared(task);
+        accept_settlement(&mut sc, &fx, buyer(), task_id);
+
+        assert!(status_of(&mut sc, task_id) == agent_task::status_refunded(), 2);
+        assert!(coin_total(&mut sc, buyer()) == one_myso(), 3);
+        assert!(coin_total(&mut sc, seller()) == 0, 4);
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::dispute_state(&task) == 3, 5);
+        ts::return_shared(task);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun an_agreed_payment_settles_to_the_seller_and_opens_reviews() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        propose_settlement(&mut sc, &fx, buyer(), task_id, 0);
+        accept_settlement(&mut sc, &fx, seller(), task_id);
+
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::status(&task) == agent_task::status_settled(), 0);
+        assert!(agent_task::settlement_kind(&task) == 4, 1);
+        assert!(agent_task::review_deadline_ms(&task) > 0, 2);
+        ts::return_shared(task);
+        assert!(coin_total(&mut sc, seller()) == 975_000_000, 3);
+        assert!(coin_total(&mut sc, buyer()) == 0, 4);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun an_agreed_split_pays_each_side_half_and_charges_fees_on_the_seller_half_only() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        propose_settlement(&mut sc, &fx, seller_agent_addr(), task_id, 2);
+        accept_settlement(&mut sc, &fx, buyer(), task_id);
+
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::status(&task) == agent_task::status_settled(), 0);
+        assert!(agent_task::settlement_kind(&task) == 6, 1);
+        assert!(agent_task::review_deadline_ms(&task) == 0, 2);
+        ts::return_shared(task);
+        // Buyer half in full; 2.5% (no platform: folded into the ecosystem fee) of the seller half.
+        assert!(coin_total(&mut sc, buyer()) == 500_000_000, 3);
+        assert!(coin_total(&mut sc, seller()) == 487_500_000, 4);
+        assert!(coin_total(&mut sc, admin()) == 12_500_000, 5);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::ENotCounterparty)]
+    fun a_proposer_cannot_accept_its_own_dispute_settlement() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        propose_settlement(&mut sc, &fx, buyer(), task_id, 1);
+        accept_settlement(&mut sc, &fx, buyer(), task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::ENoProposal)]
+    fun accepting_without_a_dispute_settlement_proposal_aborts() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        accept_settlement(&mut sc, &fx, seller(), task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EInvalidOutcome)]
+    fun a_proposal_outside_the_menu_aborts() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        propose_settlement(&mut sc, &fx, buyer(), task_id, 3);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EProposalPending)]
+    fun a_party_cannot_override_the_counterpartys_pending_proposal() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        propose_settlement(&mut sc, &fx, buyer(), task_id, 1);
+        propose_settlement(&mut sc, &fx, seller(), task_id, 0);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::ENoProposal)]
+    fun a_cleared_dispute_settlement_cannot_be_accepted() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        propose_settlement(&mut sc, &fx, buyer(), task_id, 1);
+        clear_settlement(&mut sc, &fx, seller(), task_id);
+        accept_settlement(&mut sc, &fx, seller(), task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun a_dispute_settlement_needs_a_disputed_task() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        propose_settlement(&mut sc, &fx, buyer(), task_id, 1);
+        ts::end(sc);
+    }
+
+    // ------------------------------------------------------------
+    // Disputes: failed jury and the neutral split
+    // ------------------------------------------------------------
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::ENeutralWindowNotOpen)]
+    fun the_neutral_split_needs_a_failed_jury() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        advance(&mut sc, 30 * day());
+        execute_neutral(&mut sc, &fx, @0xCAFE, task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::ETooEarly)]
+    fun the_neutral_split_waits_for_the_settlement_window() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        begin_neutral_for(&mut sc, task_id, 3 * day());
+        advance(&mut sc, hour());
+        execute_neutral(&mut sc, &fx, @0xCAFE, task_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::ENeutralWindowOpen)]
+    fun the_settlement_window_cannot_be_opened_twice() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        begin_neutral_for(&mut sc, task_id, 3 * day());
+        begin_neutral_for(&mut sc, task_id, 3 * day());
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EInvalidWindow)]
+    fun a_zero_settlement_window_is_rejected() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        begin_neutral_for(&mut sc, task_id, 0);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun a_failed_jury_ends_in_a_neutral_split_that_favours_neither_side() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        begin_neutral_for(&mut sc, task_id, 3 * day());
+        // Still frozen inside the window.
+        assert!(status_of(&mut sc, task_id) == agent_task::status_disputed(), 0);
+        advance(&mut sc, 3 * day() + 1);
+        execute_neutral(&mut sc, &fx, @0xCAFE, task_id);
+
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::status(&task) == agent_task::status_settled(), 1);
+        assert!(agent_task::settlement_kind(&task) == 7, 2);
+        assert!(agent_task::escrowed_mist(&task) == 0, 3);
+        // A split earns neither side a credibility credit and opens no reviews.
+        assert!(agent_task::buyer_credibility_bps(&task) == 0, 4);
+        assert!(agent_task::seller_credibility_bps(&task) == 0, 5);
+        assert!(agent_task::review_deadline_ms(&task) == 0, 6);
+        ts::return_shared(task);
+
+        let buyer_total = coin_total(&mut sc, buyer());
+        let seller_total = coin_total(&mut sc, seller());
+        let ecosystem_total = coin_total(&mut sc, admin());
+        assert!(buyer_total == 500_000_000, 7);
+        assert!(seller_total == 487_500_000, 8);
+        assert!(buyer_total + seller_total + ecosystem_total == one_myso(), 9);
+        // The seller never receives the full release amount.
+        assert!(seller_total < 975_000_000, 10);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun an_odd_escrow_conserves_every_unit_in_the_neutral_split() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let amount = 10_000_001;
+        let task_id = disputed_task(&mut sc, &fx, amount);
+        begin_neutral_for(&mut sc, task_id, day());
+        advance(&mut sc, day() + 1);
+        execute_neutral(&mut sc, &fx, @0xCAFE, task_id);
+
+        let buyer_total = coin_total(&mut sc, buyer());
+        let seller_total = coin_total(&mut sc, seller());
+        let ecosystem_total = coin_total(&mut sc, admin());
+        assert!(buyer_total == amount / 2, 0);
+        assert!(buyer_total + seller_total + ecosystem_total == amount, 1);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun a_platform_task_pays_the_platform_fee_on_the_seller_half_only() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        offer_with_platform(&mut sc, &fx, buyer(), one_myso());
+        let task_id = latest_task();
+        accept_ok(&mut sc, &fx, task_id);
+        deliver(&mut sc, &fx, seller_agent_addr(), task_id);
+        open_dispute_for(&mut sc, task_id, 2);
+        begin_neutral_for(&mut sc, task_id, day());
+        advance(&mut sc, day() + 1);
+        execute_neutral(&mut sc, &fx, @0xCAFE, task_id);
+
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::platform_fee_mist(&task) == 10_000_000, 0);
+        assert!(agent_task::ecosystem_fee_mist(&task) == 2_500_000, 1);
+        assert!(agent_task::net_amount_mist(&task) == 487_500_000, 2);
+        ts::return_shared(task);
+        assert!(coin_total(&mut sc, buyer()) == 500_000_000, 3);
+        assert!(coin_total(&mut sc, seller()) == 487_500_000, 4);
+        assert!(coin_total(&mut sc, admin()) == 2_500_000, 5);
+        ts::next_tx(&mut sc, admin());
+        let platform_obj = ts::take_shared_by_id<Platform>(&sc, object::id_from_address(platform_address(&fx)));
+        assert!(platform::treasury_balance<MYSO>(&platform_obj) == 10_000_000, 6);
+        ts::return_shared(platform_obj);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun parties_can_still_agree_inside_the_settlement_window() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        begin_neutral_for(&mut sc, task_id, 3 * day());
+        advance(&mut sc, hour());
+        propose_settlement(&mut sc, &fx, buyer(), task_id, 1);
+        accept_settlement(&mut sc, &fx, seller(), task_id);
+        assert!(status_of(&mut sc, task_id) == agent_task::status_refunded(), 0);
+        assert!(coin_total(&mut sc, buyer()) == one_myso(), 1);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun the_neutral_split_cannot_run_after_the_parties_agreed() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        begin_neutral_for(&mut sc, task_id, 3 * day());
+        propose_settlement(&mut sc, &fx, buyer(), task_id, 1);
+        accept_settlement(&mut sc, &fx, seller(), task_id);
+        advance(&mut sc, 3 * day() + 1);
+        execute_neutral(&mut sc, &fx, @0xCAFE, task_id);
+        ts::end(sc);
+    }
+
+    // ------------------------------------------------------------
+    // Disputes: verdicts (the one place a dispute pays out)
+    // ------------------------------------------------------------
+
+    #[test]
+    fun a_verdict_to_pay_the_seller_settles_like_a_normal_payment() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        apply_outcome(&mut sc, &fx, task_id, agent_task::outcome_pay_seller(), agent_task::source_verdict());
+
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::status(&task) == agent_task::status_settled(), 0);
+        assert!(agent_task::settlement_kind(&task) == 3, 1);
+        assert!(agent_task::review_deadline_ms(&task) > 0, 2);
+        ts::return_shared(task);
+        assert!(coin_total(&mut sc, seller()) == 975_000_000, 3);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun a_verdict_to_refund_returns_the_whole_escrow() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        apply_outcome(&mut sc, &fx, task_id, agent_task::outcome_refund_buyer(), agent_task::source_verdict());
+        assert!(status_of(&mut sc, task_id) == agent_task::status_refunded(), 0);
+        assert!(coin_total(&mut sc, buyer()) == one_myso(), 1);
+        assert!(coin_total(&mut sc, seller()) == 0, 2);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun a_verdict_split_pays_halves_with_no_credibility_and_no_reviews() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        apply_outcome(&mut sc, &fx, task_id, agent_task::outcome_split_50_50(), agent_task::source_verdict());
+
+        let task = take_task(&mut sc, task_id);
+        assert!(agent_task::settlement_kind(&task) == 5, 0);
+        assert!(agent_task::review_deadline_ms(&task) == 0, 1);
+        assert!(agent_task::buyer_credibility_bps(&task) == 0, 2);
+        ts::return_shared(task);
+        assert!(coin_total(&mut sc, buyer()) == 500_000_000, 3);
+        assert!(coin_total(&mut sc, seller()) == 487_500_000, 4);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EInvalidOutcome)]
+    fun an_outcome_outside_the_menu_cannot_move_the_escrow() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        apply_outcome(&mut sc, &fx, task_id, 3, agent_task::source_verdict());
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EInvalidOutcome)]
+    fun the_neutral_source_can_only_split() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        apply_outcome(&mut sc, &fx, task_id, agent_task::outcome_pay_seller(), agent_task::source_neutral());
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EInvalidOutcome)]
+    fun an_unknown_source_is_rejected() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        apply_outcome(&mut sc, &fx, task_id, agent_task::outcome_refund_buyer(), 9);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun an_outcome_applies_exactly_once() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = disputed_task(&mut sc, &fx, one_myso());
+        apply_outcome(&mut sc, &fx, task_id, agent_task::outcome_refund_buyer(), agent_task::source_verdict());
+        apply_outcome(&mut sc, &fx, task_id, agent_task::outcome_pay_seller(), agent_task::source_verdict());
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
+    fun an_outcome_needs_a_disputed_task() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc);
+        let task_id = delivered_task(&mut sc, &fx, one_myso());
+        apply_outcome(&mut sc, &fx, task_id, agent_task::outcome_pay_seller(), agent_task::source_verdict());
+        ts::end(sc);
     }
 }

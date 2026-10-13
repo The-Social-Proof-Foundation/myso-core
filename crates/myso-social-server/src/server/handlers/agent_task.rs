@@ -7,10 +7,10 @@ use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::error::SocialError;
-use crate::reader::agent_task::TaskFilter;
+use crate::reader::agent_task::{TaskFilter, TopAgentSort};
 use crate::reader::{
     AgentReputationInfo, AgentTaskInfo, PrincipalReputationInfo, TaskConfigInfo, TaskDetailInfo,
-    TaskReceiptInfo,
+    TaskReceiptInfo, TaskStatsInfo, TopAgentInfo,
 };
 
 use super::super::AppState;
@@ -43,7 +43,7 @@ fn non_empty(v: Option<String>) -> Option<String> {
     v.filter(|s| !s.trim().is_empty())
 }
 
-/// `status=0,1` -> `[0, 1]`. Any entry outside the six task states is a bad request.
+/// `status=0,1` -> `[0, 1]`. Any entry outside the seven task states is a bad request.
 fn parse_statuses(raw: Option<&str>) -> Result<Vec<i16>, SocialError> {
     let Some(raw) = raw.filter(|s| !s.trim().is_empty()) else {
         return Ok(Vec::new());
@@ -53,8 +53,8 @@ fn parse_statuses(raw: Option<&str>) -> Result<Vec<i16>, SocialError> {
             part.trim()
                 .parse::<i16>()
                 .ok()
-                .filter(|v| (0..=5).contains(v))
-                .ok_or_else(|| SocialError::bad_request("status must be a list of codes 0 to 5"))
+                .filter(|v| (0..=6).contains(v))
+                .ok_or_else(|| SocialError::bad_request("status must be a list of codes 0 to 6"))
         })
         .collect()
 }
@@ -72,10 +72,10 @@ pub async fn list_tasks(
         room_group_id: non_empty(query.room_group_id),
         statuses: parse_statuses(query.status.as_deref())?,
     };
-    if !filter.is_scoped() {
+    if !filter.is_listable() {
         return Err(SocialError::bad_request(
-            "scope the listing with buyer_principal, buyer_agent_id, seller_principal, \
-             seller_agent_id, organization_id or room_group_id",
+            "narrow the listing with status, or scope it with buyer_principal, buyer_agent_id, \
+             seller_principal, seller_agent_id, organization_id or room_group_id",
         ));
     }
     let (limit, offset) = page(query.limit, query.offset);
@@ -118,6 +118,39 @@ pub async fn get_task_config(
         .map(Json)
 }
 
+/// `GET /task/stats`: counts and volume for the whole market.
+pub async fn get_task_stats(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<TaskStatsInfo>, SocialError> {
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    state.reader.get_task_stats(now_ms).await.map(Json)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TopAgentsQuery {
+    /// `score` (default), `reviews` or `volume`.
+    pub sort: Option<String>,
+    /// Agents with fewer seller reviews are left out. Defaults to 1.
+    pub min_reviews: Option<i64>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+/// `GET /agents/top`: active seller agents ranked by reputation.
+pub async fn list_top_agents(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<TopAgentsQuery>,
+) -> Result<Json<Vec<TopAgentInfo>>, SocialError> {
+    let sort = TopAgentSort::parse(query.sort.as_deref())?;
+    let min_reviews = query.min_reviews.unwrap_or(1).max(0);
+    let (limit, offset) = page(query.limit, query.offset);
+    state
+        .reader
+        .list_top_agents(sort, min_reviews, limit, offset)
+        .await
+        .map(Json)
+}
+
 pub async fn get_agent_reputation(
     State(state): State<Arc<AppState>>,
     Path(agent_object_id): Path<String>,
@@ -146,7 +179,8 @@ mod tests {
         assert_eq!(parse_statuses(None).unwrap(), Vec::<i16>::new());
         assert_eq!(parse_statuses(Some("")).unwrap(), Vec::<i16>::new());
         assert_eq!(parse_statuses(Some("0, 1,5")).unwrap(), vec![0, 1, 5]);
-        assert!(parse_statuses(Some("6")).is_err());
+        assert_eq!(parse_statuses(Some("6")).unwrap(), vec![6]);
+        assert!(parse_statuses(Some("7")).is_err());
         assert!(parse_statuses(Some("-1")).is_err());
         assert!(parse_statuses(Some("0,x")).is_err());
     }
@@ -166,6 +200,16 @@ mod tests {
             ..Default::default()
         };
         assert!(scoped.is_scoped());
+    }
+
+    #[test]
+    fn a_status_only_listing_is_the_market_feed() {
+        let filter = TaskFilter {
+            statuses: parse_statuses(Some("0")).unwrap(),
+            ..Default::default()
+        };
+        assert!(filter.is_listable());
+        assert!(!TaskFilter::default().is_listable());
     }
 
     #[test]
