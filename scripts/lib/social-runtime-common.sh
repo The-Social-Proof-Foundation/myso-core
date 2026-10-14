@@ -520,6 +520,10 @@ readonly SOCIAL_GQL_BATCH='query SocialE2ESessionObjects {
   subscriptionAdminCap: objects(filter: { type: "0x50c1::subscription::SubscriptionAdminCap" }, last: 1) { nodes { address } }
   platformAdminCap: objects(filter: { type: "0x50c1::platform::PlatformAdminCap" }, last: 1) { nodes { address } }
   platform: objects(filter: { type: "0x50c1::platform::Platform" }, last: 1) { nodes { address } }
+}'
+
+# Split from SOCIAL_GQL_BATCH: the server caps rich (store-backed) queries at 21 per request.
+readonly SOCIAL_GQL_BATCH_2='query SocialE2ESessionObjects2 {
   taskConfig: objects(filter: { type: "0x50c1::agent_task::TaskConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
   taskMarketCap: objects(filter: { type: "0x50c1::agent_task::TaskMarketCap" }, last: 1) { nodes { address } }
   juryConfig: objects(filter: { type: "0x50c1::jury::JuryConfig", ownerKind: SHARED }, last: 1) { nodes { address } }
@@ -678,6 +682,12 @@ social_refresh_session_from_graphql() {
     GQL_REFRESH_FILE="$(mktemp)"
     local json
     json="$(graphql_post "$SOCIAL_GQL_BATCH")" || {
+        rm -f "$GQL_REFRESH_FILE" "$old_session_file"
+        GQL_REFRESH_FILE=''
+        return 1
+    }
+    collect_social_gql_mappings "$json"
+    json="$(graphql_post "$SOCIAL_GQL_BATCH_2")" || {
         rm -f "$GQL_REFRESH_FILE" "$old_session_file"
         GQL_REFRESH_FILE=''
         return 1

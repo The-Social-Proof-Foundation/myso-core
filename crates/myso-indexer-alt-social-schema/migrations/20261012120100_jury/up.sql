@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS jury_rounds (
     abstain BIGINT,
     revealed BIGINT,
     decisive BOOLEAN,
-    leading SMALLINT,
+    "leading" SMALLINT,
     -- When the appeal window closes and anyone may finalize; NULL if none opened.
     appeal_deadline_ms BIGINT,
     PRIMARY KEY (case_id, round)

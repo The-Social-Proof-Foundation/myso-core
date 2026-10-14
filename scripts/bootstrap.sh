@@ -215,11 +215,19 @@ echo "BootstrapKey: $bootstrap_key_id"
 }
 
 echo ">>> claim_all_admin_capabilities"
-myso client call \
+if ! myso client call \
   --package 0x50c1 \
   --module bootstrap \
   --function claim_all_admin_capabilities \
-  --args 0x10 "$bootstrap_key_id" 0x6
+  --args 0x10 "$bootstrap_key_id" 0x6; then
+    # The key is single-use: a previous run may have claimed it and failed later (e.g. session refresh).
+    if gql_live_object_address_for_type '0x50c1::platform::PlatformAdminCap' OWNED >/dev/null 2>&1; then
+        echo ">>> BootstrapKey already claimed and admin caps exist; resuming after claim"
+    else
+        echo "claim_all_admin_capabilities failed and no admin caps found; reset the chain (e.g. myso start --force-regenesis)" >&2
+        exit 1
+    fi
+fi
 
 echo ">>> Refresh social session + seed admin profile / platforms"
 bootstrap_refresh_session_with_retry
