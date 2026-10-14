@@ -73,8 +73,15 @@ impl FromStr for MySoAddress {
 
         // Parse a single hexadecimal character from the string, or return an error pointing to the
         // bad character in the source string.
+        let bytes = s.as_bytes();
         let hex = |i: usize| -> Result<u8, Error> {
-            u8::from_str_radix(&s[i..=i], 16).map_err(|_| Error::BadHex(i + 2))
+            let b = bytes[i];
+            match b {
+                b'0'..=b'9' => Ok(b - b'0'),
+                b'a'..=b'f' => Ok(b - b'a' + 10),
+                b'A'..=b'F' => Ok(b - b'A' + 10),
+                _ => Err(Error::BadHex(i + 2)),
+            }
         };
 
         let mut arr = [0u8; MYSO_ADDRESS_LENGTH];
@@ -243,7 +250,7 @@ mod tests {
 
     #[test]
     fn test_unicode_gibberish() {
-        let parsed = MySoAddress::from_str("aAௗ0㌀0");
+        let parsed = MySoAddress::from_str("0x…0123");
         assert!(parsed.is_err());
     }
 

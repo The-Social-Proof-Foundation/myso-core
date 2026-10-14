@@ -32,6 +32,7 @@ use myso_kvstore::BigTableIndexer;
 use myso_kvstore::BigTableStore;
 use myso_kvstore::KeyValueStoreReader;
 use myso_kvstore::set_write_legacy_data;
+use myso_kvstore::tables;
 use myso_rpc::client::Client as GrpcClient;
 use myso_rpc::field::FieldMaskUtil;
 use myso_rpc::proto::myso::rpc::v2::Bcs;
@@ -41,6 +42,7 @@ use myso_rpc::proto::myso::rpc::v2::ListOwnedObjectsRequest;
 use myso_rpc::proto::myso::rpc::v2::Transaction as GrpcTransaction;
 use myso_rpc::proto::myso::rpc::v2::UserSignature;
 use myso_types::base_types::MySoAddress;
+use myso_types::base_types::ObjectID;
 use myso_types::message_envelope::Message;
 use myso_types::object::Object;
 use myso_types::storage::ObjectKey;
@@ -566,6 +568,49 @@ async fn test_indexer_e2e() -> Result<()> {
     let latest = harness.bigtable_client().get_latest_epoch().await?;
     assert!(latest.is_some());
     assert!(latest.unwrap().epoch.unwrap() >= 1);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_latest_object_bounds_scan() -> Result<()> {
+    require_bigtable_emulator();
+    let emulator = tokio::task::spawn_blocking(BigTableEmulator::start)
+        .await
+        .context("spawn_blocking panicked")??;
+    create_tables(emulator.host(), INSTANCE_ID).await?;
+
+    let mut client =
+        BigTableClient::new_local(emulator.host().to_string(), INSTANCE_ID.to_string())
+            .await
+            .context("Failed to create BigTable client")?;
+
+    let mut missing_id = ObjectID::random();
+    let mut existing_id = ObjectID::random();
+    if missing_id < existing_id {
+        std::mem::swap(&mut missing_id, &mut existing_id);
+    }
+    assert!(existing_id < missing_id);
+
+    let object = Object::immutable_with_id_for_testing(existing_id);
+    let key = ObjectKey(existing_id, object.version());
+    let entry = tables::make_entry(
+        tables::objects::encode_key(&key),
+        tables::objects::encode(&object)?,
+        None,
+    );
+    client.write_entries(tables::objects::NAME, [entry]).await?;
+
+    assert!(
+        client.get_latest_object(&missing_id).await?.is_none(),
+        "a missing object must not return the preceding object's row"
+    );
+
+    let found = client
+        .get_latest_object(&existing_id)
+        .await?
+        .expect("existing object should be returned");
+    assert_eq!(found.id(), existing_id);
 
     Ok(())
 }
