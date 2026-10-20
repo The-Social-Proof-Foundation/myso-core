@@ -16,7 +16,6 @@ use myso_core::checkpoints::checkpoint_executor::CheckpointExecutor;
 use myso_core::consensus_adapter::{
     ConnectionMonitorStatusForTests, ConsensusAdapter, ConsensusAdapterMetrics,
 };
-use myso_core::execution_scheduler::SchedulingSource;
 use myso_core::global_state_hasher::GlobalStateHasher;
 use myso_core::mock_checkpoint_builder::{MockCheckpointBuilder, ValidatorKeypairProvider};
 use myso_core::mock_consensus::{ConsensusMode, MockConsensusClient};
@@ -120,7 +119,7 @@ impl SingleValidator {
             .get_validator()
             .try_execute_immediately(
                 &executable,
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
                 &self.epoch_store,
             )
             .await

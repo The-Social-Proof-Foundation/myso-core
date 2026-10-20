@@ -40,7 +40,6 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
-use myso_core::execution_scheduler::SchedulingSource;
 use myso_core::global_state_hasher::GlobalStateHashMetrics;
 use myso_core::storage::RestReadStore;
 use myso_json_rpc::bridge_api::BridgeReadApi;
@@ -775,7 +774,7 @@ impl MySoNode {
             state
                 .try_execute_immediately(
                     &transaction,
-                    ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                    ExecutionEnv::new(),
                     &epoch_store,
                 )
                 .instrument(span)

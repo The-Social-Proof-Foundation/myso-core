@@ -692,7 +692,6 @@ mod test {
     use crate::authority::ExecutionEnv;
     use crate::authority::shared_object_version_manager::AssignedVersions;
     use crate::authority::{AuthorityState, authority_tests::init_state_with_objects};
-    use crate::execution_scheduler::SchedulingSource;
     use myso_test_transaction_builder::TestTransactionBuilder;
     use myso_types::base_types::{MySoAddress, random_object_ref};
     use myso_types::executable_transaction::VerifiedExecutableTransaction;
@@ -790,7 +789,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 transaction.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -822,7 +821,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 transaction.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -840,7 +839,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 transaction.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -1145,7 +1144,7 @@ mod test {
             execution_scheduler.enqueue_transactions(
                 vec![(
                     txn.clone(),
-                    ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                    ExecutionEnv::new(),
                 )],
                 &state.epoch_store_for_testing(),
             );
@@ -1229,7 +1228,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 receive_object_transaction0.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -1241,7 +1240,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 receive_object_transaction1.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -1253,7 +1252,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 receive_object_transaction0.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -1337,7 +1336,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 receive_object_transaction0.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -1349,7 +1348,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 receive_object_transaction1.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -1362,7 +1361,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 receive_object_transaction01.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -1389,7 +1388,7 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 tx1.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
@@ -1466,21 +1465,21 @@ mod test {
         execution_scheduler.enqueue_transactions(
             vec![(
                 receive_object_transaction0.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
         execution_scheduler.enqueue_transactions(
             vec![(
                 receive_object_transaction01.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );
         execution_scheduler.enqueue_transactions(
             vec![(
                 receive_object_transaction1.clone(),
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
             )],
             &state.epoch_store_for_testing(),
         );

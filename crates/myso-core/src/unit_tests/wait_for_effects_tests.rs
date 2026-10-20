@@ -29,8 +29,6 @@ use crate::authority::test_authority_builder::TestAuthorityBuilder;
 use crate::authority::{AuthorityState, ExecutionEnv};
 use crate::authority_client::{AuthorityAPI, NetworkAuthorityClient};
 use crate::authority_server::AuthorityServer;
-use crate::execution_scheduler::SchedulingSource;
-
 use super::AuthorityServerHandle;
 
 struct TestContext {
@@ -91,9 +89,8 @@ impl TestContext {
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn test_wait_for_effects_position_mismatch() {
-    // This test exercise the path where if the position of the transaction
-    // triggered the execution differs from the position in the request,
-    // the request will timeout.
+    // Finalized effects are returned even when the request names a different
+    // consensus position than the one recorded for the transaction.
     let test_context = TestContext::new().await;
 
     let transaction = test_context.build_test_transaction();
@@ -103,21 +100,15 @@ async fn test_wait_for_effects_position_mismatch() {
         block: BlockRef::MIN,
         index: TransactionIndex::MIN,
     };
-    let tx_position2 = ConsensusPosition {
-        epoch: EpochId::MIN,
-        block: BlockRef::MIN,
-        index: TransactionIndex::MIN + 1,
-    };
 
     let state_clone = test_context.state.clone();
     tokio::spawn(async move {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let epoch_store = state_clone.epoch_store_for_testing();
-        epoch_store.set_consensus_tx_status(tx_position2, ConsensusTxStatus::FastpathCertified);
         state_clone
             .try_execute_immediately(
                 &transaction,
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::MysticetiFastPath),
+                ExecutionEnv::new(),
                 &epoch_store,
             )
             .await
@@ -132,9 +123,16 @@ async fn test_wait_for_effects_position_mismatch() {
         ping_type: None,
     };
 
-    let response = test_context.client.wait_for_effects(request, None).await;
+    let response = test_context
+        .client
+        .wait_for_effects(request, None)
+        .await
+        .unwrap();
 
-    assert!(response.is_err());
+    assert!(matches!(
+        response,
+        WaitForEffectsResponse::Executed { .. }
+    ));
 }
 
 #[tokio::test]
@@ -161,8 +159,6 @@ async fn test_wait_for_effects_consensus_rejected_validator_accepted() {
     tokio::spawn(async move {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let epoch_store = state_clone.epoch_store_for_testing();
-        epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::FastpathCertified);
-        tokio::time::sleep(Duration::from_millis(100)).await;
         epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::Rejected);
     });
 
@@ -309,11 +305,10 @@ async fn test_wait_for_effects_fastpath_certified_only() {
     let exec_handle = tokio::spawn(async move {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let epoch_store = state_clone.epoch_store_for_testing();
-        epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::FastpathCertified);
         state_clone
             .try_execute_immediately(
                 &transaction,
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::MysticetiFastPath),
+                ExecutionEnv::new(),
                 &epoch_store,
             )
             .await
@@ -342,7 +337,6 @@ async fn test_wait_for_effects_fastpath_certified_only() {
         WaitForEffectsResponse::Executed {
             details,
             effects_digest,
-            fast_path: _,
         } => {
             assert!(details.is_none());
             assert_eq!(effects_digest, exec_effects.digest());
@@ -369,7 +363,6 @@ async fn test_wait_for_effects_fastpath_certified_only() {
         WaitForEffectsResponse::Executed {
             details,
             effects_digest,
-            fast_path: _,
         } => {
             assert!(details.is_some());
             assert_eq!(effects_digest, exec_effects.digest());
@@ -386,9 +379,19 @@ async fn test_wait_for_effects_fastpath_certified_only() {
         ping_type: None,
     };
 
-    let response = test_context.client.wait_for_effects(request, None).await;
+    let response = test_context
+        .client
+        .wait_for_effects(request, None)
+        .await
+        .unwrap();
 
-    assert!(response.is_err());
+    assert!(matches!(
+        response,
+        WaitForEffectsResponse::Executed {
+            details: Some(_),
+            ..
+        }
+    ));
 }
 
 #[tokio::test]
@@ -417,12 +420,11 @@ async fn test_wait_for_effects_fastpath_certified_then_executed() {
     let exec_handle = tokio::spawn(async move {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let epoch_store = state_clone.epoch_store_for_testing();
-        epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::FastpathCertified);
         tokio::time::sleep(Duration::from_millis(100)).await;
         state_clone
             .try_execute_immediately(
                 &transaction,
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
                 &epoch_store,
             )
             .await
@@ -441,7 +443,6 @@ async fn test_wait_for_effects_fastpath_certified_then_executed() {
         WaitForEffectsResponse::Executed {
             details,
             effects_digest,
-            fast_path: _,
         } => {
             assert!(details.is_none());
             assert_eq!(effects_digest, exec_effects.digest());
@@ -470,14 +471,13 @@ async fn test_wait_for_effects_finalized() {
     let exec_handle = tokio::spawn(async move {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let epoch_store = state_clone.epoch_store_for_testing();
-        epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::FastpathCertified);
         tokio::time::sleep(Duration::from_millis(100)).await;
         epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::Finalized);
         tokio::time::sleep(Duration::from_millis(100)).await;
         state_clone
             .try_execute_immediately(
                 &transaction,
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
                 &epoch_store,
             )
             .await
@@ -506,7 +506,6 @@ async fn test_wait_for_effects_finalized() {
         WaitForEffectsResponse::Executed {
             details,
             effects_digest,
-            fast_path: _,
         } => {
             assert!(details.is_none());
             assert_eq!(effects_digest, exec_effects.digest());
@@ -533,7 +532,6 @@ async fn test_wait_for_effects_finalized() {
         WaitForEffectsResponse::Executed {
             details,
             effects_digest,
-            fast_path: _,
         } => {
             let details = details.unwrap();
             assert_eq!(effects_digest, exec_effects.digest());
@@ -588,7 +586,7 @@ async fn test_wait_for_effects_expired() {
         state_clone
             .try_execute_immediately(
                 &transaction,
-                ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+                ExecutionEnv::new(),
                 &epoch_store,
             )
             .await
@@ -609,8 +607,8 @@ async fn test_wait_for_effects_expired() {
 async fn test_wait_for_effects_ping() {
     let test_context = TestContext::new().await;
 
-    println!(
-        "Case 1. Send a FastPath ping request. The end point should wait until the block is certified via MFP (we assume the ping transaction is in the block)."
+        println!(
+        "Case 1. Send a FastPath ping request. The endpoint waits until the block is finalized."
     );
     {
         let tx_position = ConsensusPosition {
@@ -630,7 +628,7 @@ async fn test_wait_for_effects_ping() {
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(100)).await;
             let epoch_store = state_clone.epoch_store_for_testing();
-            epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::FastpathCertified);
+            epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::Finalized);
         });
 
         let response = test_context
@@ -643,11 +641,9 @@ async fn test_wait_for_effects_ping() {
             WaitForEffectsResponse::Executed {
                 effects_digest,
                 details,
-                fast_path,
             } => {
                 assert!(details.is_none());
                 assert_eq!(effects_digest, TransactionEffectsDigest::ZERO);
-                assert!(fast_path);
             }
             _ => panic!("Expected Executed response for FastPath ping check"),
         }
@@ -677,8 +673,6 @@ async fn test_wait_for_effects_ping() {
             let epoch_store = state_clone.epoch_store_for_testing();
 
             tokio::time::sleep(Duration::from_millis(100)).await;
-            epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::FastpathCertified);
-
             tokio::time::sleep(Duration::from_millis(100)).await;
             epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::Finalized);
         });
@@ -693,14 +687,9 @@ async fn test_wait_for_effects_ping() {
             WaitForEffectsResponse::Executed {
                 effects_digest,
                 details,
-                fast_path,
             } => {
                 assert!(details.is_none());
                 assert_eq!(effects_digest, TransactionEffectsDigest::ZERO);
-                assert!(
-                    !fast_path,
-                    "This is Consensus ping request, so fast_path should be false"
-                );
             }
             _ => panic!("Expected Executed response for Consensus ping check"),
         }
@@ -729,14 +718,10 @@ async fn test_wait_for_effects_ping() {
         tokio::spawn(async move {
             let epoch_store = state_clone.epoch_store_for_testing();
 
-            // First consider the block as fast path certified. The simulate a "garbage collection".
             tokio::time::sleep(Duration::from_millis(100)).await;
-            epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::FastpathCertified);
-
-            // Move the committed round to a round that is far enough in the future that the block is considered garbage collected.
-            // get the gc depth and calculate the round that is far enough in the future.
-            let gc_depth = epoch_store.protocol_config().gc_depth();
-            let leader_round = gc_depth + 50;
+            let leader_round = tx_position.block.round
+                + crate::authority::consensus_tx_status_cache::CONSENSUS_STATUS_RETENTION_ROUNDS
+                + 1;
 
             tokio::time::sleep(Duration::from_millis(100)).await;
             let consensus_tx_status_cache = epoch_store.consensus_tx_status_cache.as_ref().unwrap();
@@ -756,10 +741,8 @@ async fn test_wait_for_effects_ping() {
             .unwrap();
 
         match response {
-            WaitForEffectsResponse::Rejected { error } => {
-                assert_eq!(error, None);
-            }
-            _ => panic!("Expected Rejected response"),
+            WaitForEffectsResponse::Expired { .. } => {}
+            _ => panic!("Expected Expired response"),
         }
     }
 }

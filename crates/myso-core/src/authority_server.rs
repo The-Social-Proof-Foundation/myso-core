@@ -27,7 +27,7 @@ use myso_types::object::Object;
 use myso_types::traffic_control::{ClientIdSource, Weight};
 use myso_types::{
     base_types::ObjectID,
-    digests::{TransactionDigest, TransactionEffectsDigest},
+    digests::TransactionEffectsDigest,
     error::{MySoErrorKind, UserInputError},
 };
 use myso_types::{
@@ -54,11 +54,8 @@ use prometheus::{
     register_int_counter_with_registry,
 };
 use std::{
-    cmp::Ordering,
-    future::Future,
     io,
     net::{IpAddr, SocketAddr},
-    pin::Pin,
     sync::Arc,
     time::{Duration, SystemTime},
 };
@@ -80,10 +77,8 @@ use crate::{
     },
     checkpoints::CheckpointStore,
     mysticeti_adapter::LazyMysticetiClient,
-    transaction_outputs::TransactionOutputs,
 };
 use myso_config::local_ip_utils::new_local_tcp_address_for_testing;
-use myso_types::messages_grpc::PingType;
 
 #[cfg(test)]
 #[path = "unit_tests/server_tests.rs"]
@@ -790,11 +785,10 @@ impl ValidatorService {
                 .get_executed_effects(tx_digest)
             {
                 let effects_digest = effects.digest();
-                if let Ok(executed_data) = self.complete_executed_data(effects, None).await {
+                if let Ok(executed_data) = self.complete_executed_data(effects).await {
                     let executed_result = SubmitTxResult::Executed {
                         effects_digest,
                         details: Some(executed_data),
-                        fast_path: false,
                     };
                     results[idx] = Some(executed_result);
                     debug!(?tx_digest, "handle_submit_transaction: already executed");
@@ -844,12 +838,10 @@ impl ValidatorService {
                         .get_executed_effects(tx_digest)
                     {
                         let effects_digest = effects.digest();
-                        if let Ok(executed_data) = self.complete_executed_data(effects, None).await
-                        {
+                        if let Ok(executed_data) = self.complete_executed_data(effects).await {
                             let executed_result = SubmitTxResult::Executed {
                                 effects_digest,
                                 details: Some(executed_data),
-                                fast_path: false,
                             };
                             results[idx] = Some(executed_result);
                             continue;
@@ -1088,17 +1080,12 @@ impl ValidatorService {
         include_events: bool,
         include_input_objects: bool,
         include_output_objects: bool,
-        fastpath_outputs: Option<Arc<TransactionOutputs>>,
     ) -> MySoResult<(Option<TransactionEvents>, Vec<Object>, Vec<Object>)> {
         let events = if include_events && effects.events_digest().is_some() {
-            if let Some(fastpath_outputs) = &fastpath_outputs {
-                Some(fastpath_outputs.events.clone())
-            } else {
-                Some(
-                    self.state
-                        .get_transaction_events(effects.transaction_digest())?,
-                )
-            }
+            Some(
+                self.state
+                    .get_transaction_events(effects.transaction_digest())?,
+            )
         } else {
             None
         };
@@ -1110,11 +1097,7 @@ impl ValidatorService {
         };
 
         let output_objects = if include_output_objects {
-            if let Some(fastpath_outputs) = &fastpath_outputs {
-                fastpath_outputs.written.values().cloned().collect()
-            } else {
-                self.state.get_transaction_output_objects(effects)?
-            }
+            self.state.get_transaction_output_objects(effects)?
         } else {
             vec![]
         };
@@ -1152,7 +1135,7 @@ impl ValidatorService {
         Ok((tonic::Response::new(response), Weight::zero()))
     }
 
-    #[instrument(name= "ValidatorService::wait_for_effects_response", level = "error", skip_all, fields(consensus_position = ?request.consensus_position, fast_path_effects = tracing::field::Empty))]
+    #[instrument(name= "ValidatorService::wait_for_effects_response", level = "error", skip_all, fields(consensus_position = ?request.consensus_position))]
     async fn wait_for_effects_response(
         &self,
         request: WaitForEffectsRequest,
@@ -1175,51 +1158,104 @@ impl ValidatorService {
         };
         let tx_digests = [tx_digest];
 
-        let fastpath_effects_future: Pin<Box<dyn Future<Output = _> + Send>> =
-            if let Some(consensus_position) = request.consensus_position {
-                Box::pin(self.wait_for_fastpath_effects(
-                    consensus_position,
-                    &tx_digests,
-                    request.include_details,
-                    epoch_store,
-                ))
+        let executed_effects = self
+            .state
+            .get_transaction_cache_reader()
+            .notify_read_executed_effects(
+                "AuthorityServer::wait_for_effects::notify_read_executed_effects_finalized",
+                &tx_digests,
+            );
+
+        let Some(consensus_position) = request.consensus_position else {
+            let mut effects = executed_effects.await;
+            let effects = effects.pop().unwrap();
+            let details = if request.include_details {
+                Some(self.complete_executed_data(effects.clone()).await?)
             } else {
-                Box::pin(futures::future::pending())
+                None
             };
+            return Ok(WaitForEffectsResponse::Executed {
+                effects_digest: effects.digest(),
+                details,
+            });
+        };
+
+        let consensus_status = self.wait_for_consensus_terminal_status(consensus_position, epoch_store);
+        tokio::pin!(executed_effects);
+        tokio::pin!(consensus_status);
 
         tokio::select! {
-            // Ensure that finalized effects are always prioritized.
-            biased;
-            // We always wait for effects regardless of consensus position via
-            // notify_read_executed_effects. This is safe because we have separated
-            // mysticeti fastpath outputs to a separate dirty cache
-            // UncommittedData::fastpath_transaction_outputs that will only get flushed
-            // once finalized. So the output of notify_read_executed_effects is
-            // guaranteed to be finalized effects or effects from QD execution.
-            mut effects = self.state
-                .get_transaction_cache_reader()
-                .notify_read_executed_effects(
-                    "AuthorityServer::wait_for_effects::notify_read_executed_effects_finalized",
-                    &tx_digests,
-                ) => {
-                tracing::Span::current().record("fast_path_effects", false);
+            mut effects = &mut executed_effects => {
                 let effects = effects.pop().unwrap();
                 let details = if request.include_details {
-                    Some(self.complete_executed_data(effects.clone(), None).await?)
+                    Some(self.complete_executed_data(effects.clone()).await?)
                 } else {
                     None
                 };
-
                 Ok(WaitForEffectsResponse::Executed {
                     effects_digest: effects.digest(),
                     details,
-                    fast_path: false,
                 })
             }
+            status = &mut consensus_status => status,
+        }
+    }
 
-            fastpath_response = fastpath_effects_future => {
-                tracing::Span::current().record("fast_path_effects", true);
-                fastpath_response
+    async fn wait_for_consensus_terminal_status(
+        &self,
+        consensus_position: ConsensusPosition,
+        epoch_store: &Arc<AuthorityPerEpochStore>,
+    ) -> MySoResult<WaitForEffectsResponse> {
+        let Some(consensus_tx_status_cache) = epoch_store.consensus_tx_status_cache.as_ref() else {
+            return Err(MySoErrorKind::UnsupportedFeatureError {
+                error: "Mysticeti fastpath".to_string(),
+            }
+            .into());
+        };
+
+        let local_epoch = epoch_store.epoch();
+        if consensus_position.epoch < local_epoch {
+            return Ok(WaitForEffectsResponse::Expired {
+                epoch: local_epoch,
+                round: None,
+            });
+        }
+        if consensus_position.epoch > local_epoch {
+            return Err(MySoErrorKind::WrongEpoch {
+                expected_epoch: local_epoch,
+                actual_epoch: consensus_position.epoch,
+            }
+            .into());
+        }
+
+        consensus_tx_status_cache.check_position_too_ahead(&consensus_position)?;
+
+        let mut old_status = None;
+        loop {
+            match consensus_tx_status_cache
+                .notify_read_transaction_status_change(consensus_position, old_status)
+                .await
+            {
+                NotifyReadConsensusTxStatusResult::Status(ConsensusTxStatus::Rejected) => {
+                    return Ok(WaitForEffectsResponse::Rejected {
+                        error: epoch_store.get_rejection_vote_reason(consensus_position),
+                    });
+                }
+                NotifyReadConsensusTxStatusResult::Status(ConsensusTxStatus::Dropped) => {
+                    return Ok(WaitForEffectsResponse::Rejected {
+                        error: epoch_store.get_rejection_vote_reason(consensus_position),
+                    });
+                }
+                NotifyReadConsensusTxStatusResult::Status(status) => {
+                    // Finalized effects are returned by the executed-effects wait.
+                    old_status = Some(status);
+                }
+                NotifyReadConsensusTxStatusResult::Expired(round) => {
+                    return Ok(WaitForEffectsResponse::Expired {
+                        epoch: epoch_store.epoch(),
+                        round: Some(round),
+                    });
+                }
             }
         }
     }
@@ -1260,7 +1296,7 @@ impl ValidatorService {
 
         consensus_tx_status_cache.check_position_too_ahead(&consensus_position)?;
 
-        let mut last_status = None;
+        let last_status = None;
         let details = if request.include_details {
             Some(Box::new(ExecutedData::default()))
         } else {
@@ -1273,18 +1309,6 @@ impl ValidatorService {
                 .await;
             match status {
                 NotifyReadConsensusTxStatusResult::Status(status) => match status {
-                    ConsensusTxStatus::FastpathCertified => {
-                        // If the request is for consensus, we need to wait for the transaction to be finalised via Consensus.
-                        if ping == PingType::Consensus {
-                            last_status = Some(status);
-                            continue;
-                        }
-                        return Ok(WaitForEffectsResponse::Executed {
-                            effects_digest: TransactionEffectsDigest::ZERO,
-                            details,
-                            fast_path: true,
-                        });
-                    }
                     ConsensusTxStatus::Rejected => {
                         return Ok(WaitForEffectsResponse::Rejected { error: None });
                     }
@@ -1292,7 +1316,6 @@ impl ValidatorService {
                         return Ok(WaitForEffectsResponse::Executed {
                             effects_digest: TransactionEffectsDigest::ZERO,
                             details,
-                            fast_path: false,
                         });
                     }
                     ConsensusTxStatus::Dropped => {
@@ -1313,115 +1336,9 @@ impl ValidatorService {
         }
     }
 
-    #[instrument(level = "error", skip_all, err(level = "debug"))]
-    async fn wait_for_fastpath_effects(
-        &self,
-        consensus_position: ConsensusPosition,
-        tx_digests: &[TransactionDigest],
-        include_details: bool,
-        epoch_store: &Arc<AuthorityPerEpochStore>,
-    ) -> MySoResult<WaitForEffectsResponse> {
-        let Some(consensus_tx_status_cache) = epoch_store.consensus_tx_status_cache.as_ref() else {
-            return Err(MySoErrorKind::UnsupportedFeatureError {
-                error: "Mysticeti fastpath".to_string(),
-            }
-            .into());
-        };
-
-        let local_epoch = epoch_store.epoch();
-        match consensus_position.epoch.cmp(&local_epoch) {
-            Ordering::Less => {
-                // Ask TransactionDriver to retry submitting the transaction and get a new ConsensusPosition,
-                // if response from this validator is desired.
-                let response = WaitForEffectsResponse::Expired {
-                    epoch: local_epoch,
-                    round: None,
-                };
-                return Ok(response);
-            }
-            Ordering::Greater => {
-                // Ask TransactionDriver to retry this RPC until the validator's epoch catches up.
-                return Err(MySoErrorKind::WrongEpoch {
-                    expected_epoch: local_epoch,
-                    actual_epoch: consensus_position.epoch,
-                }
-                .into());
-            }
-            Ordering::Equal => {
-                // The validator's epoch is the same as the epoch of the transaction.
-                // We can proceed with the normal flow.
-            }
-        };
-
-        consensus_tx_status_cache.check_position_too_ahead(&consensus_position)?;
-
-        let mut current_status = None;
-        loop {
-            tokio::select! {
-                status_result = consensus_tx_status_cache
-                    .notify_read_transaction_status_change(consensus_position, current_status) => {
-                    match status_result {
-                        NotifyReadConsensusTxStatusResult::Status(new_status) => {
-                            match new_status {
-                                ConsensusTxStatus::Rejected => {
-                                    return Ok(WaitForEffectsResponse::Rejected {
-                                        error: epoch_store.get_rejection_vote_reason(
-                                            consensus_position
-                                        )
-                                    });
-                                }
-                                ConsensusTxStatus::FastpathCertified => {
-                                    current_status = Some(new_status);
-                                    continue;
-                                }
-                                ConsensusTxStatus::Finalized => {
-                                    current_status = Some(new_status);
-                                    continue;
-                                }
-                                ConsensusTxStatus::Dropped => {
-                                    // Transaction was dropped post-consensus, currently only due to invalid owned object inputs.
-                                    // Fetch the detailed error from the rejection reason cache.
-                                    return Ok(WaitForEffectsResponse::Rejected {
-                                        error: epoch_store
-                                            .get_rejection_vote_reason(consensus_position),
-                                    });
-                                }
-                            }
-                        }
-                        NotifyReadConsensusTxStatusResult::Expired(round) => {
-                            return Ok(WaitForEffectsResponse::Expired {
-                                epoch: epoch_store.epoch(),
-                                round: Some(round),
-                            });
-                        }
-                    }
-                }
-
-                mut outputs = self.state.get_transaction_cache_reader().notify_read_fastpath_transaction_outputs(tx_digests),
-                    if current_status == Some(ConsensusTxStatus::FastpathCertified) || current_status == Some(ConsensusTxStatus::Finalized) => {
-                    let outputs = outputs.pop().unwrap();
-                    let effects = outputs.effects.clone();
-
-                    let details = if include_details {
-                        Some(self.complete_executed_data(effects.clone(), Some(outputs)).await?)
-                    } else {
-                        None
-                    };
-
-                    return Ok(WaitForEffectsResponse::Executed {
-                        effects_digest: effects.digest(),
-                        details,
-                        fast_path: current_status == Some(ConsensusTxStatus::FastpathCertified),
-                    });
-                }
-            }
-        }
-    }
-
     async fn complete_executed_data(
         &self,
         effects: TransactionEffects,
-        fastpath_outputs: Option<Arc<TransactionOutputs>>,
     ) -> MySoResult<Box<ExecutedData>> {
         let (events, input_objects, output_objects) = self
             .collect_effects_data(
@@ -1429,7 +1346,6 @@ impl ValidatorService {
                 /* include_events */ true,
                 /* include_input_objects */ true,
                 /* include_output_objects */ true,
-                fastpath_outputs,
             )
             .await?;
         Ok(Box::new(ExecutedData {

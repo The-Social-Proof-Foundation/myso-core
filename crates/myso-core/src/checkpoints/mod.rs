@@ -2985,20 +2985,6 @@ mod wait_for_effects_with_retry_tests {
             unimplemented!()
         }
 
-        fn get_mysticeti_fastpath_outputs(
-            &self,
-            _: &TransactionDigest,
-        ) -> Option<Arc<crate::transaction_outputs::TransactionOutputs>> {
-            unimplemented!()
-        }
-
-        fn notify_read_fastpath_transaction_outputs<'a>(
-            &'a self,
-            _: &'a [TransactionDigest],
-        ) -> BoxFuture<'a, Vec<Arc<crate::transaction_outputs::TransactionOutputs>>> {
-            unimplemented!()
-        }
-
         fn take_accumulator_events(&self, _: &TransactionDigest) -> Option<Vec<AccumulatorEvent>> {
             unimplemented!()
         }
@@ -3930,7 +3916,6 @@ fn poll_count<Fut>(future: Fut) -> PollCounter<Fut> {
 mod tests {
     use super::*;
     use crate::authority::test_authority_builder::TestAuthorityBuilder;
-    use crate::transaction_outputs::TransactionOutputs;
     use fastcrypto_zkp::bn254::zk_login::{JWK, JwkId};
     use futures::FutureExt as _;
     use futures::future::BoxFuture;
@@ -4374,20 +4359,6 @@ mod tests {
         }
 
         fn multi_get_events(&self, _: &[TransactionDigest]) -> Vec<Option<TransactionEvents>> {
-            unimplemented!()
-        }
-
-        fn get_mysticeti_fastpath_outputs(
-            &self,
-            _: &TransactionDigest,
-        ) -> Option<Arc<TransactionOutputs>> {
-            unimplemented!()
-        }
-
-        fn notify_read_fastpath_transaction_outputs<'a>(
-            &'a self,
-            _: &'a [TransactionDigest],
-        ) -> BoxFuture<'a, Vec<Arc<crate::transaction_outputs::TransactionOutputs>>> {
             unimplemented!()
         }
 

@@ -29,7 +29,6 @@ use crate::authority::{AuthorityState, ExecutionEnv};
 use crate::authority_client::{AuthorityAPI, NetworkAuthorityClient};
 use crate::authority_server::AuthorityServer;
 use crate::consensus_test_utils::make_consensus_adapter_for_test;
-use crate::execution_scheduler::SchedulingSource;
 use crate::mock_consensus::with_block_status;
 
 use super::AuthorityServerHandle;
@@ -228,7 +227,7 @@ async fn test_submit_transaction_already_executed() {
             &verified_transaction,
             // Fastpath execution will only put outputs in a temporary cache,
             // and the object changes in this transaction are not yet committed.
-            ExecutionEnv::new().with_scheduling_source(SchedulingSource::MysticetiFastPath),
+            ExecutionEnv::new(),
             &epoch_store,
         )
         .await
@@ -256,7 +255,7 @@ async fn test_submit_transaction_already_executed() {
         .state
         .try_execute_immediately(
             &verified_transaction,
-            ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+            ExecutionEnv::new(),
             &epoch_store,
         )
         .await
@@ -274,7 +273,6 @@ async fn test_submit_transaction_already_executed() {
         SubmitTxResult::Executed {
             effects_digest,
             details,
-            fast_path: _,
         } => {
             let details = details.as_ref().unwrap();
             assert_eq!(*effects_digest, details.effects.digest());
@@ -426,7 +424,7 @@ async fn test_submit_batched_transactions_with_already_executed() {
         .state
         .try_execute_immediately(
             &verified_tx1,
-            ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+            ExecutionEnv::new(),
             &epoch_store,
         )
         .await
@@ -543,7 +541,7 @@ async fn test_submit_soft_bundle_transactions_with_already_executed() {
         .state
         .try_execute_immediately(
             &verified_tx1,
-            ExecutionEnv::new().with_scheduling_source(SchedulingSource::NonFastPath),
+            ExecutionEnv::new(),
             &epoch_store,
         )
         .await

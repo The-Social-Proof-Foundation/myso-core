@@ -169,29 +169,6 @@ async fn test_object_withdraw_basic_flow() {
 }
 
 #[tokio::test]
-async fn test_object_withdraw_fast_path_abort() {
-    let env = TestEnv::new().await;
-
-    env.fund_address(env.vault_obj.into(), 1000).await;
-
-    let gas = env.oref(&env.gas_obj).await;
-    let tx = TestTransactionBuilder::new(env.sender, gas, env.rgp())
-        .transfer_myso_to_address_balance(
-            FundSource::object_fund_owned(env.package_id, env.oref(&env.vault_obj).await),
-            vec![(1000, env.sender)],
-        )
-        .build();
-    let cert = VerifiedExecutableTransaction::new_for_testing(tx, &env.keypair);
-
-    let output = env
-        .authority
-        // Fastpath execution
-        .try_execute_immediately(&cert, ExecutionEnv::new(), &env.epoch_store)
-        .await;
-    assert!(matches!(output, ExecutionOutput::RetryLater));
-}
-
-#[tokio::test]
 async fn test_object_withdraw_multiple_withdraws() {
     let env = TestEnv::new().await;
 
@@ -213,7 +190,6 @@ async fn test_object_withdraw_multiple_withdraws() {
         let accumulator_version = env.oref(&MYSO_ACCUMULATOR_ROOT_OBJECT_ID).await.1;
         let effects = env
             .authority
-            // Fastpath execution
             .try_execute_immediately(
                 &cert,
                 ExecutionEnv::new().with_assigned_versions(AssignedVersions::new(
@@ -253,7 +229,6 @@ async fn test_object_withdraw_multiple_withdraws() {
         let accumulator_version = env.oref(&MYSO_ACCUMULATOR_ROOT_OBJECT_ID).await.1;
         let output = env
             .authority
-            // Fastpath execution
             .try_execute_immediately(
                 &cert,
                 ExecutionEnv::new().with_assigned_versions(AssignedVersions::new(

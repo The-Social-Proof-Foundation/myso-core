@@ -389,8 +389,6 @@ pub enum SubmitTxResult {
         // Response should always include details for executed transactions.
         // TODO(fastpath): validate this field is always present and return an error during deserialization.
         details: Option<Box<ExecutedData>>,
-        // Whether the transaction was executed using fast path.
-        fast_path: bool,
     },
     Rejected {
         error: crate::error::MySoError,
@@ -404,14 +402,9 @@ impl std::fmt::Debug for SubmitTxResult {
                 .debug_struct("Submitted")
                 .field("consensus_position", consensus_position)
                 .finish(),
-            Self::Executed {
-                effects_digest,
-                fast_path,
-                ..
-            } => f
+            Self::Executed { effects_digest, .. } => f
                 .debug_struct("Executed")
                 .field("effects_digest", &format_args!("{}", effects_digest))
-                .field("fast_path", fast_path)
                 .finish(),
             Self::Rejected { error } => f.debug_struct("Rejected").field("error", &error).finish(),
         }
@@ -500,10 +493,8 @@ impl PingType {
 
 pub struct WaitForEffectsRequest {
     pub transaction_digest: Option<crate::digests::TransactionDigest>,
-    /// If consensus position is provided, waits in the server handler for the transaction in it to execute,
-    /// either in fastpath outputs or finalized.
-    /// If it is not provided, only waits for finalized effects of the transaction in the server handler,
-    /// but not for fastpath outputs.
+    /// If consensus position is provided, the server can relate the wait to that consensus position.
+    /// Effects are returned only after the transaction is finalized.
     pub consensus_position: Option<crate::messages_consensus::ConsensusPosition>,
     /// Whether to include details of the effects,
     /// including the effects content, events, input objects, and output objects.
@@ -517,7 +508,6 @@ pub enum WaitForEffectsResponse {
     Executed {
         effects_digest: crate::digests::TransactionEffectsDigest,
         details: Option<Box<ExecutedData>>,
-        fast_path: bool,
     },
     // The transaction was rejected by consensus.
     Rejected {
@@ -536,14 +526,9 @@ pub enum WaitForEffectsResponse {
 impl std::fmt::Debug for WaitForEffectsResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Executed {
-                effects_digest,
-                fast_path,
-                ..
-            } => f
+            Self::Executed { effects_digest, .. } => f
                 .debug_struct("Executed")
                 .field("effects_digest", effects_digest)
-                .field("fast_path", fast_path)
                 .finish(),
             Self::Rejected { error } => f.debug_struct("Rejected").field("error", error).finish(),
             Self::Expired { epoch, round } => f
@@ -561,9 +546,8 @@ pub struct RawWaitForEffectsRequest {
     #[prost(bytes = "bytes", optional, tag = "1")]
     pub transaction_digest: Option<Bytes>,
 
-    /// If provided, wait for the consensus position to execute and wait for fastpath outputs of the transaction,
-    /// in addition to waiting for finalized effects.
-    /// If not provided, only wait for finalized effects.
+    /// If provided, the server can relate the wait to that consensus position.
+    /// Effects are returned only after the transaction is finalized.
     #[prost(bytes = "bytes", optional, tag = "2")]
     pub consensus_position: Option<Bytes>,
 
@@ -610,8 +594,6 @@ pub struct RawExecutedStatus {
     pub effects_digest: Bytes,
     #[prost(message, optional, tag = "2")]
     pub details: Option<RawExecutedData>,
-    #[prost(bool, tag = "3")]
-    pub fast_path: bool,
 }
 
 #[derive(Clone, prost::Message)]
@@ -792,9 +774,8 @@ impl TryFrom<SubmitTxResult> for RawSubmitTxResult {
             SubmitTxResult::Executed {
                 effects_digest,
                 details,
-                fast_path,
             } => {
-                let raw_executed = try_from_response_executed(effects_digest, details, fast_path)?;
+                let raw_executed = try_from_response_executed(effects_digest, details)?;
                 RawValidatorSubmitStatus::Executed(raw_executed)
             }
             SubmitTxResult::Rejected { error } => {
@@ -816,11 +797,10 @@ impl TryFrom<RawSubmitTxResult> for SubmitTxResult {
                 })
             }
             Some(RawValidatorSubmitStatus::Executed(executed)) => {
-                let (effects_digest, details, fast_path) = try_from_raw_executed_status(executed)?;
+                let (effects_digest, details) = try_from_raw_executed_status(executed)?;
                 Ok(SubmitTxResult::Executed {
                     effects_digest,
                     details,
-                    fast_path,
                 })
             }
             Some(RawValidatorSubmitStatus::Rejected(error)) => {
@@ -871,7 +851,6 @@ fn try_from_raw_executed_status(
     (
         crate::digests::TransactionEffectsDigest,
         Option<Box<ExecutedData>>,
-        bool,
     ),
     crate::error::MySoError,
 > {
@@ -886,7 +865,7 @@ fn try_from_raw_executed_status(
     } else {
         None
     };
-    Ok((effects_digest, executed_data, executed.fast_path))
+    Ok((effects_digest, executed_data))
 }
 
 fn try_from_raw_rejected_status(
@@ -928,7 +907,6 @@ fn try_from_response_rejected(
 fn try_from_response_executed(
     effects_digest: crate::digests::TransactionEffectsDigest,
     details: Option<Box<ExecutedData>>,
-    fast_path: bool,
 ) -> Result<RawExecutedStatus, crate::error::MySoError> {
     let effects_digest = bcs::to_bytes(&effects_digest)
         .map_err(
@@ -946,7 +924,6 @@ fn try_from_response_executed(
     Ok(RawExecutedStatus {
         effects_digest,
         details,
-        fast_path,
     })
 }
 
@@ -1022,11 +999,10 @@ impl TryFrom<RawWaitForEffectsResponse> for WaitForEffectsResponse {
     fn try_from(value: RawWaitForEffectsResponse) -> Result<Self, Self::Error> {
         match value.inner {
             Some(RawValidatorTransactionStatus::Executed(executed)) => {
-                let (effects_digest, details, fast_path) = try_from_raw_executed_status(executed)?;
+                let (effects_digest, details) = try_from_raw_executed_status(executed)?;
                 Ok(Self::Executed {
                     effects_digest,
                     details,
-                    fast_path,
                 })
             }
             Some(RawValidatorTransactionStatus::Rejected(rejected)) => {
@@ -1054,9 +1030,8 @@ impl TryFrom<WaitForEffectsResponse> for RawWaitForEffectsResponse {
             WaitForEffectsResponse::Executed {
                 effects_digest,
                 details,
-                fast_path,
             } => {
-                let raw_executed = try_from_response_executed(effects_digest, details, fast_path)?;
+                let raw_executed = try_from_response_executed(effects_digest, details)?;
                 RawValidatorTransactionStatus::Executed(raw_executed)
             }
             WaitForEffectsResponse::Rejected { error } => {
