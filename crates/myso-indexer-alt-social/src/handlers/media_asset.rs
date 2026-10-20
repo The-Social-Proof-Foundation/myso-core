@@ -91,7 +91,9 @@ pub fn handle_media_asset_event(
 ) -> Option<Vec<SocialEventRow>> {
     let tx_id = transaction_id_from_event_id(event_id);
     match event_name {
-        "MediaAssetResolvedEvent" => process_media_asset_resolved_event(data, event_id, &tx_id, tx_sender),
+        "MediaAssetResolvedEvent" => {
+            process_media_asset_resolved_event(data, event_id, &tx_id, tx_sender)
+        }
         "FingerprintLinkedEvent" => process_fingerprint_linked_event(data, event_id, &tx_id),
         "MediaAssetUsedEvent" => process_media_asset_used_event(data, event_id, &tx_id),
         "PostCompositionAnalyzedEvent" => {
@@ -119,12 +121,9 @@ pub fn handle_media_asset_event(
             {
                 return Some(rows);
             }
-            if let Some(rows) = super::media_asset_graph::handle_discovery_event(
-                other,
-                data,
-                event_id,
-                tx_sender,
-            ) {
+            if let Some(rows) =
+                super::media_asset_graph::handle_discovery_event(other, data, event_id, tx_sender)
+            {
                 return Some(rows);
             }
             super::media_asset_graph::handle_graph_media_asset_event(other, data, event_id)
@@ -284,13 +283,8 @@ mod tests {
             "position": 0,
             "timestamp": 1_700_000_000_000_u64,
         });
-        let rows = handle_media_asset_event(
-            "MediaAssetUsedEvent",
-            &data,
-            "tx:0",
-            None,
-        )
-        .expect("rows");
+        let rows =
+            handle_media_asset_event("MediaAssetUsedEvent", &data, "tx:0", None).expect("rows");
         assert_eq!(rows.len(), 1);
         assert!(matches!(
             &rows[0],

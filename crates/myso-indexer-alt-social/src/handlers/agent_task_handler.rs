@@ -16,13 +16,13 @@ use diesel::BoolExpressionMethods;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
+use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
-use diesel::SelectableHelper;
 use myso_indexer_alt_social_schema::models::{
     build_task_events, NewAgentTask, NewAutomationEvent, NewTaskConfig, NewTaskDispute,
     NewTaskReceipt, NewTaskReview, TaskEventKind, TaskSnapshot, DISPUTE_STATE_CANCELLED,
@@ -184,7 +184,8 @@ fn opt_str_field(data: &serde_json::Value, key: &str) -> Option<String> {
 
 fn i64_field(data: &serde_json::Value, key: &str) -> Option<i64> {
     let v = data.get(key)?;
-    v.as_i64().or_else(|| v.as_u64().and_then(|u| i64::try_from(u).ok()))
+    v.as_i64()
+        .or_else(|| v.as_u64().and_then(|u| i64::try_from(u).ok()))
 }
 
 fn bool_field(data: &serde_json::Value, key: &str) -> Option<bool> {
@@ -874,7 +875,8 @@ impl Handler for TaskMarketHandler {
                         .execute(conn)
                         .await?;
                     total += inserted;
-                    let target = agent_tasks::table.filter(agent_tasks::task_id.eq(&review.task_id));
+                    let target =
+                        agent_tasks::table.filter(agent_tasks::task_id.eq(&review.task_id));
                     if review.rater_role == REVIEW_ROLE_BUYER {
                         total += diesel::update(target)
                             .set(agent_tasks::buyer_review_stars.eq(review.stars))
@@ -1116,12 +1118,11 @@ mod tests {
 
     use super::super::events::{
         parse_event_contents, BcsMoveObjectId, BcsTaskAccepted, BcsTaskCancelled,
-        BcsTaskConfigUpdated, BcsTaskDelivered, BcsTaskDisputeCancelled,
-        BcsTaskDisputeFeePaid, BcsTaskDisputeFeesSettled, BcsTaskDisputeResolved,
-        BcsTaskDisputeSettlementCleared, BcsTaskDisputeSettlementProposed, BcsTaskDisputed,
-        BcsTaskNeutralWindowOpened, BcsTaskOffered, BcsTaskReceiptSettled,
-        BcsTaskRefundProposalCleared, BcsTaskRefundProposed, BcsTaskRefunded,
-        BcsTaskReviewSubmitted,
+        BcsTaskConfigUpdated, BcsTaskDelivered, BcsTaskDisputeCancelled, BcsTaskDisputeFeePaid,
+        BcsTaskDisputeFeesSettled, BcsTaskDisputeResolved, BcsTaskDisputeSettlementCleared,
+        BcsTaskDisputeSettlementProposed, BcsTaskDisputed, BcsTaskNeutralWindowOpened,
+        BcsTaskOffered, BcsTaskReceiptSettled, BcsTaskRefundProposalCleared, BcsTaskRefundProposed,
+        BcsTaskRefunded, BcsTaskReviewSubmitted,
     };
     use super::*;
 
@@ -1143,9 +1144,8 @@ mod tests {
     fn every_agent_task_event_is_handled() {
         // Mirrors the event structs in agent_task.move. Adding an event there without a parser
         // and row builder must fail here.
-        let move_source = include_str!(
-            "../../../myso-framework/packages/myso-social/sources/agent_task.move"
-        );
+        let move_source =
+            include_str!("../../../myso-framework/packages/myso-social/sources/agent_task.move");
         let mut declared: Vec<&str> = move_source
             .lines()
             .filter_map(|l| l.trim().strip_prefix("public struct "))
@@ -1213,7 +1213,11 @@ mod tests {
         );
         assert!(matches!(
             accepted.as_slice(),
-            [TaskMarketRow::Accepted { accepted_at_ms: 10, delivery_deadline_ms: 20, .. }]
+            [TaskMarketRow::Accepted {
+                accepted_at_ms: 10,
+                delivery_deadline_ms: 20,
+                ..
+            }]
         ));
 
         let delivered = rows(
@@ -1228,8 +1232,11 @@ mod tests {
             })
             .unwrap(),
         );
-        let [TaskMarketRow::Delivered { deliverable_digest, settle_deadline_ms, .. }] =
-            delivered.as_slice()
+        let [TaskMarketRow::Delivered {
+            deliverable_digest,
+            settle_deadline_ms,
+            ..
+        }] = delivered.as_slice()
         else {
             panic!("expected Delivered");
         };
@@ -1247,7 +1254,11 @@ mod tests {
         );
         assert!(matches!(
             proposed.as_slice(),
-            [TaskMarketRow::RefundProposed { proposer_role: 2, proposed_at_ms: 50, .. }]
+            [TaskMarketRow::RefundProposed {
+                proposer_role: 2,
+                proposed_at_ms: 50,
+                ..
+            }]
         ));
 
         let cleared = rows(
@@ -1260,7 +1271,10 @@ mod tests {
             })
             .unwrap(),
         );
-        assert!(matches!(cleared.as_slice(), [TaskMarketRow::ProposalCleared { .. }]));
+        assert!(matches!(
+            cleared.as_slice(),
+            [TaskMarketRow::ProposalCleared { .. }]
+        ));
 
         let refunded = rows(
             "TaskRefunded",
@@ -1275,7 +1289,11 @@ mod tests {
         );
         assert!(matches!(
             refunded.as_slice(),
-            [TaskMarketRow::Refunded { refund_kind: 1, refunded_at_ms: 70, .. }]
+            [TaskMarketRow::Refunded {
+                refund_kind: 1,
+                refunded_at_ms: 70,
+                ..
+            }]
         ));
 
         let cancelled = rows(
@@ -1291,7 +1309,11 @@ mod tests {
         );
         assert!(matches!(
             cancelled.as_slice(),
-            [TaskMarketRow::Cancelled { close_kind: 2, cancelled_at_ms: 80, .. }]
+            [TaskMarketRow::Cancelled {
+                close_kind: 2,
+                cancelled_at_ms: 80,
+                ..
+            }]
         ));
     }
 
@@ -1352,7 +1374,11 @@ mod tests {
         );
         assert!(matches!(
             paid.as_slice(),
-            [TaskMarketRow::DisputeFeePaid { buyer_paid_mist: 30, seller_paid_mist: 30, .. }]
+            [TaskMarketRow::DisputeFeePaid {
+                buyer_paid_mist: 30,
+                seller_paid_mist: 30,
+                ..
+            }]
         ));
 
         let cancelled = rows(
@@ -1367,7 +1393,10 @@ mod tests {
         );
         assert!(matches!(
             cancelled.as_slice(),
-            [TaskMarketRow::DisputeCancelled { settle_deadline_ms: 900, .. }]
+            [TaskMarketRow::DisputeCancelled {
+                settle_deadline_ms: 900,
+                ..
+            }]
         ));
 
         let window = rows(
@@ -1382,7 +1411,11 @@ mod tests {
         );
         assert!(matches!(
             window.as_slice(),
-            [TaskMarketRow::NeutralWindowOpened { window_ends_ms: 600, opened_at_ms: 530, .. }]
+            [TaskMarketRow::NeutralWindowOpened {
+                window_ends_ms: 600,
+                opened_at_ms: 530,
+                ..
+            }]
         ));
 
         let proposed = rows(
@@ -1397,7 +1430,11 @@ mod tests {
         );
         assert!(matches!(
             proposed.as_slice(),
-            [TaskMarketRow::DisputeSettlementProposed { outcome: 1, proposer_role: 2, .. }]
+            [TaskMarketRow::DisputeSettlementProposed {
+                outcome: 1,
+                proposer_role: 2,
+                ..
+            }]
         ));
 
         let cleared = rows(
@@ -1409,7 +1446,10 @@ mod tests {
             })
             .unwrap(),
         );
-        assert!(matches!(cleared.as_slice(), [TaskMarketRow::DisputeSettlementCleared { .. }]));
+        assert!(matches!(
+            cleared.as_slice(),
+            [TaskMarketRow::DisputeSettlementCleared { .. }]
+        ));
 
         let resolved = rows(
             "TaskDisputeResolved",
@@ -1424,7 +1464,12 @@ mod tests {
         );
         assert!(matches!(
             resolved.as_slice(),
-            [TaskMarketRow::DisputeResolved { outcome: 2, source: 3, resolved_at_ms: 560, .. }]
+            [TaskMarketRow::DisputeResolved {
+                outcome: 2,
+                source: 3,
+                resolved_at_ms: 560,
+                ..
+            }]
         ));
 
         let settled = rows(
@@ -1440,7 +1485,11 @@ mod tests {
         );
         assert!(matches!(
             settled.as_slice(),
-            [TaskMarketRow::DisputeFeesSettled { buyer_refund_mist: 10, seller_refund_mist: 20, .. }]
+            [TaskMarketRow::DisputeFeesSettled {
+                buyer_refund_mist: 10,
+                seller_refund_mist: 20,
+                ..
+            }]
         ));
     }
 
@@ -1482,7 +1531,10 @@ mod tests {
         };
         assert_eq!(*settlement_kind, 2);
         assert_eq!(*net_amount_mist, 975_000_000);
-        assert_eq!((*buyer_credibility_bps, *seller_credibility_bps), (2000, 2500));
+        assert_eq!(
+            (*buyer_credibility_bps, *seller_credibility_bps),
+            (2000, 2500)
+        );
         assert_eq!(*review_deadline_ms, 100);
         assert_eq!(receipt.ecosystem_fee_mist, 25_000_000);
         assert_eq!(receipt.deliverable_uri.as_deref(), Some("walrus://x"));
@@ -1556,7 +1608,10 @@ mod tests {
         };
         assert!(config.active);
         assert_eq!(config.release_grace_ms, 259_200_000);
-        assert_eq!(config.overall_seller_weight_bps + config.overall_buyer_weight_bps, 10_000);
+        assert_eq!(
+            config.overall_seller_weight_bps + config.overall_buyer_weight_bps,
+            10_000
+        );
         assert_eq!(config.event_id, "digest:2");
     }
 

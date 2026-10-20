@@ -8,8 +8,8 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
-    NewUnifiedRevenue, NewWalletMessagingPolicy, PAID_MESSAGE_STATUS_CLAIMED,
+    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig,
+    NewPaidMessageEscrow, NewUnifiedRevenue, NewWalletMessagingPolicy, PAID_MESSAGE_STATUS_CLAIMED,
     PAID_MESSAGE_STATUS_ESCROWED, PAID_MESSAGE_STATUS_REFUNDED, PAID_MESSAGE_STATUS_SETTLED,
     REVENUE_TYPE_MESSAGING_CLAIM, REVENUE_TYPE_MESSAGING_NET, REVENUE_TYPE_MESSAGING_PLATFORM_FEE,
     REVENUE_TYPE_MESSAGING_REFUND, REVENUE_TYPE_MESSAGING_TREASURY_FEE,

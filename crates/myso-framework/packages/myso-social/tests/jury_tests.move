@@ -356,15 +356,39 @@ module social_contracts::jury_tests {
         count
     }
 
-    public fun roster_ready(sc: &mut Scenario) {
+    /// Aborts `ERosterTooSmall` unless a case with these exclusions and rounds could form.
+    public fun roster_ready(sc: &mut Scenario, owners: vector<address>, agents: vector<ID>, round_sizes: vector<u64>) {
         ts::next_tx(sc, admin());
         let config = ts::take_shared<JuryConfig>(sc);
         let roster = ts::take_shared<JurorRoster>(sc);
         let clock = ts::take_shared<Clock>(sc);
-        jury::assert_roster_ready(&config, &roster, &clock);
+        jury::assert_case_formable(&config, &roster, &owners, &vector[], &agents, &round_sizes, &clock);
         ts::return_shared(clock);
         ts::return_shared(roster);
         ts::return_shared(config);
+    }
+
+    public fun formable_seats(sc: &mut Scenario, owners: vector<address>, orgs: vector<ID>, agents: vector<ID>): u64 {
+        ts::next_tx(sc, admin());
+        let config = ts::take_shared<JuryConfig>(sc);
+        let roster = ts::take_shared<JurorRoster>(sc);
+        let clock = ts::take_shared<Clock>(sc);
+        let seats = jury::formable_seats(&config, &roster, &owners, &orgs, &agents, clock::timestamp_ms(&clock), 1000);
+        ts::return_shared(clock);
+        ts::return_shared(roster);
+        ts::return_shared(config);
+        seats
+    }
+
+    public fun set_timing(sc: &mut Scenario, accept: u64, commit: u64, reveal: u64, appeal: u64, neutral: u64) {
+        ts::next_tx(sc, admin());
+        let cap = ts::take_from_sender<JuryAdminCap>(sc);
+        let mut config = ts::take_shared<JuryConfig>(sc);
+        let clock = ts::take_shared<Clock>(sc);
+        jury::set_timing(&cap, &mut config, accept, commit, reveal, appeal, neutral, &clock, ts::ctx(sc));
+        ts::return_shared(clock);
+        ts::return_shared(config);
+        ts::return_to_sender(sc, cap);
     }
 
     public fun set_min_roster(sc: &mut Scenario, n: u64) {
@@ -378,16 +402,23 @@ module social_contracts::jury_tests {
         ts::return_to_sender(sc, cap);
     }
 
-    /// Strikes before suspension; everything else keeps its default.
-    public fun set_max_strikes(sc: &mut Scenario, strikes: u64) {
+    /// Opens a case every rostered juror is drafted into, lets nobody accept, and cranks the
+    /// replacements until the case fails: one no-show strike for each juror.
+    public fun now(sc: &mut Scenario): u64 {
         ts::next_tx(sc, admin());
-        let cap = ts::take_from_sender<JuryAdminCap>(sc);
-        let mut config = ts::take_shared<JuryConfig>(sc);
         let clock = ts::take_shared<Clock>(sc);
-        jury::set_duty(&cap, &mut config, 100, 200, 50, 5, 10, 25, strikes, 14 * day(), &clock, ts::ctx(sc));
+        let v = clock::timestamp_ms(&clock);
         ts::return_shared(clock);
-        ts::return_shared(config);
-        ts::return_to_sender(sc, cap);
+        v
+    }
+
+    public fun no_show_case(sc: &mut Scenario, size: u64) {
+        let case_id = open_simple(sc, vector[size], size, false);
+        do_select(sc, case_id);
+        while (state_of(sc, case_id) == jury::case_selecting()) {
+            advance(sc, 13 * hour());
+            do_replace(sc, case_id);
+        };
     }
 
     public fun set_paused(sc: &mut Scenario, active: bool) {
@@ -442,6 +473,97 @@ module social_contracts::jury_tests {
         let v = jury::entry_active_cases(&roster, agent_id(fx, i));
         ts::return_shared(roster);
         v
+    }
+
+    /// Registers `count` more jury agents for owner `i` (each in its own organisation of that owner).
+    public fun add_agents(sc: &mut Scenario, fx: &mut Fixture, i: u64, count: u64, first_key: u64): vector<ID> {
+        let mut added = vector::empty<ID>();
+        let account = account_id(fx, i);
+        let mut k = 0;
+        while (k < count) {
+            let n = first_key + k;
+            let derived = myso::address::from_u256(0xC000 + (n as u256));
+            let agent = register_agent(sc, owner(i), account, derived, repeat_byte(((100 + n) as u8), 32), memory::cap_jury());
+            vector::push_back(&mut fx.agents, agent);
+            vector::push_back(&mut fx.accounts, account);
+            vector::push_back(&mut added, agent);
+            k = k + 1;
+        };
+        added
+    }
+
+    /// Genesis-allows and joins agent `agent` (an index into the fixture) for owner `i`.
+    public fun join_agent(sc: &mut Scenario, fx: &Fixture, i: u64, agent: u64) {
+        add_genesis(sc, fx, agent);
+        ts::next_tx(sc, owner(i));
+        let config = ts::take_shared<JuryConfig>(sc);
+        let mut roster = ts::take_shared<JurorRoster>(sc);
+        let memory_config = ts::take_shared<MemoryConfig>(sc);
+        let account = ts::take_shared_by_id<MemoryAccount>(sc, account_id(fx, i));
+        let agent_obj = ts::take_shared_by_id<SubAgent>(sc, agent_id(fx, agent));
+        let clock = ts::take_shared<Clock>(sc);
+        jury::join_roster(&config, &mut roster, &memory_config, &account, &agent_obj, owner(i), 1, &clock, ts::ctx(sc));
+        ts::return_shared(clock);
+        ts::return_shared(agent_obj);
+        ts::return_shared(account);
+        ts::return_shared(memory_config);
+        ts::return_shared(roster);
+        ts::return_shared(config);
+    }
+
+    public fun set_max_active(sc: &mut Scenario, min_roster: u64, max_active: u64) {
+        ts::next_tx(sc, admin());
+        let cap = ts::take_from_sender<JuryAdminCap>(sc);
+        let mut config = ts::take_shared<JuryConfig>(sc);
+        let clock = ts::take_shared<Clock>(sc);
+        jury::set_eligibility(&cap, &mut config, 4000, 2000, 3, 7 * day(), 7 * day(), max_active, min_roster, &clock, ts::ctx(sc));
+        ts::return_shared(clock);
+        ts::return_shared(config);
+        ts::return_to_sender(sc, cap);
+    }
+
+    public fun org_of(sc: &mut Scenario, fx: &Fixture, i: u64): ID {
+        ts::next_tx(sc, admin());
+        let roster = ts::take_shared<JurorRoster>(sc);
+        let v = jury::entry_organization_id(&roster, agent_id(fx, i));
+        ts::return_shared(roster);
+        v
+    }
+
+    public fun owner_of_juror(sc: &mut Scenario, case_id: ID, agent: ID): address {
+        ts::next_tx(sc, admin());
+        let case = ts::take_shared_by_id<JuryCase>(sc, case_id);
+        let v = jury::slot_owner(&case, agent);
+        ts::return_shared(case);
+        v
+    }
+
+    public fun do_select_as(sc: &mut Scenario, who: address, case_id: ID) {
+        ts::next_tx(sc, who);
+        let config = ts::take_shared<JuryConfig>(sc);
+        let mut roster = ts::take_shared<JurorRoster>(sc);
+        let mut case = ts::take_shared_by_id<JuryCase>(sc, case_id);
+        let rnd = ts::take_shared<Random>(sc);
+        let clock = ts::take_shared<Clock>(sc);
+        jury::test_select_jury(&config, &mut roster, &mut case, &rnd, &clock, ts::ctx(sc));
+        ts::return_shared(clock);
+        ts::return_shared(rnd);
+        ts::return_shared(case);
+        ts::return_shared(roster);
+        ts::return_shared(config);
+    }
+
+    public fun do_finalize_round_as(sc: &mut Scenario, who: address, case_id: ID) {
+        ts::next_tx(sc, who);
+        let config = ts::take_shared<JuryConfig>(sc);
+        let mut roster = ts::take_shared<JurorRoster>(sc);
+        let mut case = ts::take_shared_by_id<JuryCase>(sc, case_id);
+        let clock = ts::take_shared<Clock>(sc);
+        jury::finalize_round(&config, &mut roster, &mut case, &clock);
+        ts::return_shared(clock);
+        ts::return_shared(case);
+        ts::return_shared(roster);
+        ts::return_shared(config);
     }
 
     public fun roster_size(sc: &mut Scenario): u64 {
@@ -973,7 +1095,7 @@ module social_contracts::jury_tests {
         let fx = setup(&mut sc, 3);
         fill_roster(&mut sc, &fx, 3);
         set_min_roster(&mut sc, 3);
-        roster_ready(&mut sc);
+        roster_ready(&mut sc, vector[], vector[], vector[3]);
         ts::end(sc);
     }
 
@@ -983,7 +1105,7 @@ module social_contracts::jury_tests {
         let mut sc = ts::begin(admin());
         let fx = setup(&mut sc, 3);
         fill_roster(&mut sc, &fx, 3);
-        roster_ready(&mut sc);
+        roster_ready(&mut sc, vector[], vector[], vector[3]);
         ts::end(sc);
     }
 
@@ -1314,31 +1436,32 @@ module social_contracts::jury_tests {
     }
 
     #[test]
-    fun a_juror_at_the_strike_limit_is_suspended_for_the_configured_time() {
+    fun a_juror_at_the_strike_limit_is_suspended_for_the_fixed_time() {
         let mut sc = ts::begin(admin());
-        let fx = setup(&mut sc, 8);
-        fill_roster(&mut sc, &fx, 8);
-        set_max_strikes(&mut sc, 1);
-        let case_id = open_simple(&mut sc, vector[3], 2, false);
-        do_select(&mut sc, case_id);
-        let seats = jurors_of(&mut sc, case_id);
-        let absent = *vector::borrow(&seats, 2);
-        let absent_index = index_of(&fx, absent);
-        let a = index_of(&fx, *vector::borrow(&seats, 0));
-        let b = index_of(&fx, *vector::borrow(&seats, 1));
-        do_accept(&mut sc, &fx, agent_addr(a), a, case_id);
-        do_accept(&mut sc, &fx, agent_addr(b), b, case_id);
-        advance(&mut sc, 13 * hour());
-        do_replace(&mut sc, case_id);
-        assert!(entry_status(&mut sc, &fx, absent_index) == jury::roster_suspended(), 0);
-        assert!(entry_strikes(&mut sc, &fx, absent_index) == 0, 1);
+        let fx = setup(&mut sc, 3);
+        fill_roster(&mut sc, &fx, 3);
+        set_min_roster(&mut sc, 3);
+        assert!(jury::max_strikes() == 3, 0);
+        no_show_case(&mut sc, 3);
+        no_show_case(&mut sc, 3);
+        assert!(entry_strikes(&mut sc, &fx, 0) == 2, 1);
+        assert!(entry_status(&mut sc, &fx, 0) == jury::roster_active(), 2);
+        let start_ms = now(&mut sc);
+        no_show_case(&mut sc, 3);
+        assert!(entry_status(&mut sc, &fx, 0) == jury::roster_suspended(), 3);
+        assert!(entry_strikes(&mut sc, &fx, 0) == 0, 4);
         ts::next_tx(&mut sc, admin());
         let roster = ts::take_shared<JurorRoster>(&sc);
-        let now_ms = 13 * hour();
-        assert!(jury::entry_suspended_until_ms(&roster, agent_id(&fx, absent_index)) >= now_ms + 14 * day(), 2);
+        let clock = ts::take_shared<Clock>(&sc);
+        let now_ms = clock::timestamp_ms(&clock);
+        // The strike lands at some point during the last case, so the end of the suspension is bounded
+        // by the case's start and the current time.
+        let until = jury::entry_suspended_until_ms(&roster, agent_id(&fx, 0));
+        assert!(until >= start_ms + 14 * day() && until <= now_ms + 14 * day(), 5);
+        ts::return_shared(clock);
         ts::return_shared(roster);
         // A suspended agent is not eligible for the next draw.
-        assert!(eligible(&mut sc) == 7, 3);
+        assert!(eligible(&mut sc) == 0, 6);
         ts::end(sc);
     }
 
@@ -2081,6 +2204,351 @@ module social_contracts::jury_tests {
         let mut case = ts::take_shared_by_id<JuryCase>(&sc, case_id);
         jury::mark_executed(&mut case);
         ts::return_shared(case);
+        ts::end(sc);
+    }
+
+    // ============================================================
+    // Fixed rules and the case-length invariant
+    // ============================================================
+
+    #[test]
+    fun the_default_windows_fit_inside_the_fixed_case_lifetime() {
+        let mut sc = ts::begin(admin());
+        let _fx = setup(&mut sc, 0);
+        ts::next_tx(&mut sc, admin());
+        let config = ts::take_shared<JuryConfig>(&sc);
+        let round = jury::accept_window_ms(&config) + jury::commit_window_ms(&config)
+            + jury::reveal_window_ms(&config) + jury::reveal_grace_ms(&config) + jury::appeal_window_ms(&config);
+        assert!(round * 4 <= jury::max_case_duration_ms(&config), 0);
+        assert!(jury::reveal_grace_ms(&config) == 6 * hour(), 1);
+        assert!(jury::max_case_duration_ms(&config) == 30 * day(), 2);
+        assert!(jury::max_exclusions(&config) == 64, 3);
+        ts::return_shared(config);
+        // Right at the limit still passes: 4 rounds of 180 hours is 30 days.
+        set_timing(&mut sc, 12 * hour(), 24 * hour(), 12 * hour(), 126 * hour(), 72 * hour());
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::jury::EInvalidConfig)]
+    fun windows_too_long_for_the_fixed_case_lifetime_are_rejected() {
+        let mut sc = ts::begin(admin());
+        let _fx = setup(&mut sc, 0);
+        set_timing(&mut sc, 12 * hour(), 24 * hour(), 12 * hour(), 126 * hour() + 1, 72 * hour());
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::jury::EInvalidConfig)]
+    fun a_settlement_window_longer_than_a_case_is_rejected() {
+        let mut sc = ts::begin(admin());
+        let _fx = setup(&mut sc, 0);
+        set_timing(&mut sc, 12 * hour(), 24 * hour(), 12 * hour(), 48 * hour(), 30 * day() + 1);
+        ts::end(sc);
+    }
+
+    // ============================================================
+    // Formation: independent owners, not roster size
+    // ============================================================
+
+    #[test]
+    fun many_agents_under_three_owners_are_three_seats() {
+        let mut sc = ts::begin(admin());
+        let mut fx = setup(&mut sc, 3);
+        fill_roster(&mut sc, &fx, 3);
+        let mut i = 0;
+        while (i < 3) {
+            let extra = add_agents(&mut sc, &mut fx, i, 6, i * 6);
+            let mut k = 0;
+            while (k < vector::length(&extra)) {
+                join_agent(&mut sc, &fx, i, index_of(&fx, *vector::borrow(&extra, k)));
+                k = k + 1;
+            };
+            i = i + 1;
+        };
+        // Twenty-one agents clear the old roster-size bar of twenty but are only three owners.
+        assert!(eligible(&mut sc) == 21, 0);
+        assert!(formable_seats(&mut sc, vector[], vector[], vector[]) == 3, 1);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::jury::ERosterTooSmall)]
+    fun many_agents_under_three_owners_cannot_form_a_jury() {
+        let mut sc = ts::begin(admin());
+        let mut fx = setup(&mut sc, 3);
+        fill_roster(&mut sc, &fx, 3);
+        let extra = add_agents(&mut sc, &mut fx, 0, 3, 0);
+        let mut k = 0;
+        while (k < vector::length(&extra)) {
+            join_agent(&mut sc, &fx, 0, index_of(&fx, *vector::borrow(&extra, k)));
+            k = k + 1;
+        };
+        set_min_roster(&mut sc, 4);
+        roster_ready(&mut sc, vector[], vector[], vector[4]);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun excluded_owners_orgs_and_agents_do_not_count_as_seats() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 16);
+        fill_roster(&mut sc, &fx, 16);
+        set_min_roster(&mut sc, 16);
+        roster_ready(&mut sc, vector[], vector[], vector[16]);
+        assert!(formable_seats(&mut sc, vector[owner(0)], vector[], vector[]) == 15, 0);
+        let org = org_of(&mut sc, &fx, 1);
+        assert!(formable_seats(&mut sc, vector[], vector[org], vector[]) == 15, 1);
+        assert!(formable_seats(&mut sc, vector[], vector[], vector[agent_id(&fx, 2)]) == 15, 2);
+        assert!(formable_seats(&mut sc, vector[owner(0)], vector[org], vector[agent_id(&fx, 2)]) == 13, 3);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::jury::ERosterTooSmall)]
+    fun one_excluded_owner_below_the_minimum_blocks_the_case() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 16);
+        fill_roster(&mut sc, &fx, 16);
+        set_min_roster(&mut sc, 16);
+        roster_ready(&mut sc, vector[owner(0)], vector[], vector[3]);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun agents_at_their_case_limit_are_not_seats() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 4);
+        fill_roster(&mut sc, &fx, 4);
+        set_max_active(&mut sc, 1, 1);
+        let case_id = open_simple(&mut sc, vector[3], 2, false);
+        do_select(&mut sc, case_id);
+        assert!(formable_seats(&mut sc, vector[], vector[], vector[]) == 1, 0);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::jury::ERosterTooSmall)]
+    fun every_round_needs_its_own_owners() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 4);
+        fill_roster(&mut sc, &fx, 4);
+        set_min_roster(&mut sc, 3);
+        roster_ready(&mut sc, vector[], vector[], vector[3]);
+        // A second round of three needs three more owners nobody has.
+        roster_ready(&mut sc, vector[], vector[], vector[3, 3]);
+        ts::end(sc);
+    }
+
+    // ============================================================
+    // The draw: uniform over owners, exclusions across rounds
+    // ============================================================
+
+    #[test]
+    fun a_large_roster_with_few_eligible_owners_still_fills_every_seat() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 16);
+        fill_roster(&mut sc, &fx, 16);
+        let mut i = 0;
+        while (i < 13) {
+            set_available(&mut sc, &fx, i, false);
+            i = i + 1;
+        };
+        let case_id = open_simple(&mut sc, vector[3], 2, false);
+        do_select(&mut sc, case_id);
+        let jurors = jurors_of(&mut sc, case_id);
+        assert!(vector::length(&jurors) == 3, 0);
+        assert!(vector::contains(&jurors, &agent_id(&fx, 13)), 1);
+        assert!(vector::contains(&jurors, &agent_id(&fx, 14)), 2);
+        assert!(vector::contains(&jurors, &agent_id(&fx, 15)), 3);
+        ts::end(sc);
+    }
+
+    /// Owner 0 has eight agents (the organisation limit), owners 1 to 3 one each, and owner 3 sits right after a run of six
+    /// paused owners. Over many one-seat draws every owner should win about a quarter of the time.
+    #[test]
+    fun every_eligible_owner_has_the_same_chance_however_many_agents_it_has() {
+        let mut sc = ts::begin(admin());
+        let mut fx = setup(&mut sc, 10);
+        add_genesis(&mut sc, &fx, 0);
+        join(&mut sc, &fx, owner(0), 0);
+        let extra = add_agents(&mut sc, &mut fx, 0, 7, 0);
+        let mut k = 0;
+        while (k < vector::length(&extra)) {
+            join_agent(&mut sc, &fx, 0, index_of(&fx, *vector::borrow(&extra, k)));
+            k = k + 1;
+        };
+        add_genesis(&mut sc, &fx, 1);
+        join(&mut sc, &fx, owner(1), 1);
+        add_genesis(&mut sc, &fx, 2);
+        join(&mut sc, &fx, owner(2), 2);
+        let mut p = 4;
+        while (p < 10) {
+            add_genesis(&mut sc, &fx, p);
+            join(&mut sc, &fx, owner(p), p);
+            set_available(&mut sc, &fx, p, false);
+            p = p + 1;
+        };
+        add_genesis(&mut sc, &fx, 3);
+        join(&mut sc, &fx, owner(3), 3);
+        set_max_active(&mut sc, 1, 3);
+
+        let draws = 48;
+        let mut wins = vector[0u64, 0, 0, 0];
+        let mut d = 0u64;
+        while (d < draws) {
+            // Each draw sees a fresh beacon value, as successive cases do on chain.
+            ts::next_tx(&mut sc, @0x0);
+            {
+                let mut rnd = ts::take_shared<Random>(&sc);
+                random::update_randomness_state_for_testing(
+                    &mut rnd, d + 1, myso::hash::blake2b256(&myso::bcs::to_bytes(&d)), ts::ctx(&mut sc),
+                );
+                ts::return_shared(rnd);
+            };
+            let case_id = open_simple(&mut sc, vector[1], 1, false);
+            do_select(&mut sc, case_id);
+            let juror = *vector::borrow(&jurors_of(&mut sc, case_id), 0);
+            let who = owner_of_juror(&mut sc, case_id, juror);
+            let mut o = 0;
+            while (o < 4) {
+                if (who == owner(o)) {
+                    let w = vector::borrow_mut(&mut wins, o);
+                    *w = *w + 1;
+                };
+                o = o + 1;
+            };
+            do_void(&mut sc, case_id);
+            d = d + 1;
+        };
+        let mut o = 0;
+        while (o < 4) {
+            let w = *vector::borrow(&wins, o);
+            // Expected twelve each; an agent-weighted draw would give owner 0 about 35.
+            assert!(w >= 4 && w <= 22, o);
+            o = o + 1;
+        };
+        ts::end(sc);
+    }
+
+    #[test]
+    fun a_later_round_never_reuses_an_owner_from_an_earlier_round() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 6);
+        fill_roster(&mut sc, &fx, 6);
+        let case_id = open_simple(&mut sc, vector[3, 3], 2, false);
+        // Everyone abstains, so the round is not decisive and a second jury is drawn.
+        run_round(&mut sc, &fx, case_id, vector[jury::abstain(), jury::abstain(), jury::abstain()]);
+        assert!(round_of(&mut sc, case_id) == 1, 0);
+        ts::next_tx(&mut sc, admin());
+        let first = {
+            let case = ts::take_shared_by_id<JuryCase>(&sc, case_id);
+            let v = jury::round_jurors(&case, 0);
+            ts::return_shared(case);
+            v
+        };
+        do_select(&mut sc, case_id);
+        let second = jurors_of(&mut sc, case_id);
+        assert!(vector::length(&second) == 3, 1);
+        let mut k = 0;
+        while (k < 3) {
+            assert!(!vector::contains(&first, vector::borrow(&second, k)), 2);
+            k = k + 1;
+        };
+        ts::end(sc);
+    }
+
+    #[test]
+    fun a_replaced_no_show_is_never_drawn_again_for_the_same_case() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 5);
+        fill_roster(&mut sc, &fx, 5);
+        let case_id = open_simple(&mut sc, vector[3], 2, false);
+        do_select(&mut sc, case_id);
+        let seats = jurors_of(&mut sc, case_id);
+        let absent = *vector::borrow(&seats, 2);
+        let a = index_of(&fx, *vector::borrow(&seats, 0));
+        let b = index_of(&fx, *vector::borrow(&seats, 1));
+        do_accept(&mut sc, &fx, agent_addr(a), a, case_id);
+        do_accept(&mut sc, &fx, agent_addr(b), b, case_id);
+        advance(&mut sc, 13 * hour());
+        do_replace(&mut sc, case_id);
+        let after = jurors_of(&mut sc, case_id);
+        assert!(vector::length(&after) == 3, 0);
+        assert!(!vector::contains(&after, &absent), 1);
+        assert!(slot_status_of(&mut sc, case_id, absent) == jury::slot_replaced(), 2);
+        ts::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = social_contracts::jury::ERosterFull)]
+    fun the_roster_is_capped() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 1);
+        add_genesis(&mut sc, &fx, 0);
+        ts::next_tx(&mut sc, admin());
+        {
+            let mut roster = ts::take_shared<JurorRoster>(&sc);
+            jury::test_set_roster_count(&mut roster, jury::max_roster_size());
+            ts::return_shared(roster);
+        };
+        join(&mut sc, &fx, owner(0), 0);
+        ts::end(sc);
+    }
+
+    /// One organisation belongs to one account, which is what lets the draw count owners and treat
+    /// organisations as already distinct.
+    #[test]
+    #[expected_failure(abort_code = social_contracts::memory::EOrganizationAccountMismatch)]
+    fun an_owner_cannot_register_an_agent_into_another_owners_organisation() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 2);
+        ts::next_tx(&mut sc, owner(1));
+        memory_test_helpers::create_default_org_in_tx(&mut sc);
+        ts::next_tx(&mut sc, owner(0));
+        let org_id = ts::most_recent_id_shared<AgenticOrganization>().destroy_some();
+        let mut org = ts::take_shared_by_id<AgenticOrganization>(&sc, org_id);
+        let mut account = ts::take_shared_by_id<MemoryAccount>(&sc, account_id(&fx, 0));
+        let memory_config = ts::take_shared<MemoryConfig>(&sc);
+        let clock = ts::take_shared<Clock>(&sc);
+        memory::register_sub_agent(
+            &memory_config,
+            &mut account,
+            &mut org,
+            repeat_byte(99, 32),
+            @0xC0FFEE,
+            string::utf8(b"intruder"),
+            memory::class_delegated_ai(),
+            0,
+            memory::cap_jury(),
+            memory::cap_jury(),
+            3,
+            0,
+            option::none(),
+            option::none(),
+            option::none(),
+            &clock,
+            ts::ctx(&mut sc),
+        );
+        ts::return_shared(clock);
+        ts::return_shared(memory_config);
+        ts::return_shared(account);
+        ts::return_shared(org);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun anyone_can_run_the_cranks() {
+        let mut sc = ts::begin(admin());
+        let fx = setup(&mut sc, 4);
+        fill_roster(&mut sc, &fx, 4);
+        let case_id = open_simple(&mut sc, vector[3], 2, false);
+        do_select_as(&mut sc, @0xBEEF, case_id);
+        accept_all(&mut sc, &fx, case_id);
+        commit_all(&mut sc, &fx, case_id, vector[0, 0, 0]);
+        reveal_all(&mut sc, &fx, case_id, vector[0, 0, 0]);
+        do_finalize_round_as(&mut sc, @0xBEEF, case_id);
+        assert!(state_of(&mut sc, case_id) == jury::case_final(), 0);
         ts::end(sc);
     }
 

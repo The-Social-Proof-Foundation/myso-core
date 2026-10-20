@@ -146,18 +146,14 @@ pub async fn create_bridge_order(
     })?;
 
     if let Some(amount) = req.amount.as_ref() {
-        if let Some(mut order) = state
-            .storage
-            .get_bridge_order(&order_id)
-            .map_err(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
-                        error: format!("{:?}", e),
-                    }),
-                )
-            })?
-        {
+        if let Some(mut order) = state.storage.get_bridge_order(&order_id).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: format!("{:?}", e),
+                }),
+            )
+        })? {
             order.amount = Some(amount.clone());
             state.storage.upsert_bridge_order(order).map_err(|e| {
                 (
@@ -292,14 +288,17 @@ pub async fn record_bridge_order(
         evm_token_address: req.evm_token_address,
         myso_token_type: req.token_type,
     };
-    state.storage.upsert_bridge_order(order.clone()).map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: format!("{:?}", e),
-            }),
-        )
-    })?;
+    state
+        .storage
+        .upsert_bridge_order(order.clone())
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: format!("{:?}", e),
+                }),
+            )
+        })?;
     Ok(Json(order_response(order)))
 }
 

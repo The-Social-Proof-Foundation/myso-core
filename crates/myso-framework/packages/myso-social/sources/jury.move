@@ -96,6 +96,26 @@ module social_contracts::jury {
     const MS_HOUR: u64 = 3_600_000;
     const MS_DAY: u64 = 86_400_000;
 
+    // Fixed protocol rules. Changing any of these needs a package upgrade, not a governance vote.
+    /// Extra reveal time added after the reveal window, so a late network does not cost a vote.
+    const REVEAL_GRACE_MS: u64 = 21_600_000;
+    /// A case older than this fails (or keeps its first verdict) when anyone finalizes it.
+    const MAX_CASE_DURATION_MS: u64 = 2_592_000_000;
+    const DUTY_INITIAL: u64 = 100;
+    const DUTY_MAX: u64 = 200;
+    /// Below this a juror is not drafted until completed duties raise the score again.
+    const DUTY_MIN: u64 = 50;
+    const DUTY_GAIN: u64 = 5;
+    const DUTY_LOSS_ACCEPT: u64 = 10;
+    const DUTY_LOSS_NOREVEAL: u64 = 25;
+    const MAX_STRIKES: u64 = 3;
+    const SUSPENSION_MS: u64 = 1_209_600_000;
+    const MAX_REPLACEMENTS: u64 = 3;
+    const MAX_EVIDENCE_PER_PARTY: u64 = 8;
+    const MAX_EXCLUSIONS: u64 = 64;
+    /// Bounds the full roster pass every draw makes, so its gas ceiling is known in advance.
+    const MAX_ROSTER_SIZE: u64 = 2000;
+
     // ============================================================
     // Errors
     // ============================================================
@@ -133,6 +153,7 @@ module social_contracts::jury {
     const EInvalidUri: u64 = 31;
     const ENotOwner: u64 = 32;
     const ENotIneligible: u64 = 33;
+    const ERosterFull: u64 = 34;
 
     // ============================================================
     // Objects
@@ -156,28 +177,8 @@ module social_contracts::jury {
         accept_window_ms: u64,
         commit_window_ms: u64,
         reveal_window_ms: u64,
-        reveal_grace_ms: u64,
         appeal_window_ms: u64,
         neutral_window_ms: u64,
-        max_case_duration_ms: u64,
-    }
-
-    public struct DutyParams has store, copy, drop {
-        initial_score: u64,
-        max_score: u64,
-        min_score: u64,
-        gain: u64,
-        loss_accept: u64,
-        loss_noreveal: u64,
-        max_strikes: u64,
-        suspension_ms: u64,
-    }
-
-    public struct SelectionParams has store, copy, drop {
-        max_draws: u64,
-        max_replacements: u64,
-        max_evidence_per_party: u64,
-        max_exclusions: u64,
     }
 
     /// Global jury parameters. Per-registry governance policy lives on the registry, not here.
@@ -187,9 +188,8 @@ module social_contracts::jury {
         active: bool,
         eligibility: EligibilityParams,
         timing: TimingParams,
-        duty: DutyParams,
-        selection: SelectionParams,
-        /// Scores a juror is judged by. Keep in step with the task market's `ReputationParams`.
+        /// Scores a juror is judged by. A copy of the task market's `ReputationParams`, written only
+        /// by `agent_task::set_task_config` through [`sync_reputation_params`].
         reputation: ReputationParams,
         /// Genesis agents skip the reputation bar until this time, then must qualify organically.
         genesis_sunset_ms: u64,
@@ -226,7 +226,8 @@ module social_contracts::jury {
         snapshot_expires_at: Option<u64>,
     }
 
-    /// The roster with a dense index for O(1) uniform sampling.
+    /// The roster, indexed by agent and grouped by owner. The draw walks owners, not agents, so
+    /// every independent owner has the same chance however many agents it put on the roster.
     public struct JurorRoster has key {
         id: UID,
         version: u64,
@@ -234,6 +235,10 @@ module social_contracts::jury {
         index: Table<ID, u64>,
         entries: Table<ID, RosterEntry>,
         count: u64,
+        owner_slots: Table<u64, address>,
+        owner_index: Table<address, u64>,
+        owner_agents: Table<address, vector<ID>>,
+        owner_count: u64,
     }
 
     public struct EvidenceItem has store, copy, drop {
@@ -500,7 +505,7 @@ module social_contracts::jury {
     // Bootstrap and configuration
     // ============================================================
 
-    public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+    public(package) fun bootstrap_init(reputation: ReputationParams, clock: &Clock, ctx: &mut TxContext) {
         let now = clock::timestamp_ms(clock);
         let config = JuryConfig {
             id: object::new(ctx),
@@ -519,30 +524,10 @@ module social_contracts::jury {
                 accept_window_ms: 12 * MS_HOUR,
                 commit_window_ms: 24 * MS_HOUR,
                 reveal_window_ms: 12 * MS_HOUR,
-                reveal_grace_ms: 6 * MS_HOUR,
                 appeal_window_ms: 48 * MS_HOUR,
                 neutral_window_ms: 72 * MS_HOUR,
-                max_case_duration_ms: 30 * MS_DAY,
             },
-            duty: DutyParams {
-                initial_score: 100,
-                max_score: 200,
-                min_score: 50,
-                gain: 5,
-                loss_accept: 10,
-                loss_noreveal: 25,
-                max_strikes: 3,
-                suspension_ms: 14 * MS_DAY,
-            },
-            selection: SelectionParams {
-                max_draws: 64,
-                max_replacements: 3,
-                max_evidence_per_party: 8,
-                max_exclusions: 64,
-            },
-            reputation: memory::new_reputation_params(
-                3000, 50000, 1_000_000_000, 500, 20000, 2000, 500, 16, 10000, 5000, 5000,
-            ),
+            reputation,
             genesis_sunset_ms: now + 180 * MS_DAY,
             genesis_agents: vec_set::empty(),
         };
@@ -555,6 +540,10 @@ module social_contracts::jury {
             index: table::new(ctx),
             entries: table::new(ctx),
             count: 0,
+            owner_slots: table::new(ctx),
+            owner_index: table::new(ctx),
+            owner_agents: table::new(ctx),
+            owner_count: 0,
         });
     }
 
@@ -562,6 +551,8 @@ module social_contracts::jury {
         JuryAdminCap { id: object::new(ctx) }
     }
 
+    /// The windows stay governable but the case lifetime does not, so the longest possible case
+    /// (every round running every window in full) must still fit inside `MAX_CASE_DURATION_MS`.
     fun validate_config(config: &JuryConfig) {
         let e = &config.eligibility;
         assert!(e.min_confidence_bps <= BPS_DENOMINATOR, EInvalidConfig);
@@ -569,14 +560,13 @@ module social_contracts::jury {
         let t = &config.timing;
         assert!(
             t.accept_window_ms > 0 && t.commit_window_ms > 0 && t.reveal_window_ms > 0
-                && t.neutral_window_ms > 0 && t.max_case_duration_ms > 0,
+                && t.neutral_window_ms > 0,
             EInvalidConfig,
         );
-        let d = &config.duty;
-        assert!(d.initial_score <= d.max_score && d.min_score <= d.initial_score, EInvalidConfig);
-        assert!(d.max_strikes > 0 && d.gain > 0, EInvalidConfig);
-        let s = &config.selection;
-        assert!(s.max_draws > 0 && s.max_evidence_per_party > 0 && s.max_exclusions > 0, EInvalidConfig);
+        let round_ms = (t.accept_window_ms as u128) + (t.commit_window_ms as u128)
+            + (t.reveal_window_ms as u128) + (REVEAL_GRACE_MS as u128) + (t.appeal_window_ms as u128);
+        assert!(round_ms * (MAX_ROUNDS_LIMIT as u128) <= (MAX_CASE_DURATION_MS as u128), EInvalidConfig);
+        assert!(t.neutral_window_ms <= MAX_CASE_DURATION_MS, EInvalidConfig);
         memory::assert_reputation_params(&config.reputation);
     }
 
@@ -623,10 +613,8 @@ module social_contracts::jury {
         accept_window_ms: u64,
         commit_window_ms: u64,
         reveal_window_ms: u64,
-        reveal_grace_ms: u64,
         appeal_window_ms: u64,
         neutral_window_ms: u64,
-        max_case_duration_ms: u64,
         clock: &Clock,
         ctx: &TxContext,
     ) {
@@ -635,91 +623,23 @@ module social_contracts::jury {
             accept_window_ms,
             commit_window_ms,
             reveal_window_ms,
-            reveal_grace_ms,
             appeal_window_ms,
             neutral_window_ms,
-            max_case_duration_ms,
         };
         validate_config(config);
         emit_config_updated(2, clock, ctx);
     }
 
-    public entry fun set_duty(
-        _: &JuryAdminCap,
+    /// The task market owns the reputation math; it pushes every change here so jurors and task
+    /// parties are always scored the same way.
+    public(package) fun sync_reputation_params(
         config: &mut JuryConfig,
-        initial_score: u64,
-        max_score: u64,
-        min_score: u64,
-        gain: u64,
-        loss_accept: u64,
-        loss_noreveal: u64,
-        max_strikes: u64,
-        suspension_ms: u64,
+        params: ReputationParams,
         clock: &Clock,
         ctx: &TxContext,
     ) {
         assert_config_live(config);
-        config.duty = DutyParams {
-            initial_score,
-            max_score,
-            min_score,
-            gain,
-            loss_accept,
-            loss_noreveal,
-            max_strikes,
-            suspension_ms,
-        };
-        validate_config(config);
-        emit_config_updated(3, clock, ctx);
-    }
-
-    public entry fun set_selection(
-        _: &JuryAdminCap,
-        config: &mut JuryConfig,
-        max_draws: u64,
-        max_replacements: u64,
-        max_evidence_per_party: u64,
-        max_exclusions: u64,
-        clock: &Clock,
-        ctx: &TxContext,
-    ) {
-        assert_config_live(config);
-        config.selection = SelectionParams { max_draws, max_replacements, max_evidence_per_party, max_exclusions };
-        validate_config(config);
-        emit_config_updated(4, clock, ctx);
-    }
-
-    public entry fun set_reputation_params(
-        _: &JuryAdminCap,
-        config: &mut JuryConfig,
-        prior_mean_milli: u64,
-        prior_weight_bps: u64,
-        value_ref_mist: u64,
-        min_value_weight_bps: u64,
-        max_value_weight_bps: u64,
-        cred_base_bps: u64,
-        cred_step_bps: u64,
-        cred_cap_n: u64,
-        cred_max_bps: u64,
-        overall_seller_weight_bps: u64,
-        overall_buyer_weight_bps: u64,
-        clock: &Clock,
-        ctx: &TxContext,
-    ) {
-        assert_config_live(config);
-        config.reputation = memory::new_reputation_params(
-            prior_mean_milli,
-            prior_weight_bps,
-            value_ref_mist,
-            min_value_weight_bps,
-            max_value_weight_bps,
-            cred_base_bps,
-            cred_step_bps,
-            cred_cap_n,
-            cred_max_bps,
-            overall_seller_weight_bps,
-            overall_buyer_weight_bps,
-        );
+        config.reputation = params;
         validate_config(config);
         emit_config_updated(5, clock, ctx);
     }
@@ -796,6 +716,7 @@ module social_contracts::jury {
         assert!(memory::sub_agent_memory_account_id(agent) == object::id(account), EWrongAgent);
         let agent_id = object::id(agent);
         assert!(!table::contains(&roster.entries, agent_id), EAlreadyOnRoster);
+        assert!(roster.count < MAX_ROSTER_SIZE, ERosterFull);
 
         let now = clock::timestamp_ms(clock);
         let snap = take_snapshot(config, memory_config, account, agent);
@@ -817,7 +738,7 @@ module social_contracts::jury {
             status: ROSTER_ACTIVE,
             suspended_until_ms: 0,
             exempt,
-            duty_score: config.duty.initial_score,
+            duty_score: DUTY_INITIAL,
             completed: 0,
             no_shows: 0,
             strikes: 0,
@@ -937,14 +858,23 @@ module social_contracts::jury {
     }
 
     fun add_to_roster(roster: &mut JurorRoster, agent_id: ID, entry: RosterEntry) {
+        let owner = entry.owner;
         let position = roster.count;
         table::add(&mut roster.entries, agent_id, entry);
         table::add(&mut roster.slots, position, agent_id);
         table::add(&mut roster.index, agent_id, position);
         roster.count = position + 1;
+        if (!table::contains(&roster.owner_agents, owner)) {
+            let owner_position = roster.owner_count;
+            table::add(&mut roster.owner_slots, owner_position, owner);
+            table::add(&mut roster.owner_index, owner, owner_position);
+            table::add(&mut roster.owner_agents, owner, vector::empty());
+            roster.owner_count = owner_position + 1;
+        };
+        vector::push_back(table::borrow_mut(&mut roster.owner_agents, owner), agent_id);
     }
 
-    /// Swap-remove keeps the slot index dense.
+    /// Swap-remove keeps the agent and owner indexes dense.
     fun remove_from_roster(roster: &mut JurorRoster, agent_id: ID) {
         let position = table::remove(&mut roster.index, agent_id);
         let last = roster.count - 1;
@@ -955,7 +885,28 @@ module social_contracts::jury {
         };
         table::remove(&mut roster.slots, last);
         roster.count = last;
-        table::remove(&mut roster.entries, agent_id);
+        let entry = table::remove(&mut roster.entries, agent_id);
+        let owner = entry.owner;
+        let now_empty = {
+            let list = table::borrow_mut(&mut roster.owner_agents, owner);
+            let (found, i) = vector::index_of(list, &agent_id);
+            if (found) {
+                vector::swap_remove(list, i);
+            };
+            vector::is_empty(list)
+        };
+        if (now_empty) {
+            table::remove(&mut roster.owner_agents, owner);
+            let owner_position = table::remove(&mut roster.owner_index, owner);
+            let last_owner = roster.owner_count - 1;
+            if (owner_position != last_owner) {
+                let last_addr = *table::borrow(&roster.owner_slots, last_owner);
+                *table::borrow_mut(&mut roster.owner_slots, owner_position) = last_addr;
+                *table::borrow_mut(&mut roster.owner_index, last_addr) = owner_position;
+            };
+            table::remove(&mut roster.owner_slots, last_owner);
+            roster.owner_count = last_owner;
+        };
     }
 
     public struct Snapshot has copy, drop {
@@ -1031,7 +982,7 @@ module social_contracts::jury {
         if (entry.active_cases >= config.eligibility.max_active_cases) {
             return false
         };
-        if (entry.duty_score < config.duty.min_score) {
+        if (entry.duty_score < DUTY_MIN) {
             return false
         };
         if (entry.exempt && now <= config.genesis_sunset_ms) {
@@ -1047,8 +998,8 @@ module social_contracts::jury {
         )
     }
 
-    /// Entries a draw could pick right now. An integrator refuses to open a case below the minimum,
-    /// so a thin roster fails closed instead of being gamed.
+    /// Entries a draw could pick right now, for display. Whether a case can open is decided by
+    /// [`case_formable`], which counts independent owners after the case's exclusions.
     public fun eligible_count(config: &JuryConfig, roster: &JurorRoster, now: u64): u64 {
         let mut count = 0;
         let mut i = 0;
@@ -1060,13 +1011,6 @@ module social_contracts::jury {
             i = i + 1;
         };
         count
-    }
-
-    public(package) fun assert_roster_ready(config: &JuryConfig, roster: &JurorRoster, clock: &Clock) {
-        assert!(
-            eligible_count(config, roster, clock::timestamp_ms(clock)) >= config.eligibility.min_eligible_roster,
-            ERosterTooSmall,
-        );
     }
 
     // ============================================================
@@ -1113,7 +1057,7 @@ module social_contracts::jury {
         };
         assert!(
             vector::length(&exclusion_owners) + vector::length(&exclusion_orgs) + vector::length(&exclusion_agents)
-                <= config.selection.max_exclusions,
+                <= MAX_EXCLUSIONS,
             ETooManyExclusions,
         );
 
@@ -1202,6 +1146,7 @@ module social_contracts::jury {
         uri: vector<u8>,
         clock: &Clock,
     ) {
+        assert_config_live(config);
         let now = clock::timestamp_ms(clock);
         let undrawn = vector::length(&case.rounds) == case.round;
         let open = (case.state == CASE_EVIDENCE && now <= case.evidence_deadline_ms)
@@ -1218,7 +1163,7 @@ module social_contracts::jury {
             };
             i = i + 1;
         };
-        assert!(count < config.selection.max_evidence_per_party, ETooMuchEvidence);
+        assert!(count < MAX_EVIDENCE_PER_PARTY, ETooMuchEvidence);
         let item = EvidenceItem { submitter, round: case.round, kind, digest, uri, submitted_at_ms: now };
         event::emit(EvidenceSubmitted {
             case_id: object::id(case),
@@ -1339,9 +1284,11 @@ module social_contracts::jury {
         });
     }
 
-    /// Uniform rejection sampling over the roster with a fixed attempt budget. A candidate is
-    /// skipped when the snapshot says it cannot serve or it conflicts with the case; one juror per
-    /// owner and per organisation is kept across every round of the case.
+    /// Picks `needed` distinct owners uniformly from every owner with at least one agent that can
+    /// serve and does not conflict with the case, then one of that owner's serving agents uniformly.
+    /// The full roster pass always runs and the sampling takes a fixed number of steps, so the gas
+    /// used does not reveal the random outcome. One juror per owner and per organisation is kept
+    /// across every round of the case.
     fun draw_jurors(
         config: &JuryConfig,
         roster: &mut JurorRoster,
@@ -1352,20 +1299,48 @@ module social_contracts::jury {
         now: u64,
     ): vector<ID> {
         let mut chosen = vector::empty<ID>();
-        if (roster.count == 0 || needed == 0) {
+        if (needed == 0) {
             return chosen
         };
-        let mut attempts = 0;
-        while (attempts < config.selection.max_draws && vector::length(&chosen) < needed) {
-            attempts = attempts + 1;
-            let position = random::generate_u64_in_range(gen, 0, roster.count - 1);
-            let agent_id = *table::borrow(&roster.slots, position);
-            let (picked, owner, org, payout) = {
+        let mut candidates = vector::empty<vector<ID>>();
+        let mut o = 0;
+        while (o < roster.owner_count) {
+            let owner = *table::borrow(&roster.owner_slots, o);
+            let agents = table::borrow(&roster.owner_agents, owner);
+            let mut serving = vector::empty<ID>();
+            let mut a = 0;
+            let count = vector::length(agents);
+            while (a < count) {
+                let agent_id = *vector::borrow(agents, a);
                 let entry = table::borrow(&roster.entries, agent_id);
-                let ok = draw_eligible(config, entry, now) && !conflicted(case, entry);
-                (ok, entry.owner, entry.organization_id, entry.payout_address)
+                if (draw_eligible(config, entry, now) && !conflicted(case, entry)) {
+                    vector::push_back(&mut serving, agent_id);
+                };
+                a = a + 1;
             };
-            if (!picked) {
+            if (!vector::is_empty(&serving)) {
+                vector::push_back(&mut candidates, serving);
+            };
+            o = o + 1;
+        };
+
+        let len = vector::length(&candidates);
+        let take = if (needed < len) { needed } else { len };
+        let mut k = 0;
+        while (k < take) {
+            let j = random::generate_u64_in_range(gen, k, len - 1);
+            vector::swap(&mut candidates, k, j);
+            let serving = vector::borrow(&candidates, k);
+            let pick = random::generate_u64_in_range(gen, 0, vector::length(serving) - 1);
+            let agent_id = *vector::borrow(serving, pick);
+            let (owner, org, payout) = {
+                let entry = table::borrow(&roster.entries, agent_id);
+                (entry.owner, entry.organization_id, entry.payout_address)
+            };
+            k = k + 1;
+            // Distinct owners imply distinct organisations (an organisation belongs to one account);
+            // this guard only matters if that invariant is ever broken.
+            if (vector::contains(&case.exclusions.used_orgs, &org)) {
                 continue
             };
             {
@@ -1397,24 +1372,108 @@ module social_contracts::jury {
     }
 
     fun conflicted(case: &JuryCase, entry: &RosterEntry): bool {
-        let ex = &case.exclusions;
-        if (vector::contains(&ex.owners, &entry.owner)
-            || vector::contains(&ex.orgs, &entry.organization_id)
-            || vector::contains(&ex.agents, &entry.agent_id)
+        conflicts_with(&case.exclusions, entry)
+    }
+
+    /// The one conflict rule every round, every replacement and the formation check share.
+    fun conflicts_with(ex: &Exclusions, entry: &RosterEntry): bool {
+        excluded_by(&ex.owners, &ex.orgs, &ex.agents, entry)
             || vector::contains(&ex.used_owners, &entry.owner)
-            || vector::contains(&ex.used_orgs, &entry.organization_id)) {
+            || vector::contains(&ex.used_orgs, &entry.organization_id)
+    }
+
+    fun excluded_by(owners: &vector<address>, orgs: &vector<ID>, agents: &vector<ID>, entry: &RosterEntry): bool {
+        if (vector::contains(owners, &entry.owner)
+            || vector::contains(orgs, &entry.organization_id)
+            || vector::contains(agents, &entry.agent_id)) {
             return true
         };
         // A juror that descends from an excluded agent is as conflicted as the agent itself.
         let mut i = 0;
         let len = vector::length(&entry.ancestor_ids);
         while (i < len) {
-            if (vector::contains(&ex.agents, vector::borrow(&entry.ancestor_ids, i))) {
+            if (vector::contains(agents, vector::borrow(&entry.ancestor_ids, i))) {
                 return true
             };
             i = i + 1;
         };
         false
+    }
+
+    /// Seats a new case with these exclusions could fill right now: distinct owners with at least one
+    /// agent the draw would accept. Exact, not an estimate: an organisation belongs to one account, so
+    /// one seat per owner already means one seat per organisation. Stops counting at `stop_at`.
+    public fun formable_seats(
+        config: &JuryConfig,
+        roster: &JurorRoster,
+        owners: &vector<address>,
+        orgs: &vector<ID>,
+        agents: &vector<ID>,
+        now: u64,
+        stop_at: u64,
+    ): u64 {
+        let mut seats = 0;
+        let mut o = 0;
+        while (o < roster.owner_count && seats < stop_at) {
+            let owner = *table::borrow(&roster.owner_slots, o);
+            if (!vector::contains(owners, &owner)) {
+                let list = table::borrow(&roster.owner_agents, owner);
+                let mut a = 0;
+                let count = vector::length(list);
+                while (a < count) {
+                    let entry = table::borrow(&roster.entries, *vector::borrow(list, a));
+                    if (draw_eligible(config, entry, now) && !excluded_by(owners, orgs, agents, entry)) {
+                        seats = seats + 1;
+                        break
+                    };
+                    a = a + 1;
+                };
+            };
+            o = o + 1;
+        };
+        seats
+    }
+
+    /// Seats a case needs before it may open: the configured minimum, and enough distinct owners
+    /// for every round, because no owner sits twice in one case.
+    public fun required_seats(config: &JuryConfig, round_sizes: &vector<u64>): u64 {
+        let mut total = 0;
+        let mut i = 0;
+        let len = vector::length(round_sizes);
+        while (i < len) {
+            total = memory::checked_add_u64(total, *vector::borrow(round_sizes, i));
+            i = i + 1;
+        };
+        let min = config.eligibility.min_eligible_roster;
+        if (min > total) { min } else { total }
+    }
+
+    /// Whether a case with these exclusions and rounds can form a jury now. Replacements and
+    /// eligibility changes can still exhaust owners later; the draw then fails with
+    /// `FAIL_CANNOT_FORM`, which integrators treat as a shortage.
+    public fun case_formable(
+        config: &JuryConfig,
+        roster: &JurorRoster,
+        owners: &vector<address>,
+        orgs: &vector<ID>,
+        agents: &vector<ID>,
+        round_sizes: &vector<u64>,
+        clock: &Clock,
+    ): bool {
+        let required = required_seats(config, round_sizes);
+        formable_seats(config, roster, owners, orgs, agents, clock::timestamp_ms(clock), required) >= required
+    }
+
+    public(package) fun assert_case_formable(
+        config: &JuryConfig,
+        roster: &JurorRoster,
+        owners: &vector<address>,
+        orgs: &vector<ID>,
+        agents: &vector<ID>,
+        round_sizes: &vector<u64>,
+        clock: &Clock,
+    ) {
+        assert!(case_formable(config, roster, owners, orgs, agents, round_sizes, clock), ERosterTooSmall);
     }
 
     // ============================================================
@@ -1489,7 +1548,7 @@ module social_contracts::jury {
         let commit_deadline = memory::checked_add_u64(now, config.timing.commit_window_ms);
         let reveal_deadline = memory::checked_add_u64(
             commit_deadline,
-            memory::checked_add_u64(config.timing.reveal_window_ms, config.timing.reveal_grace_ms),
+            memory::checked_add_u64(config.timing.reveal_window_ms, REVEAL_GRACE_MS),
         );
         let jurors = {
             let r = vector::borrow_mut(&mut case.rounds, round);
@@ -1536,7 +1595,7 @@ module social_contracts::jury {
             let agent_id = *vector::borrow(&seats, i);
             if (table::borrow(&case.slots, agent_id).status == SLOT_DRAFTED) {
                 table::borrow_mut(&mut case.slots, agent_id).status = SLOT_REPLACED;
-                penalize_duty(config, roster, agent_id, config.duty.loss_accept, DUTY_NO_ACCEPT, case_id, now);
+                penalize_duty(roster, agent_id, DUTY_LOSS_ACCEPT, DUTY_NO_ACCEPT, case_id, now);
                 release_seat(roster, agent_id);
                 event::emit(JurorReplaced { case_id, round, agent_id });
             } else {
@@ -1553,7 +1612,7 @@ module social_contracts::jury {
             return
         };
         let used = vector::borrow(&case.rounds, round).replacements_used;
-        if (used < config.selection.max_replacements) {
+        if (used < MAX_REPLACEMENTS) {
             let mut gen = random::new_generator(rand, ctx);
             let drawn = draw_jurors(config, roster, case, &mut gen, missing, round, now);
             let accept_deadline = memory::checked_add_u64(now, config.timing.accept_window_ms);
@@ -1567,7 +1626,7 @@ module social_contracts::jury {
         } else if (accepted >= case.quorum) {
             start_voting(config, case, now);
         } else {
-            close_round(config, roster, case, now, true);
+            close_round(roster, case, now, true);
             end_failed(case, FAIL_CANNOT_FORM, now);
         };
     }
@@ -1742,7 +1801,7 @@ module social_contracts::jury {
             let r = vector::borrow(&case.rounds, round);
             assert!(now > r.reveal_deadline_ms || all_revealed(case, round), ERoundNotOver);
         };
-        close_round(config, roster, case, now, true);
+        close_round(roster, case, now, true);
 
         let (decisive, leading) = evaluate_round(case, round);
         let max_rounds = vector::length(&case.round_sizes);
@@ -1857,9 +1916,9 @@ module social_contracts::jury {
                 || case.state == CASE_SELECTING || case.state == CASE_VOTING,
             EWrongCaseState,
         );
-        let deadline = memory::checked_add_u64(case.created_at_ms, config.timing.max_case_duration_ms);
+        let deadline = memory::checked_add_u64(case.created_at_ms, MAX_CASE_DURATION_MS);
         assert!(now > deadline, ENotYet);
-        close_round(config, roster, case, now, true);
+        close_round(roster, case, now, true);
         end_failed(case, FAIL_TIMEOUT, now);
     }
 
@@ -1875,7 +1934,7 @@ module social_contracts::jury {
         assert_config_live(config);
         assert!(roster.version == upgrade::current_version(), EWrongVersion);
         assert!(case.version == upgrade::current_version(), EWrongVersion);
-        force_end(config, roster, case, clock::timestamp_ms(clock));
+        force_end(roster, case, clock::timestamp_ms(clock));
     }
 
     /// An integrator ends an unfinished case because its subject was resolved some other way (the
@@ -1890,17 +1949,17 @@ module social_contracts::jury {
         assert_config_live(config);
         assert!(roster.version == upgrade::current_version(), EWrongVersion);
         assert!(case.version == upgrade::current_version(), EWrongVersion);
-        force_end(config, roster, case, clock::timestamp_ms(clock));
+        force_end(roster, case, clock::timestamp_ms(clock));
     }
 
-    fun force_end(config: &JuryConfig, roster: &mut JurorRoster, case: &mut JuryCase, now: u64) {
+    fun force_end(roster: &mut JurorRoster, case: &mut JuryCase, now: u64) {
         assert!(!is_finished(case.state), EWrongCaseState);
         if (case.state == CASE_TALLIED) {
             let outcome = *option::borrow(&case.provisional_outcome);
             finalize_outcome(case, outcome, now);
             return
         };
-        close_round(config, roster, case, now, false);
+        close_round(roster, case, now, false);
         end_failed(case, FAIL_VOIDED, now);
     }
 
@@ -1951,7 +2010,7 @@ module social_contracts::jury {
     /// and everyone is released. A seat that accepted into a round that never started voting is not
     /// penalized: the failure was not the juror's. `penalize = false` (an admin void) releases every
     /// seat without a penalty.
-    fun close_round(config: &JuryConfig, roster: &mut JurorRoster, case: &mut JuryCase, now: u64, penalize: bool) {
+    fun close_round(roster: &mut JurorRoster, case: &mut JuryCase, now: u64, penalize: bool) {
         let round = case.round;
         if (vector::length(&case.rounds) <= round) {
             return
@@ -1968,13 +2027,13 @@ module social_contracts::jury {
             let agent_id = *vector::borrow(&seats, i);
             let status = table::borrow(&case.slots, agent_id).status;
             if (status == SLOT_REVEALED) {
-                reward_duty(config, roster, agent_id, case_id, now);
+                reward_duty(roster, agent_id, case_id, now);
             } else if (penalize && status == SLOT_DRAFTED) {
                 table::borrow_mut(&mut case.slots, agent_id).status = SLOT_DEFAULTED;
-                penalize_duty(config, roster, agent_id, config.duty.loss_accept, DUTY_NO_ACCEPT, case_id, now);
+                penalize_duty(roster, agent_id, DUTY_LOSS_ACCEPT, DUTY_NO_ACCEPT, case_id, now);
             } else if (penalize && voting && (status == SLOT_ACCEPTED || status == SLOT_COMMITTED)) {
                 table::borrow_mut(&mut case.slots, agent_id).status = SLOT_DEFAULTED;
-                penalize_duty(config, roster, agent_id, config.duty.loss_noreveal, DUTY_NO_REVEAL, case_id, now);
+                penalize_duty(roster, agent_id, DUTY_LOSS_NOREVEAL, DUTY_NO_REVEAL, case_id, now);
             };
             release_seat(roster, agent_id);
             i = i + 1;
@@ -1982,15 +2041,15 @@ module social_contracts::jury {
         vector::borrow_mut(&mut case.rounds, round).closed = true;
     }
 
-    fun reward_duty(config: &JuryConfig, roster: &mut JurorRoster, agent_id: ID, case_id: ID, now: u64) {
+    fun reward_duty(roster: &mut JurorRoster, agent_id: ID, case_id: ID, now: u64) {
         if (!table::contains(&roster.entries, agent_id)) {
             return
         };
         let entry = table::borrow_mut(&mut roster.entries, agent_id);
         entry.completed = entry.completed + 1;
         entry.last_duty_ms = now;
-        let raised = entry.duty_score + config.duty.gain;
-        entry.duty_score = if (raised > config.duty.max_score) { config.duty.max_score } else { raised };
+        let raised = entry.duty_score + DUTY_GAIN;
+        entry.duty_score = if (raised > DUTY_MAX) { DUTY_MAX } else { raised };
         if (entry.strikes > 0) {
             entry.strikes = entry.strikes - 1;
         };
@@ -2007,7 +2066,6 @@ module social_contracts::jury {
     }
 
     fun penalize_duty(
-        config: &JuryConfig,
         roster: &mut JurorRoster,
         agent_id: ID,
         loss: u64,
@@ -2023,8 +2081,8 @@ module social_contracts::jury {
         entry.strikes = entry.strikes + 1;
         entry.last_duty_ms = now;
         entry.duty_score = if (entry.duty_score > loss) { entry.duty_score - loss } else { 0 };
-        if (entry.strikes >= config.duty.max_strikes) {
-            let until = memory::checked_add_u64(now, config.duty.suspension_ms);
+        if (entry.strikes >= MAX_STRIKES) {
+            let until = memory::checked_add_u64(now, SUSPENSION_MS);
             entry.status = ROSTER_SUSPENDED;
             entry.suspended_until_ms = until;
             entry.strikes = 0;
@@ -2158,19 +2216,22 @@ module social_contracts::jury {
 
     public fun config_active(config: &JuryConfig): bool { config.active }
     /// The most owners, organizations and agents a case may exclude; integrators trim to it.
-    public fun max_exclusions(config: &JuryConfig): u64 { config.selection.max_exclusions }
+    public fun max_exclusions(_: &JuryConfig): u64 { MAX_EXCLUSIONS }
     public fun neutral_window_ms(config: &JuryConfig): u64 { config.timing.neutral_window_ms }
     public fun accept_window_ms(config: &JuryConfig): u64 { config.timing.accept_window_ms }
     public fun commit_window_ms(config: &JuryConfig): u64 { config.timing.commit_window_ms }
     public fun reveal_window_ms(config: &JuryConfig): u64 { config.timing.reveal_window_ms }
-    public fun reveal_grace_ms(config: &JuryConfig): u64 { config.timing.reveal_grace_ms }
+    public fun reveal_grace_ms(_: &JuryConfig): u64 { REVEAL_GRACE_MS }
     public fun appeal_window_ms(config: &JuryConfig): u64 { config.timing.appeal_window_ms }
-    public fun max_case_duration_ms(config: &JuryConfig): u64 { config.timing.max_case_duration_ms }
+    public fun max_case_duration_ms(_: &JuryConfig): u64 { MAX_CASE_DURATION_MS }
     public fun min_eligible_roster(config: &JuryConfig): u64 { config.eligibility.min_eligible_roster }
-    public fun initial_duty_score(config: &JuryConfig): u64 { config.duty.initial_score }
+    public fun initial_duty_score(_: &JuryConfig): u64 { DUTY_INITIAL }
+    public fun max_strikes(): u64 { MAX_STRIKES }
+    public fun max_roster_size(): u64 { MAX_ROSTER_SIZE }
     public fun genesis_sunset_ms(config: &JuryConfig): u64 { config.genesis_sunset_ms }
 
     public fun roster_count(roster: &JurorRoster): u64 { roster.count }
+    public fun roster_owner_count(roster: &JurorRoster): u64 { roster.owner_count }
     public fun on_roster(roster: &JurorRoster, agent_id: ID): bool { table::contains(&roster.entries, agent_id) }
     public fun entry_status(roster: &JurorRoster, agent_id: ID): u8 { table::borrow(&roster.entries, agent_id).status }
     public fun entry_duty_score(roster: &JurorRoster, agent_id: ID): u64 { table::borrow(&roster.entries, agent_id).duty_score }
@@ -2180,6 +2241,9 @@ module social_contracts::jury {
     public fun entry_active_cases(roster: &JurorRoster, agent_id: ID): u64 { table::borrow(&roster.entries, agent_id).active_cases }
     public fun entry_exempt(roster: &JurorRoster, agent_id: ID): bool { table::borrow(&roster.entries, agent_id).exempt }
     public fun entry_owner(roster: &JurorRoster, agent_id: ID): address { table::borrow(&roster.entries, agent_id).owner }
+    public fun entry_organization_id(roster: &JurorRoster, agent_id: ID): ID {
+        table::borrow(&roster.entries, agent_id).organization_id
+    }
     public fun entry_suspended_until_ms(roster: &JurorRoster, agent_id: ID): u64 {
         table::borrow(&roster.entries, agent_id).suspended_until_ms
     }
@@ -2237,7 +2301,7 @@ module social_contracts::jury {
 
     #[test_only]
     public fun test_bootstrap(clock: &Clock, ctx: &mut TxContext) {
-        bootstrap_init(clock, ctx);
+        bootstrap_init(memory::default_reputation_params(), clock, ctx);
     }
 
     #[test_only]
@@ -2269,5 +2333,11 @@ module social_contracts::jury {
         ctx: &mut TxContext,
     ) {
         replace_no_shows(config, roster, case, rand, clock, ctx);
+    }
+
+    /// Pretends the roster already holds `count` entries, to reach `MAX_ROSTER_SIZE` cheaply.
+    #[test_only]
+    public fun test_set_roster_count(roster: &mut JurorRoster, count: u64) {
+        roster.count = count;
     }
 }

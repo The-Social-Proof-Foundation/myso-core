@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use chrono::{DateTime, NaiveDate, Utc};
+use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Date, Double, Nullable, Text};
-use diesel::QueryableByName;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::spt_revenue;

@@ -253,7 +253,7 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun opening_a_dispute_freezes_the_task_attaches_the_facts_and_returns_change() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, jfx) = setup(&mut sc, 6);
+        let (tfx, jfx) = setup(&mut sc, 8);
         let task_id = tt::delivered_task(&mut sc, &tfx, ESCROW);
         open_dispute_as(&mut sc, &tfx, tt::buyer(), task_id, 1_000_000_000);
         let case_id = case_of(&mut sc);
@@ -298,11 +298,29 @@ module social_contracts::task_dispute_tests {
         ts::end(sc);
     }
 
+    /// Ten serving agents but only three owners behind them: a first jury of three and an appeal of
+    /// five need eight independent owners, so the dispute cannot open.
+    #[test]
+    #[expected_failure(abort_code = social_contracts::jury::ERosterTooSmall)]
+    fun many_agents_under_too_few_owners_cannot_seat_a_dispute() {
+        let mut sc = ts::begin(tt::admin());
+        let (tfx, mut jfx) = setup(&mut sc, 3);
+        let extra = jt::add_agents(&mut sc, &mut jfx, 0, 7, 0);
+        let mut k = 0;
+        while (k < vector::length(&extra)) {
+            jt::join_agent(&mut sc, &jfx, 0, jt::index_of(&jfx, *vector::borrow(&extra, k)));
+            k = k + 1;
+        };
+        let task_id = tt::delivered_task(&mut sc, &tfx, ESCROW);
+        open_dispute_as(&mut sc, &tfx, tt::buyer(), task_id, FEE);
+        ts::end(sc);
+    }
+
     #[test]
     #[expected_failure(abort_code = social_contracts::agent_task::EInsufficientPayment)]
     fun the_opener_must_cover_the_case_fee() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let task_id = tt::delivered_task(&mut sc, &tfx, ESCROW);
         open_dispute_as(&mut sc, &tfx, tt::buyer(), task_id, FEE - 1);
         ts::end(sc);
@@ -312,7 +330,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
     fun only_a_delivered_task_can_go_to_a_jury() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         tt::offer(&mut sc, &tfx, tt::buyer(), ESCROW);
         let task_id = tt::latest_task();
         tt::accept_ok(&mut sc, &tfx, task_id);
@@ -324,7 +342,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::EDisputeWindowClosed)]
     fun a_dispute_cannot_open_once_the_seller_could_already_be_paid() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let task_id = tt::delivered_task(&mut sc, &tfx, ESCROW);
         tt::advance(&mut sc, 4 * tt::day() + 1);
         open_dispute_as(&mut sc, &tfx, tt::buyer(), task_id, FEE);
@@ -334,7 +352,7 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun the_seller_can_open_a_dispute_too() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let task_id = tt::delivered_task(&mut sc, &tfx, ESCROW);
         open_dispute_as(&mut sc, &tfx, tt::seller(), task_id, FEE);
         let task = tt::take_task(&mut sc, task_id);
@@ -351,7 +369,7 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun the_other_side_matches_the_fee_before_the_draw() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         let task = tt::take_task(&mut sc, task_id);
         assert!(agent_task::dispute_seller_paid_mist(&task) == FEE, 0);
@@ -367,7 +385,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::ENotCounterparty)]
     fun the_opener_cannot_match_its_own_fee() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let task_id = tt::delivered_task(&mut sc, &tfx, ESCROW);
         open_dispute_as(&mut sc, &tfx, tt::buyer(), task_id, FEE);
         let case_id = case_of(&mut sc);
@@ -379,7 +397,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::EAlreadyPaid)]
     fun the_fee_can_be_matched_only_once() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         respond_as(&mut sc, &tfx, tt::seller(), task_id, case_id, FEE);
         ts::end(sc);
@@ -389,7 +407,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::ECaseDrawn)]
     fun the_fee_cannot_be_matched_once_jurors_are_drawn() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let task_id = tt::delivered_task(&mut sc, &tfx, ESCROW);
         open_dispute_as(&mut sc, &tfx, tt::buyer(), task_id, FEE);
         let case_id = case_of(&mut sc);
@@ -402,7 +420,7 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun a_party_adds_evidence_and_each_side_has_its_own_cap() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         evidence_as(&mut sc, &tfx, tt::seller(), task_id, case_id, jt::digest(5));
         evidence_as(&mut sc, &tfx, tt::buyer(), task_id, case_id, jt::digest(6));
@@ -417,7 +435,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::jury::ETooMuchEvidence)]
     fun one_party_cannot_flood_the_case() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         let mut i = 0u64;
         while (i < 9) {
@@ -434,7 +452,7 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun a_verdict_for_the_seller_pays_the_seller_and_the_loser_bears_the_fee() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, jfx) = setup(&mut sc, 6);
+        let (tfx, jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         decide_unappealed(&mut sc, &jfx, case_id, vector[0, 0, 0]);
         verdict_as(&mut sc, &tfx, task_id, case_id);
@@ -456,7 +474,7 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun a_verdict_for_the_buyer_refunds_the_escrow_and_the_fee() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, jfx) = setup(&mut sc, 6);
+        let (tfx, jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         decide_unappealed(&mut sc, &jfx, case_id, vector[1, 1, 1]);
         verdict_as(&mut sc, &tfx, task_id, case_id);
@@ -470,7 +488,7 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun a_split_verdict_pays_each_side_half_and_shares_the_juror_cost() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, jfx) = setup(&mut sc, 6);
+        let (tfx, jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         decide_unappealed(&mut sc, &jfx, case_id, vector[2, 2, 2]);
         verdict_as(&mut sc, &tfx, task_id, case_id);
@@ -489,7 +507,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::ENoVerdict)]
     fun a_verdict_cannot_run_before_the_case_is_final() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         verdict_as(&mut sc, &tfx, task_id, case_id);
         ts::end(sc);
@@ -499,7 +517,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
     fun a_verdict_runs_once() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, jfx) = setup(&mut sc, 6);
+        let (tfx, jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         decide_unappealed(&mut sc, &jfx, case_id, vector[0, 0, 0]);
         verdict_as(&mut sc, &tfx, task_id, case_id);
@@ -576,8 +594,14 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun a_failed_jury_ends_in_a_neutral_split_and_the_juror_cost_is_shared() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, jfx) = setup(&mut sc, 3);
+        let (tfx, jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
+        // Five jurors step away after the case opened, leaving three owners for a jury of three.
+        let mut i = 3;
+        while (i < 8) {
+            jt::set_available(&mut sc, &jfx, i, false);
+            i = i + 1;
+        };
         tt::advance(&mut sc, 3 * tt::day());
         jt::do_select(&mut sc, case_id);
         // Nobody accepts. With three owners there is no one left to replace them.
@@ -610,7 +634,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::ECaseNotFailed)]
     fun the_settlement_window_needs_a_failed_jury() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         start_neutral_as(&mut sc, task_id, case_id);
         ts::end(sc);
@@ -623,7 +647,7 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun the_opener_can_withdraw_before_the_draw_and_gets_the_fee_back() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let task_id = tt::delivered_task(&mut sc, &tfx, ESCROW);
         open_dispute_as(&mut sc, &tfx, tt::buyer(), task_id, FEE);
         let case_id = case_of(&mut sc);
@@ -638,7 +662,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::ENotInitiator)]
     fun only_the_opener_can_withdraw() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         cancel_as(&mut sc, &tfx, tt::seller(), task_id, case_id);
         ts::end(sc);
@@ -648,7 +672,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::jury::EWrongCaseState)]
     fun a_dispute_cannot_be_withdrawn_once_jurors_are_drawn() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         tt::advance(&mut sc, 3 * tt::day());
         jt::do_select(&mut sc, case_id);
@@ -659,7 +683,7 @@ module social_contracts::task_dispute_tests {
     #[test]
     fun parties_who_agree_mid_dispute_close_the_case_and_split_the_fees_by_what_they_paid() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         tt::propose_settlement(&mut sc, &tfx, tt::buyer(), task_id, 1);
         tt::accept_settlement(&mut sc, &tfx, tt::seller(), task_id);
@@ -681,7 +705,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::EWrongStatus)]
     fun fees_wait_until_the_dispute_is_over() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         settle_fees_as(&mut sc, task_id, case_id);
         ts::end(sc);
@@ -691,7 +715,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::ECaseNotFinished)]
     fun fees_wait_until_the_jury_case_is_finished() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, _jfx) = setup(&mut sc, 6);
+        let (tfx, _jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         tt::propose_settlement(&mut sc, &tfx, tt::buyer(), task_id, 1);
         tt::accept_settlement(&mut sc, &tfx, tt::seller(), task_id);
@@ -703,7 +727,7 @@ module social_contracts::task_dispute_tests {
     #[expected_failure(abort_code = social_contracts::agent_task::EFeesSettled)]
     fun fees_settle_once() {
         let mut sc = ts::begin(tt::admin());
-        let (tfx, jfx) = setup(&mut sc, 6);
+        let (tfx, jfx) = setup(&mut sc, 8);
         let (task_id, case_id) = contested(&mut sc, &tfx);
         decide_unappealed(&mut sc, &jfx, case_id, vector[0, 0, 0]);
         verdict_as(&mut sc, &tfx, task_id, case_id);

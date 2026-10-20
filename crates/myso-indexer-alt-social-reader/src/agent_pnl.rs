@@ -18,8 +18,8 @@
 //!   all-time non-swap inbound payouts minus all-time AI spend. Swap cash-flow is *not* added again
 //!   here, since the position P&L already covers it.
 
-use diesel::sql_types::{BigInt, Text};
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::SubAgentRow;
 use myso_pg_db::Connection;
@@ -27,8 +27,8 @@ use serde::Serialize;
 
 use crate::memory::{get_sub_agent_by_object_id, list_sub_agents};
 use crate::metrics::DbReaderMetrics;
-use crate::pnl::{get_profile_pnl_for_windows, ProfilePnLWindow, ProfilePnLWindowResult};
-use crate::returns::{get_user_spt_portfolio, SptPortfolioMetrics};
+use crate::pnl::{ProfilePnLWindow, ProfilePnLWindowResult, get_profile_pnl_for_windows};
+use crate::returns::{SptPortfolioMetrics, get_user_spt_portfolio};
 
 /// Upper bound on agents loaded for one roll-up.
 const MAX_AGENTS_PER_ROLLUP: i64 = 500;

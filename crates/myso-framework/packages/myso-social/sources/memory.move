@@ -95,9 +95,6 @@ module social_contracts::memory {
     const CAP_TASK_TRADE: u64 = 131072;
     /// Serve on AI juries (`jury`): accept a drafted seat, commit and reveal a vote, claim the fee.
     const CAP_JURY: u64 = 262144;
-    /// Run the permissionless jury cranks through sponsored gas. The Move crank entries need no cap;
-    /// this only gates which agents the relayer will drive them for.
-    const CAP_JURY_KEEPER: u64 = 524288;
 
     // ============================================================
     // Org permission bitmap (org memory share group + roles)
@@ -829,7 +826,6 @@ module social_contracts::memory {
     public fun cap_social_graph(): u64 { CAP_SOCIAL_GRAPH }
     public fun cap_task_trade(): u64 { CAP_TASK_TRADE }
     public fun cap_jury(): u64 { CAP_JURY }
-    public fun cap_jury_keeper(): u64 { CAP_JURY_KEEPER }
 
     public fun org_perm_memory_read(): u64 { ORG_PERM_MEMORY_READ }
     public fun org_perm_memory_write(): u64 { ORG_PERM_MEMORY_WRITE }
@@ -2273,6 +2269,11 @@ module social_contracts::memory {
         };
         assert_reputation_params(&params);
         params
+    }
+
+    /// The launch defaults, shared by the task market and the jury so both score agents the same way.
+    public fun default_reputation_params(): ReputationParams {
+        new_reputation_params(3000, 50000, 1_000_000_000, 500, 20000, 2000, 500, 16, 10000, 5000, 5000)
     }
 
     /// Bounds that keep every reputation computation inside `u128` and free of zero divisors.

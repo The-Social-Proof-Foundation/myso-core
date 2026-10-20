@@ -313,7 +313,10 @@ mod tests {
         let mut rng = thread_rng();
         let dst = leak_dst(b"dst-match-21-byte-tag");
         let values = vec![1234u64, 0, 0, 0];
-        let blindings: Vec<Scalar> = values.iter().map(|_| Scalar::from(rng.next_u64())).collect();
+        let blindings: Vec<Scalar> = values
+            .iter()
+            .map(|_| Scalar::from(rng.next_u64()))
+            .collect();
         let range = Range::Bits16;
         let bits = bits_for_range(&range);
         let pc_gens = contra_pedersen_gens();

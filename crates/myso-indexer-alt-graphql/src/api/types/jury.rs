@@ -93,7 +93,11 @@ pub(crate) enum JurySubjectKind {
 
 impl JuryStage {
     fn from_code(code: i16) -> Self {
-        if code == 2 { Self::Community } else { Self::Council }
+        if code == 2 {
+            Self::Community
+        } else {
+            Self::Council
+        }
     }
 }
 
@@ -123,7 +127,11 @@ impl JuryTrigger {
 
 impl JuryDecision {
     fn from_code(code: i16) -> Self {
-        if code == 0 { Self::Forward } else { Self::Reject }
+        if code == 0 {
+            Self::Forward
+        } else {
+            Self::Reject
+        }
     }
 }
 
@@ -144,7 +152,11 @@ impl JuryCaseState {
 
 impl JurySubjectKind {
     fn from_code(code: i16) -> Self {
-        if code == 2 { Self::GovernanceProposal } else { Self::Task }
+        if code == 2 {
+            Self::GovernanceProposal
+        } else {
+            Self::Task
+        }
     }
 }
 

@@ -16,8 +16,8 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig, NewPaidMessageEscrow,
-    NewUnifiedRevenue, NewWalletMessagingPolicy,
+    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig,
+    NewPaidMessageEscrow, NewUnifiedRevenue, NewWalletMessagingPolicy,
 };
 use myso_indexer_alt_social_schema::schema::{
     agent_rooms, message_digests, messaging_agent_groups, messaging_config, paid_message_escrows,

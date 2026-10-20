@@ -1417,7 +1417,14 @@ impl SocialPgReader {
     ) -> anyhow::Result<crate::vesting::VestingLeaderboardResponse> {
         let mut conn = self.connect().await?;
         let coin_type = coin_type.map(myso_indexer_alt_social_schema::models::canonical_coin_type);
-        get_vesting_leaderboard(&mut conn, coin_type.as_deref(), limit, offset, &self.metrics).await
+        get_vesting_leaderboard(
+            &mut conn,
+            coin_type.as_deref(),
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
     }
 
     /// Get SPT holdings for a holder address.

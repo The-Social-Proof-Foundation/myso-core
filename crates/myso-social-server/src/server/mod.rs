@@ -705,10 +705,7 @@ fn make_router(state: Arc<AppState>) -> Router {
         )
         .route("/posts/:id/deletion-events", get(get_post_deletion_events))
         .route("/promotions", get(list_promotions))
-        .route(
-            "/promotions/analytics/summary",
-            get(get_promotion_rollup),
-        )
+        .route("/promotions/analytics/summary", get(get_promotion_rollup))
         .route(
             "/promotions/analytics/top-performing",
             get(get_top_performing_promotions),
@@ -1016,9 +1013,18 @@ fn make_router(state: Arc<AppState>) -> Router {
         )
         .route("/agents/rooms", get(list_agent_rooms))
         .route("/agents/top", get(list_top_agents))
-        .route("/agents/:agent_object_id/receipts", get(list_agent_receipts))
-        .route("/agents/:agent_object_id/reputation", get(get_agent_reputation))
-        .route("/principals/:address/reputation", get(get_principal_reputation))
+        .route(
+            "/agents/:agent_object_id/receipts",
+            get(list_agent_receipts),
+        )
+        .route(
+            "/agents/:agent_object_id/reputation",
+            get(get_agent_reputation),
+        )
+        .route(
+            "/principals/:address/reputation",
+            get(get_principal_reputation),
+        )
         .route("/tasks", get(list_tasks))
         .route("/tasks/:task_id", get(get_task))
         .route("/tasks/:task_id/dispute", get(get_task_dispute))
@@ -1032,6 +1038,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route("/jury/cranks", get(list_jury_cranks))
         .route("/jury/health", get(get_jury_health))
         .route("/governance/proposals/:id/jury", get(get_proposal_jury))
+        .route(
+            "/governance/proposals/:id/vote-refunds",
+            get(get_proposal_vote_refunds),
+        )
         .route(
             "/governance/registries/:registry_type/jury-policy",
             get(get_registry_jury_policy),

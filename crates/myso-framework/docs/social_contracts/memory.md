@@ -132,7 +132,6 @@ computed off-chain (indexer/server).
 -  [Function `cap_social_graph`](#social_contracts_memory_cap_social_graph)
 -  [Function `cap_task_trade`](#social_contracts_memory_cap_task_trade)
 -  [Function `cap_jury`](#social_contracts_memory_cap_jury)
--  [Function `cap_jury_keeper`](#social_contracts_memory_cap_jury_keeper)
 -  [Function `org_perm_memory_read`](#social_contracts_memory_org_perm_memory_read)
 -  [Function `org_perm_memory_write`](#social_contracts_memory_org_perm_memory_write)
 -  [Function `org_perm_agent_manager`](#social_contracts_memory_org_perm_agent_manager)
@@ -240,6 +239,7 @@ computed off-chain (indexer/server).
 -  [Function `registry_version`](#social_contracts_memory_registry_version)
 -  [Function `current_contract_version`](#social_contracts_memory_current_contract_version)
 -  [Function `new_reputation_params`](#social_contracts_memory_new_reputation_params)
+-  [Function `default_reputation_params`](#social_contracts_memory_default_reputation_params)
 -  [Function `assert_reputation_params`](#social_contracts_memory_assert_reputation_params)
 -  [Function `reputation_prior_mean_milli`](#social_contracts_memory_reputation_prior_mean_milli)
 -  [Function `reputation_prior_weight_bps`](#social_contracts_memory_reputation_prior_weight_bps)
@@ -3451,17 +3451,6 @@ Serve on AI juries (<code><a href="../social_contracts/jury.md#social_contracts_
 
 
 
-<a name="social_contracts_memory_CAP_JURY_KEEPER"></a>
-
-Run the permissionless jury cranks through sponsored gas. The Move crank entries need no cap;
-this only gates which agents the relayer will drive them for.
-
-
-<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_CAP_JURY_KEEPER">CAP_JURY_KEEPER</a>: u64 = 524288;
-</code></pre>
-
-
-
 <a name="social_contracts_memory_ORG_PERM_MEMORY_READ"></a>
 
 
@@ -5372,28 +5361,6 @@ One star in the milli-star scale used by every aggregate.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_jury">cap_jury</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_JURY">CAP_JURY</a> }
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_memory_cap_jury_keeper"></a>
-
-## Function `cap_jury_keeper`
-
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_jury_keeper">cap_jury_keeper</a>(): u64
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cap_jury_keeper">cap_jury_keeper</a>(): u64 { <a href="../social_contracts/memory.md#social_contracts_memory_CAP_JURY_KEEPER">CAP_JURY_KEEPER</a> }
 </code></pre>
 
 
@@ -8914,6 +8881,31 @@ Weighting and Bayesian prior parameters; embedded in <code><a href="../social_co
     };
     <a href="../social_contracts/memory.md#social_contracts_memory_assert_reputation_params">assert_reputation_params</a>(&params);
     params
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_default_reputation_params"></a>
+
+## Function `default_reputation_params`
+
+The launch defaults, shared by the task market and the jury so both score agents the same way.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_default_reputation_params">default_reputation_params</a>(): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_default_reputation_params">default_reputation_params</a>(): <a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">ReputationParams</a> {
+    <a href="../social_contracts/memory.md#social_contracts_memory_new_reputation_params">new_reputation_params</a>(3000, 50000, 1_000_000_000, 500, 20000, 2000, 500, 16, 10000, 5000, 5000)
 }
 </code></pre>
 

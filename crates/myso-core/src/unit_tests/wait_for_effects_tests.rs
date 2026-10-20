@@ -22,6 +22,7 @@ use myso_types::object::Object;
 use myso_types::transaction::VerifiedTransaction;
 use myso_types::utils::to_sender_signed_transaction;
 
+use super::AuthorityServerHandle;
 use crate::authority::consensus_tx_status_cache::{
     CONSENSUS_STATUS_RETENTION_ROUNDS, ConsensusTxStatus,
 };
@@ -29,7 +30,6 @@ use crate::authority::test_authority_builder::TestAuthorityBuilder;
 use crate::authority::{AuthorityState, ExecutionEnv};
 use crate::authority_client::{AuthorityAPI, NetworkAuthorityClient};
 use crate::authority_server::AuthorityServer;
-use super::AuthorityServerHandle;
 
 struct TestContext {
     state: Arc<AuthorityState>,
@@ -106,11 +106,7 @@ async fn test_wait_for_effects_position_mismatch() {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let epoch_store = state_clone.epoch_store_for_testing();
         state_clone
-            .try_execute_immediately(
-                &transaction,
-                ExecutionEnv::new(),
-                &epoch_store,
-            )
+            .try_execute_immediately(&transaction, ExecutionEnv::new(), &epoch_store)
             .await
             .unwrap()
             .0
@@ -129,10 +125,7 @@ async fn test_wait_for_effects_position_mismatch() {
         .await
         .unwrap();
 
-    assert!(matches!(
-        response,
-        WaitForEffectsResponse::Executed { .. }
-    ));
+    assert!(matches!(response, WaitForEffectsResponse::Executed { .. }));
 }
 
 #[tokio::test]
@@ -306,11 +299,7 @@ async fn test_wait_for_effects_fastpath_certified_only() {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let epoch_store = state_clone.epoch_store_for_testing();
         state_clone
-            .try_execute_immediately(
-                &transaction,
-                ExecutionEnv::new(),
-                &epoch_store,
-            )
+            .try_execute_immediately(&transaction, ExecutionEnv::new(), &epoch_store)
             .await
             .unwrap()
             .0
@@ -422,11 +411,7 @@ async fn test_wait_for_effects_fastpath_certified_then_executed() {
         let epoch_store = state_clone.epoch_store_for_testing();
         tokio::time::sleep(Duration::from_millis(100)).await;
         state_clone
-            .try_execute_immediately(
-                &transaction,
-                ExecutionEnv::new(),
-                &epoch_store,
-            )
+            .try_execute_immediately(&transaction, ExecutionEnv::new(), &epoch_store)
             .await
             .unwrap()
             .0
@@ -475,11 +460,7 @@ async fn test_wait_for_effects_finalized() {
         epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::Finalized);
         tokio::time::sleep(Duration::from_millis(100)).await;
         state_clone
-            .try_execute_immediately(
-                &transaction,
-                ExecutionEnv::new(),
-                &epoch_store,
-            )
+            .try_execute_immediately(&transaction, ExecutionEnv::new(), &epoch_store)
             .await
             .unwrap()
             .0
@@ -584,11 +565,7 @@ async fn test_wait_for_effects_expired() {
         tokio::time::sleep(Duration::from_millis(100)).await;
         epoch_store.set_consensus_tx_status(tx_position, ConsensusTxStatus::Finalized);
         state_clone
-            .try_execute_immediately(
-                &transaction,
-                ExecutionEnv::new(),
-                &epoch_store,
-            )
+            .try_execute_immediately(&transaction, ExecutionEnv::new(), &epoch_store)
             .await
             .unwrap()
             .0
@@ -607,7 +584,7 @@ async fn test_wait_for_effects_expired() {
 async fn test_wait_for_effects_ping() {
     let test_context = TestContext::new().await;
 
-        println!(
+    println!(
         "Case 1. Send a FastPath ping request. The endpoint waits until the block is finalized."
     );
     {

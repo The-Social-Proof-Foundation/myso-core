@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::{
     profile_badges, profile_config, profile_events, profiles, username_listings, username_offers,
-    wallet_badge_selections,
-    username_sale_fees,
+    username_sale_fees, wallet_badge_selections,
 };
 
 pub const USERNAME_SALE_FEE_BPS: i32 = 500;
@@ -374,7 +373,7 @@ impl NewProfileConfig {
 #[cfg(test)]
 mod merge_profile_config_tests {
     use super::{
-        default_profile_config, merge_profile_config, NewProfileConfig, USERNAME_SALE_FEE_BPS,
+        NewProfileConfig, USERNAME_SALE_FEE_BPS, default_profile_config, merge_profile_config,
     };
 
     fn sample_config(

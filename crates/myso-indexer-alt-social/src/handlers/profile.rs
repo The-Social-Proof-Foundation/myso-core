@@ -9,9 +9,9 @@ use std::str::FromStr;
 use super::common;
 use super::{ProfileUpdate, SocialEventRow};
 use myso_indexer_alt_social_schema::models::{
-    canonical_coin_type, NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent, NewUsernameListing,
-    NewUsernameOffer, NewUsernameRegistry, NewUsernameReservation, NewUsernameSaleFee,
-    NewVestingEvent, NewVestingWallet, USERNAME_RESERVATION_STATUS_ACTIVE,
+    canonical_coin_type, NewEcosystemTreasury, NewProfile, NewProfileConfig, NewProfileEvent,
+    NewUsernameListing, NewUsernameOffer, NewUsernameRegistry, NewUsernameReservation,
+    NewUsernameSaleFee, NewVestingEvent, NewVestingWallet, USERNAME_RESERVATION_STATUS_ACTIVE,
 };
 
 fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
@@ -1742,10 +1742,9 @@ mod tests {
         let rows = handle_profile_event("UsernameClaimedEvent", &data, "tx:1", CK_MS)
             .expect("handle_profile_event should return Some");
         assert_eq!(rows.len(), 3);
-        assert!(
-            rows.iter()
-                .any(|r| matches!(r, SocialEventRow::UsernameRegistryUpsert(_)))
-        );
+        assert!(rows
+            .iter()
+            .any(|r| matches!(r, SocialEventRow::UsernameRegistryUpsert(_))));
         assert!(rows.iter().any(|r| matches!(
             r,
             SocialEventRow::ProfileUsernameSet {
@@ -2108,11 +2107,9 @@ mod tests {
             SocialEventRow::ProfileUsernameSet { profile_id: pid, username, .. }
                 if *pid == profile_id_string && username == "brandnew"
         )));
-        assert!(
-            !rows
-                .iter()
-                .any(|r| matches!(r, SocialEventRow::UsernameRegistryReassign { .. }))
-        );
+        assert!(!rows
+            .iter()
+            .any(|r| matches!(r, SocialEventRow::UsernameRegistryReassign { .. })));
         let audit_event = rows
             .iter()
             .find_map(|row| match row {

@@ -8,14 +8,14 @@
 
 use crate::abi::{EthBridgeConfig, EthERC20, EthMySoBridge};
 use crate::deposit_addresses::DepositAddressManager;
+use crate::deposit_callback::spawn_status_webhook;
 use crate::deposit_gas_manager::DepositGasManager;
 use crate::deposit_monitor::{EvmDepositEvent, MySoDepositEvent};
 use crate::error::{BridgeError, BridgeResult};
 use crate::myso_client::MySoBridgeClient;
 use crate::myso_transaction_builder::outbound_send_call;
-use crate::deposit_callback::spawn_status_webhook;
 use crate::storage::{
-    BridgeOrderPatch, BridgeOrderStatus, BridgeOrchestratorTables, DepositAddressKey, DepositTxKey,
+    BridgeOrchestratorTables, BridgeOrderPatch, BridgeOrderStatus, DepositAddressKey, DepositTxKey,
 };
 use crate::utils::EthProvider;
 use alloy::network::EthereumWallet;
@@ -544,7 +544,10 @@ impl DepositBridgeHandler {
         status: BridgeOrderStatus,
         patch: BridgeOrderPatch,
     ) {
-        let order = match self.storage.update_bridge_order_status(deposit_key, status, patch) {
+        let order = match self
+            .storage
+            .update_bridge_order_status(deposit_key, status, patch)
+        {
             Ok(order) => order,
             Err(err) => {
                 warn!(?err, "Failed to update bridge order status");
@@ -742,5 +745,7 @@ fn token_id_for_myso_type(
     if let Some(id) = rail_hint {
         return Some(id);
     }
-    map.iter().find(|(_, mapped)| *mapped == ty).map(|(id, _)| *id)
+    map.iter()
+        .find(|(_, mapped)| *mapped == ty)
+        .map(|(id, _)| *id)
 }

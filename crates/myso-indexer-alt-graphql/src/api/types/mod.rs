@@ -4,6 +4,7 @@
 
 pub(crate) mod access;
 pub(crate) mod address;
+pub(crate) mod agent_pnl;
 pub(crate) mod ai_credit;
 pub(crate) mod available_range;
 pub(crate) mod balance;
@@ -47,9 +48,7 @@ pub(crate) mod open_move_type;
 pub(crate) mod organization;
 pub(crate) mod owner;
 pub(crate) mod platform;
-pub(crate) mod agent_pnl;
 pub(crate) mod pnl;
-pub(crate) mod returns;
 pub(crate) mod poc;
 pub(crate) mod poc_username_beneficiary;
 pub(crate) mod post;
@@ -59,6 +58,7 @@ pub(crate) mod profile_subscription;
 pub(crate) mod profile_summary;
 pub(crate) mod promotion;
 pub(crate) mod protocol_configs;
+pub(crate) mod returns;
 pub(crate) mod service_config;
 pub(crate) mod simulation_result;
 pub(crate) mod social_config;

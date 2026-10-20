@@ -22,19 +22,20 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    duty_drafted_event, voting_started_event, JurorSeat, NewAutomationEvent,
-    NewProposalJuryReferral, NewProposalJuryReview, NewRegistryJuryPolicy, REVIEW_STAGE_COMMUNITY,
-    REVIEW_STAGE_COUNCIL,
-    REVIEW_STATE_AWAITING, REVIEW_STATE_DECIDED, REVIEW_STATE_ESCALATED, REVIEW_STATE_REFERRING,
-    NewJuryCase, NewJuryEvidence, NewJuryPayout, NewJuryRosterEntry, NewJuryRound, NewJurySlot,
-    CASE_STATE_CANCELLED, CASE_STATE_EVIDENCE, CASE_STATE_FAILED, CASE_STATE_FINAL,
-    CASE_STATE_SELECTING, CASE_STATE_TALLIED, CASE_STATE_VOTING, DUTY_NO_REVEAL, ROSTER_ACTIVE,
+    duty_drafted_event, voting_started_event, JurorSeat, NewAutomationEvent, NewJuryCase,
+    NewJuryEvidence, NewJuryPayout, NewJuryRosterEntry, NewJuryRound, NewJurySlot,
+    NewProposalJuryReferral, NewProposalJuryReview, NewProposalRefund, NewProposalVoteRefund,
+    NewRegistryJuryPolicy, CASE_STATE_CANCELLED, CASE_STATE_EVIDENCE, CASE_STATE_FAILED,
+    CASE_STATE_FINAL, CASE_STATE_SELECTING, CASE_STATE_TALLIED, CASE_STATE_VOTING, DUTY_NO_REVEAL,
+    REVIEW_DECISION_REJECT, REVIEW_STAGE_COMMUNITY, REVIEW_STAGE_COUNCIL, REVIEW_STATE_AWAITING,
+    REVIEW_STATE_DECIDED, REVIEW_STATE_ESCALATED, REVIEW_STATE_REFERRING, ROSTER_ACTIVE,
     ROSTER_LEFT, ROSTER_SUSPENDED, SLOT_ACCEPTED, SLOT_COMMITTED, SLOT_DEFAULTED, SLOT_DRAFTED,
     SLOT_REPLACED, SLOT_REVEALED,
 };
 use myso_indexer_alt_social_schema::schema::{
     automation_event_outbox, jury_cases, jury_evidence, jury_payouts, jury_roster, jury_rounds,
-    jury_slots, proposal_jury_referrals, proposal_jury_reviews, registry_jury_policies,
+    jury_slots, proposal_jury_referrals, proposal_jury_reviews, proposal_refunds,
+    proposal_vote_refunds, registry_jury_policies,
 };
 
 use super::common;
@@ -44,8 +45,9 @@ use crate::metrics::SocialMetrics;
 const JURY_MODULE: &str = "jury";
 const GOVERNANCE_MODULE: &str = "governance";
 
-/// The governance events that concern the jury. The governance pipeline ignores these names; the
-/// proposal status they cause is carried by the existing approve and reject events.
+/// The governance events that concern the jury. The proposal status they cause is carried by the
+/// existing approve and reject events, except for a refund, whose status change the governance
+/// pipeline also indexes (`ProposalRefundedJuryUnavailableEvent`).
 pub const GOVERNANCE_JURY_EVENTS: &[&str] = &[
     "JuryPolicyUpdatedEvent",
     "DelegateReferredToJuryEvent",
@@ -53,6 +55,10 @@ pub const GOVERNANCE_JURY_EVENTS: &[&str] = &[
     "CommunityVoteNeedsJuryEvent",
     "JuryDecisionAppliedEvent",
     "ProposalRejectedByJuryEvent",
+    "JuryUnavailableEvent",
+    "ProposalRefundedJuryUnavailableEvent",
+    "VoteRefundClaimedEvent",
+    "VoteRefundsSweptEvent",
 ];
 
 /// Every event `jury.move` emits. A Move event missing here is caught by
@@ -184,6 +190,22 @@ pub enum JuryRow {
     NeedsJury(NewProposalJuryReview),
     Escalated(NewProposalJuryReview),
     StepDecided(NewProposalJuryReview),
+    /// No jury could form. `review` is inserted if the step has no row yet; `state` is where the
+    /// chain put the step back (referring at the council, awaiting at the community step).
+    Unavailable {
+        review: NewProposalJuryReview,
+        at_ms: i64,
+        deferred_since_ms: i64,
+        formable_seats: i64,
+        required_seats: i64,
+    },
+    Refunded(NewProposalRefund),
+    VoteRefundClaimed(NewProposalVoteRefund),
+    VoteRefundsSwept {
+        proposal_id: String,
+        amount_mist: i64,
+        swept_at_ms: i64,
+    },
 }
 
 impl FieldCount for JuryRow {
@@ -196,7 +218,8 @@ fn str_field(data: &serde_json::Value, key: &str) -> Option<String> {
 
 fn i64_field(data: &serde_json::Value, key: &str) -> Option<i64> {
     let v = data.get(key)?;
-    v.as_i64().or_else(|| v.as_u64().and_then(|u| i64::try_from(u).ok()))
+    v.as_i64()
+        .or_else(|| v.as_u64().and_then(|u| i64::try_from(u).ok()))
 }
 
 fn bool_field(data: &serde_json::Value, key: &str) -> Option<bool> {
@@ -421,7 +444,11 @@ pub fn jury_rows(
                     proposal_id: proposal_id.clone(),
                     stage: REVIEW_STAGE_COUNCIL,
                     state: REVIEW_STATE_REFERRING,
-                    trigger: if bool_field(data, "majority_reached")? { 1 } else { 0 },
+                    trigger: if bool_field(data, "majority_reached")? {
+                        1
+                    } else {
+                        0
+                    },
                     case_id: None,
                     referral_count: i64_field(data, "referral_count")?,
                     escalated_at_ms: None,
@@ -505,6 +532,67 @@ pub fn jury_rows(
         }
         // The proposal's status already moved through the existing rejection events.
         "ProposalRejectedByJuryEvent" => return Some(vec![]),
+        "JuryUnavailableEvent" => {
+            let at_ms = i64_field(data, "at_ms")?;
+            let stage = i64_field(data, "stage")? as i16;
+            JuryRow::Unavailable {
+                review: NewProposalJuryReview {
+                    proposal_id: str_field(data, "proposal_id")?,
+                    stage,
+                    state: if stage == REVIEW_STAGE_COUNCIL {
+                        REVIEW_STATE_REFERRING
+                    } else {
+                        REVIEW_STATE_AWAITING
+                    },
+                    trigger: 0,
+                    case_id: data
+                        .get("case_id")
+                        .filter(|v| !v.is_null())
+                        .and_then(|v| v.as_str())
+                        .map(String::from),
+                    referral_count: 0,
+                    escalated_at_ms: None,
+                    decided_at_ms: None,
+                    decision: None,
+                    failed: false,
+                    event_id,
+                    transaction_id,
+                    time: common::chain_time_from_ms(at_ms),
+                },
+                at_ms,
+                deferred_since_ms: i64_field(data, "deferred_since_ms")?,
+                formable_seats: i64_field(data, "formable_seats")?,
+                required_seats: i64_field(data, "required_seats")?,
+            }
+        }
+        "ProposalRefundedJuryUnavailableEvent" => {
+            let refunded_at_ms = i64_field(data, "refunded_at_ms")?;
+            let voter_refund_pool_mist = i64_field(data, "voter_refund_pool_mist")?;
+            JuryRow::Refunded(NewProposalRefund {
+                proposal_id: str_field(data, "proposal_id")?,
+                submitter: str_field(data, "submitter")?,
+                submitter_refund_mist: i64_field(data, "submitter_refund_mist")?,
+                voter_refund_pool_mist,
+                outstanding_mist: voter_refund_pool_mist,
+                claim_deadline_ms: i64_field(data, "claim_deadline_ms")?,
+                refunded_at_ms,
+                event_id,
+                transaction_id,
+                time: common::chain_time_from_ms(refunded_at_ms),
+            })
+        }
+        "VoteRefundClaimedEvent" => JuryRow::VoteRefundClaimed(NewProposalVoteRefund {
+            proposal_id: str_field(data, "proposal_id")?,
+            voter: str_field(data, "voter")?,
+            amount_mist: i64_field(data, "amount_mist")?,
+            claimed_at_ms: i64_field(data, "claimed_at_ms")?,
+            event_id,
+        }),
+        "VoteRefundsSweptEvent" => JuryRow::VoteRefundsSwept {
+            proposal_id: str_field(data, "proposal_id")?,
+            amount_mist: i64_field(data, "amount_mist")?,
+            swept_at_ms: i64_field(data, "swept_at_ms")?,
+        },
         "JurorPaid" => JuryRow::Paid(NewJuryPayout {
             case_id: str_field(data, "case_id")?,
             agent_id: str_field(data, "agent_id")?,
@@ -776,7 +864,9 @@ impl Handler for JuryHandler {
                     let now_ms = chrono::Utc::now().timestamp_millis();
                     let events: Vec<_> = seats
                         .iter()
-                        .map(|seat| duty_drafted_event(seat, round.accept_deadline_ms, now_ms, event_id))
+                        .map(|seat| {
+                            duty_drafted_event(seat, round.accept_deadline_ms, now_ms, event_id)
+                        })
                         .collect();
                     total += enqueue_events(conn, &events).await?;
                 }
@@ -1020,17 +1110,22 @@ impl Handler for JuryHandler {
                         .on_conflict(registry_jury_policies::registry_id)
                         .do_update()
                         .set((
-                            registry_jury_policies::council_stage_enabled.eq(policy.council_stage_enabled),
-                            registry_jury_policies::community_stage_enabled.eq(policy.community_stage_enabled),
+                            registry_jury_policies::council_stage_enabled
+                                .eq(policy.council_stage_enabled),
+                            registry_jury_policies::community_stage_enabled
+                                .eq(policy.community_stage_enabled),
                             registry_jury_policies::council_window_ms.eq(policy.council_window_ms),
                             registry_jury_policies::jury_size.eq(policy.jury_size),
                             registry_jury_policies::round2_size.eq(policy.round2_size),
                             registry_jury_policies::jury_fee_bps.eq(policy.jury_fee_bps),
                             registry_jury_policies::jury_fee_cap_mist.eq(policy.jury_fee_cap_mist),
-                            registry_jury_policies::min_pool_for_jury_mist.eq(policy.min_pool_for_jury_mist),
+                            registry_jury_policies::min_pool_for_jury_mist
+                                .eq(policy.min_pool_for_jury_mist),
                             registry_jury_policies::quorum.eq(policy.quorum),
-                            registry_jury_policies::approval_bps_council.eq(policy.approval_bps_council),
-                            registry_jury_policies::approval_bps_community.eq(policy.approval_bps_community),
+                            registry_jury_policies::approval_bps_council
+                                .eq(policy.approval_bps_council),
+                            registry_jury_policies::approval_bps_community
+                                .eq(policy.approval_bps_community),
                             registry_jury_policies::updated_at_ms.eq(policy.updated_at_ms),
                         ))
                         .execute(conn)
@@ -1040,7 +1135,10 @@ impl Handler for JuryHandler {
                     // A referral only ever raises the count, and never moves a step the jury has taken.
                     total += diesel::insert_into(proposal_jury_reviews::table)
                         .values(review)
-                        .on_conflict((proposal_jury_reviews::proposal_id, proposal_jury_reviews::stage))
+                        .on_conflict((
+                            proposal_jury_reviews::proposal_id,
+                            proposal_jury_reviews::stage,
+                        ))
                         .do_nothing()
                         .execute(conn)
                         .await?;
@@ -1069,7 +1167,10 @@ impl Handler for JuryHandler {
                 JuryRow::NeedsJury(review) => {
                     total += diesel::insert_into(proposal_jury_reviews::table)
                         .values(review)
-                        .on_conflict((proposal_jury_reviews::proposal_id, proposal_jury_reviews::stage))
+                        .on_conflict((
+                            proposal_jury_reviews::proposal_id,
+                            proposal_jury_reviews::stage,
+                        ))
                         .do_nothing()
                         .execute(conn)
                         .await?;
@@ -1077,7 +1178,10 @@ impl Handler for JuryHandler {
                 JuryRow::Escalated(review) => {
                     total += diesel::insert_into(proposal_jury_reviews::table)
                         .values(review)
-                        .on_conflict((proposal_jury_reviews::proposal_id, proposal_jury_reviews::stage))
+                        .on_conflict((
+                            proposal_jury_reviews::proposal_id,
+                            proposal_jury_reviews::stage,
+                        ))
                         .do_nothing()
                         .execute(conn)
                         .await?;
@@ -1101,7 +1205,10 @@ impl Handler for JuryHandler {
                 JuryRow::StepDecided(review) => {
                     total += diesel::insert_into(proposal_jury_reviews::table)
                         .values(review)
-                        .on_conflict((proposal_jury_reviews::proposal_id, proposal_jury_reviews::stage))
+                        .on_conflict((
+                            proposal_jury_reviews::proposal_id,
+                            proposal_jury_reviews::stage,
+                        ))
                         .do_nothing()
                         .execute(conn)
                         .await?;
@@ -1115,9 +1222,132 @@ impl Handler for JuryHandler {
                         proposal_jury_reviews::state.eq(REVIEW_STATE_DECIDED),
                         proposal_jury_reviews::decision.eq(review.decision),
                         proposal_jury_reviews::failed.eq(review.failed),
+                        proposal_jury_reviews::case_id.eq(&review.case_id),
                         proposal_jury_reviews::decided_at_ms.eq(review.decided_at_ms),
                         proposal_jury_reviews::event_id.eq(&review.event_id),
                         proposal_jury_reviews::transaction_id.eq(&review.transaction_id),
+                    ))
+                    .execute(conn)
+                    .await?;
+                }
+                JuryRow::Unavailable {
+                    review,
+                    at_ms,
+                    deferred_since_ms,
+                    formable_seats,
+                    required_seats,
+                } => {
+                    total += diesel::insert_into(proposal_jury_reviews::table)
+                        .values(review)
+                        .on_conflict((
+                            proposal_jury_reviews::proposal_id,
+                            proposal_jury_reviews::stage,
+                        ))
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                    // A case that could not seat its jurors reports no seat counts; the counts from
+                    // the last check before it are kept.
+                    let (formable, required) = if review.case_id.is_some() {
+                        (None, None)
+                    } else {
+                        (Some(*formable_seats), Some(*required_seats))
+                    };
+                    total += diesel::update(
+                        proposal_jury_reviews::table
+                            .filter(proposal_jury_reviews::proposal_id.eq(&review.proposal_id))
+                            .filter(proposal_jury_reviews::stage.eq(review.stage))
+                            .filter(proposal_jury_reviews::state.lt(REVIEW_STATE_DECIDED)),
+                    )
+                    .set((
+                        proposal_jury_reviews::state.eq(review.state),
+                        proposal_jury_reviews::jury_unavailable_at_ms.eq(Some(*at_ms)),
+                        proposal_jury_reviews::jury_deferred_since_ms.eq(Some(*deferred_since_ms)),
+                        proposal_jury_reviews::event_id.eq(&review.event_id),
+                        proposal_jury_reviews::transaction_id.eq(&review.transaction_id),
+                    ))
+                    .execute(conn)
+                    .await?;
+                    if let (Some(formable), Some(required)) = (formable, required) {
+                        total += diesel::update(
+                            proposal_jury_reviews::table
+                                .filter(proposal_jury_reviews::proposal_id.eq(&review.proposal_id))
+                                .filter(proposal_jury_reviews::stage.eq(review.stage)),
+                        )
+                        .set((
+                            proposal_jury_reviews::jury_formable_seats.eq(Some(formable)),
+                            proposal_jury_reviews::jury_required_seats.eq(Some(required)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                    }
+                }
+                JuryRow::Refunded(refund) => {
+                    total += diesel::insert_into(proposal_refunds::table)
+                        .values(refund)
+                        .on_conflict(proposal_refunds::proposal_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                    // The chain decides the community step in the same call and emits no decision
+                    // event for it: the step is rejected, and no case decided it.
+                    total += diesel::update(
+                        proposal_jury_reviews::table
+                            .filter(proposal_jury_reviews::proposal_id.eq(&refund.proposal_id))
+                            .filter(proposal_jury_reviews::stage.eq(REVIEW_STAGE_COMMUNITY))
+                            .filter(proposal_jury_reviews::state.lt(REVIEW_STATE_DECIDED)),
+                    )
+                    .set((
+                        proposal_jury_reviews::state.eq(REVIEW_STATE_DECIDED),
+                        proposal_jury_reviews::decision.eq(Some(REVIEW_DECISION_REJECT)),
+                        proposal_jury_reviews::failed.eq(true),
+                        proposal_jury_reviews::case_id.eq(None::<String>),
+                        proposal_jury_reviews::decided_at_ms.eq(Some(refund.refunded_at_ms)),
+                        proposal_jury_reviews::event_id.eq(&refund.event_id),
+                        proposal_jury_reviews::transaction_id.eq(&refund.transaction_id),
+                    ))
+                    .execute(conn)
+                    .await?;
+                }
+                JuryRow::VoteRefundClaimed(claim) => {
+                    let inserted = diesel::insert_into(proposal_vote_refunds::table)
+                        .values(claim)
+                        .on_conflict((
+                            proposal_vote_refunds::proposal_id,
+                            proposal_vote_refunds::voter,
+                        ))
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
+                    total += inserted;
+                    // Only a first sighting counts against what is outstanding, so a replay is a no-op.
+                    if inserted > 0 {
+                        total += diesel::update(
+                            proposal_refunds::table
+                                .filter(proposal_refunds::proposal_id.eq(&claim.proposal_id)),
+                        )
+                        .set(
+                            proposal_refunds::outstanding_mist
+                                .eq(proposal_refunds::outstanding_mist - claim.amount_mist),
+                        )
+                        .execute(conn)
+                        .await?;
+                    }
+                }
+                JuryRow::VoteRefundsSwept {
+                    proposal_id,
+                    amount_mist,
+                    swept_at_ms,
+                } => {
+                    total += diesel::update(
+                        proposal_refunds::table
+                            .filter(proposal_refunds::proposal_id.eq(proposal_id))
+                            .filter(proposal_refunds::swept_at_ms.is_null()),
+                    )
+                    .set((
+                        proposal_refunds::swept_at_ms.eq(Some(*swept_at_ms)),
+                        proposal_refunds::swept_mist.eq(Some(*amount_mist)),
+                        proposal_refunds::outstanding_mist.eq(0),
                     ))
                     .execute(conn)
                     .await?;
@@ -1171,8 +1401,8 @@ mod tests {
     }
 
     fn rows(event_name: &str, bytes: &[u8]) -> Vec<JuryRow> {
-        let json = parse_event_contents(JURY_MODULE, event_name, bytes)
-            .expect("BCS parse should succeed");
+        let json =
+            parse_event_contents(JURY_MODULE, event_name, bytes).expect("BCS parse should succeed");
         jury_rows(event_name, &json, "digest:1").expect("row builder should accept")
     }
 
@@ -1245,13 +1475,21 @@ mod tests {
             })
             .unwrap(),
         );
-        let [JuryRow::Drawn { round, slots, replacement, .. }] = out.as_slice() else {
+        let [JuryRow::Drawn {
+            round,
+            slots,
+            replacement,
+            ..
+        }] = out.as_slice()
+        else {
             panic!("expected Drawn");
         };
         assert!(!*replacement);
         assert_eq!(round.accept_deadline_ms, 900);
         assert_eq!(slots.len(), 3);
-        assert!(slots.iter().all(|s| s.status == SLOT_DRAFTED && s.round == 0));
+        assert!(slots
+            .iter()
+            .all(|s| s.status == SLOT_DRAFTED && s.round == 0));
     }
 
     #[test]
@@ -1302,8 +1540,13 @@ mod tests {
             })
             .unwrap(),
         );
-        let [JuryRow::RoundFinalized { tally, decisive, leading, appeal_deadline_ms, .. }] =
-            out.as_slice()
+        let [JuryRow::RoundFinalized {
+            tally,
+            decisive,
+            leading,
+            appeal_deadline_ms,
+            ..
+        }] = out.as_slice()
         else {
             panic!("expected RoundFinalized");
         };
@@ -1352,12 +1595,18 @@ mod tests {
             .filter_map(|rest| rest.split_whitespace().next())
             .collect();
         for name in GOVERNANCE_JURY_EVENTS {
-            assert!(declared.contains(name), "{name} is not an event of governance.move");
+            assert!(
+                declared.contains(name),
+                "{name} is not an event of governance.move"
+            );
         }
         // Every governance event that mentions the jury must be in the list.
         for name in &declared {
             if name.contains("Jury") {
-                assert!(GOVERNANCE_JURY_EVENTS.contains(name), "{name} is not indexed");
+                assert!(
+                    GOVERNANCE_JURY_EVENTS.contains(name),
+                    "{name} is not indexed"
+                );
             }
         }
     }
@@ -1385,7 +1634,15 @@ mod tests {
         let [JuryRow::Referred { review, referral }] = out.as_slice() else {
             panic!("expected Referred");
         };
-        assert_eq!((review.stage, review.state, review.referral_count, review.trigger), (1, 1, 2, 1));
+        assert_eq!(
+            (
+                review.stage,
+                review.state,
+                review.referral_count,
+                review.trigger
+            ),
+            (1, 1, 2, 1)
+        );
         assert_eq!(referral.reason.as_deref(), Some("too big for us"));
         assert!(referral.delegate_address.ends_with("d2"));
     }
@@ -1451,7 +1708,10 @@ mod tests {
         let [JuryRow::StepDecided(review)] = out.as_slice() else {
             panic!("expected StepDecided");
         };
-        assert_eq!((review.state, review.decision, review.failed), (4, Some(1), true));
+        assert_eq!(
+            (review.state, review.decision, review.failed),
+            (4, Some(1), true)
+        );
         assert!(review.case_id.is_none());
     }
 
@@ -1480,7 +1740,10 @@ mod tests {
             panic!("expected PolicyUpdated");
         };
         assert!(policy.council_stage_enabled && !policy.community_stage_enabled);
-        assert_eq!((policy.jury_size, policy.round2_size, policy.jury_fee_bps), (5, 11, 2500));
+        assert_eq!(
+            (policy.jury_size, policy.round2_size, policy.jury_fee_bps),
+            (5, 11, 2500)
+        );
     }
 
     #[test]
@@ -1500,7 +1763,9 @@ mod tests {
     #[test]
     fn a_config_change_keeps_nothing() {
         let json = serde_json::json!({ "updated_by": "0xad", "section": 1, "timestamp_ms": 5 });
-        assert!(jury_rows("JuryConfigUpdated", &json, "d:0").unwrap().is_empty());
+        assert!(jury_rows("JuryConfigUpdated", &json, "d:0")
+            .unwrap()
+            .is_empty());
     }
 
     #[test]

@@ -184,7 +184,7 @@ Creates and transfers all admin capabilities to caller, then seals the bootstrap
     <a href="../social_contracts/mydata.md#social_contracts_mydata_bootstrap_init">social_contracts::mydata::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/memory.md#social_contracts_memory_bootstrap_init">social_contracts::memory::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/agent_task.md#social_contracts_agent_task_bootstrap_init">social_contracts::agent_task::bootstrap_init</a>(admin, clock, ctx);
-    <a href="../social_contracts/jury.md#social_contracts_jury_bootstrap_init">social_contracts::jury::bootstrap_init</a>(clock, ctx);
+    <a href="../social_contracts/jury.md#social_contracts_jury_bootstrap_init">social_contracts::jury::bootstrap_init</a>(<a href="../social_contracts/memory.md#social_contracts_memory_default_reputation_params">social_contracts::memory::default_reputation_params</a>(), clock, ctx);
     <b>let</b> gov_ids = <a href="../social_contracts/governance.md#social_contracts_governance_bootstrap_init">social_contracts::governance::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/post.md#social_contracts_post_bootstrap_init">social_contracts::post::bootstrap_init</a>(clock, ctx);
     <a href="../social_contracts/subscription.md#social_contracts_subscription_bootstrap_init">social_contracts::subscription::bootstrap_init</a>(clock, ctx);

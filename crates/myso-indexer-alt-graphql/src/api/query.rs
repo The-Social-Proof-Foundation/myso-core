@@ -48,6 +48,7 @@ use crate::api::types::insurance::{
     InsuranceCoverageRoute, InsuranceModuleEvent, InsurancePolicy, InsuranceRouteFill,
     InsuranceVault,
 };
+use crate::api::types::jury::JuryCase;
 use crate::api::types::media_asset::{MediaAsset, MediaAssetRightsProposalLink};
 use crate::api::types::messaging::{MessagingAgentGroup, PaidMessageEscrow};
 use crate::api::types::move_object::MoveObject;
@@ -117,7 +118,6 @@ use crate::error::upcast;
 use crate::pagination::Page;
 use crate::pagination::PaginationConfig;
 use crate::scope::Scope;
-use crate::api::types::jury::JuryCase;
 use crate::task::chain_identifier::ChainIdentifier;
 
 fn normalize_identity_hash(raw: &str) -> String {

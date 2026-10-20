@@ -25,6 +25,12 @@ strict wall-clock guarantee when governance is idle.
 -  [Struct `Vote`](#social_contracts_governance_Vote)
 -  [Struct `RegistryJuryPolicy`](#social_contracts_governance_RegistryJuryPolicy)
 -  [Struct `JuryReview`](#social_contracts_governance_JuryReview)
+-  [Struct `VotePayments`](#social_contracts_governance_VotePayments)
+-  [Struct `VoteRefund`](#social_contracts_governance_VoteRefund)
+-  [Struct `JuryUnavailableEvent`](#social_contracts_governance_JuryUnavailableEvent)
+-  [Struct `ProposalRefundedJuryUnavailableEvent`](#social_contracts_governance_ProposalRefundedJuryUnavailableEvent)
+-  [Struct `VoteRefundClaimedEvent`](#social_contracts_governance_VoteRefundClaimedEvent)
+-  [Struct `VoteRefundsSweptEvent`](#social_contracts_governance_VoteRefundsSweptEvent)
 -  [Struct `JuryPolicyUpdatedEvent`](#social_contracts_governance_JuryPolicyUpdatedEvent)
 -  [Struct `DelegateReferredToJuryEvent`](#social_contracts_governance_DelegateReferredToJuryEvent)
 -  [Struct `ProposalEscalatedToJuryEvent`](#social_contracts_governance_ProposalEscalatedToJuryEvent)
@@ -152,12 +158,21 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `add_excluded_owner`](#social_contracts_governance_add_excluded_owner)
 -  [Function `take_jury_fee`](#social_contracts_governance_take_jury_fee)
 -  [Function `open_jury_for_proposal`](#social_contracts_governance_open_jury_for_proposal)
+-  [Function `ensure_jury_review`](#social_contracts_governance_ensure_jury_review)
+-  [Function `resolve_council_without_jury`](#social_contracts_governance_resolve_council_without_jury)
+-  [Function `refund_community_without_jury`](#social_contracts_governance_refund_community_without_jury)
+-  [Function `record_vote_payment`](#social_contracts_governance_record_vote_payment)
+-  [Function `claim_vote_refund_internal`](#social_contracts_governance_claim_vote_refund_internal)
+-  [Function `claim_vote_refund`](#social_contracts_governance_claim_vote_refund)
+-  [Function `take_unclaimed_vote_refunds`](#social_contracts_governance_take_unclaimed_vote_refunds)
+-  [Function `sweep_vote_refunds`](#social_contracts_governance_sweep_vote_refunds)
 -  [Function `jury_default_forfeit_reason`](#social_contracts_governance_jury_default_forfeit_reason)
 -  [Function `remove_from_bucket`](#social_contracts_governance_remove_from_bucket)
 -  [Function `apply_default_community_reject`](#social_contracts_governance_apply_default_community_reject)
 -  [Function `apply_jury_case`](#social_contracts_governance_apply_jury_case)
 -  [Function `escalate_to_jury`](#social_contracts_governance_escalate_to_jury)
 -  [Function `apply_jury_decision`](#social_contracts_governance_apply_jury_decision)
+-  [Function `defer_after_unformed_case`](#social_contracts_governance_defer_after_unformed_case)
 -  [Function `sweep_jury_case`](#social_contracts_governance_sweep_jury_case)
 -  [Function `jury_policy_enabled`](#social_contracts_governance_jury_policy_enabled)
 -  [Function `jury_council_state`](#social_contracts_governance_jury_council_state)
@@ -167,6 +182,19 @@ strict wall-clock guarantee when governance is idle.
 -  [Function `jury_action_advance_value`](#social_contracts_governance_jury_action_advance_value)
 -  [Function `jury_action_approve_value`](#social_contracts_governance_jury_action_approve_value)
 -  [Function `jury_action_reject_value`](#social_contracts_governance_jury_action_reject_value)
+-  [Function `jury_action_deferred_value`](#social_contracts_governance_jury_action_deferred_value)
+-  [Function `escalate_opened_value`](#social_contracts_governance_escalate_opened_value)
+-  [Function `escalate_jury_paused_value`](#social_contracts_governance_escalate_jury_paused_value)
+-  [Function `escalate_deferred_value`](#social_contracts_governance_escalate_deferred_value)
+-  [Function `escalate_advanced_value`](#social_contracts_governance_escalate_advanced_value)
+-  [Function `escalate_refunded_value`](#social_contracts_governance_escalate_refunded_value)
+-  [Function `jury_defer_max_ms`](#social_contracts_governance_jury_defer_max_ms)
+-  [Function `vote_refund_claim_window_ms`](#social_contracts_governance_vote_refund_claim_window_ms)
+-  [Function `jury_deferred_since_ms`](#social_contracts_governance_jury_deferred_since_ms)
+-  [Function `vote_refunded`](#social_contracts_governance_vote_refunded)
+-  [Function `vote_paid_mist`](#social_contracts_governance_vote_paid_mist)
+-  [Function `vote_refund_claim_deadline_ms`](#social_contracts_governance_vote_refund_claim_deadline_ms)
+-  [Function `vote_refund_outstanding_mist`](#social_contracts_governance_vote_refund_outstanding_mist)
 -  [Function `proposal_pool_value`](#social_contracts_governance_proposal_pool_value)
 
 
@@ -764,6 +792,290 @@ One step of one proposal that the jury has taken, or may take, over.
 </dd>
 <dt>
 <code>decision: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>deferred_since_ms: u64</code>
+</dt>
+<dd>
+ When this step first found no jury able to form; 0 if it never has. The 30-day wait is
+ measured from here and never restarts.
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_VotePayments"></a>
+
+## Struct `VotePayments`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_VotePayments">VotePayments</a> <b>has</b> store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>paid: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>total_mist: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_VoteRefund"></a>
+
+## Struct `VoteRefund`
+
+A community step refunded because no jury could form. Voters pull their own share, so the
+refund never loops over every voter.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_VoteRefund">VoteRefund</a> <b>has</b> store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>refunded_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_deadline_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>voter_pool_mist: u64</code>
+</dt>
+<dd>
+ What the pool held for voters when the refund happened.
+</dd>
+<dt>
+<code>paid_total_mist: u64</code>
+</dt>
+<dd>
+ Sum of what voters paid; each claim pays <code>paid * voter_pool_mist / paid_total_mist</code>.
+</dd>
+<dt>
+<code>outstanding_paid_mist: u64</code>
+</dt>
+<dd>
+ Paid amounts not yet claimed. Zero means only rounding dust is left in the pool.
+</dd>
+<dt>
+<code>claimed: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, u64&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_JuryUnavailableEvent"></a>
+
+## Struct `JuryUnavailableEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryUnavailableEvent">JuryUnavailableEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>stage: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>case_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ Set when a case opened but could not seat its jurors; its fee went back to the pool.
+</dd>
+<dt>
+<code>formable_seats: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>required_seats: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>deferred_since_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_ProposalRefundedJuryUnavailableEvent"></a>
+
+## Struct `ProposalRefundedJuryUnavailableEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_ProposalRefundedJuryUnavailableEvent">ProposalRefundedJuryUnavailableEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>submitter: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>submitter_refund_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>voter_refund_pool_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claim_deadline_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>refunded_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_VoteRefundClaimedEvent"></a>
+
+## Struct `VoteRefundClaimedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_VoteRefundClaimedEvent">VoteRefundClaimedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>voter: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>claimed_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_VoteRefundsSweptEvent"></a>
+
+## Struct `VoteRefundsSweptEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_VoteRefundsSweptEvent">VoteRefundsSweptEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>proposal_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount_mist: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>swept_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2404,6 +2716,51 @@ Error codes
 
 
 
+<a name="social_contracts_governance_ERefundsOutstanding"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ERefundsOutstanding">ERefundsOutstanding</a>: u64 = 34;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EClaimWindowClosed"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EClaimWindowClosed">EClaimWindowClosed</a>: u64 = 35;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ENothingToClaim"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ENothingToClaim">ENothingToClaim</a>: u64 = 36;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_EAlreadyClaimed"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyClaimed">EAlreadyClaimed</a>: u64 = 37;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ENotRefunded"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ENotRefunded">ENotRefunded</a>: u64 = 38;
+</code></pre>
+
+
+
 <a name="social_contracts_governance_FORFEIT_REASON_QUORUM_NOT_MET"></a>
 
 Forfeiture reason (indexer) — same values as old refund reason codes.
@@ -2656,6 +3013,93 @@ Per-proposal jury records, one per human step the jury can take over.
 
 
 
+<a name="social_contracts_governance_VOTE_PAID_FIELD"></a>
+
+What each community voter paid for extra votes, so a refund can pay each one back exactly.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>: vector&lt;u8&gt; = vector[118, 111, 116, 101, 95, 112, 97, 105, 100];
+</code></pre>
+
+
+
+<a name="social_contracts_governance_VOTE_REFUND_FIELD"></a>
+
+Set when a community step is refunded because no jury could form.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_FIELD">VOTE_REFUND_FIELD</a>: vector&lt;u8&gt; = vector[118, 111, 116, 101, 95, 114, 101, 102, 117, 110, 100];
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_DEFER_MAX_MS"></a>
+
+How long a step waits for a jury that cannot form before it resolves without one: the
+council step goes to the community vote, the community step is refunded.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_DEFER_MAX_MS">JURY_DEFER_MAX_MS</a>: u64 = 2592000000;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_VOTE_REFUND_CLAIM_WINDOW_MS"></a>
+
+How long voters have to claim a refund. After it, the unclaimed rest may go to the treasury.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_CLAIM_WINDOW_MS">VOTE_REFUND_CLAIM_WINDOW_MS</a>: u64 = 31536000000;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ESCALATE_OPENED"></a>
+
+What [<code><a href="../social_contracts/governance.md#social_contracts_governance_open_jury_for_proposal">open_jury_for_proposal</a></code>] did.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_OPENED">ESCALATE_OPENED</a>: u8 = 0;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ESCALATE_JURY_PAUSED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_JURY_PAUSED">ESCALATE_JURY_PAUSED</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ESCALATE_DEFERRED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_DEFERRED">ESCALATE_DEFERRED</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ESCALATE_ADVANCED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_ADVANCED">ESCALATE_ADVANCED</a>: u8 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_ESCALATE_REFUNDED"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_REFUNDED">ESCALATE_REFUNDED</a>: u8 = 4;
+</code></pre>
+
+
+
 <a name="social_contracts_governance_JURY_STAGE_COUNCIL"></a>
 
 
@@ -2798,6 +3242,16 @@ approve), option 1 rejects it.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a>: u8 = 2;
+</code></pre>
+
+
+
+<a name="social_contracts_governance_JURY_ACTION_DEFERRED"></a>
+
+The case could not seat a jury; its fee went back to the pool and the step waits again.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_DEFERRED">JURY_ACTION_DEFERRED</a>: u8 = 3;
 </code></pre>
 
 
@@ -4559,6 +5013,9 @@ eligibility (platform membership / blocks).
     };
     // Record vote
     vec_set::insert(voted_community, caller);
+    <b>if</b> (vote_cost &gt; 0) {
+        <a href="../social_contracts/governance.md#social_contracts_governance_record_vote_payment">record_vote_payment</a>(proposal, caller, vote_cost, ctx);
+    };
     // Update vote tally
     <b>if</b> (approve) {
         proposal.community_votes_for = proposal.community_votes_for + vote_count;
@@ -5406,6 +5863,7 @@ Ecosystem and proof-of-creativity only: <code>ecosystem_treasury</code> used whe
                     escalated_at_ms: 0,
                     decided_at_ms: 0,
                     decision: <a href="../social_contracts/governance.md#social_contracts_governance_NO_DECISION">NO_DECISION</a>,
+                    deferred_since_ms: 0,
                 },
             );
             event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_CommunityVoteNeedsJuryEvent">CommunityVoteNeedsJuryEvent</a> {
@@ -7294,6 +7752,7 @@ vote tables, so finalization statistics are unaffected.
                 escalated_at_ms: 0,
                 decided_at_ms: 0,
                 decision: <a href="../social_contracts/governance.md#social_contracts_governance_NO_DECISION">NO_DECISION</a>,
+                deferred_since_ms: 0,
             },
         );
     };
@@ -7537,12 +7996,20 @@ Carve the jury fee out of the proposal's pool: <code>jury_fee_bps</code> of what
 
 Anyone moves a proposal to the jury at the step that has earned it: the council step once a
 referral majority, a tie, or the council window allows it, or the community step after a vote
-that ended with no quorum or a tie. Returns 0 when a case was opened, 1 when the jury is
-switched off and the community default (reject) applied instead; the caller then forfeits
-the pool for <code><a href="../social_contracts/governance.md#social_contracts_governance_jury_default_forfeit_reason">jury_default_forfeit_reason</a></code>.
+that ended with no quorum or a tie.
+
+No fee is taken unless a jury can actually form for this case (enough independent owners
+outside the case's stakeholders for every round). When one cannot, the step waits, and once
+it has waited <code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_DEFER_MAX_MS">JURY_DEFER_MAX_MS</a></code> the next call resolves it without a jury: the council step
+goes to the community vote, the community step refunds everyone. A juror shortage never
+forfeits the pool.
+
+Returns <code><a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_OPENED">ESCALATE_OPENED</a></code>, <code><a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_DEFERRED">ESCALATE_DEFERRED</a></code>, <code><a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_ADVANCED">ESCALATE_ADVANCED</a></code>, <code><a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_REFUNDED">ESCALATE_REFUNDED</a></code>, or
+<code><a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_JURY_PAUSED">ESCALATE_JURY_PAUSED</a></code> when the jury is switched off and the community default (reject)
+applied; only then does the caller forfeit the pool, for <code><a href="../social_contracts/governance.md#social_contracts_governance_jury_default_forfeit_reason">jury_default_forfeit_reason</a></code>.
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_open_jury_for_proposal">open_jury_for_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, jury_config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, stage: u8, sweep_to: <b>address</b>, extra_exclusions: vector&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u8
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_open_jury_for_proposal">open_jury_for_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, jury_config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, stage: u8, sweep_to: <b>address</b>, extra_exclusions: vector&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): u8
 </code></pre>
 
 
@@ -7555,6 +8022,7 @@ the pool for <code><a href="../social_contracts/governance.md#social_contracts_g
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
     proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     jury_config: &JuryConfig,
+    roster: &JurorRoster,
     stage: u8,
     sweep_to: <b>address</b>,
     extra_exclusions: vector&lt;<b>address</b>&gt;,
@@ -7582,14 +8050,15 @@ the pool for <code><a href="../social_contracts/governance.md#social_contracts_g
     };
     <b>if</b> (!<a href="../social_contracts/jury.md#social_contracts_jury_config_active">jury::config_active</a>(jury_config)) {
         // A paused <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> must not strand a finished vote. The council step simply stays with the
-        // humans; the community step takes its default.
+        // humans; the community step takes its default. Pausing is a <a href="../social_contracts/governance.md#social_contracts_governance">governance</a> decision, not a
+        // shortage, so this keeps the default reject.
         <b>assert</b>!(stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COMMUNITY">JURY_STAGE_COMMUNITY</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EJuryStageDisabled">EJuryStageDisabled</a>);
         <a href="../social_contracts/governance.md#social_contracts_governance_apply_default_community_reject">apply_default_community_reject</a>(registry, proposal, now);
-        <b>return</b> 1
+        <b>return</b> <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_JURY_PAUSED">ESCALATE_JURY_PAUSED</a>
     };
-    <b>let</b> fee = <a href="../social_contracts/governance.md#social_contracts_governance_take_jury_fee">take_jury_fee</a>(proposal, &policy);
-    <b>let</b> fee_mist = balance::value(&fee);
-    <b>let</b> approval_bps = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) { policy.approval_bps_council } <b>else</b> { policy.approval_bps_community };
+    <b>let</b> field = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a> } <b>else</b> { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a> };
+    // A council step can reach the <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> by tie or deadline with no referral ever recorded.
+    <a href="../social_contracts/governance.md#social_contracts_governance_ensure_jury_review">ensure_jury_review</a>(proposal, field, stage);
     <b>let</b> owners = <a href="../social_contracts/governance.md#social_contracts_governance_stakeholder_owners">stakeholder_owners</a>(
         registry,
         proposal,
@@ -7597,6 +8066,40 @@ the pool for <code><a href="../social_contracts/governance.md#social_contracts_g
         stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COMMUNITY">JURY_STAGE_COMMUNITY</a>,
         <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">jury::max_exclusions</a>(jury_config),
     );
+    <b>let</b> round_sizes = vector[policy.jury_size, policy.round2_size];
+    <b>let</b> required = <a href="../social_contracts/jury.md#social_contracts_jury_required_seats">jury::required_seats</a>(jury_config, &round_sizes);
+    <b>let</b> no_ids = vector::empty&lt;ID&gt;();
+    <b>let</b> seats = <a href="../social_contracts/jury.md#social_contracts_jury_formable_seats">jury::formable_seats</a>(jury_config, roster, &owners, &no_ids, &no_ids, now, required);
+    <b>if</b> (seats &lt; required) {
+        <b>let</b> deferred_since = {
+            <b>let</b> review: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, field);
+            <b>if</b> (review.deferred_since_ms == 0) {
+                review.deferred_since_ms = now;
+            };
+            review.deferred_since_ms
+        };
+        <b>if</b> (now - deferred_since &gt;= <a href="../social_contracts/governance.md#social_contracts_governance_JURY_DEFER_MAX_MS">JURY_DEFER_MAX_MS</a>) {
+            <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) {
+                <a href="../social_contracts/governance.md#social_contracts_governance_resolve_council_without_jury">resolve_council_without_jury</a>(registry, proposal, clock, ctx);
+                <b>return</b> <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_ADVANCED">ESCALATE_ADVANCED</a>
+            };
+            <a href="../social_contracts/governance.md#social_contracts_governance_refund_community_without_jury">refund_community_without_jury</a>(registry, proposal, now, ctx);
+            <b>return</b> <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_REFUNDED">ESCALATE_REFUNDED</a>
+        };
+        event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_JuryUnavailableEvent">JuryUnavailableEvent</a> {
+            proposal_id,
+            stage,
+            case_id: option::none(),
+            formable_seats: seats,
+            required_seats: required,
+            deferred_since_ms: deferred_since,
+            at_ms: now,
+        });
+        <b>return</b> <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_DEFERRED">ESCALATE_DEFERRED</a>
+    };
+    <b>let</b> fee = <a href="../social_contracts/governance.md#social_contracts_governance_take_jury_fee">take_jury_fee</a>(proposal, &policy);
+    <b>let</b> fee_mist = balance::value(&fee);
+    <b>let</b> approval_bps = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) { policy.approval_bps_council } <b>else</b> { policy.approval_bps_community };
     <b>let</b> <b>mut</b> case = <a href="../social_contracts/jury.md#social_contracts_jury_open_case">jury::open_case</a>(
         jury_config,
         <a href="../social_contracts/jury.md#social_contracts_jury_subject_governance">jury::subject_governance</a>(),
@@ -7605,12 +8108,12 @@ the pool for <code><a href="../social_contracts/governance.md#social_contracts_g
         2,
         approval_bps,
         policy.quorum,
-        vector[policy.jury_size, policy.round2_size],
+        round_sizes,
         <b>false</b>,
         <a href="../social_contracts/governance.md#social_contracts_governance_JURY_FAILURE_PATH_DEFAULT_DECISION">JURY_FAILURE_PATH_DEFAULT_DECISION</a>,
         0,
         owners,
-        vector::empty&lt;ID&gt;(),
+        no_ids,
         vector::empty&lt;ID&gt;(),
         fee,
         fee_mist / policy.jury_size,
@@ -7628,24 +8131,6 @@ the pool for <code><a href="../social_contracts/governance.md#social_contracts_g
         clock,
     );
     <b>let</b> case_id = <a href="../social_contracts/jury.md#social_contracts_jury_share_case">jury::share_case</a>(case);
-    <b>let</b> field = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a> } <b>else</b> { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a> };
-    // A council step can reach the <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> by tie or deadline with no referral ever recorded.
-    <b>if</b> (!dynamic_field::exists_(&proposal.id, field)) {
-        dynamic_field::add(
-            &<b>mut</b> proposal.id,
-            field,
-            <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> {
-                stage,
-                state: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_REFERRING">JURY_STATE_REFERRING</a>,
-                trigger: 0,
-                referrers: vector::empty(),
-                case_id: option::none(),
-                escalated_at_ms: 0,
-                decided_at_ms: 0,
-                decision: <a href="../social_contracts/governance.md#social_contracts_governance_NO_DECISION">NO_DECISION</a>,
-            },
-        );
-    };
     {
         <b>let</b> review: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, field);
         review.state = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_ESCALATED">JURY_STATE_ESCALATED</a>;
@@ -7662,7 +8147,379 @@ the pool for <code><a href="../social_contracts/governance.md#social_contracts_g
         pool_remaining_mist: balance::value(&proposal.reward_pool),
         escalated_at_ms: now,
     });
-    0
+    <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_OPENED">ESCALATE_OPENED</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_ensure_jury_review"></a>
+
+## Function `ensure_jury_review`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_ensure_jury_review">ensure_jury_review</a>(proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, field: vector&lt;u8&gt;, stage: u8)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_ensure_jury_review">ensure_jury_review</a>(proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>, field: vector&lt;u8&gt;, stage: u8) {
+    <b>if</b> (!dynamic_field::exists_(&proposal.id, field)) {
+        dynamic_field::add(
+            &<b>mut</b> proposal.id,
+            field,
+            <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> {
+                stage,
+                state: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_REFERRING">JURY_STATE_REFERRING</a>,
+                trigger: 0,
+                referrers: vector::empty(),
+                case_id: option::none(),
+                escalated_at_ms: 0,
+                decided_at_ms: 0,
+                decision: <a href="../social_contracts/governance.md#social_contracts_governance_NO_DECISION">NO_DECISION</a>,
+                deferred_since_ms: 0,
+            },
+        );
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_resolve_council_without_jury"></a>
+
+## Function `resolve_council_without_jury`
+
+The council step waited the full period for a jury: the humans decide, as when a council
+jury fails. No fee was taken.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_resolve_council_without_jury">resolve_council_without_jury</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_resolve_council_without_jury">resolve_council_without_jury</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>let</b> proposal_id = object::id(proposal);
+    {
+        <b>let</b> review: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a>);
+        review.state = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_DECIDED">JURY_STATE_DECIDED</a>;
+        review.decision = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_FORWARD">JURY_OUTCOME_FORWARD</a>;
+        review.decided_at_ms = now;
+        review.case_id = option::none();
+    };
+    <a href="../social_contracts/governance.md#social_contracts_governance_move_to_community_voting">move_to_community_voting</a>(registry, proposal, clock, ctx);
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_JuryDecisionAppliedEvent">JuryDecisionAppliedEvent</a> {
+        proposal_id,
+        stage: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>,
+        decision: <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_FORWARD">JURY_OUTCOME_FORWARD</a>,
+        failed: <b>true</b>,
+        case_id: option::none(),
+        applied_at_ms: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_refund_community_without_jury"></a>
+
+## Function `refund_community_without_jury`
+
+The community step waited the full period for a jury. Nothing is forfeited: the submitter
+gets the stake back now, and each voter can claim exactly what they paid until the deadline.
+The proposal ends rejected, since it never won.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_refund_community_without_jury">refund_community_without_jury</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, now: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_refund_community_without_jury">refund_community_without_jury</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    now: u64,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> proposal_id = object::id(proposal);
+    <b>let</b> pool = balance::value(&proposal.reward_pool);
+    <b>let</b> paid_total = <b>if</b> (dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>)) {
+        <b>let</b> payments: &<a href="../social_contracts/governance.md#social_contracts_governance_VotePayments">VotePayments</a> = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>);
+        payments.total_mist
+    } <b>else</b> {
+        0
+    };
+    // Voters are repaid first; a fee an earlier council <a href="../social_contracts/jury.md#social_contracts_jury">jury</a> spent comes out of the stake.
+    <b>let</b> voter_pool = <b>if</b> (pool &lt; paid_total) { pool } <b>else</b> { paid_total };
+    <b>let</b> submitter_refund = pool - voter_pool;
+    <b>if</b> (submitter_refund &gt; 0) {
+        <b>let</b> stake = coin::from_balance(balance::split(&<b>mut</b> proposal.reward_pool, submitter_refund), ctx);
+        transfer::public_transfer(stake, proposal.submitter);
+    };
+    <a href="../social_contracts/governance.md#social_contracts_governance_remove_from_bucket">remove_from_bucket</a>(registry, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, proposal_id);
+    proposal.status = <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_REJECTED">STATUS_REJECTED</a>;
+    vector::push_back(table::borrow_mut(&<b>mut</b> registry.proposals_by_status, <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_REJECTED">STATUS_REJECTED</a>), proposal_id);
+    {
+        <b>let</b> review: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a>);
+        review.state = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_DECIDED">JURY_STATE_DECIDED</a>;
+        review.decision = <a href="../social_contracts/governance.md#social_contracts_governance_JURY_OUTCOME_REJECT">JURY_OUTCOME_REJECT</a>;
+        review.decided_at_ms = now;
+        review.case_id = option::none();
+    };
+    <b>let</b> claim_deadline_ms = now + <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_CLAIM_WINDOW_MS">VOTE_REFUND_CLAIM_WINDOW_MS</a>;
+    dynamic_field::add(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_FIELD">VOTE_REFUND_FIELD</a>, <a href="../social_contracts/governance.md#social_contracts_governance_VoteRefund">VoteRefund</a> {
+        refunded_at_ms: now,
+        claim_deadline_ms,
+        voter_pool_mist: voter_pool,
+        paid_total_mist: paid_total,
+        outstanding_paid_mist: paid_total,
+        claimed: table::new(ctx),
+    });
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_ProposalRefundedJuryUnavailableEvent">ProposalRefundedJuryUnavailableEvent</a> {
+        proposal_id,
+        submitter: proposal.submitter,
+        submitter_refund_mist: submitter_refund,
+        voter_refund_pool_mist: voter_pool,
+        claim_deadline_ms,
+        refunded_at_ms: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_record_vote_payment"></a>
+
+## Function `record_vote_payment`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_record_vote_payment">record_vote_payment</a>(proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, voter: <b>address</b>, amount: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_record_vote_payment">record_vote_payment</a>(proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>, voter: <b>address</b>, amount: u64, ctx: &<b>mut</b> TxContext) {
+    <b>if</b> (!dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>)) {
+        dynamic_field::add(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>, <a href="../social_contracts/governance.md#social_contracts_governance_VotePayments">VotePayments</a> { paid: table::new(ctx), total_mist: 0 });
+    };
+    <b>let</b> payments: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_VotePayments">VotePayments</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>);
+    <b>if</b> (table::contains(&payments.paid, voter)) {
+        <b>let</b> prior = table::borrow_mut(&<b>mut</b> payments.paid, voter);
+        *prior = *prior + amount;
+    } <b>else</b> {
+        table::add(&<b>mut</b> payments.paid, voter, amount);
+    };
+    payments.total_mist = payments.total_mist + amount;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_claim_vote_refund_internal"></a>
+
+## Function `claim_vote_refund_internal`
+
+What the sender paid to vote on a refunded proposal, taken out of the pool.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_claim_vote_refund_internal">claim_vote_refund_internal</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_claim_vote_refund_internal">claim_vote_refund_internal</a>(
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+): Balance&lt;MYSO&gt; {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> proposal_id = object::id(proposal);
+    <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
+    <b>assert</b>!(dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_FIELD">VOTE_REFUND_FIELD</a>), <a href="../social_contracts/governance.md#social_contracts_governance_ENotRefunded">ENotRefunded</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    <b>let</b> voter = tx_context::sender(ctx);
+    <b>let</b> paid = <b>if</b> (dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>)) {
+        <b>let</b> payments: &<a href="../social_contracts/governance.md#social_contracts_governance_VotePayments">VotePayments</a> = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>);
+        <b>if</b> (table::contains(&payments.paid, voter)) { *table::borrow(&payments.paid, voter) } <b>else</b> { 0 }
+    } <b>else</b> {
+        0
+    };
+    <b>let</b> amount = {
+        <b>let</b> refund: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_VoteRefund">VoteRefund</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_FIELD">VOTE_REFUND_FIELD</a>);
+        <b>assert</b>!(now &lt;= refund.claim_deadline_ms, <a href="../social_contracts/governance.md#social_contracts_governance_EClaimWindowClosed">EClaimWindowClosed</a>);
+        <b>assert</b>!(!table::contains(&refund.claimed, voter), <a href="../social_contracts/governance.md#social_contracts_governance_EAlreadyClaimed">EAlreadyClaimed</a>);
+        <b>assert</b>!(paid &gt; 0, <a href="../social_contracts/governance.md#social_contracts_governance_ENothingToClaim">ENothingToClaim</a>);
+        <b>let</b> amount = (((paid <b>as</b> u128) * (refund.voter_pool_mist <b>as</b> u128) / (refund.paid_total_mist <b>as</b> u128)) <b>as</b> u64);
+        refund.outstanding_paid_mist = refund.outstanding_paid_mist - paid;
+        table::add(&<b>mut</b> refund.claimed, voter, now);
+        amount
+    };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_VoteRefundClaimedEvent">VoteRefundClaimedEvent</a> { proposal_id, voter, amount_mist: amount, claimed_at_ms: now });
+    balance::split(&<b>mut</b> proposal.reward_pool, amount)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_claim_vote_refund"></a>
+
+## Function `claim_vote_refund`
+
+Global registries: claim a vote refund. Platform registries use
+<code><a href="../social_contracts/platform.md#social_contracts_platform_claim_platform_vote_refund">platform::claim_platform_vote_refund</a></code>.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_claim_vote_refund">claim_vote_refund</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_claim_vote_refund">claim_vote_refund</a>(
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_registry_type">registry_type</a> != <a href="../social_contracts/governance.md#social_contracts_governance_PROPOSAL_TYPE_PLATFORM">PROPOSAL_TYPE_PLATFORM</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EUsePlatformVoteEntry">EUsePlatformVoteEntry</a>);
+    <b>let</b> refund = <a href="../social_contracts/governance.md#social_contracts_governance_claim_vote_refund_internal">claim_vote_refund_internal</a>(registry, proposal, clock, ctx);
+    <b>if</b> (balance::value(&refund) &gt; 0) {
+        transfer::public_transfer(coin::from_balance(refund, ctx), tx_context::sender(ctx));
+    } <b>else</b> {
+        balance::destroy_zero(refund);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_take_unclaimed_vote_refunds"></a>
+
+## Function `take_unclaimed_vote_refunds`
+
+The only way money leaves a refunded pool other than a claim: allowed once every voter has
+claimed (only rounding dust is left) or once the claim deadline has passed.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_take_unclaimed_vote_refunds">take_unclaimed_vote_refunds</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, recipient: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): <a href="../myso/balance.md#myso_balance_Balance">myso::balance::Balance</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_take_unclaimed_vote_refunds">take_unclaimed_vote_refunds</a>(
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    recipient: <b>address</b>,
+    clock: &Clock,
+): Balance&lt;MYSO&gt; {
+    <b>assert</b>!(registry.<a href="../social_contracts/governance.md#social_contracts_governance_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> proposal_id = object::id(proposal);
+    <b>assert</b>!(table::contains(&registry.proposals, proposal_id), <a href="../social_contracts/governance.md#social_contracts_governance_EProposalNotFound">EProposalNotFound</a>);
+    <b>assert</b>!(dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_FIELD">VOTE_REFUND_FIELD</a>), <a href="../social_contracts/governance.md#social_contracts_governance_ENotRefunded">ENotRefunded</a>);
+    <b>let</b> now = clock::timestamp_ms(clock);
+    {
+        <b>let</b> refund: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_VoteRefund">VoteRefund</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_FIELD">VOTE_REFUND_FIELD</a>);
+        <b>assert</b>!(refund.outstanding_paid_mist == 0 || now &gt; refund.claim_deadline_ms, <a href="../social_contracts/governance.md#social_contracts_governance_ERefundsOutstanding">ERefundsOutstanding</a>);
+        refund.outstanding_paid_mist = 0;
+    };
+    <b>let</b> rest = balance::withdraw_all(&<b>mut</b> proposal.reward_pool);
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_VoteRefundsSweptEvent">VoteRefundsSweptEvent</a> {
+        proposal_id,
+        recipient,
+        amount_mist: balance::value(&rest),
+        swept_at_ms: now,
+    });
+    rest
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_sweep_vote_refunds"></a>
+
+## Function `sweep_vote_refunds`
+
+Global registries: send what voters did not claim (or rounding dust) to the ecosystem
+treasury. Permissionless.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_sweep_vote_refunds">sweep_vote_refunds</a>(registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_sweep_vote_refunds">sweep_vote_refunds</a>(
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
+    ecosystem_treasury: &EcosystemTreasury,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/governance.md#social_contracts_governance_assert_shared_global_registry">assert_shared_global_registry</a>(registry);
+    <b>let</b> dest = <a href="../social_contracts/profile.md#social_contracts_profile_get_treasury_address">profile::get_treasury_address</a>(ecosystem_treasury);
+    <b>let</b> rest = <a href="../social_contracts/governance.md#social_contracts_governance_take_unclaimed_vote_refunds">take_unclaimed_vote_refunds</a>(registry, proposal, dest, clock);
+    <b>if</b> (balance::value(&rest) &gt; 0) {
+        transfer::public_transfer(coin::from_balance(rest, ctx), dest);
+    } <b>else</b> {
+        balance::destroy_zero(rest);
+    };
 }
 </code></pre>
 
@@ -7788,11 +8645,15 @@ The community step ended with the jury switched off: what the vote would have do
 
 Apply a finished jury case to its proposal. Returns the action taken so the caller can route
 funds: <code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_ADVANCE">JURY_ACTION_ADVANCE</a></code> (the council step moved to the community vote),
-<code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_APPROVE">JURY_ACTION_APPROVE</a></code>, or <code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a></code> (the caller forfeits the pool).
+<code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_APPROVE">JURY_ACTION_APPROVE</a></code>, <code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a></code> (the caller forfeits the pool), or
+<code><a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_DEFERRED">JURY_ACTION_DEFERRED</a></code> (nothing to route).
 
-A jury that could not decide uses the step's default: the council step advances (humans
-decide), the community step rejects (what a no-quorum or tied vote did before). Delegate
-statistics are not touched: a jury decision says nothing about how delegates sided.
+A case that could not seat its jurors is a shortage, not a decision: its unspent fee goes back
+to the pool and the step waits for a jury again, under the same 30-day bound. A jury that
+could not decide (or timed out, or was voided) uses the step's default: the council step
+advances (humans decide), the community step rejects (what a no-quorum or tied vote did
+before). Delegate statistics are not touched: a jury decision says nothing about how
+delegates sided.
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_apply_jury_case">apply_jury_case</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (u8, u64)
@@ -7829,6 +8690,10 @@ statistics are not touched: a jury decision says nothing about how delegates sid
     <b>assert</b>!(state == <a href="../social_contracts/jury.md#social_contracts_jury_case_final">jury::case_final</a>() || state == <a href="../social_contracts/jury.md#social_contracts_jury_case_failed">jury::case_failed</a>(), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryNotFinished">EJuryNotFinished</a>);
     <a href="../social_contracts/jury.md#social_contracts_jury_mark_executed">jury::mark_executed</a>(case);
     <b>let</b> failed = state == <a href="../social_contracts/jury.md#social_contracts_jury_case_failed">jury::case_failed</a>();
+    <b>if</b> (failed && <a href="../social_contracts/jury.md#social_contracts_jury_case_fail_reason">jury::case_fail_reason</a>(case) == <a href="../social_contracts/jury.md#social_contracts_jury_fail_cannot_form">jury::fail_cannot_form</a>()) {
+        <a href="../social_contracts/governance.md#social_contracts_governance_defer_after_unformed_case">defer_after_unformed_case</a>(proposal, case, stage, field, now);
+        <b>return</b> (<a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_DEFERRED">JURY_ACTION_DEFERRED</a>, now)
+    };
     <b>let</b> forward = <b>if</b> (failed) {
         stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>
     } <b>else</b> {
@@ -7901,11 +8766,12 @@ statistics are not touched: a jury decision says nothing about how delegates sid
 
 Global registries (ecosystem, proof of creativity, SPoT): send a proposal to the jury at the
 step that has earned it. Permissionless. Unspent juror shares are swept to the ecosystem
-treasury. When the jury is switched off at the community step, the proposal is rejected as
-a no-quorum or tied vote always was.
+treasury. When no jury can form the step waits (see [<code><a href="../social_contracts/governance.md#social_contracts_governance_open_jury_for_proposal">open_jury_for_proposal</a></code>]). When the
+jury is switched off at the community step, the proposal is rejected as a no-quorum or tied
+vote always was.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_to_jury">escalate_to_jury</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, jury_config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, stage: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_to_jury">escalate_to_jury</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, jury_config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, stage: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -7918,6 +8784,7 @@ a no-quorum or tied vote always was.
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">GovernanceDAO</a>,
     proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>,
     jury_config: &JuryConfig,
+    roster: &JurorRoster,
     ecosystem_treasury: &EcosystemTreasury,
     stage: u8,
     clock: &Clock,
@@ -7929,13 +8796,14 @@ a no-quorum or tied vote always was.
         registry,
         proposal,
         jury_config,
+        roster,
         stage,
         dest,
         vector::empty&lt;<b>address</b>&gt;(),
         clock,
         ctx,
     );
-    <b>if</b> (result == 1) {
+    <b>if</b> (result == <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_JURY_PAUSED">ESCALATE_JURY_PAUSED</a>) {
         <b>let</b> reason = <a href="../social_contracts/governance.md#social_contracts_governance_jury_default_forfeit_reason">jury_default_forfeit_reason</a>(proposal);
         <a href="../social_contracts/governance.md#social_contracts_governance_forfeit_proposal_pool_to_treasury_address">forfeit_proposal_pool_to_treasury_address</a>(
             registry,
@@ -7999,12 +8867,61 @@ Global registries: apply a finished jury case to its proposal. Permissionless.
 
 </details>
 
+<a name="social_contracts_governance_defer_after_unformed_case"></a>
+
+## Function `defer_after_unformed_case`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_defer_after_unformed_case">defer_after_unformed_case</a>(proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, stage: u8, field: vector&lt;u8&gt;, now: u64)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_defer_after_unformed_case">defer_after_unformed_case</a>(proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>, case: &<b>mut</b> JuryCase, stage: u8, field: vector&lt;u8&gt;, now: u64) {
+    <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) {
+        <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_DELEGATE_REVIEW">STATUS_DELEGATE_REVIEW</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+    } <b>else</b> {
+        <b>assert</b>!(proposal.status == <a href="../social_contracts/governance.md#social_contracts_governance_STATUS_COMMUNITY_VOTING">STATUS_COMMUNITY_VOTING</a>, <a href="../social_contracts/governance.md#social_contracts_governance_EInvalidProposalStatus">EInvalidProposalStatus</a>);
+    };
+    balance::join(&<b>mut</b> proposal.reward_pool, <a href="../social_contracts/jury.md#social_contracts_jury_sweep_remainder">jury::sweep_remainder</a>(case));
+    <b>let</b> proposal_id = object::id(proposal);
+    <b>let</b> deferred_since = {
+        <b>let</b> review: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow_mut(&<b>mut</b> proposal.id, field);
+        // The council step goes back to the delegates; the community step waits <b>for</b> a <a href="../social_contracts/jury.md#social_contracts_jury">jury</a>.
+        review.state = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_REFERRING">JURY_STATE_REFERRING</a> } <b>else</b> { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STATE_AWAITING">JURY_STATE_AWAITING</a> };
+        <b>if</b> (review.deferred_since_ms == 0) {
+            review.deferred_since_ms = now;
+        };
+        review.deferred_since_ms
+    };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_JuryUnavailableEvent">JuryUnavailableEvent</a> {
+        proposal_id,
+        stage,
+        case_id: option::some(object::id(case)),
+        formable_seats: 0,
+        required_seats: 0,
+        deferred_since_ms: deferred_since,
+        at_ms: now,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_governance_sweep_jury_case"></a>
 
 ## Function `sweep_jury_case`
 
 Pay what the jurors did not claim back to the address the case named, once the case has ended
-and its fees are settled. Permissionless.
+and its fees are settled. Permissionless. A governance case must be applied first, so a case
+that could not form returns its fee to the proposal instead of the treasury.
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_sweep_jury_case">sweep_jury_case</a>(case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -8017,6 +8934,9 @@ and its fees are settled. Permissionless.
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_sweep_jury_case">sweep_jury_case</a>(case: &<b>mut</b> JuryCase, ctx: &<b>mut</b> TxContext) {
+    <b>if</b> (<a href="../social_contracts/jury.md#social_contracts_jury_case_subject_kind">jury::case_subject_kind</a>(case) == <a href="../social_contracts/jury.md#social_contracts_jury_subject_governance">jury::subject_governance</a>()) {
+        <b>assert</b>!(<a href="../social_contracts/jury.md#social_contracts_jury_case_executed">jury::case_executed</a>(case), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryNotFinished">EJuryNotFinished</a>);
+    };
     <b>let</b> remainder = <a href="../social_contracts/jury.md#social_contracts_jury_sweep_remainder">jury::sweep_remainder</a>(case);
     <b>if</b> (balance::value(&remainder) &gt; 0) {
         transfer::public_transfer(coin::from_balance(remainder, ctx), <a href="../social_contracts/jury.md#social_contracts_jury_case_sweep_to">jury::case_sweep_to</a>(case));
@@ -8206,6 +9126,312 @@ and its fees are settled. Permissionless.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_reject_value">jury_action_reject_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_REJECT">JURY_ACTION_REJECT</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_action_deferred_value"></a>
+
+## Function `jury_action_deferred_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_deferred_value">jury_action_deferred_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_action_deferred_value">jury_action_deferred_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_ACTION_DEFERRED">JURY_ACTION_DEFERRED</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_escalate_opened_value"></a>
+
+## Function `escalate_opened_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_opened_value">escalate_opened_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_opened_value">escalate_opened_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_OPENED">ESCALATE_OPENED</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_escalate_jury_paused_value"></a>
+
+## Function `escalate_jury_paused_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_jury_paused_value">escalate_jury_paused_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_jury_paused_value">escalate_jury_paused_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_JURY_PAUSED">ESCALATE_JURY_PAUSED</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_escalate_deferred_value"></a>
+
+## Function `escalate_deferred_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_deferred_value">escalate_deferred_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_deferred_value">escalate_deferred_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_DEFERRED">ESCALATE_DEFERRED</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_escalate_advanced_value"></a>
+
+## Function `escalate_advanced_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_advanced_value">escalate_advanced_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_advanced_value">escalate_advanced_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_ADVANCED">ESCALATE_ADVANCED</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_escalate_refunded_value"></a>
+
+## Function `escalate_refunded_value`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_refunded_value">escalate_refunded_value</a>(): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_escalate_refunded_value">escalate_refunded_value</a>(): u8 { <a href="../social_contracts/governance.md#social_contracts_governance_ESCALATE_REFUNDED">ESCALATE_REFUNDED</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_defer_max_ms"></a>
+
+## Function `jury_defer_max_ms`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_defer_max_ms">jury_defer_max_ms</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_defer_max_ms">jury_defer_max_ms</a>(): u64 { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_DEFER_MAX_MS">JURY_DEFER_MAX_MS</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_vote_refund_claim_window_ms"></a>
+
+## Function `vote_refund_claim_window_ms`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_refund_claim_window_ms">vote_refund_claim_window_ms</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_refund_claim_window_ms">vote_refund_claim_window_ms</a>(): u64 { <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_CLAIM_WINDOW_MS">VOTE_REFUND_CLAIM_WINDOW_MS</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_jury_deferred_since_ms"></a>
+
+## Function `jury_deferred_since_ms`
+
+When the step first found no jury able to form; 0 if never.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_deferred_since_ms">jury_deferred_since_ms</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, stage: u8): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_jury_deferred_since_ms">jury_deferred_since_ms</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>, stage: u8): u64 {
+    <b>let</b> field = <b>if</b> (stage == <a href="../social_contracts/governance.md#social_contracts_governance_JURY_STAGE_COUNCIL">JURY_STAGE_COUNCIL</a>) { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COUNCIL_FIELD">JURY_COUNCIL_FIELD</a> } <b>else</b> { <a href="../social_contracts/governance.md#social_contracts_governance_JURY_COMMUNITY_FIELD">JURY_COMMUNITY_FIELD</a> };
+    <b>if</b> (!dynamic_field::exists_(&proposal.id, field)) {
+        <b>return</b> 0
+    };
+    <b>let</b> review: &<a href="../social_contracts/governance.md#social_contracts_governance_JuryReview">JuryReview</a> = dynamic_field::borrow(&proposal.id, field);
+    review.deferred_since_ms
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_vote_refunded"></a>
+
+## Function `vote_refunded`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_refunded">vote_refunded</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_refunded">vote_refunded</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): bool { dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_FIELD">VOTE_REFUND_FIELD</a>) }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_vote_paid_mist"></a>
+
+## Function `vote_paid_mist`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_paid_mist">vote_paid_mist</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, voter: <b>address</b>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_paid_mist">vote_paid_mist</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>, voter: <b>address</b>): u64 {
+    <b>if</b> (!dynamic_field::exists_(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>)) {
+        <b>return</b> 0
+    };
+    <b>let</b> payments: &<a href="../social_contracts/governance.md#social_contracts_governance_VotePayments">VotePayments</a> = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_PAID_FIELD">VOTE_PAID_FIELD</a>);
+    <b>if</b> (table::contains(&payments.paid, voter)) { *table::borrow(&payments.paid, voter) } <b>else</b> { 0 }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_vote_refund_claim_deadline_ms"></a>
+
+## Function `vote_refund_claim_deadline_ms`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_refund_claim_deadline_ms">vote_refund_claim_deadline_ms</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_refund_claim_deadline_ms">vote_refund_claim_deadline_ms</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): u64 {
+    <b>let</b> refund: &<a href="../social_contracts/governance.md#social_contracts_governance_VoteRefund">VoteRefund</a> = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_FIELD">VOTE_REFUND_FIELD</a>);
+    refund.claim_deadline_ms
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_governance_vote_refund_outstanding_mist"></a>
+
+## Function `vote_refund_outstanding_mist`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_refund_outstanding_mist">vote_refund_outstanding_mist</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_vote_refund_outstanding_mist">vote_refund_outstanding_mist</a>(proposal: &<a href="../social_contracts/governance.md#social_contracts_governance_Proposal">Proposal</a>): u64 {
+    <b>let</b> refund: &<a href="../social_contracts/governance.md#social_contracts_governance_VoteRefund">VoteRefund</a> = dynamic_field::borrow(&proposal.id, <a href="../social_contracts/governance.md#social_contracts_governance_VOTE_REFUND_FIELD">VOTE_REFUND_FIELD</a>);
+    refund.outstanding_paid_mist
+}
 </code></pre>
 
 

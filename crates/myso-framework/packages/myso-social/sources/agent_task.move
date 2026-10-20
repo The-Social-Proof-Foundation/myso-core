@@ -561,19 +561,7 @@ module social_contracts::agent_task {
             max_uri_bytes: DEFAULT_MAX_URI_BYTES,
             active: true,
             version: upgrade::current_version(),
-            reputation: memory::new_reputation_params(
-                3000,
-                50000,
-                1_000_000_000,
-                500,
-                20000,
-                2000,
-                500,
-                16,
-                10000,
-                5000,
-                5000,
-            ),
+            reputation: memory::default_reputation_params(),
         };
         validate_task_config(&config);
         emit_config_updated(&config, admin, clock);
@@ -584,10 +572,12 @@ module social_contracts::agent_task {
         TaskMarketCap { id: object::new(ctx) }
     }
 
-    /// Replaces the whole configuration. Every bound is re-validated; a violation aborts.
+    /// Replaces the whole configuration. Every bound is re-validated; a violation aborts. The
+    /// reputation params are copied to the jury so jurors are scored with the same math.
     public entry fun set_task_config(
         _: &TaskMarketCap,
         config: &mut TaskConfig,
+        jury_config: &mut JuryConfig,
         platform_fee_bps: u64,
         ecosystem_fee_bps: u64,
         ecosystem_fee_recipient: address,
@@ -650,6 +640,7 @@ module social_contracts::agent_task {
             overall_buyer_weight_bps,
         );
         validate_task_config(config);
+        jury::sync_reputation_params(jury_config, config.reputation, clock, ctx);
         emit_config_updated(config, tx_context::sender(ctx), clock);
     }
 
@@ -1666,16 +1657,6 @@ module social_contracts::agent_task {
         assert!(task.status == STATUS_DELIVERED, EWrongStatus);
         assert!(object::id(seller_account) == task.seller_memory_account_id, EWrongTaskObject);
         let role = resolve_party(task, memory_config, buyer_account, seller_agent, clock, ctx);
-        jury::assert_roster_ready(jury_config, roster, clock);
-
-        let fee_each = dispute_fee_mist(task.amount_mist);
-        assert!(coin::value(&fee) >= fee_each, EInsufficientPayment);
-        let payment = coin::split(&mut fee, fee_each, ctx);
-        if (coin::value(&fee) > 0) {
-            transfer::public_transfer(fee, tx_context::sender(ctx));
-        } else {
-            coin::destroy_zero(fee);
-        };
 
         let owners = vector[task.buyer_principal, task.seller_principal];
         let mut orgs = vector[memory::sub_agent_organization_id(seller_agent)];
@@ -1689,6 +1670,17 @@ module social_contracts::agent_task {
             vector::push_back(&mut agents, buyer_agent);
             vector::append(&mut agents, memory::agent_ancestor_ids(memory_config, buyer_account, buyer_agent));
         };
+        let round_sizes = vector[DISPUTE_FIRST_JURY, DISPUTE_APPEAL_JURY];
+        jury::assert_case_formable(jury_config, roster, &owners, &orgs, &agents, &round_sizes, clock);
+
+        let fee_each = dispute_fee_mist(task.amount_mist);
+        assert!(coin::value(&fee) >= fee_each, EInsufficientPayment);
+        let payment = coin::split(&mut fee, fee_each, ctx);
+        if (coin::value(&fee) > 0) {
+            transfer::public_transfer(fee, tx_context::sender(ctx));
+        } else {
+            coin::destroy_zero(fee);
+        };
 
         let mut case = jury::open_case(
             jury_config,
@@ -1698,7 +1690,7 @@ module social_contracts::agent_task {
             3,
             DISPUTE_APPROVAL_BPS,
             DISPUTE_QUORUM,
-            vector[DISPUTE_FIRST_JURY, DISPUTE_APPEAL_JURY],
+            round_sizes,
             true,
             FAILURE_PATH_NEUTRAL,
             DISPUTE_EVIDENCE_WINDOW_MS,

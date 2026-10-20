@@ -561,7 +561,9 @@ pub(crate) struct PlatformTreasuryBalance {
 }
 
 impl PlatformTreasuryBalance {
-    fn from_row(inner: myso_indexer_alt_social_reader::platform::PlatformTreasuryBalanceRow) -> Self {
+    fn from_row(
+        inner: myso_indexer_alt_social_reader::platform::PlatformTreasuryBalanceRow,
+    ) -> Self {
         Self { inner }
     }
 }

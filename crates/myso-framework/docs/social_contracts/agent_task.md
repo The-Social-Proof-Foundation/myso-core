@@ -2953,19 +2953,7 @@ distinct owners for a larger one (each round needs fresh owners).
         max_uri_bytes: <a href="../social_contracts/agent_task.md#social_contracts_agent_task_DEFAULT_MAX_URI_BYTES">DEFAULT_MAX_URI_BYTES</a>,
         active: <b>true</b>,
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
-        reputation: <a href="../social_contracts/memory.md#social_contracts_memory_new_reputation_params">memory::new_reputation_params</a>(
-            3000,
-            50000,
-            1_000_000_000,
-            500,
-            20000,
-            2000,
-            500,
-            16,
-            10000,
-            5000,
-            5000,
-        ),
+        reputation: <a href="../social_contracts/memory.md#social_contracts_memory_default_reputation_params">memory::default_reputation_params</a>(),
     };
     <a href="../social_contracts/agent_task.md#social_contracts_agent_task_validate_task_config">validate_task_config</a>(&config);
     <a href="../social_contracts/agent_task.md#social_contracts_agent_task_emit_config_updated">emit_config_updated</a>(&config, admin, clock);
@@ -3005,10 +2993,11 @@ distinct owners for a larger one (each round needs fresh owners).
 
 ## Function `set_task_config`
 
-Replaces the whole configuration. Every bound is re-validated; a violation aborts.
+Replaces the whole configuration. Every bound is re-validated; a violation aborts. The
+reputation params are copied to the jury so jurors are scored with the same math.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_set_task_config">set_task_config</a>(_: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskMarketCap">social_contracts::agent_task::TaskMarketCap</a>, config: &<b>mut</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskConfig">social_contracts::agent_task::TaskConfig</a>, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_platform_fee_bps">platform_fee_bps</a>: u64, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_ecosystem_fee_bps">ecosystem_fee_bps</a>: u64, ecosystem_fee_recipient: <b>address</b>, min_escrow_mist: u64, accept_window_min_ms: u64, accept_window_default_ms: u64, accept_window_max_ms: u64, delivery_window_min_ms: u64, delivery_window_max_ms: u64, settle_window_min_ms: u64, settle_window_max_ms: u64, release_grace_ms: u64, review_window_ms: u64, max_title_bytes: u64, max_uri_bytes: u64, active: bool, prior_mean_milli: u64, prior_weight_bps: u64, value_ref_mist: u64, min_value_weight_bps: u64, max_value_weight_bps: u64, cred_base_bps: u64, cred_step_bps: u64, cred_cap_n: u64, cred_max_bps: u64, overall_seller_weight_bps: u64, overall_buyer_weight_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_set_task_config">set_task_config</a>(_: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskMarketCap">social_contracts::agent_task::TaskMarketCap</a>, config: &<b>mut</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskConfig">social_contracts::agent_task::TaskConfig</a>, jury_config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_platform_fee_bps">platform_fee_bps</a>: u64, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_ecosystem_fee_bps">ecosystem_fee_bps</a>: u64, ecosystem_fee_recipient: <b>address</b>, min_escrow_mist: u64, accept_window_min_ms: u64, accept_window_default_ms: u64, accept_window_max_ms: u64, delivery_window_min_ms: u64, delivery_window_max_ms: u64, settle_window_min_ms: u64, settle_window_max_ms: u64, release_grace_ms: u64, review_window_ms: u64, max_title_bytes: u64, max_uri_bytes: u64, active: bool, prior_mean_milli: u64, prior_weight_bps: u64, value_ref_mist: u64, min_value_weight_bps: u64, max_value_weight_bps: u64, cred_base_bps: u64, cred_step_bps: u64, cred_cap_n: u64, cred_max_bps: u64, overall_seller_weight_bps: u64, overall_buyer_weight_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3020,6 +3009,7 @@ Replaces the whole configuration. Every bound is re-validated; a violation abort
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_set_task_config">set_task_config</a>(
     _: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskMarketCap">TaskMarketCap</a>,
     config: &<b>mut</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskConfig">TaskConfig</a>,
+    jury_config: &<b>mut</b> JuryConfig,
     <a href="../social_contracts/agent_task.md#social_contracts_agent_task_platform_fee_bps">platform_fee_bps</a>: u64,
     <a href="../social_contracts/agent_task.md#social_contracts_agent_task_ecosystem_fee_bps">ecosystem_fee_bps</a>: u64,
     ecosystem_fee_recipient: <b>address</b>,
@@ -3082,6 +3072,7 @@ Replaces the whole configuration. Every bound is re-validated; a violation abort
         overall_buyer_weight_bps,
     );
     <a href="../social_contracts/agent_task.md#social_contracts_agent_task_validate_task_config">validate_task_config</a>(config);
+    <a href="../social_contracts/jury.md#social_contracts_jury_sync_reputation_params">jury::sync_reputation_params</a>(jury_config, config.reputation, clock, ctx);
     <a href="../social_contracts/agent_task.md#social_contracts_agent_task_emit_config_updated">emit_config_updated</a>(config, tx_context::sender(ctx), clock);
 }
 </code></pre>
@@ -4801,15 +4792,6 @@ while the roster is too thin to be fair.
     <b>assert</b>!(task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_status">status</a> == <a href="../social_contracts/agent_task.md#social_contracts_agent_task_STATUS_DELIVERED">STATUS_DELIVERED</a>, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_EWrongStatus">EWrongStatus</a>);
     <b>assert</b>!(object::id(seller_account) == task.seller_memory_account_id, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_EWrongTaskObject">EWrongTaskObject</a>);
     <b>let</b> role = <a href="../social_contracts/agent_task.md#social_contracts_agent_task_resolve_party">resolve_party</a>(task, memory_config, buyer_account, seller_agent, clock, ctx);
-    <a href="../social_contracts/jury.md#social_contracts_jury_assert_roster_ready">jury::assert_roster_ready</a>(jury_config, roster, clock);
-    <b>let</b> fee_each = <a href="../social_contracts/agent_task.md#social_contracts_agent_task_dispute_fee_mist">dispute_fee_mist</a>(task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_amount_mist">amount_mist</a>);
-    <b>assert</b>!(coin::value(&fee) &gt;= fee_each, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_EInsufficientPayment">EInsufficientPayment</a>);
-    <b>let</b> payment = coin::split(&<b>mut</b> fee, fee_each, ctx);
-    <b>if</b> (coin::value(&fee) &gt; 0) {
-        transfer::public_transfer(fee, tx_context::sender(ctx));
-    } <b>else</b> {
-        coin::destroy_zero(fee);
-    };
     <b>let</b> owners = vector[task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_buyer_principal">buyer_principal</a>, task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_principal">seller_principal</a>];
     <b>let</b> <b>mut</b> orgs = vector[<a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_organization_id">memory::sub_agent_organization_id</a>(seller_agent)];
     <b>if</b> (option::is_some(&task.organization_id)) {
@@ -4822,6 +4804,16 @@ while the roster is too thin to be fair.
         vector::push_back(&<b>mut</b> agents, buyer_agent);
         vector::append(&<b>mut</b> agents, <a href="../social_contracts/memory.md#social_contracts_memory_agent_ancestor_ids">memory::agent_ancestor_ids</a>(memory_config, buyer_account, buyer_agent));
     };
+    <b>let</b> round_sizes = vector[<a href="../social_contracts/agent_task.md#social_contracts_agent_task_DISPUTE_FIRST_JURY">DISPUTE_FIRST_JURY</a>, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_DISPUTE_APPEAL_JURY">DISPUTE_APPEAL_JURY</a>];
+    <a href="../social_contracts/jury.md#social_contracts_jury_assert_case_formable">jury::assert_case_formable</a>(jury_config, roster, &owners, &orgs, &agents, &round_sizes, clock);
+    <b>let</b> fee_each = <a href="../social_contracts/agent_task.md#social_contracts_agent_task_dispute_fee_mist">dispute_fee_mist</a>(task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_amount_mist">amount_mist</a>);
+    <b>assert</b>!(coin::value(&fee) &gt;= fee_each, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_EInsufficientPayment">EInsufficientPayment</a>);
+    <b>let</b> payment = coin::split(&<b>mut</b> fee, fee_each, ctx);
+    <b>if</b> (coin::value(&fee) &gt; 0) {
+        transfer::public_transfer(fee, tx_context::sender(ctx));
+    } <b>else</b> {
+        coin::destroy_zero(fee);
+    };
     <b>let</b> <b>mut</b> case = <a href="../social_contracts/jury.md#social_contracts_jury_open_case">jury::open_case</a>(
         jury_config,
         <a href="../social_contracts/jury.md#social_contracts_jury_subject_task">jury::subject_task</a>(),
@@ -4830,7 +4822,7 @@ while the roster is too thin to be fair.
         3,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_DISPUTE_APPROVAL_BPS">DISPUTE_APPROVAL_BPS</a>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_DISPUTE_QUORUM">DISPUTE_QUORUM</a>,
-        vector[<a href="../social_contracts/agent_task.md#social_contracts_agent_task_DISPUTE_FIRST_JURY">DISPUTE_FIRST_JURY</a>, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_DISPUTE_APPEAL_JURY">DISPUTE_APPEAL_JURY</a>],
+        round_sizes,
         <b>true</b>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_FAILURE_PATH_NEUTRAL">FAILURE_PATH_NEUTRAL</a>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_DISPUTE_EVIDENCE_WINDOW_MS">DISPUTE_EVIDENCE_WINDOW_MS</a>,

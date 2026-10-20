@@ -13,19 +13,20 @@ use diesel::QueryDsl;
 use diesel::SelectableHelper;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::schema::{
-    jury_cases, jury_evidence, jury_payouts, jury_roster, jury_rounds, jury_slots,
-    governance_registries, proposal_jury_referrals, proposal_jury_reviews, registry_jury_policies,
-    task_disputes,
+    governance_registries, jury_cases, jury_evidence, jury_payouts, jury_roster, jury_rounds,
+    jury_slots, proposal_jury_referrals, proposal_jury_reviews, proposal_refunds,
+    registry_jury_policies, task_disputes,
 };
 use myso_pg_db::Db;
 
 use crate::error::SocialError;
 use crate::reader::types::{
-    JuryRationaleInfo, RationaleOutcome, StoreRationaleRequest, ProposalJuryInfo, ProposalJuryReferralInfo, ProposalJuryReviewInfo, RegistryJuryPolicyInfo,
-    RegistryJuryPolicyView,
-    JuryCaseDetailInfo, JuryCaseInfo, JuryCaseRow, JuryEvidenceInfo, JuryPayoutInfo,
-    JuryRoundInfo, JuryRoundRow, JurorAssignmentInfo, JurorRosterInfo, JurySlotInfo, JurySlotRow,
-    TaskDisputeDetailInfo, TaskDisputeInfo,
+    JurorAssignmentInfo, JurorRosterInfo, JuryCaseDetailInfo, JuryCaseInfo, JuryCaseRow,
+    JuryEvidenceInfo, JuryPayoutInfo, JuryRationaleInfo, JuryRoundInfo, JuryRoundRow, JurySlotInfo,
+    JurySlotRow, ProposalJuryInfo, ProposalJuryReferralInfo, ProposalJuryReviewInfo,
+    ProposalJuryReviewView, ProposalRefundInfo, ProposalVoteRefundsInfo, RationaleOutcome,
+    RegistryJuryPolicyInfo, RegistryJuryPolicyView, StoreRationaleRequest, TaskDisputeDetailInfo,
+    TaskDisputeInfo, VoteRefundInfo,
 };
 
 const SLOT_DRAFTED: i16 = 1;
@@ -145,7 +146,10 @@ pub(crate) async fn get_task_dispute(
 }
 
 /// Both human steps of a proposal that the jury has been asked about, and who asked at the council.
-pub(crate) async fn get_proposal_jury(db: &Db, proposal_id: &str) -> Result<ProposalJuryInfo, SocialError> {
+pub(crate) async fn get_proposal_jury(
+    db: &Db,
+    proposal_id: &str,
+) -> Result<ProposalJuryInfo, SocialError> {
     let mut conn = db.connect().await?;
     let reviews = proposal_jury_reviews::table
         .filter(proposal_jury_reviews::proposal_id.eq(proposal_id))
@@ -162,7 +166,66 @@ pub(crate) async fn get_proposal_jury(db: &Db, proposal_id: &str) -> Result<Prop
         .select(ProposalJuryReferralInfo::as_select())
         .load(&mut conn)
         .await?;
-    Ok(ProposalJuryInfo { reviews, referrals })
+    let refund = proposal_refund(&mut conn, proposal_id).await?;
+    let reviews = reviews
+        .into_iter()
+        .map(|review| ProposalJuryReviewView {
+            resolved_by_wait: review.resolved_by_wait(),
+            review,
+        })
+        .collect();
+    Ok(ProposalJuryInfo {
+        reviews,
+        referrals,
+        refund,
+    })
+}
+
+async fn proposal_refund(
+    conn: &mut diesel_async::AsyncPgConnection,
+    proposal_id: &str,
+) -> Result<Option<ProposalRefundInfo>, SocialError> {
+    Ok(proposal_refunds::table
+        .filter(proposal_refunds::proposal_id.eq(proposal_id))
+        .select(ProposalRefundInfo::as_select())
+        .first(conn)
+        .await
+        .optional()?)
+}
+
+/// Every voter who paid on a refunded proposal, with their pro-rata share of the voter pool (the
+/// chain's own formula) and when they claimed it.
+const VOTE_REFUNDS_SQL: &str = "SELECT paid.voter,
+            COALESCE(c.amount_mist,
+                     (paid.paid * rf.voter_refund_pool_mist / NULLIF(totals.total, 0))::bigint, 0)
+              AS amount_mist,
+            c.claimed_at_ms
+       FROM proposal_refunds rf
+       JOIN (SELECT proposal_id, voter_address AS voter, SUM(vote_cost)::numeric AS paid
+               FROM community_votes WHERE proposal_id = $1 AND vote_cost > 0
+              GROUP BY proposal_id, voter_address) paid ON paid.proposal_id = rf.proposal_id
+       JOIN (SELECT proposal_id, SUM(vote_cost)::numeric AS total
+               FROM community_votes WHERE proposal_id = $1 AND vote_cost > 0
+              GROUP BY proposal_id) totals ON totals.proposal_id = rf.proposal_id
+       LEFT JOIN proposal_vote_refunds c ON c.proposal_id = rf.proposal_id AND c.voter = paid.voter
+      WHERE rf.proposal_id = $1
+      ORDER BY paid.voter";
+
+pub(crate) async fn get_proposal_vote_refunds(
+    db: &Db,
+    proposal_id: &str,
+) -> Result<ProposalVoteRefundsInfo, SocialError> {
+    let mut conn = db.connect().await?;
+    let refund = proposal_refund(&mut conn, proposal_id).await?;
+    let voters = if refund.is_some() {
+        diesel::sql_query(VOTE_REFUNDS_SQL)
+            .bind::<Text, _>(proposal_id)
+            .load::<VoteRefundInfo>(&mut conn)
+            .await?
+    } else {
+        Vec::new()
+    };
+    Ok(ProposalVoteRefundsInfo { refund, voters })
 }
 
 pub(crate) async fn get_registry_jury_policy(
@@ -176,14 +239,19 @@ pub(crate) async fn get_registry_jury_policy(
         .first(&mut conn)
         .await
         .optional()?;
-    let Some(policy) = policy else { return Ok(None) };
+    let Some(policy) = policy else {
+        return Ok(None);
+    };
     let community_quorum_votes = governance_registries::table
         .filter(governance_registries::registry_id.eq(registry_id))
         .select(governance_registries::quorum_votes)
         .first::<i64>(&mut conn)
         .await
         .optional()?;
-    Ok(Some(RegistryJuryPolicyView { policy, community_quorum_votes }))
+    Ok(Some(RegistryJuryPolicyView {
+        policy,
+        community_quorum_votes,
+    }))
 }
 
 pub(crate) async fn list_roster(
@@ -202,7 +270,10 @@ pub(crate) async fn list_roster(
         query = query.filter(jury_roster::status.eq_any(statuses.to_vec()));
     }
     Ok(query
-        .order((jury_roster::joined_at_ms.desc(), jury_roster::agent_id.asc()))
+        .order((
+            jury_roster::joined_at_ms.desc(),
+            jury_roster::agent_id.asc(),
+        ))
         .limit(limit)
         .offset(offset)
         .select(JurorRosterInfo::as_select())
@@ -230,7 +301,10 @@ pub(crate) fn is_active_status(status: i16) -> bool {
 
 /// What the juror must do for this slot and when it closes. A juror who accepted has nothing to
 /// commit until the round's voting window opens.
-pub(crate) fn duty_for(slot: &JurySlotRow, round: Option<&JuryRoundRow>) -> (Option<&'static str>, Option<i64>) {
+pub(crate) fn duty_for(
+    slot: &JurySlotRow,
+    round: Option<&JuryRoundRow>,
+) -> (Option<&'static str>, Option<i64>) {
     match slot.status {
         SLOT_DRAFTED => (Some("accept"), Some(slot.accept_deadline_ms)),
         SLOT_ACCEPTED => match round.and_then(|r| r.commit_deadline_ms) {
@@ -261,7 +335,11 @@ pub(crate) async fn list_assignments(
         .filter(jury_slots::agent_id.eq(agent_id))
         .into_boxed();
     if statuses.is_empty() {
-        query = query.filter(jury_slots::status.eq_any(vec![SLOT_DRAFTED, SLOT_ACCEPTED, SLOT_COMMITTED]));
+        query = query.filter(jury_slots::status.eq_any(vec![
+            SLOT_DRAFTED,
+            SLOT_ACCEPTED,
+            SLOT_COMMITTED,
+        ]));
     } else {
         query = query.filter(jury_slots::status.eq_any(statuses.to_vec()));
     }
@@ -311,11 +389,15 @@ pub(crate) async fn list_assignments(
         .collect();
     if active_only {
         out.sort_by(|a, b| {
-            let key = |x: &JurorAssignmentInfo| (x.deadline_ms.is_none(), x.deadline_ms, x.case_id.clone());
+            let key = |x: &JurorAssignmentInfo| {
+                (x.deadline_ms.is_none(), x.deadline_ms, x.case_id.clone())
+            };
             key(a).cmp(&key(b))
         });
         let start = usize::try_from(offset).unwrap_or(0).min(out.len());
-        let end = start.saturating_add(usize::try_from(limit).unwrap_or(0)).min(out.len());
+        let end = start
+            .saturating_add(usize::try_from(limit).unwrap_or(0))
+            .min(out.len());
         out = out.drain(start..end).collect();
     }
     Ok(out)
@@ -360,12 +442,18 @@ mod tests {
 
     #[test]
     fn a_drafted_juror_must_accept_before_the_accept_deadline() {
-        assert_eq!(duty_for(&slot(SLOT_DRAFTED), None), (Some("accept"), Some(100)));
+        assert_eq!(
+            duty_for(&slot(SLOT_DRAFTED), None),
+            (Some("accept"), Some(100))
+        );
     }
 
     #[test]
     fn an_accepted_juror_waits_until_voting_opens_then_commits() {
-        assert_eq!(duty_for(&slot(SLOT_ACCEPTED), Some(&round(None, None))), (None, None));
+        assert_eq!(
+            duty_for(&slot(SLOT_ACCEPTED), Some(&round(None, None))),
+            (None, None)
+        );
         assert_eq!(
             duty_for(&slot(SLOT_ACCEPTED), Some(&round(Some(500), Some(900)))),
             (Some("commit"), Some(500))
@@ -382,7 +470,10 @@ mod tests {
 
     #[test]
     fn finished_slots_have_no_duty() {
-        assert_eq!(duty_for(&slot(SLOT_REVEALED), Some(&round(Some(1), Some(2)))), (None, None));
+        assert_eq!(
+            duty_for(&slot(SLOT_REVEALED), Some(&round(Some(1), Some(2)))),
+            (None, None)
+        );
         assert_eq!(duty_for(&slot(5), None), (None, None));
     }
 
@@ -395,8 +486,16 @@ mod tests {
     #[test]
     fn a_case_listing_needs_a_subject_or_a_state() {
         assert!(!CaseFilter::default().is_scoped());
-        assert!(CaseFilter { subject_id: Some("0x1".into()), ..Default::default() }.is_scoped());
-        assert!(CaseFilter { states: vec![3], ..Default::default() }.is_scoped());
+        assert!(CaseFilter {
+            subject_id: Some("0x1".into()),
+            ..Default::default()
+        }
+        .is_scoped());
+        assert!(CaseFilter {
+            states: vec![3],
+            ..Default::default()
+        }
+        .is_scoped());
     }
 }
 
@@ -449,7 +548,10 @@ pub(crate) async fn store_rationale(
     .bind::<Text, _>(&agent_id)
     .get_result::<RationaleCounts>(&mut conn)
     .await?;
-    Ok(rationale_outcome_when_not_inserted(counts.stored, counts.revealed))
+    Ok(rationale_outcome_when_not_inserted(
+        counts.stored,
+        counts.revealed,
+    ))
 }
 
 /// What a rationale that was not inserted means: saved before, not yet revealed, or not the right text.
@@ -480,7 +582,10 @@ struct RationaleRow {
 }
 
 /// Every revealed vote of a case with its published reason, oldest reveal first.
-pub(crate) async fn list_rationales(db: &Db, case_id: &str) -> Result<Vec<JuryRationaleInfo>, SocialError> {
+pub(crate) async fn list_rationales(
+    db: &Db,
+    case_id: &str,
+) -> Result<Vec<JuryRationaleInfo>, SocialError> {
     use diesel::sql_query;
     let mut conn = db.connect().await?;
     let rows = sql_query(
@@ -513,14 +618,29 @@ mod rationale_tests {
 
     #[test]
     fn a_rationale_that_was_not_inserted_says_why() {
-        assert_eq!(rationale_outcome_when_not_inserted(1, 1), RationaleOutcome::AlreadyStored);
-        assert_eq!(rationale_outcome_when_not_inserted(0, 0), RationaleOutcome::NotRevealed);
-        assert_eq!(rationale_outcome_when_not_inserted(0, 1), RationaleOutcome::Mismatch);
+        assert_eq!(
+            rationale_outcome_when_not_inserted(1, 1),
+            RationaleOutcome::AlreadyStored
+        );
+        assert_eq!(
+            rationale_outcome_when_not_inserted(0, 0),
+            RationaleOutcome::NotRevealed
+        );
+        assert_eq!(
+            rationale_outcome_when_not_inserted(0, 1),
+            RationaleOutcome::Mismatch
+        );
     }
 
     #[test]
     fn the_outcome_names_serialize_in_snake_case_for_the_runner() {
-        assert_eq!(serde_json::to_value(RationaleOutcome::NotRevealed).unwrap(), "not_revealed");
-        assert_eq!(serde_json::to_value(RationaleOutcome::AlreadyStored).unwrap(), "already_stored");
+        assert_eq!(
+            serde_json::to_value(RationaleOutcome::NotRevealed).unwrap(),
+            "not_revealed"
+        );
+        assert_eq!(
+            serde_json::to_value(RationaleOutcome::AlreadyStored).unwrap(),
+            "already_stored"
+        );
     }
 }

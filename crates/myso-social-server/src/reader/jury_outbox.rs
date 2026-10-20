@@ -12,8 +12,8 @@ use diesel::sql_types::{BigInt, Nullable, SmallInt, Text};
 use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{
-    duty_poll_event, fee_claimable_event, keeper_event, Crank, CrankKind, CrankRefs, DutyKind,
-    JurorSeat, NewAutomationEvent,
+    crank_event, duty_poll_event, fee_claimable_event, vote_refund_claimable_event, Crank,
+    CrankKind, CrankRefs, DutyKind, JurorSeat, NewAutomationEvent, VoteRefundReminder,
 };
 use myso_indexer_alt_social_schema::schema::automation_event_outbox;
 use myso_pg_db::Db;
@@ -21,7 +21,7 @@ use myso_pg_db::Db;
 use crate::error::SocialError;
 use crate::reader::types::{JuryHealthInfo, OverdueCrank, RosterHealth};
 
-/// Rows per insert; a scan can produce one row per keeper per crank.
+/// Rows per insert; a scan can produce one row per crank, duty and unpaid juror.
 const INSERT_CHUNK: usize = 500;
 
 #[derive(QueryableByName)]
@@ -55,7 +55,7 @@ const NO_REFS: &str = "NULL::text AS registry_id, NULL::text AS platform_id,
                     NULL::text AS buyer_account_id, NULL::text AS seller_account_id,
                     NULL::text AS memory_account_id";
 
-/// A task's own accounts and platform, which the keeper job cannot look up.
+/// A task's own accounts and platform, which the crank job cannot look up.
 const TASK_REFS: &str = "NULL::text AS registry_id, t.platform_id AS platform_id,
                     t.buyer_memory_account_id AS buyer_account_id,
                     t.seller_memory_account_id AS seller_account_id,
@@ -78,6 +78,10 @@ const ROSTER_REFS: &str = "NULL::text AS registry_id, NULL::text AS platform_id,
 /// day for jurors to claim before a governance case's leftover fees are swept, and stop after a month.
 const SWEEP_AFTER_MS: i64 = 3 * 86_400_000;
 const SWEEP_UNTIL_MS: i64 = 30 * 86_400_000;
+/// After a proposal is deferred for want of jurors, its escalation is retried no sooner than this.
+const ESCALATE_BACKOFF_MS: i64 = 6 * 3_600_000;
+/// The chain's `JURY_DEFER_MAX_MS`: once a deferral is this old, the next escalation resolves it.
+const JURY_DEFER_MAX_MS: i64 = 30 * 86_400_000;
 /// `CAP_JURY`: an agent without it can no longer serve.
 const CAP_JURY: i64 = 262_144;
 
@@ -159,7 +163,7 @@ pub(crate) fn crank_sql(kind: CrankKind) -> String {
               ORDER BY d.neutral_window_ends_ms, c.case_id LIMIT $2"
         ),
         // The dispute ended and the fee pool is unpaid. A case still open (an agreement ended the
-        // dispute) must be closed first, which `extra = 1` tells the keeper.
+        // dispute) must be closed first, which `extra = 1` tells the operator.
         CrankKind::SettleFees => format!(
             "SELECT c.case_id, c.current_round AS round_no, c.subject_kind, c.subject_id,
                     COALESCE(d.resolved_at_ms, d.opened_at_ms) AS due_ms,
@@ -177,15 +181,22 @@ pub(crate) fn crank_sql(kind: CrankKind) -> String {
         // indexer has not seen yet can make a tie look early: the chain aborts such a crank, which
         // the engine records as a skip. `GREATEST(submission, last policy update)` is
         // never earlier than the chain's own start of the window, so a crank is never early.
+        // A step deferred because no jury could form is retried after a back-off (its due time
+        // moves with it, so the wait is not counted as lateness), and always once the 30-day bound
+        // has passed so the chain can resolve it.
         CrankKind::EscalateProposal => format!(
             "SELECT '' AS case_id, 0::bigint AS round_no, 2::smallint AS subject_kind, p.id AS subject_id,
-                    COALESCE(p.voting_end_time, 0) AS due_ms, 2::bigint AS extra, {PROPOSAL_REFS}
+                    GREATEST(COALESCE(p.voting_end_time, 0),
+                             COALESCE(rv.jury_unavailable_at_ms + {ESCALATE_BACKOFF_MS}, 0)) AS due_ms,
+                    2::bigint AS extra, {PROPOSAL_REFS}
                FROM proposal_jury_reviews rv
                JOIN proposals p ON p.id = rv.proposal_id
-              WHERE rv.stage = 2 AND rv.state = 2 AND p.status = 2 AND $1 >= 0
+              WHERE rv.stage = 2 AND rv.state = 2 AND p.status = 2 AND {retry}
              UNION ALL
              SELECT '' AS case_id, 0::bigint AS round_no, 2::smallint AS subject_kind, p.id AS subject_id,
-                    p.submission_time AS due_ms, 1::bigint AS extra, {PROPOSAL_REFS}
+                    GREATEST(p.submission_time,
+                             COALESCE(rv.jury_unavailable_at_ms + {ESCALATE_BACKOFF_MS}, 0)) AS due_ms,
+                    1::bigint AS extra, {PROPOSAL_REFS}
                FROM proposals p
                JOIN registry_jury_policies pol ON pol.registry_id = p.governance_registry_id
                                               AND pol.council_stage_enabled
@@ -202,13 +213,14 @@ pub(crate) fn crank_sql(kind: CrankKind) -> String {
                                      ORDER BY address, time DESC) cd
                              WHERE cd.is_active) x
                     ) council
-              WHERE p.status = 1 AND (rv.state IS NULL OR rv.state = 1)
+              WHERE p.status = 1 AND (rv.state IS NULL OR rv.state = 1) AND {retry}
                 AND p.reward_pool >= pol.min_pool_for_jury_mist
                 AND (COALESCE(rv.trigger, 0) = 1
                      OR (council.total > 0 AND council.acted >= council.total)
                      OR (pol.council_window_ms > 0
                          AND $1 > GREATEST(p.submission_time, pol.updated_at_ms) + pol.council_window_ms))
-              ORDER BY due_ms, subject_id LIMIT $2"
+              ORDER BY due_ms, subject_id LIMIT $2",
+            retry = escalate_retry_sql()
         ),
         // A community vote has ended on a registry whose jury is on, so ending it is what lets a
         // no-quorum or tied vote reach the jury. Normal outcomes are unchanged.
@@ -262,6 +274,21 @@ pub(crate) fn crank_sql(kind: CrankKind) -> String {
                 AND c.finalized_at_ms > $1 - {SWEEP_UNTIL_MS}
               ORDER BY c.finalized_at_ms, c.case_id LIMIT $2"
         ),
+        // A refunded proposal whose claim window closed, or whose paying voters have all claimed.
+        CrankKind::SweepVoteRefunds => format!(
+            "SELECT '' AS case_id, 0::bigint AS round_no, 2::smallint AS subject_kind, p.id AS subject_id,
+                    rf.claim_deadline_ms AS due_ms, 0::bigint AS extra, {PROPOSAL_REFS}
+               FROM proposal_refunds rf
+               JOIN proposals p ON p.id = rf.proposal_id
+              WHERE rf.swept_at_ms IS NULL
+                AND (rf.claim_deadline_ms < $1
+                     OR NOT EXISTS (SELECT 1 FROM community_votes v
+                                     WHERE v.proposal_id = rf.proposal_id AND v.vote_cost > 0
+                                       AND NOT EXISTS (SELECT 1 FROM proposal_vote_refunds c
+                                                        WHERE c.proposal_id = v.proposal_id
+                                                          AND c.voter = v.voter_address)))
+              ORDER BY rf.claim_deadline_ms, rf.proposal_id LIMIT $2"
+        ),
         // A governance case finished and its proposal still waits for the decision to be applied.
         CrankKind::ApplyDecision => format!(
             "SELECT c.case_id, c.current_round AS round_no, c.subject_kind, c.subject_id,
@@ -275,8 +302,21 @@ pub(crate) fn crank_sql(kind: CrankKind) -> String {
     }
 }
 
+/// Whether a deferred proposal's escalation may be retried now. `rv` is its review row.
+pub(crate) fn escalate_retry_sql() -> String {
+    format!(
+        "(rv.jury_unavailable_at_ms IS NULL
+          OR rv.jury_unavailable_at_ms < $1 - {ESCALATE_BACKOFF_MS}
+          OR $1 >= rv.jury_deferred_since_ms + {JURY_DEFER_MAX_MS})"
+    )
+}
+
 /// Every crank that can run now, oldest first within each kind.
-pub(crate) async fn list_cranks(db: &Db, now_ms: i64, limit: i64) -> Result<Vec<Crank>, SocialError> {
+pub(crate) async fn list_cranks(
+    db: &Db,
+    now_ms: i64,
+    limit: i64,
+) -> Result<Vec<Crank>, SocialError> {
     let mut conn = db.connect().await?;
     let mut out = Vec::new();
     for kind in CrankKind::ALL {
@@ -385,8 +425,7 @@ struct FeeRow {
 /// Jurors who revealed in a case that has ended and have not been paid. One row per juror per
 /// case, even if they sat in more than one round. `$1` is unused padding so every scan binds the
 /// same two parameters.
-pub(crate) const UNPAID_FEES_SQL: &str =
-    "SELECT * FROM (
+pub(crate) const UNPAID_FEES_SQL: &str = "SELECT * FROM (
        SELECT DISTINCT ON (s.case_id, s.agent_id)
               s.case_id, s.round AS round_no, s.agent_id, ro.memory_account_id AS account_id,
               c.subject_kind, c.subject_id
@@ -415,19 +454,64 @@ async fn insert_events(
     Ok(queued)
 }
 
-/// Queue the jury's scan-driven events: one crank event per keeper account, a heartbeat for every
-/// open juror duty, and a claim reminder for every unpaid juror. Safe to run on every tick and from
-/// several forwarders: the dedup keys make a repeat within a bucket a no-op.
+#[derive(QueryableByName)]
+struct RefundRow {
+    #[diesel(sql_type = Text)]
+    proposal_id: String,
+    #[diesel(sql_type = Text)]
+    voter: String,
+    #[diesel(sql_type = Text)]
+    account_id: String,
+    #[diesel(sql_type = BigInt)]
+    amount_mist: i64,
+    #[diesel(sql_type = BigInt)]
+    claim_deadline_ms: i64,
+    #[diesel(sql_type = Text)]
+    registry_id: String,
+    #[diesel(sql_type = Nullable<Text>)]
+    platform_id: Option<String>,
+}
+
+/// Voters with an account who paid to vote on a refunded proposal and have not claimed, with what
+/// they can claim (their share of the voter pool, as the chain computes it).
+pub(crate) const UNCLAIMED_VOTE_REFUNDS_SQL: &str =
+    "SELECT paid.proposal_id, paid.voter, ma.account_id,
+            (paid.paid * rf.voter_refund_pool_mist / NULLIF(totals.total, 0))::bigint AS amount_mist,
+            rf.claim_deadline_ms, p.governance_registry_id AS registry_id,
+            (SELECT pl.platform_id FROM platforms pl
+              WHERE pl.governance_registry_id = p.governance_registry_id
+                AND pl.deleted_at IS NULL LIMIT 1) AS platform_id
+       FROM proposal_refunds rf
+       JOIN (SELECT proposal_id, voter_address AS voter, SUM(vote_cost)::numeric AS paid
+               FROM community_votes WHERE vote_cost > 0
+              GROUP BY proposal_id, voter_address) paid ON paid.proposal_id = rf.proposal_id
+       JOIN (SELECT proposal_id, SUM(vote_cost)::numeric AS total
+               FROM community_votes WHERE vote_cost > 0 GROUP BY proposal_id) totals
+         ON totals.proposal_id = rf.proposal_id
+       JOIN (SELECT DISTINCT ON (id) id, governance_registry_id FROM proposals ORDER BY id, time DESC) p
+         ON p.id = rf.proposal_id
+       JOIN memory_accounts ma ON ma.principal_owner = paid.voter AND ma.active
+      WHERE rf.swept_at_ms IS NULL AND rf.claim_deadline_ms >= $1
+        AND NOT EXISTS (SELECT 1 FROM proposal_vote_refunds c
+                         WHERE c.proposal_id = rf.proposal_id AND c.voter = paid.voter)
+      ORDER BY rf.refunded_at_ms, paid.voter LIMIT $2";
+
+/// Queue the jury's scan-driven events: one event per crank for the configured operator (none
+/// without one; the cranks stay on the public feed), a heartbeat for every open juror duty, a
+/// claim reminder for every unpaid juror, and one note to each voter with a refund to claim. Safe
+/// to run on every tick and from several forwarders: the dedup keys make a repeat a no-op.
 pub(crate) async fn enqueue_jury_events(
     db: &Db,
     now_ms: i64,
     batch: i64,
-    keeper_accounts: &[String],
+    operator_id: Option<&str>,
 ) -> Result<usize, SocialError> {
     let mut events: Vec<NewAutomationEvent> = Vec::new();
 
-    for crank in list_cranks(db, now_ms, batch).await? {
-        events.extend(keeper_accounts.iter().map(|keeper| keeper_event(&crank, keeper, now_ms)));
+    if let Some(operator_id) = operator_id {
+        for crank in list_cranks(db, now_ms, batch).await? {
+            events.push(crank_event(&crank, operator_id, now_ms));
+        }
     }
 
     let mut conn = db.connect().await?;
@@ -459,6 +543,24 @@ pub(crate) async fn enqueue_jury_events(
         events.push(fee_claimable_event(&seat, now_ms));
     }
 
+    let refunds = diesel::sql_query(UNCLAIMED_VOTE_REFUNDS_SQL)
+        .bind::<BigInt, _>(now_ms)
+        .bind::<BigInt, _>(batch)
+        .load::<RefundRow>(&mut conn)
+        .await?;
+    for row in refunds {
+        let reminder = VoteRefundReminder {
+            proposal_id: row.proposal_id,
+            voter: row.voter,
+            account_id: row.account_id,
+            amount_mist: row.amount_mist,
+            claim_deadline_ms: row.claim_deadline_ms,
+            registry_id: row.registry_id,
+            platform_id: row.platform_id,
+        };
+        events.push(vote_refund_claimable_event(&reminder, now_ms));
+    }
+
     insert_events(&mut conn, &events).await
 }
 
@@ -466,7 +568,7 @@ pub(crate) async fn enqueue_jury_events(
 /// long while (critical). The forwarder retries every 30 seconds, so minutes are already a problem.
 const UNSENT_WARN_MS: i64 = 5 * 60_000;
 const UNSENT_CRITICAL_MS: i64 = 30 * 60_000;
-/// A crank this far past its deadline has outlived the keeper's hourly retries.
+/// A crank this far past its deadline has outlived the operator's hourly retries.
 const OVERDUE_WARN_MS: i64 = 60 * 60_000;
 const OVERDUE_CRITICAL_MS: i64 = 6 * 60 * 60_000;
 /// How many due cranks to sample per kind; enough to see a backlog without reading all of it.
@@ -486,12 +588,20 @@ struct RosterHealthRow {
     active: i64,
     #[diesel(sql_type = BigInt)]
     suspended: i64,
+    #[diesel(sql_type = BigInt)]
+    eligible_owners: i64,
 }
 
 /// Deadline-driven cranks. Roster refreshes and fee sweeps are routine upkeep with no deadline
 /// anyone is waiting on, so they are not counted as overdue.
 fn is_deadline_crank(kind: CrankKind) -> bool {
-    !matches!(kind, CrankKind::RefreshRoster | CrankKind::EvictIneligible | CrankKind::SweepCase)
+    !matches!(
+        kind,
+        CrankKind::RefreshRoster
+            | CrankKind::EvictIneligible
+            | CrankKind::SweepCase
+            | CrankKind::SweepVoteRefunds
+    )
 }
 
 /// Turn the measurements into a verdict and the reasons for it. Pure, so the thresholds are tested.
@@ -506,10 +616,16 @@ pub(crate) fn assess_health(
     if let Some(age) = oldest_unsent_ms {
         if age > UNSENT_CRITICAL_MS {
             critical = true;
-            reasons.push(format!("jury events have been undelivered for {} minutes", age / 60_000));
+            reasons.push(format!(
+                "jury events have been undelivered for {} minutes",
+                age / 60_000
+            ));
         } else if age > UNSENT_WARN_MS {
             warn = true;
-            reasons.push(format!("jury events have been undelivered for {} minutes", age / 60_000));
+            reasons.push(format!(
+                "jury events have been undelivered for {} minutes",
+                age / 60_000
+            ));
         }
     }
     for crank in overdue {
@@ -523,22 +639,35 @@ pub(crate) fn assess_health(
             ));
         } else if crank.oldest_overdue_ms > OVERDUE_WARN_MS {
             warn = true;
-            reasons.push(format!("{} {} crank(s) are over an hour late", crank.count, crank.kind));
+            reasons.push(format!(
+                "{} {} crank(s) are over an hour late",
+                crank.count, crank.kind
+            ));
         }
     }
-    if roster.active < roster.minimum {
+    if roster.eligible_owners < roster.minimum {
         warn = true;
         reasons.push(format!(
-            "only {} jurors are available and task disputes need {}",
-            roster.active, roster.minimum
+            "only {} independent owners have jurors available and a jury needs {}",
+            roster.eligible_owners, roster.minimum
         ));
     }
-    let status = if critical { "critical" } else if warn { "warn" } else { "ok" };
+    let status = if critical {
+        "critical"
+    } else if warn {
+        "warn"
+    } else {
+        "ok"
+    };
     (status, reasons)
 }
 
 /// Whether the jury is keeping up: undelivered events, cranks nobody ran, and the size of the roster.
-pub(crate) async fn health(db: &Db, now_ms: i64, min_roster: i64) -> Result<JuryHealthInfo, SocialError> {
+pub(crate) async fn health(
+    db: &Db,
+    now_ms: i64,
+    min_roster: i64,
+) -> Result<JuryHealthInfo, SocialError> {
     let mut conn = db.connect().await?;
     let outbox = diesel::sql_query(
         "SELECT COUNT(*) FILTER (WHERE sent_at IS NULL) AS unsent,
@@ -550,7 +679,8 @@ pub(crate) async fn health(db: &Db, now_ms: i64, min_roster: i64) -> Result<Jury
     let roster_row = diesel::sql_query(
         "SELECT COUNT(*) FILTER (WHERE left_at_ms IS NULL AND status = 1) AS active,
                 COUNT(*) FILTER (WHERE left_at_ms IS NULL AND status = 3
-                                   AND COALESCE(suspended_until_ms, 0) > $1) AS suspended
+                                   AND COALESCE(suspended_until_ms, 0) > $1) AS suspended,
+                COUNT(DISTINCT owner) FILTER (WHERE left_at_ms IS NULL AND status = 1) AS eligible_owners
            FROM jury_roster",
     )
     .bind::<BigInt, _>(now_ms)
@@ -573,12 +703,21 @@ pub(crate) async fn health(db: &Db, now_ms: i64, min_roster: i64) -> Result<Jury
                 entry.count += 1;
                 entry.oldest_overdue_ms = entry.oldest_overdue_ms.max(late);
             }
-            None => overdue.push(OverdueCrank { kind, count: 1, oldest_overdue_ms: late }),
+            None => overdue.push(OverdueCrank {
+                kind,
+                count: 1,
+                oldest_overdue_ms: late,
+            }),
         }
     }
 
     let oldest_unsent_ms = outbox.oldest_ms.map(|oldest| (now_ms - oldest).max(0));
-    let roster = RosterHealth { active: roster_row.active, suspended: roster_row.suspended, minimum: min_roster };
+    let roster = RosterHealth {
+        active: roster_row.active,
+        suspended: roster_row.suspended,
+        eligible_owners: roster_row.eligible_owners,
+        minimum: min_roster,
+    };
     let (status, reasons) = assess_health(oldest_unsent_ms, &overdue, &roster);
     Ok(JuryHealthInfo {
         status,
@@ -601,7 +740,14 @@ mod tests {
             assert!(sql.contains("LIMIT $2"), "{kind:?} must be bounded");
             assert!(sql.contains("ORDER BY"), "{kind:?} must be ordered");
             assert!(sql.contains("$1"), "{kind:?} must bind the clock");
-            for column in ["case_id", "round_no", "subject_kind", "subject_id", "due_ms", "extra"] {
+            for column in [
+                "case_id",
+                "round_no",
+                "subject_kind",
+                "subject_id",
+                "due_ms",
+                "extra",
+            ] {
                 assert!(sql.contains(column), "{kind:?} must select {column}");
             }
         }
@@ -622,7 +768,11 @@ mod tests {
 
     #[test]
     fn a_verdict_is_applied_only_while_the_dispute_is_open() {
-        for kind in [CrankKind::ExecuteVerdict, CrankKind::StartNeutral, CrankKind::ExecuteNeutral] {
+        for kind in [
+            CrankKind::ExecuteVerdict,
+            CrankKind::StartNeutral,
+            CrankKind::ExecuteNeutral,
+        ] {
             assert!(crank_sql(kind).contains("d.state = 1"), "{kind:?}");
         }
         assert!(crank_sql(CrankKind::SettleFees).contains("d.state IN (2, 3)"));
@@ -681,6 +831,23 @@ mod tests {
     }
 
     #[test]
+    fn a_deferred_escalation_backs_off_and_always_runs_after_thirty_days() {
+        let escalate = crank_sql(CrankKind::EscalateProposal);
+        assert_eq!(
+            escalate.matches("jury_unavailable_at_ms IS NULL").count(),
+            2,
+            "both stages back off"
+        );
+        assert!(escalate.contains(&format!("$1 - {ESCALATE_BACKOFF_MS}")));
+        assert!(escalate.contains(&format!("rv.jury_deferred_since_ms + {JURY_DEFER_MAX_MS}")));
+        let sweep = crank_sql(CrankKind::SweepVoteRefunds);
+        assert!(sweep.contains("rf.swept_at_ms IS NULL"));
+        assert!(sweep.contains("rf.claim_deadline_ms < $1"));
+        assert!(UNCLAIMED_VOTE_REFUNDS_SQL.contains("proposal_vote_refunds"));
+        assert!(UNCLAIMED_VOTE_REFUNDS_SQL.contains("LIMIT $2"));
+    }
+
+    #[test]
     fn duties_map_to_what_the_juror_does_next() {
         assert_eq!(duty_of(1), Some(DutyKind::Accept));
         assert_eq!(duty_of(2), Some(DutyKind::Commit));
@@ -706,14 +873,24 @@ mod tests {
 
     #[test]
     fn health_is_ok_until_something_is_late() {
-        let roster = RosterHealth { active: 25, suspended: 0, minimum: 20 };
+        let roster = RosterHealth {
+            active: 25,
+            suspended: 0,
+            eligible_owners: 25,
+            minimum: 20,
+        };
         assert_eq!(assess_health(None, &[], &roster), ("ok", vec![]));
         assert_eq!(assess_health(Some(60_000), &[], &roster).0, "ok");
     }
 
     #[test]
     fn undelivered_events_warn_then_turn_critical() {
-        let roster = RosterHealth { active: 25, suspended: 0, minimum: 20 };
+        let roster = RosterHealth {
+            active: 25,
+            suspended: 0,
+            eligible_owners: 25,
+            minimum: 20,
+        };
         assert_eq!(assess_health(Some(6 * 60_000), &[], &roster).0, "warn");
         let (status, reasons) = assess_health(Some(31 * 60_000), &[], &roster);
         assert_eq!(status, "critical");
@@ -722,8 +899,19 @@ mod tests {
 
     #[test]
     fn a_crank_nobody_ran_is_a_warning_and_then_an_emergency() {
-        let roster = RosterHealth { active: 25, suspended: 0, minimum: 20 };
-        let late = |ms| vec![OverdueCrank { kind: "select_due", count: 2, oldest_overdue_ms: ms }];
+        let roster = RosterHealth {
+            active: 25,
+            suspended: 0,
+            eligible_owners: 25,
+            minimum: 20,
+        };
+        let late = |ms| {
+            vec![OverdueCrank {
+                kind: "select_due",
+                count: 2,
+                oldest_overdue_ms: ms,
+            }]
+        };
         assert_eq!(assess_health(None, &late(30 * 60_000), &roster).0, "ok");
         assert_eq!(assess_health(None, &late(2 * 3_600_000), &roster).0, "warn");
         let (status, reasons) = assess_health(None, &late(7 * 3_600_000), &roster);
@@ -732,8 +920,17 @@ mod tests {
     }
 
     #[test]
-    fn a_roster_below_the_floor_warns_that_disputes_cannot_open() {
-        let (status, reasons) = assess_health(None, &[], &RosterHealth { active: 12, suspended: 3, minimum: 20 });
+    fn too_few_independent_owners_warn_even_with_many_agents() {
+        let (status, reasons) = assess_health(
+            None,
+            &[],
+            &RosterHealth {
+                active: 30,
+                suspended: 3,
+                eligible_owners: 12,
+                minimum: 20,
+            },
+        );
         assert_eq!(status, "warn");
         assert!(reasons[0].contains("12") && reasons[0].contains("20"));
     }

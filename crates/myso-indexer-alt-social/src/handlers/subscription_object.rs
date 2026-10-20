@@ -6,8 +6,8 @@
 use move_core_types::account_address::AccountAddress;
 use move_core_types::ident_str;
 use myso_indexer_alt_framework::types::full_checkpoint_content::{ExecutedTransaction, ObjectSet};
-use myso_types::id::UID;
 use myso_types::collection_types::Bag;
+use myso_types::id::UID;
 use myso_types::storage::ObjectKey;
 use myso_types::storage::WriteKind;
 use myso_types::MYSO_SOCIAL_ADDRESS;
@@ -120,17 +120,33 @@ fn changed_renewal_balance(
     use move_core_types::language_storage::TypeTag;
     use myso_types::{base_types::ObjectID, dynamic_field::Field, object::Owner};
     for ((oid, version, _), owner, _) in tx.effects.all_changed_objects() {
-        let Owner::ObjectOwner(parent) = owner else { continue };
-        if ObjectID::from(parent) != *subscription.renewal_balances.id.object_id() { continue; }
-        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else { continue };
+        let Owner::ObjectOwner(parent) = owner else {
+            continue;
+        };
+        if ObjectID::from(parent) != *subscription.renewal_balances.id.object_id() {
+            continue;
+        }
+        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else {
+            continue;
+        };
         let Some(t) = obj.type_() else { continue };
         let params = t.type_params();
-        let Some(TypeTag::Struct(key)) = params.first().map(|p| p.as_ref()) else { continue };
-        if key.address != MYSO_SOCIAL_ADDRESS || key.module.as_str() != "subscription"
+        let Some(TypeTag::Struct(key)) = params.first().map(|p| p.as_ref()) else {
+            continue;
+        };
+        if key.address != MYSO_SOCIAL_ADDRESS
+            || key.module.as_str() != "subscription"
             || key.name.as_str() != "RenewalBalanceKey"
-            || !key.type_params.first().is_some_and(|coin| coin.to_canonical_string(false) == subscription.coin_type.name)
-        { continue; }
-        let Some(obj) = obj.as_inner().data.try_as_move() else { continue };
+            || !key
+                .type_params
+                .first()
+                .is_some_and(|coin| coin.to_canonical_string(false) == subscription.coin_type.name)
+        {
+            continue;
+        }
+        let Some(obj) = obj.as_inner().data.try_as_move() else {
+            continue;
+        };
         // Move empty structs carry a single dummy bool; Balance is a single u64.
         if let Ok(field) = bcs::from_bytes::<Field<bool, u64>>(obj.contents()) {
             return Some(field.value);
@@ -145,10 +161,16 @@ pub(crate) fn renewal_balance_updates_from_tx(
 ) -> Vec<(String, u64)> {
     let mut updates = Vec::new();
     for ((oid, version, _), _, _) in tx.effects.all_changed_objects() {
-        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else { continue };
+        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else {
+            continue;
+        };
         let Some(t) = obj.type_() else { continue };
-        if !is_profile_subscription_type(&t.address(), t.module().as_str(), t.name().as_str()) { continue; }
-        let Some(obj) = obj.as_inner().data.try_as_move() else { continue };
+        if !is_profile_subscription_type(&t.address(), t.module().as_str(), t.name().as_str()) {
+            continue;
+        }
+        let Some(obj) = obj.as_inner().data.try_as_move() else {
+            continue;
+        };
         if let Ok(subscription) = parse_profile_subscription_contents(obj.contents()) {
             if let Some(balance) = changed_renewal_balance(object_set, tx, &subscription) {
                 updates.push((oid.to_string(), balance));
@@ -175,7 +197,9 @@ mod tests {
             created_at: 1_700_000_000_000,
             expires_at: 1_700_002_592_000_000,
             auto_renew: true,
-            coin_type: BcsTypeName { name: "2::myso::MYSO".to_string() },
+            coin_type: BcsTypeName {
+                name: "2::myso::MYSO".to_string(),
+            },
             renewal_balances: Bag::default(),
             renewal_count: 0,
         };

@@ -813,10 +813,13 @@ impl BridgeOrchestratorTables {
         Ok(())
     }
 
-    pub(crate) fn get_bridge_order(&self, order_id: &str) -> BridgeResult<Option<BridgeOrderRecord>> {
-        self.bridge_orders.get(&order_id.to_string()).map_err(|e| {
-            BridgeError::StorageError(format!("Failed to get bridge order: {:?}", e))
-        })
+    pub(crate) fn get_bridge_order(
+        &self,
+        order_id: &str,
+    ) -> BridgeResult<Option<BridgeOrderRecord>> {
+        self.bridge_orders
+            .get(&order_id.to_string())
+            .map_err(|e| BridgeError::StorageError(format!("Failed to get bridge order: {:?}", e)))
     }
 
     pub(crate) fn list_bridge_orders_for_wallet(
@@ -1152,8 +1155,9 @@ mod tests {
     async fn test_bridge_order_roundtrip() {
         let temp_dir = tempfile::tempdir().unwrap();
         let store = BridgeOrchestratorTables::new(temp_dir.path());
-        let evm = alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
-            .unwrap();
+        let evm =
+            alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
+                .unwrap();
         let order = BridgeOrderRecord {
             order_id: "brg_test".to_string(),
             direction: BridgeOrderDirection::In,
@@ -1277,8 +1281,9 @@ mod tests {
     async fn test_update_bridge_order_status_forks_on_new_deposit_tx() {
         let temp_dir = tempfile::tempdir().unwrap();
         let store = BridgeOrchestratorTables::new(temp_dir.path());
-        let evm = alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
-            .unwrap();
+        let evm =
+            alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
+                .unwrap();
         let deposit_key = DepositAddressKey::from_evm(evm);
         let wallet = "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8";
         store
@@ -1369,8 +1374,9 @@ mod tests {
     async fn test_update_bridge_order_status_persists_token_fields() {
         let temp_dir = tempfile::tempdir().unwrap();
         let store = BridgeOrchestratorTables::new(temp_dir.path());
-        let evm = alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
-            .unwrap();
+        let evm =
+            alloy::primitives::Address::from_str("0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1")
+                .unwrap();
         let deposit_key = DepositAddressKey::from_evm(evm);
         let wallet = "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8";
         store

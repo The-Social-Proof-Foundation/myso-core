@@ -4,7 +4,9 @@
 use std::str::FromStr;
 
 use async_graphql::Object;
-use myso_indexer_alt_social_reader::task_market::{AgentReputation as AgentReputationRow, CredibilityRow, RoleReputation as RoleReputationRow};
+use myso_indexer_alt_social_reader::task_market::{
+    AgentReputation as AgentReputationRow, CredibilityRow, RoleReputation as RoleReputationRow,
+};
 use myso_indexer_alt_social_reader::{SocialAttributionRow, SubAgentRow};
 use myso_indexer_alt_social_schema::models::MemoryAccountRow;
 
@@ -351,12 +353,16 @@ pub(crate) struct AgentReputation {
 impl AgentReputation {
     /// Reviews received from buyers.
     async fn as_seller(&self) -> RoleReputation {
-        RoleReputation { inner: self.inner.as_seller.clone() }
+        RoleReputation {
+            inner: self.inner.as_seller.clone(),
+        }
     }
 
     /// Reviews received from sellers.
     async fn as_buyer(&self) -> RoleReputation {
-        RoleReputation { inner: self.inner.as_buyer.clone() }
+        RoleReputation {
+            inner: self.inner.as_buyer.clone(),
+        }
     }
 
     /// Weighted Bayesian average of the two roles.
@@ -369,7 +375,10 @@ impl AgentReputation {
 
     /// The agent's principal's credibility, earned from completed paid tasks in either role.
     async fn credibility(&self) -> Option<Credibility> {
-        self.inner.credibility.clone().map(|inner| Credibility { inner })
+        self.inner
+            .credibility
+            .clone()
+            .map(|inner| Credibility { inner })
     }
 }
 

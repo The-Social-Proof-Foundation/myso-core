@@ -3474,6 +3474,37 @@ diesel::table! {
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
+        jury_unavailable_at_ms -> Nullable<Int8>,
+        jury_deferred_since_ms -> Nullable<Int8>,
+        jury_formable_seats -> Nullable<Int8>,
+        jury_required_seats -> Nullable<Int8>,
+    }
+}
+
+diesel::table! {
+    proposal_refunds (proposal_id) {
+        proposal_id -> Text,
+        submitter -> Text,
+        submitter_refund_mist -> Int8,
+        voter_refund_pool_mist -> Int8,
+        outstanding_mist -> Int8,
+        claim_deadline_ms -> Int8,
+        refunded_at_ms -> Int8,
+        swept_at_ms -> Nullable<Int8>,
+        swept_mist -> Nullable<Int8>,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    proposal_vote_refunds (proposal_id, voter) {
+        proposal_id -> Text,
+        voter -> Text,
+        amount_mist -> Int8,
+        claimed_at_ms -> Int8,
+        event_id -> Text,
     }
 }
 
@@ -3761,6 +3792,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     registry_jury_policies,
     proposal_jury_reviews,
     proposal_jury_referrals,
+    proposal_refunds,
+    proposal_vote_refunds,
     task_config_history,
     reputation_aggregates,
     credibility,

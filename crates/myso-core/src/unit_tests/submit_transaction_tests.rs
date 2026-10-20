@@ -253,11 +253,7 @@ async fn test_submit_transaction_already_executed() {
     // Execute it again through non-fastpath, which will commit the object changes.
     test_context
         .state
-        .try_execute_immediately(
-            &verified_transaction,
-            ExecutionEnv::new(),
-            &epoch_store,
-        )
+        .try_execute_immediately(&verified_transaction, ExecutionEnv::new(), &epoch_store)
         .await
         .unwrap();
 
@@ -422,11 +418,7 @@ async fn test_submit_batched_transactions_with_already_executed() {
     );
     test_context
         .state
-        .try_execute_immediately(
-            &verified_tx1,
-            ExecutionEnv::new(),
-            &epoch_store,
-        )
+        .try_execute_immediately(&verified_tx1, ExecutionEnv::new(), &epoch_store)
         .await
         .unwrap();
 
@@ -539,11 +531,7 @@ async fn test_submit_soft_bundle_transactions_with_already_executed() {
     );
     test_context
         .state
-        .try_execute_immediately(
-            &verified_tx1,
-            ExecutionEnv::new(),
-            &epoch_store,
-        )
+        .try_execute_immediately(&verified_tx1, ExecutionEnv::new(), &epoch_store)
         .await
         .unwrap();
 

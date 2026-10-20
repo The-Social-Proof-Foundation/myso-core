@@ -1180,7 +1180,8 @@ impl ValidatorService {
             });
         };
 
-        let consensus_status = self.wait_for_consensus_terminal_status(consensus_position, epoch_store);
+        let consensus_status =
+            self.wait_for_consensus_terminal_status(consensus_position, epoch_store);
         tokio::pin!(executed_effects);
         tokio::pin!(consensus_status);
 
@@ -1342,9 +1343,7 @@ impl ValidatorService {
     ) -> MySoResult<Box<ExecutedData>> {
         let (events, input_objects, output_objects) = self
             .collect_effects_data(
-                &effects,
-                /* include_events */ true,
-                /* include_input_objects */ true,
+                &effects, /* include_events */ true, /* include_input_objects */ true,
                 /* include_output_objects */ true,
             )
             .await?;

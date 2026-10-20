@@ -597,9 +597,10 @@ impl Handler for PlatformHandler {
                             platform_memberships::wallet_address,
                         ))
                         .do_update()
-                        .set(platform_memberships::joined_at.eq(diesel::upsert::excluded(
-                            platform_memberships::joined_at,
-                        )))
+                        .set(
+                            platform_memberships::joined_at
+                                .eq(diesel::upsert::excluded(platform_memberships::joined_at)),
+                        )
                         .execute(conn)
                         .await?;
                 }

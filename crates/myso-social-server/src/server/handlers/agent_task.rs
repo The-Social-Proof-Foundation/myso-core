@@ -36,7 +36,10 @@ pub struct PageQuery {
 }
 
 fn page(limit: Option<i64>, offset: Option<i64>) -> (i64, i64) {
-    (limit.unwrap_or(50).clamp(1, 200), offset.unwrap_or(0).max(0))
+    (
+        limit.unwrap_or(50).clamp(1, 200),
+        offset.unwrap_or(0).max(0),
+    )
 }
 
 fn non_empty(v: Option<String>) -> Option<String> {
@@ -79,7 +82,11 @@ pub async fn list_tasks(
         ));
     }
     let (limit, offset) = page(query.limit, query.offset);
-    state.reader.list_tasks(&filter, limit, offset).await.map(Json)
+    state
+        .reader
+        .list_tasks(&filter, limit, offset)
+        .await
+        .map(Json)
 }
 
 pub async fn get_task(
@@ -167,7 +174,11 @@ pub async fn get_principal_reputation(
     State(state): State<Arc<AppState>>,
     Path(principal): Path<String>,
 ) -> Result<Json<PrincipalReputationInfo>, SocialError> {
-    state.reader.get_principal_reputation(&principal).await.map(Json)
+    state
+        .reader
+        .get_principal_reputation(&principal)
+        .await
+        .map(Json)
 }
 
 #[cfg(test)]

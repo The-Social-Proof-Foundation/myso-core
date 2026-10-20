@@ -5,9 +5,7 @@
 
 use move_core_types::account_address::AccountAddress;
 use move_core_types::ident_str;
-use myso_indexer_alt_framework::types::full_checkpoint_content::{
-    ExecutedTransaction, ObjectSet,
-};
+use myso_indexer_alt_framework::types::full_checkpoint_content::{ExecutedTransaction, ObjectSet};
 use myso_indexer_alt_social_schema::models::NewMyDataData;
 use myso_types::id::UID;
 use myso_types::storage::ObjectKey;
@@ -156,23 +154,42 @@ pub(crate) fn subscription_expiries_from_tx(
 ) -> std::collections::HashMap<(String, String), i64> {
     let mut tables = std::collections::HashMap::new();
     for ((oid, version, _), _, _) in tx.effects.all_changed_objects() {
-        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else { continue };
+        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else {
+            continue;
+        };
         let Some(t) = obj.type_() else { continue };
-        if !is_mydata_object_type(&t.address(), t.module().as_str(), t.name().as_str()) { continue; }
-        let Some(obj) = obj.as_inner().data.try_as_move() else { continue };
+        if !is_mydata_object_type(&t.address(), t.module().as_str(), t.name().as_str()) {
+            continue;
+        }
+        let Some(obj) = obj.as_inner().data.try_as_move() else {
+            continue;
+        };
         if let Ok(data) = parse_mydata_object_contents(obj.contents()) {
             if let BcsAccessConfiguration::MarketplaceRecurring { subscribers, .. } = data.access {
-                tables.insert(subscribers.id, common::normalize_hex_address(&oid.to_string()));
+                tables.insert(
+                    subscribers.id,
+                    common::normalize_hex_address(&oid.to_string()),
+                );
             }
         }
     }
     let mut expiries = std::collections::HashMap::new();
     for ((oid, version, _), owner, _) in tx.effects.all_changed_objects() {
-        let myso_types::object::Owner::ObjectOwner(parent) = owner else { continue };
-        let Some(mydata_id) = tables.get(&myso_types::base_types::ObjectID::from(parent)) else { continue };
-        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else { continue };
-        let Some(obj) = obj.as_inner().data.try_as_move() else { continue };
-        if let Ok(field) = bcs::from_bytes::<myso_types::dynamic_field::Field<AccountAddress, u64>>(obj.contents()) {
+        let myso_types::object::Owner::ObjectOwner(parent) = owner else {
+            continue;
+        };
+        let Some(mydata_id) = tables.get(&myso_types::base_types::ObjectID::from(parent)) else {
+            continue;
+        };
+        let Some(obj) = object_set.get(&ObjectKey(oid, version)) else {
+            continue;
+        };
+        let Some(obj) = obj.as_inner().data.try_as_move() else {
+            continue;
+        };
+        if let Ok(field) =
+            bcs::from_bytes::<myso_types::dynamic_field::Field<AccountAddress, u64>>(obj.contents())
+        {
             expiries.insert(
                 (
                     mydata_id.clone(),

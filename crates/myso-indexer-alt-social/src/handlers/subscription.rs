@@ -364,7 +364,9 @@ fn process_subscription_created_event(
     )?;
     let subscription_id = event.subscription_id.clone();
     let ms = common::chain_timestamp_ms(
-        create_context.map(|ctx| ctx.created_at_ms), checkpoint_timestamp_ms);
+        create_context.map(|ctx| ctx.created_at_ms),
+        checkpoint_timestamp_ms,
+    );
     let now = common::chain_time_from_ms(ms);
     let payment_time = event.expires_at as i64 - event.duration_ms as i64;
 

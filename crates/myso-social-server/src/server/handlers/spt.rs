@@ -210,7 +210,11 @@ pub async fn get_spt_user_position_metrics(
 ) -> Result<Json<serde_json::Value>, SocialError> {
     let data = state
         .reader
-        .get_user_spt_position_metrics(&address, q.limit.unwrap_or(50).min(200), q.offset.unwrap_or(0))
+        .get_user_spt_position_metrics(
+            &address,
+            q.limit.unwrap_or(50).min(200),
+            q.offset.unwrap_or(0),
+        )
         .await?;
     Ok(Json(data))
 }

@@ -232,12 +232,14 @@ pub(crate) async fn get_agent_reputation(
         .first::<(String, i64, String, i64)>(conn)
         .await
         .optional()?
-        .map(|(account_id, settled_count, volume_mist, credibility_bps)| CredibilityRow {
-            account_id,
-            settled_count,
-            volume_mist,
-            credibility_bps,
-        });
+        .map(
+            |(account_id, settled_count, volume_mist, credibility_bps)| CredibilityRow {
+                account_id,
+                settled_count,
+                volume_mist,
+                credibility_bps,
+            },
+        );
 
     metrics.requests_succeeded.inc();
     Ok(Some(AgentReputation {

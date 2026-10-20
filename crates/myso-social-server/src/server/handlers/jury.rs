@@ -9,11 +9,12 @@ use axum::Json;
 use serde::Deserialize;
 use std::sync::Arc;
 
-use crate::error::SocialError;
 use super::enterprise::check_required_sync_secret;
+use crate::error::SocialError;
 use crate::reader::jury::CaseFilter;
 use crate::reader::{
-    ProposalJuryInfo, RegistryJuryPolicyView, CrankInfo, JuryCaseDetailInfo, JuryCaseInfo, JurorAssignmentInfo, JurorRosterInfo, TaskDisputeDetailInfo,
+    CrankInfo, JurorAssignmentInfo, JurorRosterInfo, JuryCaseDetailInfo, JuryCaseInfo,
+    ProposalJuryInfo, ProposalVoteRefundsInfo, RegistryJuryPolicyView, TaskDisputeDetailInfo,
 };
 
 use super::super::AppState;
@@ -48,7 +49,10 @@ pub struct StatusPageQuery {
 }
 
 fn page(limit: Option<i64>, offset: Option<i64>) -> (i64, i64) {
-    (limit.unwrap_or(50).clamp(1, 200), offset.unwrap_or(0).max(0))
+    (
+        limit.unwrap_or(50).clamp(1, 200),
+        offset.unwrap_or(0).max(0),
+    )
 }
 
 /// `3,4` -> `[3, 4]`; every entry must fall inside `range`.
@@ -145,7 +149,9 @@ pub async fn store_jury_rationale(
 ) -> Result<Json<serde_json::Value>, SocialError> {
     check_required_sync_secret(&headers, "x-internal-sync-secret", "INTERNAL_SYNC_SECRET")?;
     if req.rationale.trim().is_empty() || req.rationale.len() > MAX_RATIONALE_BYTES {
-        return Err(SocialError::bad_request("rationale must be 1 to 16384 bytes"));
+        return Err(SocialError::bad_request(
+            "rationale must be 1 to 16384 bytes",
+        ));
     }
     let outcome = state.reader.store_jury_rationale(&req).await?;
     Ok(Json(serde_json::json!({ "status": outcome })))
@@ -216,6 +222,18 @@ pub async fn get_proposal_jury(
     state.reader.get_proposal_jury(&proposal_id).await.map(Json)
 }
 
+/// A refunded proposal's voters, what each can claim and who already has.
+pub async fn get_proposal_vote_refunds(
+    State(state): State<Arc<AppState>>,
+    Path(proposal_id): Path<String>,
+) -> Result<Json<ProposalVoteRefundsInfo>, SocialError> {
+    state
+        .reader
+        .get_proposal_vote_refunds(&proposal_id)
+        .await
+        .map(Json)
+}
+
 pub async fn get_registry_jury_policy(
     State(state): State<Arc<AppState>>,
     Path(registry_id): Path<String>,
@@ -228,8 +246,9 @@ pub async fn get_registry_jury_policy(
         .map(Json)
 }
 
-/// What a keeper can crank right now, oldest first within each kind. The reconciler reads this to
-/// recover from a lost event; the engine's own jobs do not need it.
+/// What anyone can crank right now, oldest first within each kind. This is the public operator
+/// interface: the reference `jury-runner` and any third-party operator read it, and a crank another
+/// operator ran first is an expected abort on chain.
 pub async fn list_jury_cranks(
     State(state): State<Arc<AppState>>,
     Query(query): Query<PageQuery>,
@@ -250,9 +269,18 @@ mod tests {
 
     #[test]
     fn codes_parse_inside_their_range_only() {
-        assert_eq!(parse_codes(None, 1..=8, "state").unwrap(), Vec::<i16>::new());
-        assert_eq!(parse_codes(Some(" "), 1..=8, "state").unwrap(), Vec::<i16>::new());
-        assert_eq!(parse_codes(Some("3, 4"), 1..=8, "state").unwrap(), vec![3, 4]);
+        assert_eq!(
+            parse_codes(None, 1..=8, "state").unwrap(),
+            Vec::<i16>::new()
+        );
+        assert_eq!(
+            parse_codes(Some(" "), 1..=8, "state").unwrap(),
+            Vec::<i16>::new()
+        );
+        assert_eq!(
+            parse_codes(Some("3, 4"), 1..=8, "state").unwrap(),
+            vec![3, 4]
+        );
         assert!(parse_codes(Some("0"), 1..=8, "state").is_err());
         assert!(parse_codes(Some("9"), 1..=8, "state").is_err());
         assert!(parse_codes(Some("1,x"), 1..=8, "state").is_err());

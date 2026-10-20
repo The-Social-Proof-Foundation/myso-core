@@ -117,11 +117,7 @@ impl SingleValidator {
         );
         let effects = self
             .get_validator()
-            .try_execute_immediately(
-                &executable,
-                ExecutionEnv::new(),
-                &self.epoch_store,
-            )
+            .try_execute_immediately(&executable, ExecutionEnv::new(), &self.epoch_store)
             .await
             .unwrap()
             .0;

@@ -18,6 +18,7 @@ module social_contracts::agent_task_tests {
 
     use social_contracts::agent_task::{Self, TaskConfig, TaskEscrow, TaskMarketCap};
     use social_contracts::ai_credit::AiCreditConfig;
+    use social_contracts::jury::{Self, JuryConfig};
     use social_contracts::memory::{Self, AgenticOrganization, MemoryAccount, MemoryConfig, SubAgent};
     use social_contracts::memory_test_helpers;
     use social_contracts::platform::{Self, Platform, PlatformConfig, PlatformRegistry};
@@ -675,13 +676,22 @@ module social_contracts::agent_task_tests {
 
     /// Rewrites the config, keeping every other default. Only fees and `active` vary.
     fun update_config(sc: &mut Scenario, platform_fee_bps: u64, ecosystem_fee_bps: u64, active: bool) {
+        // The task market pushes its reputation params to the jury, so a jury config must exist.
+        if (!ts::has_most_recent_shared<JuryConfig>()) {
+            ts::next_tx(sc, admin());
+            let clock = ts::take_shared<Clock>(sc);
+            jury::test_bootstrap(&clock, ts::ctx(sc));
+            ts::return_shared(clock);
+        };
         ts::next_tx(sc, admin());
         let cap = ts::take_from_sender<TaskMarketCap>(sc);
         let mut config = ts::take_shared<TaskConfig>(sc);
+        let mut jury_config = ts::take_shared<JuryConfig>(sc);
         let clock = ts::take_shared<Clock>(sc);
         agent_task::set_task_config(
             &cap,
             &mut config,
+            &mut jury_config,
             platform_fee_bps,
             ecosystem_fee_bps,
             admin(),
@@ -713,6 +723,7 @@ module social_contracts::agent_task_tests {
             ts::ctx(sc),
         );
         ts::return_shared(clock);
+        ts::return_shared(jury_config);
         ts::return_shared(config);
         ts::return_to_sender(sc, cap);
     }

@@ -91,7 +91,9 @@ pub enum TaskEventKind {
     RefundCleared,
     Refunded,
     Settled,
-    Reviewed { rater_role: i16 },
+    Reviewed {
+        rater_role: i16,
+    },
     /// A party took the delivered work to a jury; the escrow is frozen.
     Disputed,
     /// The jury failed and the settlement window opened.
@@ -165,7 +167,10 @@ fn targets(kind: TaskEventKind, task: &TaskSnapshot) -> Vec<Target> {
             _ => Vec::new(),
         },
         TaskEventKind::RefundCleared => {
-            vec![again("refund_cleared", Buyer), again("refund_cleared", Seller)]
+            vec![
+                again("refund_cleared", Buyer),
+                again("refund_cleared", Seller),
+            ]
         }
         TaskEventKind::Refunded => vec![once("refunded", Buyer), once("refunded", Seller)],
         TaskEventKind::Settled => vec![
@@ -181,10 +186,16 @@ fn targets(kind: TaskEventKind, task: &TaskSnapshot) -> Vec<Target> {
         },
         TaskEventKind::Disputed => vec![once("disputed", Buyer), once("disputed", Seller)],
         TaskEventKind::NeutralWindowOpened => {
-            vec![once("neutral_window_open", Buyer), once("neutral_window_open", Seller)]
+            vec![
+                once("neutral_window_open", Buyer),
+                once("neutral_window_open", Seller),
+            ]
         }
         TaskEventKind::DisputeResolved => {
-            vec![once("dispute_resolved", Buyer), once("dispute_resolved", Seller)]
+            vec![
+                once("dispute_resolved", Buyer),
+                once("dispute_resolved", Seller),
+            ]
         }
         TaskEventKind::ExpiredOfferDue => vec![once("expired_offer_due", Buyer)],
         TaskEventKind::RefundDue => vec![once("refund_due", Buyer)],
@@ -203,7 +214,11 @@ fn expires_at_ms(event_type: &str, task: &TaskSnapshot) -> Option<i64> {
     }
 }
 
-fn base_payload(task: &TaskSnapshot, event_type: &str, party: Party) -> serde_json::Map<String, Value> {
+fn base_payload(
+    task: &TaskSnapshot,
+    event_type: &str,
+    party: Party,
+) -> serde_json::Map<String, Value> {
     let mut payload = serde_json::Map::new();
     let mut put = |key: &str, value: Value| {
         payload.insert(key.to_string(), value);
@@ -227,7 +242,10 @@ fn base_payload(task: &TaskSnapshot, event_type: &str, party: Party) -> serde_js
     // Amounts and windows are decimal strings so a u64 never passes through a JSON double.
     put("amount_mist", json!(task.amount_mist.to_string()));
     put("accept_window_ms", json!(task.accept_window_ms.to_string()));
-    put("delivery_window_ms", json!(task.delivery_window_ms.to_string()));
+    put(
+        "delivery_window_ms",
+        json!(task.delivery_window_ms.to_string()),
+    );
     put("settle_window_ms", json!(task.settle_window_ms.to_string()));
     put("accept_deadline_ms", json!(task.accept_deadline_ms));
     put("accepted_at_ms", json!(task.accepted_at_ms));
@@ -242,7 +260,11 @@ fn base_payload(task: &TaskSnapshot, event_type: &str, party: Party) -> serde_js
     put("settlement_kind", json!(task.settlement_kind));
     put("refund_kind", json!(task.refund_kind));
     if task.refund_proposer != 0 {
-        let proposer = if task.refund_proposer == 1 { "buyer" } else { "seller" };
+        let proposer = if task.refund_proposer == 1 {
+            "buyer"
+        } else {
+            "seller"
+        };
         put("refund_proposer_role", json!(proposer));
     }
     if let Some(expires) = expires_at_ms(event_type, task) {
@@ -321,9 +343,15 @@ impl Enrichment {
             return;
         };
         map.insert("buyer_score_milli".into(), json!(self.buyer.score_milli));
-        map.insert("buyer_credibility_bps".into(), json!(self.buyer.credibility_bps));
+        map.insert(
+            "buyer_credibility_bps".into(),
+            json!(self.buyer.credibility_bps),
+        );
         map.insert("seller_score_milli".into(), json!(self.seller.score_milli));
-        map.insert("seller_credibility_bps".into(), json!(self.seller.credibility_bps));
+        map.insert(
+            "seller_credibility_bps".into(),
+            json!(self.seller.credibility_bps),
+        );
         map.insert("seller_open_tasks".into(), json!(self.seller_open_tasks));
     }
 }
@@ -447,10 +475,20 @@ mod tests {
                     (name.to_string(), "0xseller_account".to_string()),
                 ]
             );
-            assert!(events.iter().all(|e| e.event_family == AUTOMATION_FAMILY_TASK));
+            assert!(
+                events
+                    .iter()
+                    .all(|e| e.event_family == AUTOMATION_FAMILY_TASK)
+            );
             assert_eq!(
-                events.iter().map(|e| e.dedup_key.clone()).collect::<Vec<_>>(),
-                vec![format!("task:0xtask:{name}:buyer"), format!("task:0xtask:{name}:seller")]
+                events
+                    .iter()
+                    .map(|e| e.dedup_key.clone())
+                    .collect::<Vec<_>>(),
+                vec![
+                    format!("task:0xtask:{name}:buyer"),
+                    format!("task:0xtask:{name}:seller")
+                ]
             );
         }
     }
@@ -508,10 +546,23 @@ mod tests {
     #[test]
     fn settlement_notifies_both_parties_and_opens_a_review_for_each() {
         let events = rows(TaskEventKind::Settled, &task());
-        let kinds: Vec<_> = events.iter().map(|e| (e.event_type.as_str(), e.payload["party_role"].as_str().unwrap())).collect();
+        let kinds: Vec<_> = events
+            .iter()
+            .map(|e| {
+                (
+                    e.event_type.as_str(),
+                    e.payload["party_role"].as_str().unwrap(),
+                )
+            })
+            .collect();
         assert_eq!(
             kinds,
-            [("settled", "seller"), ("settled", "buyer"), ("review_open", "buyer"), ("review_open", "seller")]
+            [
+                ("settled", "seller"),
+                ("settled", "buyer"),
+                ("review_open", "buyer"),
+                ("review_open", "seller")
+            ]
         );
         for event in events.iter().filter(|e| e.event_type == "review_open") {
             assert_eq!(event.payload["expires_at_ms"], 7_000);
@@ -523,9 +574,15 @@ mod tests {
     #[test]
     fn a_review_is_delivered_to_the_reviewee() {
         let by_buyer = rows(TaskEventKind::Reviewed { rater_role: 1 }, &task());
-        assert_eq!(summary(&by_buyer), [("reviewed".into(), "0xseller_account".into())]);
+        assert_eq!(
+            summary(&by_buyer),
+            [("reviewed".into(), "0xseller_account".into())]
+        );
         let by_seller = rows(TaskEventKind::Reviewed { rater_role: 2 }, &task());
-        assert_eq!(summary(&by_seller), [("reviewed".into(), "0xbuyer_account".into())]);
+        assert_eq!(
+            summary(&by_seller),
+            [("reviewed".into(), "0xbuyer_account".into())]
+        );
         assert!(rows(TaskEventKind::Reviewed { rater_role: 3 }, &task()).is_empty());
     }
 
@@ -534,7 +591,10 @@ mod tests {
         let mut proposed = task();
         proposed.refund_proposer = 1;
         let events = rows(TaskEventKind::RefundProposed, &proposed);
-        assert_eq!(summary(&events), [("refund_proposed".into(), "0xseller_account".into())]);
+        assert_eq!(
+            summary(&events),
+            [("refund_proposed".into(), "0xseller_account".into())]
+        );
         assert_eq!(events[0].payload["refund_proposer_role"], "buyer");
 
         proposed.refund_proposer = 2;
@@ -582,7 +642,11 @@ mod tests {
 
     #[test]
     fn closing_events_reach_both_parties() {
-        for kind in [TaskEventKind::Cancelled, TaskEventKind::Refunded, TaskEventKind::RefundCleared] {
+        for kind in [
+            TaskEventKind::Cancelled,
+            TaskEventKind::Refunded,
+            TaskEventKind::RefundCleared,
+        ] {
             let events = rows(kind, &task());
             assert_eq!(events.len(), 2, "{kind:?}");
             assert_ne!(events[0].account_id, events[1].account_id);
@@ -593,8 +657,14 @@ mod tests {
     fn enrichment_adds_counterparty_reputation_and_open_work() {
         let mut payload = rows(TaskEventKind::Offered, &task())[0].payload.clone();
         Enrichment {
-            buyer: PartyStats { score_milli: 3800, credibility_bps: 4000 },
-            seller: PartyStats { score_milli: 4100, credibility_bps: 6000 },
+            buyer: PartyStats {
+                score_milli: 3800,
+                credibility_bps: 4000,
+            },
+            seller: PartyStats {
+                score_milli: 4100,
+                credibility_bps: 6000,
+            },
             seller_open_tasks: 2,
         }
         .apply(&mut payload);

@@ -21,27 +21,29 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewComment, NewDeletionEvent, NewModerationEvent, NewPocAnalysisResult,
-    NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
-    NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent,
-    NewPocVaultClaim, NewPocVaultDeposit, NewPost, NewPostTransfer, NewPromotedPost,
-    NewCompositionAnalysisRecord, NewDetectedAssetRelationship, NewFingerprintObservation,
-    NewLicenseInstance, NewLicenseTemplateVersion, NewMediaAsset, NewMediaAssetAncestrySnapshot,
+    derive_poc_redirect_from_manifest, NewComment, NewCompositionAnalysisRecord, NewDeletionEvent,
+    NewDetectedAssetRelationship, NewFingerprintObservation, NewLicenseInstance,
+    NewLicenseTemplateVersion, NewMediaAsset, NewMediaAssetAncestrySnapshot,
     NewMediaAssetDerivativeEdge, NewMediaAssetGovernanceLink, NewMediaAssetResolvedObligation,
-    NewMediaAssetResolvedPolicy, NewMediaAssetRightsUpdate, NewMediaAssetUsage, NewPostUsageDecisionEvent, NewRevenueManifestRecord,
-    NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView, NewReaction,
-    NewReactionCount, NewReport, NewRepost, NewSubscriptionAccessLog, NewTip, NewUnifiedRevenue,
-    derive_poc_redirect_from_manifest, REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE,
-    REVENUE_TYPE_PROMOTION_PLATFORM_FEE, REVENUE_TYPE_PROMOTION_VIEWER_NET,
+    NewMediaAssetResolvedPolicy, NewMediaAssetRightsUpdate, NewMediaAssetUsage, NewModerationEvent,
+    NewPocAnalysisResult, NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute,
+    NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
+    NewPocUsernameBeneficiaryEvent, NewPocVaultClaim, NewPocVaultDeposit, NewPost, NewPostTransfer,
+    NewPostUsageDecisionEvent, NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent,
+    NewPromotionView, NewReaction, NewReactionCount, NewReport, NewRepost,
+    NewRevenueManifestRecord, NewSubscriptionAccessLog, NewTip, NewUnifiedRevenue,
+    REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE, REVENUE_TYPE_PROMOTION_PLATFORM_FEE,
+    REVENUE_TYPE_PROMOTION_VIEWER_NET,
 };
 use myso_indexer_alt_social_schema::schema::{
-    comments, ecosystem_treasury,     composition_analysis_records, detected_asset_relationships, fingerprint_observations,
-    license_instances, license_template_versions, media_asset_ancestry_snapshots,
-    media_asset_derivative_edges, media_asset_governance_links, media_asset_resolved_obligations,
-    media_asset_resolved_policies, media_asset_rights_updates, media_asset_usages, media_assets, poc_analysis_results, poc_config,
-    poc_creator_identity_links, poc_dispute_votes, poc_disputes, poc_revenue_redirections,
-    poc_username_beneficiary_events, poc_vault_claims, poc_vault_deposits, post_config,
-    post_usage_decision_events, posts, promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
+    comments, composition_analysis_records, detected_asset_relationships, ecosystem_treasury,
+    fingerprint_observations, license_instances, license_template_versions,
+    media_asset_ancestry_snapshots, media_asset_derivative_edges, media_asset_governance_links,
+    media_asset_resolved_obligations, media_asset_resolved_policies, media_asset_rights_updates,
+    media_asset_usages, media_assets, poc_analysis_results, poc_config, poc_creator_identity_links,
+    poc_dispute_votes, poc_disputes, poc_revenue_redirections, poc_username_beneficiary_events,
+    poc_vault_claims, poc_vault_deposits, post_config, post_usage_decision_events, posts,
+    promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
     reaction_counts, reactions, reposts, revenue_manifests, subscription_access_logs, tips,
 };
 use myso_indexer_alt_social_schema::schema::{
@@ -52,6 +54,7 @@ use myso_types::transaction::TransactionDataAPI;
 
 use super::common;
 use super::events;
+use super::media_asset;
 use super::organization_stats::{
     apply_org_outbound_spend, apply_org_revenue, resolve_organization_id_for_derived_address,
     resolve_organization_id_for_post, resolve_organization_id_for_sub_agent,
@@ -60,7 +63,6 @@ use super::organization_stats::{
 use super::poc;
 use super::post;
 use super::post_mydata;
-use super::media_asset;
 
 const POST_MODULES: &[&str] = &["post", "comment", "reaction", "repost", "tip"];
 const POC_MODULES: &[&str] = &[
@@ -871,7 +873,10 @@ async fn merge_post_json_array_by_binding_id(
     let item = &items[0];
     let binding_id = item
         .get("binding_id")
-        .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
+        .and_then(|v| {
+            v.as_u64()
+                .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+        })
         .unwrap_or(0) as i64;
     let query = format!(
         "UPDATE posts SET {column} = (

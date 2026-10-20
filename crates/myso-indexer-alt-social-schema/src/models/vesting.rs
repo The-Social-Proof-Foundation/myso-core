@@ -348,7 +348,10 @@ mod canonical_coin_type_tests {
 
     #[test]
     fn symbol_case_and_generics_are_preserved() {
-        assert_eq!(canonical_coin_type("0xABC::usdc::USDC"), "0xabc::usdc::USDC");
+        assert_eq!(
+            canonical_coin_type("0xABC::usdc::USDC"),
+            "0xabc::usdc::USDC"
+        );
         assert_eq!(
             canonical_coin_type("0x00A::lp::LP<0x2::myso::MYSO>"),
             "0xa::lp::LP<0x2::myso::MYSO>"

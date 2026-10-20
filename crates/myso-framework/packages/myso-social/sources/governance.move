@@ -36,7 +36,7 @@ module social_contracts::governance {
     use mydata::bf_hmac_encryption::{EncryptedObject, VerifiedDerivedKey, PublicKey, decrypt};
     
     use social_contracts::profile::{Self as profile, EcosystemTreasury, UsernameRegistry};
-    use social_contracts::jury::{Self, JuryCase, JuryConfig};
+    use social_contracts::jury::{Self, JuryCase, JuryConfig, JurorRoster};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     /// Error codes
@@ -72,6 +72,11 @@ module social_contracts::governance {
     const EJuryNotFinished: u64 = 31;
     const EInvalidJuryPolicy: u64 = 32;
     const ENoJuryRecord: u64 = 33;
+    const ERefundsOutstanding: u64 = 34;
+    const EClaimWindowClosed: u64 = 35;
+    const ENothingToClaim: u64 = 36;
+    const EAlreadyClaimed: u64 = 37;
+    const ENotRefunded: u64 = 38;
 
     /// Forfeiture reason (indexer) — same values as old refund reason codes.
     const FORFEIT_REASON_QUORUM_NOT_MET: u8 = 0;
@@ -113,6 +118,23 @@ module social_contracts::governance {
     /// Per-proposal jury records, one per human step the jury can take over.
     const JURY_COUNCIL_FIELD: vector<u8> = b"jury_council";
     const JURY_COMMUNITY_FIELD: vector<u8> = b"jury_community";
+    /// What each community voter paid for extra votes, so a refund can pay each one back exactly.
+    const VOTE_PAID_FIELD: vector<u8> = b"vote_paid";
+    /// Set when a community step is refunded because no jury could form.
+    const VOTE_REFUND_FIELD: vector<u8> = b"vote_refund";
+
+    /// How long a step waits for a jury that cannot form before it resolves without one: the
+    /// council step goes to the community vote, the community step is refunded.
+    const JURY_DEFER_MAX_MS: u64 = 2_592_000_000;
+    /// How long voters have to claim a refund. After it, the unclaimed rest may go to the treasury.
+    const VOTE_REFUND_CLAIM_WINDOW_MS: u64 = 31_536_000_000;
+
+    /// What [`open_jury_for_proposal`] did.
+    const ESCALATE_OPENED: u8 = 0;
+    const ESCALATE_JURY_PAUSED: u8 = 1;
+    const ESCALATE_DEFERRED: u8 = 2;
+    const ESCALATE_ADVANCED: u8 = 3;
+    const ESCALATE_REFUNDED: u8 = 4;
 
     const JURY_STAGE_COUNCIL: u8 = 1;
     const JURY_STAGE_COMMUNITY: u8 = 2;
@@ -136,6 +158,8 @@ module social_contracts::governance {
     const JURY_ACTION_ADVANCE: u8 = 0;
     const JURY_ACTION_APPROVE: u8 = 1;
     const JURY_ACTION_REJECT: u8 = 2;
+    /// The case could not seat a jury; its fee went back to the pool and the step waits again.
+    const JURY_ACTION_DEFERRED: u8 = 3;
 
     const JURY_EVIDENCE_KIND_PROPOSAL: u8 = 1;
     /// Stored on a case so an indexer can tell it is not a task case's failure path.
@@ -250,6 +274,62 @@ module social_contracts::governance {
         escalated_at_ms: u64,
         decided_at_ms: u64,
         decision: u8,
+        /// When this step first found no jury able to form; 0 if it never has. The 30-day wait is
+        /// measured from here and never restarts.
+        deferred_since_ms: u64,
+    }
+
+    public struct VotePayments has store {
+        paid: Table<address, u64>,
+        total_mist: u64,
+    }
+
+    /// A community step refunded because no jury could form. Voters pull their own share, so the
+    /// refund never loops over every voter.
+    public struct VoteRefund has store {
+        refunded_at_ms: u64,
+        claim_deadline_ms: u64,
+        /// What the pool held for voters when the refund happened.
+        voter_pool_mist: u64,
+        /// Sum of what voters paid; each claim pays `paid * voter_pool_mist / paid_total_mist`.
+        paid_total_mist: u64,
+        /// Paid amounts not yet claimed. Zero means only rounding dust is left in the pool.
+        outstanding_paid_mist: u64,
+        claimed: Table<address, u64>,
+    }
+
+    public struct JuryUnavailableEvent has copy, drop {
+        proposal_id: ID,
+        stage: u8,
+        /// Set when a case opened but could not seat its jurors; its fee went back to the pool.
+        case_id: Option<ID>,
+        formable_seats: u64,
+        required_seats: u64,
+        deferred_since_ms: u64,
+        at_ms: u64,
+    }
+
+    public struct ProposalRefundedJuryUnavailableEvent has copy, drop {
+        proposal_id: ID,
+        submitter: address,
+        submitter_refund_mist: u64,
+        voter_refund_pool_mist: u64,
+        claim_deadline_ms: u64,
+        refunded_at_ms: u64,
+    }
+
+    public struct VoteRefundClaimedEvent has copy, drop {
+        proposal_id: ID,
+        voter: address,
+        amount_mist: u64,
+        claimed_at_ms: u64,
+    }
+
+    public struct VoteRefundsSweptEvent has copy, drop {
+        proposal_id: ID,
+        recipient: address,
+        amount_mist: u64,
+        swept_at_ms: u64,
     }
 
     public struct JuryPolicyUpdatedEvent has copy, drop {
@@ -1814,6 +1894,9 @@ module social_contracts::governance {
         
         // Record vote
         vec_set::insert(voted_community, caller);
+        if (vote_cost > 0) {
+            record_vote_payment(proposal, caller, vote_cost, ctx);
+        };
         
         // Update vote tally
         if (approve) {
@@ -2220,6 +2303,7 @@ module social_contracts::governance {
                         escalated_at_ms: 0,
                         decided_at_ms: 0,
                         decision: NO_DECISION,
+                        deferred_since_ms: 0,
                     },
                 );
                 event::emit(CommunityVoteNeedsJuryEvent {
@@ -3249,6 +3333,7 @@ module social_contracts::governance {
                     escalated_at_ms: 0,
                     decided_at_ms: 0,
                     decision: NO_DECISION,
+                    deferred_since_ms: 0,
                 },
             );
         };
@@ -3383,13 +3468,22 @@ module social_contracts::governance {
 
     /// Anyone moves a proposal to the jury at the step that has earned it: the council step once a
     /// referral majority, a tie, or the council window allows it, or the community step after a vote
-    /// that ended with no quorum or a tie. Returns 0 when a case was opened, 1 when the jury is
-    /// switched off and the community default (reject) applied instead; the caller then forfeits
-    /// the pool for `jury_default_forfeit_reason`.
+    /// that ended with no quorum or a tie.
+    ///
+    /// No fee is taken unless a jury can actually form for this case (enough independent owners
+    /// outside the case's stakeholders for every round). When one cannot, the step waits, and once
+    /// it has waited `JURY_DEFER_MAX_MS` the next call resolves it without a jury: the council step
+    /// goes to the community vote, the community step refunds everyone. A juror shortage never
+    /// forfeits the pool.
+    ///
+    /// Returns `ESCALATE_OPENED`, `ESCALATE_DEFERRED`, `ESCALATE_ADVANCED`, `ESCALATE_REFUNDED`, or
+    /// `ESCALATE_JURY_PAUSED` when the jury is switched off and the community default (reject)
+    /// applied; only then does the caller forfeit the pool, for `jury_default_forfeit_reason`.
     public(package) fun open_jury_for_proposal(
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
         jury_config: &JuryConfig,
+        roster: &JurorRoster,
         stage: u8,
         sweep_to: address,
         extra_exclusions: vector<address>,
@@ -3419,15 +3513,17 @@ module social_contracts::governance {
 
         if (!jury::config_active(jury_config)) {
             // A paused jury must not strand a finished vote. The council step simply stays with the
-            // humans; the community step takes its default.
+            // humans; the community step takes its default. Pausing is a governance decision, not a
+            // shortage, so this keeps the default reject.
             assert!(stage == JURY_STAGE_COMMUNITY, EJuryStageDisabled);
             apply_default_community_reject(registry, proposal, now);
-            return 1
+            return ESCALATE_JURY_PAUSED
         };
 
-        let fee = take_jury_fee(proposal, &policy);
-        let fee_mist = balance::value(&fee);
-        let approval_bps = if (stage == JURY_STAGE_COUNCIL) { policy.approval_bps_council } else { policy.approval_bps_community };
+        let field = if (stage == JURY_STAGE_COUNCIL) { JURY_COUNCIL_FIELD } else { JURY_COMMUNITY_FIELD };
+        // A council step can reach the jury by tie or deadline with no referral ever recorded.
+        ensure_jury_review(proposal, field, stage);
+
         let owners = stakeholder_owners(
             registry,
             proposal,
@@ -3435,6 +3531,41 @@ module social_contracts::governance {
             stage == JURY_STAGE_COMMUNITY,
             jury::max_exclusions(jury_config),
         );
+        let round_sizes = vector[policy.jury_size, policy.round2_size];
+        let required = jury::required_seats(jury_config, &round_sizes);
+        let no_ids = vector::empty<ID>();
+        let seats = jury::formable_seats(jury_config, roster, &owners, &no_ids, &no_ids, now, required);
+        if (seats < required) {
+            let deferred_since = {
+                let review: &mut JuryReview = dynamic_field::borrow_mut(&mut proposal.id, field);
+                if (review.deferred_since_ms == 0) {
+                    review.deferred_since_ms = now;
+                };
+                review.deferred_since_ms
+            };
+            if (now - deferred_since >= JURY_DEFER_MAX_MS) {
+                if (stage == JURY_STAGE_COUNCIL) {
+                    resolve_council_without_jury(registry, proposal, clock, ctx);
+                    return ESCALATE_ADVANCED
+                };
+                refund_community_without_jury(registry, proposal, now, ctx);
+                return ESCALATE_REFUNDED
+            };
+            event::emit(JuryUnavailableEvent {
+                proposal_id,
+                stage,
+                case_id: option::none(),
+                formable_seats: seats,
+                required_seats: required,
+                deferred_since_ms: deferred_since,
+                at_ms: now,
+            });
+            return ESCALATE_DEFERRED
+        };
+
+        let fee = take_jury_fee(proposal, &policy);
+        let fee_mist = balance::value(&fee);
+        let approval_bps = if (stage == JURY_STAGE_COUNCIL) { policy.approval_bps_council } else { policy.approval_bps_community };
         let mut case = jury::open_case(
             jury_config,
             jury::subject_governance(),
@@ -3443,12 +3574,12 @@ module social_contracts::governance {
             2,
             approval_bps,
             policy.quorum,
-            vector[policy.jury_size, policy.round2_size],
+            round_sizes,
             false,
             JURY_FAILURE_PATH_DEFAULT_DECISION,
             0,
             owners,
-            vector::empty<ID>(),
+            no_ids,
             vector::empty<ID>(),
             fee,
             fee_mist / policy.jury_size,
@@ -3467,24 +3598,6 @@ module social_contracts::governance {
         );
         let case_id = jury::share_case(case);
 
-        let field = if (stage == JURY_STAGE_COUNCIL) { JURY_COUNCIL_FIELD } else { JURY_COMMUNITY_FIELD };
-        // A council step can reach the jury by tie or deadline with no referral ever recorded.
-        if (!dynamic_field::exists_(&proposal.id, field)) {
-            dynamic_field::add(
-                &mut proposal.id,
-                field,
-                JuryReview {
-                    stage,
-                    state: JURY_STATE_REFERRING,
-                    trigger: 0,
-                    referrers: vector::empty(),
-                    case_id: option::none(),
-                    escalated_at_ms: 0,
-                    decided_at_ms: 0,
-                    decision: NO_DECISION,
-                },
-            );
-        };
         {
             let review: &mut JuryReview = dynamic_field::borrow_mut(&mut proposal.id, field);
             review.state = JURY_STATE_ESCALATED;
@@ -3501,7 +3614,220 @@ module social_contracts::governance {
             pool_remaining_mist: balance::value(&proposal.reward_pool),
             escalated_at_ms: now,
         });
-        0
+        ESCALATE_OPENED
+    }
+
+    fun ensure_jury_review(proposal: &mut Proposal, field: vector<u8>, stage: u8) {
+        if (!dynamic_field::exists_(&proposal.id, field)) {
+            dynamic_field::add(
+                &mut proposal.id,
+                field,
+                JuryReview {
+                    stage,
+                    state: JURY_STATE_REFERRING,
+                    trigger: 0,
+                    referrers: vector::empty(),
+                    case_id: option::none(),
+                    escalated_at_ms: 0,
+                    decided_at_ms: 0,
+                    decision: NO_DECISION,
+                    deferred_since_ms: 0,
+                },
+            );
+        };
+    }
+
+    /// The council step waited the full period for a jury: the humans decide, as when a council
+    /// jury fails. No fee was taken.
+    fun resolve_council_without_jury(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let now = clock::timestamp_ms(clock);
+        let proposal_id = object::id(proposal);
+        {
+            let review: &mut JuryReview = dynamic_field::borrow_mut(&mut proposal.id, JURY_COUNCIL_FIELD);
+            review.state = JURY_STATE_DECIDED;
+            review.decision = JURY_OUTCOME_FORWARD;
+            review.decided_at_ms = now;
+            review.case_id = option::none();
+        };
+        move_to_community_voting(registry, proposal, clock, ctx);
+        event::emit(JuryDecisionAppliedEvent {
+            proposal_id,
+            stage: JURY_STAGE_COUNCIL,
+            decision: JURY_OUTCOME_FORWARD,
+            failed: true,
+            case_id: option::none(),
+            applied_at_ms: now,
+        });
+    }
+
+    /// The community step waited the full period for a jury. Nothing is forfeited: the submitter
+    /// gets the stake back now, and each voter can claim exactly what they paid until the deadline.
+    /// The proposal ends rejected, since it never won.
+    fun refund_community_without_jury(
+        registry: &mut GovernanceDAO,
+        proposal: &mut Proposal,
+        now: u64,
+        ctx: &mut TxContext,
+    ) {
+        let proposal_id = object::id(proposal);
+        let pool = balance::value(&proposal.reward_pool);
+        let paid_total = if (dynamic_field::exists_(&proposal.id, VOTE_PAID_FIELD)) {
+            let payments: &VotePayments = dynamic_field::borrow(&proposal.id, VOTE_PAID_FIELD);
+            payments.total_mist
+        } else {
+            0
+        };
+        // Voters are repaid first; a fee an earlier council jury spent comes out of the stake.
+        let voter_pool = if (pool < paid_total) { pool } else { paid_total };
+        let submitter_refund = pool - voter_pool;
+        if (submitter_refund > 0) {
+            let stake = coin::from_balance(balance::split(&mut proposal.reward_pool, submitter_refund), ctx);
+            transfer::public_transfer(stake, proposal.submitter);
+        };
+
+        remove_from_bucket(registry, STATUS_COMMUNITY_VOTING, proposal_id);
+        proposal.status = STATUS_REJECTED;
+        vector::push_back(table::borrow_mut(&mut registry.proposals_by_status, STATUS_REJECTED), proposal_id);
+        {
+            let review: &mut JuryReview = dynamic_field::borrow_mut(&mut proposal.id, JURY_COMMUNITY_FIELD);
+            review.state = JURY_STATE_DECIDED;
+            review.decision = JURY_OUTCOME_REJECT;
+            review.decided_at_ms = now;
+            review.case_id = option::none();
+        };
+        let claim_deadline_ms = now + VOTE_REFUND_CLAIM_WINDOW_MS;
+        dynamic_field::add(&mut proposal.id, VOTE_REFUND_FIELD, VoteRefund {
+            refunded_at_ms: now,
+            claim_deadline_ms,
+            voter_pool_mist: voter_pool,
+            paid_total_mist: paid_total,
+            outstanding_paid_mist: paid_total,
+            claimed: table::new(ctx),
+        });
+        event::emit(ProposalRefundedJuryUnavailableEvent {
+            proposal_id,
+            submitter: proposal.submitter,
+            submitter_refund_mist: submitter_refund,
+            voter_refund_pool_mist: voter_pool,
+            claim_deadline_ms,
+            refunded_at_ms: now,
+        });
+    }
+
+    fun record_vote_payment(proposal: &mut Proposal, voter: address, amount: u64, ctx: &mut TxContext) {
+        if (!dynamic_field::exists_(&proposal.id, VOTE_PAID_FIELD)) {
+            dynamic_field::add(&mut proposal.id, VOTE_PAID_FIELD, VotePayments { paid: table::new(ctx), total_mist: 0 });
+        };
+        let payments: &mut VotePayments = dynamic_field::borrow_mut(&mut proposal.id, VOTE_PAID_FIELD);
+        if (table::contains(&payments.paid, voter)) {
+            let prior = table::borrow_mut(&mut payments.paid, voter);
+            *prior = *prior + amount;
+        } else {
+            table::add(&mut payments.paid, voter, amount);
+        };
+        payments.total_mist = payments.total_mist + amount;
+    }
+
+    /// What the sender paid to vote on a refunded proposal, taken out of the pool.
+    public(package) fun claim_vote_refund_internal(
+        registry: &GovernanceDAO,
+        proposal: &mut Proposal,
+        clock: &Clock,
+        ctx: &TxContext,
+    ): Balance<MYSO> {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        let proposal_id = object::id(proposal);
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        assert!(dynamic_field::exists_(&proposal.id, VOTE_REFUND_FIELD), ENotRefunded);
+        let now = clock::timestamp_ms(clock);
+        let voter = tx_context::sender(ctx);
+        let paid = if (dynamic_field::exists_(&proposal.id, VOTE_PAID_FIELD)) {
+            let payments: &VotePayments = dynamic_field::borrow(&proposal.id, VOTE_PAID_FIELD);
+            if (table::contains(&payments.paid, voter)) { *table::borrow(&payments.paid, voter) } else { 0 }
+        } else {
+            0
+        };
+        let amount = {
+            let refund: &mut VoteRefund = dynamic_field::borrow_mut(&mut proposal.id, VOTE_REFUND_FIELD);
+            assert!(now <= refund.claim_deadline_ms, EClaimWindowClosed);
+            assert!(!table::contains(&refund.claimed, voter), EAlreadyClaimed);
+            assert!(paid > 0, ENothingToClaim);
+            let amount = (((paid as u128) * (refund.voter_pool_mist as u128) / (refund.paid_total_mist as u128)) as u64);
+            refund.outstanding_paid_mist = refund.outstanding_paid_mist - paid;
+            table::add(&mut refund.claimed, voter, now);
+            amount
+        };
+        event::emit(VoteRefundClaimedEvent { proposal_id, voter, amount_mist: amount, claimed_at_ms: now });
+        balance::split(&mut proposal.reward_pool, amount)
+    }
+
+    /// Global registries: claim a vote refund. Platform registries use
+    /// `platform::claim_platform_vote_refund`.
+    public entry fun claim_vote_refund(
+        registry: &GovernanceDAO,
+        proposal: &mut Proposal,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(registry.registry_type != PROPOSAL_TYPE_PLATFORM, EUsePlatformVoteEntry);
+        let refund = claim_vote_refund_internal(registry, proposal, clock, ctx);
+        if (balance::value(&refund) > 0) {
+            transfer::public_transfer(coin::from_balance(refund, ctx), tx_context::sender(ctx));
+        } else {
+            balance::destroy_zero(refund);
+        };
+    }
+
+    /// The only way money leaves a refunded pool other than a claim: allowed once every voter has
+    /// claimed (only rounding dust is left) or once the claim deadline has passed.
+    public(package) fun take_unclaimed_vote_refunds(
+        registry: &GovernanceDAO,
+        proposal: &mut Proposal,
+        recipient: address,
+        clock: &Clock,
+    ): Balance<MYSO> {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+        let proposal_id = object::id(proposal);
+        assert!(table::contains(&registry.proposals, proposal_id), EProposalNotFound);
+        assert!(dynamic_field::exists_(&proposal.id, VOTE_REFUND_FIELD), ENotRefunded);
+        let now = clock::timestamp_ms(clock);
+        {
+            let refund: &mut VoteRefund = dynamic_field::borrow_mut(&mut proposal.id, VOTE_REFUND_FIELD);
+            assert!(refund.outstanding_paid_mist == 0 || now > refund.claim_deadline_ms, ERefundsOutstanding);
+            refund.outstanding_paid_mist = 0;
+        };
+        let rest = balance::withdraw_all(&mut proposal.reward_pool);
+        event::emit(VoteRefundsSweptEvent {
+            proposal_id,
+            recipient,
+            amount_mist: balance::value(&rest),
+            swept_at_ms: now,
+        });
+        rest
+    }
+
+    /// Global registries: send what voters did not claim (or rounding dust) to the ecosystem
+    /// treasury. Permissionless.
+    public entry fun sweep_vote_refunds(
+        registry: &GovernanceDAO,
+        proposal: &mut Proposal,
+        ecosystem_treasury: &EcosystemTreasury,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_shared_global_registry(registry);
+        let dest = profile::get_treasury_address(ecosystem_treasury);
+        let rest = take_unclaimed_vote_refunds(registry, proposal, dest, clock);
+        if (balance::value(&rest) > 0) {
+            transfer::public_transfer(coin::from_balance(rest, ctx), dest);
+        } else {
+            balance::destroy_zero(rest);
+        };
     }
 
     /// Why a defaulted community rejection forfeits the pool: a tie is a community rejection, a
@@ -3558,11 +3884,15 @@ module social_contracts::governance {
 
     /// Apply a finished jury case to its proposal. Returns the action taken so the caller can route
     /// funds: `JURY_ACTION_ADVANCE` (the council step moved to the community vote),
-    /// `JURY_ACTION_APPROVE`, or `JURY_ACTION_REJECT` (the caller forfeits the pool).
+    /// `JURY_ACTION_APPROVE`, `JURY_ACTION_REJECT` (the caller forfeits the pool), or
+    /// `JURY_ACTION_DEFERRED` (nothing to route).
     ///
-    /// A jury that could not decide uses the step's default: the council step advances (humans
-    /// decide), the community step rejects (what a no-quorum or tied vote did before). Delegate
-    /// statistics are not touched: a jury decision says nothing about how delegates sided.
+    /// A case that could not seat its jurors is a shortage, not a decision: its unspent fee goes back
+    /// to the pool and the step waits for a jury again, under the same 30-day bound. A jury that
+    /// could not decide (or timed out, or was voided) uses the step's default: the council step
+    /// advances (humans decide), the community step rejects (what a no-quorum or tied vote did
+    /// before). Delegate statistics are not touched: a jury decision says nothing about how
+    /// delegates sided.
     public(package) fun apply_jury_case(
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
@@ -3589,6 +3919,10 @@ module social_contracts::governance {
         jury::mark_executed(case);
 
         let failed = state == jury::case_failed();
+        if (failed && jury::case_fail_reason(case) == jury::fail_cannot_form()) {
+            defer_after_unformed_case(proposal, case, stage, field, now);
+            return (JURY_ACTION_DEFERRED, now)
+        };
         let forward = if (failed) {
             stage == JURY_STAGE_COUNCIL
         } else {
@@ -3653,12 +3987,14 @@ module social_contracts::governance {
 
     /// Global registries (ecosystem, proof of creativity, SPoT): send a proposal to the jury at the
     /// step that has earned it. Permissionless. Unspent juror shares are swept to the ecosystem
-    /// treasury. When the jury is switched off at the community step, the proposal is rejected as
-    /// a no-quorum or tied vote always was.
+    /// treasury. When no jury can form the step waits (see [`open_jury_for_proposal`]). When the
+    /// jury is switched off at the community step, the proposal is rejected as a no-quorum or tied
+    /// vote always was.
     public entry fun escalate_to_jury(
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
         jury_config: &JuryConfig,
+        roster: &JurorRoster,
         ecosystem_treasury: &EcosystemTreasury,
         stage: u8,
         clock: &Clock,
@@ -3670,13 +4006,14 @@ module social_contracts::governance {
             registry,
             proposal,
             jury_config,
+            roster,
             stage,
             dest,
             vector::empty<address>(),
             clock,
             ctx,
         );
-        if (result == 1) {
+        if (result == ESCALATE_JURY_PAUSED) {
             let reason = jury_default_forfeit_reason(proposal);
             forfeit_proposal_pool_to_treasury_address(
                 registry,
@@ -3715,9 +4052,41 @@ module social_contracts::governance {
         };
     }
 
+    fun defer_after_unformed_case(proposal: &mut Proposal, case: &mut JuryCase, stage: u8, field: vector<u8>, now: u64) {
+        if (stage == JURY_STAGE_COUNCIL) {
+            assert!(proposal.status == STATUS_DELEGATE_REVIEW, EInvalidProposalStatus);
+        } else {
+            assert!(proposal.status == STATUS_COMMUNITY_VOTING, EInvalidProposalStatus);
+        };
+        balance::join(&mut proposal.reward_pool, jury::sweep_remainder(case));
+        let proposal_id = object::id(proposal);
+        let deferred_since = {
+            let review: &mut JuryReview = dynamic_field::borrow_mut(&mut proposal.id, field);
+            // The council step goes back to the delegates; the community step waits for a jury.
+            review.state = if (stage == JURY_STAGE_COUNCIL) { JURY_STATE_REFERRING } else { JURY_STATE_AWAITING };
+            if (review.deferred_since_ms == 0) {
+                review.deferred_since_ms = now;
+            };
+            review.deferred_since_ms
+        };
+        event::emit(JuryUnavailableEvent {
+            proposal_id,
+            stage,
+            case_id: option::some(object::id(case)),
+            formable_seats: 0,
+            required_seats: 0,
+            deferred_since_ms: deferred_since,
+            at_ms: now,
+        });
+    }
+
     /// Pay what the jurors did not claim back to the address the case named, once the case has ended
-    /// and its fees are settled. Permissionless.
+    /// and its fees are settled. Permissionless. A governance case must be applied first, so a case
+    /// that could not form returns its fee to the proposal instead of the treasury.
     public entry fun sweep_jury_case(case: &mut JuryCase, ctx: &mut TxContext) {
+        if (jury::case_subject_kind(case) == jury::subject_governance()) {
+            assert!(jury::case_executed(case), EJuryNotFinished);
+        };
         let remainder = jury::sweep_remainder(case);
         if (balance::value(&remainder) > 0) {
             transfer::public_transfer(coin::from_balance(remainder, ctx), jury::case_sweep_to(case));
@@ -3741,6 +4110,39 @@ module social_contracts::governance {
     public fun jury_action_advance_value(): u8 { JURY_ACTION_ADVANCE }
     public fun jury_action_approve_value(): u8 { JURY_ACTION_APPROVE }
     public fun jury_action_reject_value(): u8 { JURY_ACTION_REJECT }
+    public fun jury_action_deferred_value(): u8 { JURY_ACTION_DEFERRED }
+    public fun escalate_opened_value(): u8 { ESCALATE_OPENED }
+    public fun escalate_jury_paused_value(): u8 { ESCALATE_JURY_PAUSED }
+    public fun escalate_deferred_value(): u8 { ESCALATE_DEFERRED }
+    public fun escalate_advanced_value(): u8 { ESCALATE_ADVANCED }
+    public fun escalate_refunded_value(): u8 { ESCALATE_REFUNDED }
+    public fun jury_defer_max_ms(): u64 { JURY_DEFER_MAX_MS }
+    public fun vote_refund_claim_window_ms(): u64 { VOTE_REFUND_CLAIM_WINDOW_MS }
+    /// When the step first found no jury able to form; 0 if never.
+    public fun jury_deferred_since_ms(proposal: &Proposal, stage: u8): u64 {
+        let field = if (stage == JURY_STAGE_COUNCIL) { JURY_COUNCIL_FIELD } else { JURY_COMMUNITY_FIELD };
+        if (!dynamic_field::exists_(&proposal.id, field)) {
+            return 0
+        };
+        let review: &JuryReview = dynamic_field::borrow(&proposal.id, field);
+        review.deferred_since_ms
+    }
+    public fun vote_refunded(proposal: &Proposal): bool { dynamic_field::exists_(&proposal.id, VOTE_REFUND_FIELD) }
+    public fun vote_paid_mist(proposal: &Proposal, voter: address): u64 {
+        if (!dynamic_field::exists_(&proposal.id, VOTE_PAID_FIELD)) {
+            return 0
+        };
+        let payments: &VotePayments = dynamic_field::borrow(&proposal.id, VOTE_PAID_FIELD);
+        if (table::contains(&payments.paid, voter)) { *table::borrow(&payments.paid, voter) } else { 0 }
+    }
+    public fun vote_refund_claim_deadline_ms(proposal: &Proposal): u64 {
+        let refund: &VoteRefund = dynamic_field::borrow(&proposal.id, VOTE_REFUND_FIELD);
+        refund.claim_deadline_ms
+    }
+    public fun vote_refund_outstanding_mist(proposal: &Proposal): u64 {
+        let refund: &VoteRefund = dynamic_field::borrow(&proposal.id, VOTE_REFUND_FIELD);
+        refund.outstanding_paid_mist
+    }
     public fun proposal_pool_value(proposal: &Proposal): u64 { balance::value(&proposal.reward_pool) }
 
     #[test_only]

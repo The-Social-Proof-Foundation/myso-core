@@ -556,7 +556,8 @@ fn process_post_created_event(
     } else {
         None
     };
-    let event_ms = common::json_field_as_i64(data.get("created_at")).or(ev.created_at.map(|t| t as i64));
+    let event_ms =
+        common::json_field_as_i64(data.get("created_at")).or(ev.created_at.map(|t| t as i64));
     let (created_at, now) = chain_post_times(event_ms, checkpoint_timestamp_ms);
     let (_actor_address, sub_agent_id, organization_id, action_identity_class) =
         attribution_fields(data, &ev.owner);
@@ -1827,7 +1828,10 @@ mod tests {
         assert!(!tip_row.is_post);
         assert_eq!(tip_row.amount, 800);
         let SocialEventRow::PostTipsReceivedIncrement {
-            recipient, is_post, amount, ..
+            recipient,
+            is_post,
+            amount,
+            ..
         } = &rows[1]
         else {
             panic!("expected PostTipsReceivedIncrement");
@@ -1885,7 +1889,10 @@ mod tests {
         };
         assert_eq!(comment_rev.revenue_source, "tips");
         assert_eq!(comment_rev.revenue_type, REVENUE_TYPE_TIPS_COMMENT);
-        assert_eq!(comment_rev.content_type.as_deref(), Some(CONTENT_TYPE_COMMENT));
+        assert_eq!(
+            comment_rev.content_type.as_deref(),
+            Some(CONTENT_TYPE_COMMENT)
+        );
         assert_eq!(comment_rev.recipient_address, commenter);
         assert_eq!(comment_rev.amount, 80);
 

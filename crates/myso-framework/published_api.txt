@@ -7639,9 +7639,6 @@ cap_task_trade
 cap_jury
 	public fun
 	0x50c1::memory
-cap_jury_keeper
-	public fun
-	0x50c1::memory
 org_perm_memory_read
 	public fun
 	0x50c1::memory
@@ -7961,6 +7958,9 @@ current_contract_version
 	public fun
 	0x50c1::memory
 new_reputation_params
+	public fun
+	0x50c1::memory
+default_reputation_params
 	public fun
 	0x50c1::memory
 assert_reputation_params
@@ -10204,12 +10204,6 @@ EligibilityParams
 TimingParams
 	public struct
 	0x50c1::jury
-DutyParams
-	public struct
-	0x50c1::jury
-SelectionParams
-	public struct
-	0x50c1::jury
 JuryConfig
 	public struct
 	0x50c1::jury
@@ -10318,14 +10312,8 @@ set_eligibility
 set_timing
 	public entry fun
 	0x50c1::jury
-set_duty
-	public entry fun
-	0x50c1::jury
-set_selection
-	public entry fun
-	0x50c1::jury
-set_reputation_params
-	public entry fun
+sync_reputation_params
+	public(package) fun
 	0x50c1::jury
 set_genesis_sunset
 	public entry fun
@@ -10384,9 +10372,6 @@ draw_eligible
 eligible_count
 	public fun
 	0x50c1::jury
-assert_roster_ready
-	public(package) fun
-	0x50c1::jury
 open_case
 	public(package) fun
 	0x50c1::jury
@@ -10422,6 +10407,24 @@ draw_jurors
 	0x50c1::jury
 conflicted
 	fun
+	0x50c1::jury
+conflicts_with
+	fun
+	0x50c1::jury
+excluded_by
+	fun
+	0x50c1::jury
+formable_seats
+	public fun
+	0x50c1::jury
+required_seats
+	public fun
+	0x50c1::jury
+case_formable
+	public fun
+	0x50c1::jury
+assert_case_formable
+	public(package) fun
 	0x50c1::jury
 accept_assignment
 	public entry fun
@@ -10603,10 +10606,19 @@ min_eligible_roster
 initial_duty_score
 	public fun
 	0x50c1::jury
+max_strikes
+	public fun
+	0x50c1::jury
+max_roster_size
+	public fun
+	0x50c1::jury
 genesis_sunset_ms
 	public fun
 	0x50c1::jury
 roster_count
+	public fun
+	0x50c1::jury
+roster_owner_count
 	public fun
 	0x50c1::jury
 on_roster
@@ -10634,6 +10646,9 @@ entry_exempt
 	public fun
 	0x50c1::jury
 entry_owner
+	public fun
+	0x50c1::jury
+entry_organization_id
 	public fun
 	0x50c1::jury
 entry_suspended_until_ms
@@ -10763,6 +10778,24 @@ RegistryJuryPolicy
 	public struct
 	0x50c1::governance
 JuryReview
+	public struct
+	0x50c1::governance
+VotePayments
+	public struct
+	0x50c1::governance
+VoteRefund
+	public struct
+	0x50c1::governance
+JuryUnavailableEvent
+	public struct
+	0x50c1::governance
+ProposalRefundedJuryUnavailableEvent
+	public struct
+	0x50c1::governance
+VoteRefundClaimedEvent
+	public struct
+	0x50c1::governance
+VoteRefundsSweptEvent
 	public struct
 	0x50c1::governance
 JuryPolicyUpdatedEvent
@@ -11143,6 +11176,30 @@ take_jury_fee
 open_jury_for_proposal
 	public(package) fun
 	0x50c1::governance
+ensure_jury_review
+	fun
+	0x50c1::governance
+resolve_council_without_jury
+	fun
+	0x50c1::governance
+refund_community_without_jury
+	fun
+	0x50c1::governance
+record_vote_payment
+	fun
+	0x50c1::governance
+claim_vote_refund_internal
+	public(package) fun
+	0x50c1::governance
+claim_vote_refund
+	public entry fun
+	0x50c1::governance
+take_unclaimed_vote_refunds
+	public(package) fun
+	0x50c1::governance
+sweep_vote_refunds
+	public entry fun
+	0x50c1::governance
 jury_default_forfeit_reason
 	public(package) fun
 	0x50c1::governance
@@ -11160,6 +11217,9 @@ escalate_to_jury
 	0x50c1::governance
 apply_jury_decision
 	public entry fun
+	0x50c1::governance
+defer_after_unformed_case
+	fun
 	0x50c1::governance
 sweep_jury_case
 	public entry fun
@@ -11186,6 +11246,45 @@ jury_action_approve_value
 	public fun
 	0x50c1::governance
 jury_action_reject_value
+	public fun
+	0x50c1::governance
+jury_action_deferred_value
+	public fun
+	0x50c1::governance
+escalate_opened_value
+	public fun
+	0x50c1::governance
+escalate_jury_paused_value
+	public fun
+	0x50c1::governance
+escalate_deferred_value
+	public fun
+	0x50c1::governance
+escalate_advanced_value
+	public fun
+	0x50c1::governance
+escalate_refunded_value
+	public fun
+	0x50c1::governance
+jury_defer_max_ms
+	public fun
+	0x50c1::governance
+vote_refund_claim_window_ms
+	public fun
+	0x50c1::governance
+jury_deferred_since_ms
+	public fun
+	0x50c1::governance
+vote_refunded
+	public fun
+	0x50c1::governance
+vote_paid_mist
+	public fun
+	0x50c1::governance
+vote_refund_claim_deadline_ms
+	public fun
+	0x50c1::governance
+vote_refund_outstanding_mist
 	public fun
 	0x50c1::governance
 proposal_pool_value
@@ -11393,6 +11492,12 @@ escalate_platform_proposal_to_jury
 	public entry fun
 	0x50c1::platform
 apply_platform_jury_decision
+	public entry fun
+	0x50c1::platform
+claim_platform_vote_refund
+	public entry fun
+	0x50c1::platform
+sweep_platform_vote_refunds
 	public entry fun
 	0x50c1::platform
 reject_platform_governance_proposal_manually

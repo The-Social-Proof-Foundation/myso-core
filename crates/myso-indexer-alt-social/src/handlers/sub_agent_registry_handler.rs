@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::upsert::excluded;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
@@ -15,7 +16,6 @@ use myso_indexer_alt_framework::postgres::handler::Handler;
 use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
-use diesel::upsert::excluded;
 use myso_indexer_alt_social_schema::models::{
     NewCredibility, NewReputationAggregate, NewSubAgent, NewSubAgentEvent,
 };
@@ -87,7 +87,8 @@ fn opt_str_field(data: &serde_json::Value, key: &str) -> Option<String> {
 
 fn i64_field(data: &serde_json::Value, key: &str) -> Option<i64> {
     let v = data.get(key)?;
-    v.as_i64().or_else(|| v.as_u64().and_then(|u| i64::try_from(u).ok()))
+    v.as_i64()
+        .or_else(|| v.as_u64().and_then(|u| i64::try_from(u).ok()))
 }
 
 /// `u128` sums arrive as decimal strings (serde_json numbers stop at `u64`); anything else is
@@ -211,12 +212,10 @@ fn handle_sub_agent_registry_event(
                 SubAgentRegistryRow::Audit(audit),
             ])
         }
-        "ReputationUpdated" => {
-            reputation_row(data, event_id, &transaction_id).map(|r| vec![SubAgentRegistryRow::Reputation(r)])
-        }
-        "CredibilityUpdated" => {
-            credibility_row(data, event_id, &transaction_id).map(|r| vec![SubAgentRegistryRow::Credibility(r)])
-        }
+        "ReputationUpdated" => reputation_row(data, event_id, &transaction_id)
+            .map(|r| vec![SubAgentRegistryRow::Reputation(r)]),
+        "CredibilityUpdated" => credibility_row(data, event_id, &transaction_id)
+            .map(|r| vec![SubAgentRegistryRow::Credibility(r)]),
         _ => None,
     }
 }
@@ -406,7 +405,10 @@ impl Handler for SubAgentRegistryHandler {
                     // Concurrent pipeline: never let an older aggregate overwrite a newer one.
                     let upsert = diesel::insert_into(reputation_aggregates::table)
                         .values(r)
-                        .on_conflict((reputation_aggregates::subject_id, reputation_aggregates::role))
+                        .on_conflict((
+                            reputation_aggregates::subject_id,
+                            reputation_aggregates::role,
+                        ))
                         .do_update()
                         .set(r);
                     // Called by path: importing `FilterDsl` would make `.filter` on plain tables
@@ -649,15 +651,17 @@ mod tests {
 
     #[test]
     fn every_memory_reputation_event_is_in_the_registry_event_list() {
-        let move_source = include_str!(
-            "../../../myso-framework/packages/myso-social/sources/memory.move"
-        );
+        let move_source =
+            include_str!("../../../myso-framework/packages/myso-social/sources/memory.move");
         for event in ["ReputationUpdated", "CredibilityUpdated"] {
             assert!(
                 move_source.contains(&format!("public struct {event} has copy, drop")),
                 "{event} is not declared in memory.move"
             );
-            assert!(SUB_AGENT_REGISTRY_EVENTS.contains(&event), "{event} has no handler entry");
+            assert!(
+                SUB_AGENT_REGISTRY_EVENTS.contains(&event),
+                "{event} has no handler entry"
+            );
         }
     }
 }

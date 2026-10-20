@@ -337,32 +337,32 @@ impl Post {
         else {
             return false;
         };
-        let (creator_bps, platform_bps, treasury_bps, non_platform_to_creator_bps) =
-            match reader.get_spt_exchange_config().await {
-                Ok(Some(config)) => (
-                    config.reservation_creator_fee_bps.max(0) as u64,
-                    config.reservation_platform_fee_bps.max(0) as u64,
-                    config.reservation_treasury_fee_bps.max(0) as u64,
-                    config.non_platform_platform_to_creator_bps.max(0) as u64,
-                ),
-                _ => (
-                    myso_indexer_alt_social_schema::models::DEFAULT_RESERVATION_CREATOR_FEE_BPS
-                        as u64,
-                    myso_indexer_alt_social_schema::models::DEFAULT_RESERVATION_PLATFORM_FEE_BPS
-                        as u64,
-                    myso_indexer_alt_social_schema::models::DEFAULT_RESERVATION_TREASURY_FEE_BPS
-                        as u64,
-                    5_000,
-                ),
-            };
-        let creator_fee = myso_indexer_alt_social_schema::models::reservation_creator_fee_for_vault_check(
-            amount,
-            creator_bps,
-            platform_bps,
-            treasury_bps,
-            non_platform_to_creator_bps,
-            true,
-        );
+        let (creator_bps, platform_bps, treasury_bps, non_platform_to_creator_bps) = match reader
+            .get_spt_exchange_config()
+            .await
+        {
+            Ok(Some(config)) => (
+                config.reservation_creator_fee_bps.max(0) as u64,
+                config.reservation_platform_fee_bps.max(0) as u64,
+                config.reservation_treasury_fee_bps.max(0) as u64,
+                config.non_platform_platform_to_creator_bps.max(0) as u64,
+            ),
+            _ => (
+                myso_indexer_alt_social_schema::models::DEFAULT_RESERVATION_CREATOR_FEE_BPS as u64,
+                myso_indexer_alt_social_schema::models::DEFAULT_RESERVATION_PLATFORM_FEE_BPS as u64,
+                myso_indexer_alt_social_schema::models::DEFAULT_RESERVATION_TREASURY_FEE_BPS as u64,
+                5_000,
+            ),
+        };
+        let creator_fee =
+            myso_indexer_alt_social_schema::models::reservation_creator_fee_for_vault_check(
+                amount,
+                creator_bps,
+                platform_bps,
+                treasury_bps,
+                non_platform_to_creator_bps,
+                true,
+            );
         myso_indexer_alt_social_schema::models::post_reserve_requires_beneficiary_vault_for_amount(
             &manifest.entries_json,
             creator_fee,

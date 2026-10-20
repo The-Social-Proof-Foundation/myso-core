@@ -1,15 +1,15 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+mod agent_task;
 mod ai_credit;
 mod enterprise;
 mod governance;
 mod health;
 mod insurance;
+mod jury;
 mod memory;
 mod messaging;
-mod agent_task;
-mod jury;
 mod mydata;
 mod organization;
 mod platforms;
@@ -27,6 +27,10 @@ mod system;
 mod upgrade;
 mod vesting;
 
+pub use agent_task::{
+    get_agent_reputation, get_principal_reputation, get_task, get_task_config, get_task_stats,
+    list_agent_receipts, list_tasks, list_top_agents,
+};
 pub use ai_credit::{
     get_ai_credit_config, get_ai_spend_reservation, get_profile_ai_credit_balance,
     ingest_usage_line_internal, list_ai_credit_usage_history, list_ai_spend_reservations,
@@ -54,19 +58,15 @@ pub use insurance::{
     list_insurance_market_policies, list_insurance_policies, list_insurance_vault_transactions,
     list_insurance_vaults,
 };
+pub use jury::{
+    get_juror, get_jury_case, get_jury_health, get_proposal_jury, get_proposal_vote_refunds,
+    get_registry_jury_policy, get_task_dispute, list_juror_assignments, list_jury_cases,
+    list_jury_cranks, list_jury_rationales, list_jury_roster, store_jury_rationale,
+};
 pub use memory::{
     get_memory_config, get_profile_memory_account, get_sub_agent, get_sub_agent_by_object_id,
     get_sub_agent_pnl, list_profile_sub_agents, list_profile_sub_agents_pnl,
     list_sub_agent_children,
-};
-pub use jury::{
-    get_jury_case, get_juror, get_task_dispute, list_juror_assignments, list_jury_cases,
-    get_jury_health, get_proposal_jury, get_registry_jury_policy, list_jury_cranks, list_jury_rationales,
-    list_jury_roster, store_jury_rationale,
-};
-pub use agent_task::{
-    get_agent_reputation, get_principal_reputation, get_task, get_task_config, get_task_stats,
-    list_agent_receipts, list_tasks, list_top_agents,
 };
 pub use messaging::{
     get_agent_groups, get_message_history, get_messaging_config, get_messaging_revenue_summary,
@@ -140,9 +140,8 @@ pub use spt::{
     get_spt_analytics_top_performers, get_spt_config, get_spt_creator_revenue_streams,
     get_spt_liquidity_profile, get_spt_market_sentiment, get_spt_pool,
     get_spt_pool_by_associated_id, get_spt_pool_holdings, get_spt_pool_price_history,
-    get_spt_pool_transfers,
-    get_spt_pool_revenue, get_spt_pool_swaps, get_spt_pool_transactions, get_spt_popular,
-    get_spt_portfolio_performance, get_spt_reservation_pool,
+    get_spt_pool_revenue, get_spt_pool_swaps, get_spt_pool_transactions, get_spt_pool_transfers,
+    get_spt_popular, get_spt_portfolio_performance, get_spt_reservation_pool,
     get_spt_reservation_pool_volume_history, get_spt_trader_leaderboard, get_spt_user_holdings,
     get_spt_user_position_metrics, get_spt_user_position_timeseries, get_spt_user_reservations,
     list_spt_pools, list_spt_reservation_pool_reservations, list_spt_reservation_pools,

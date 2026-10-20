@@ -7,11 +7,11 @@ use async_graphql::Context;
 use async_graphql::Enum;
 use async_graphql::Object;
 use myso_indexer_alt_social_reader::{
-    pct_change, pct_change_i128, SptCreatorFeeSettlement as SptCreatorFeeSettlementRow,
-    SptHoldingRow, SptPoolRow, SptPriceHistory as SptPriceHistoryRow,
+    SptCreatorFeeSettlement as SptCreatorFeeSettlementRow, SptHoldingRow, SptPoolRow,
+    SptPriceHistory as SptPriceHistoryRow,
     SptReservationVolumeBucket as SptReservationVolumeBucketRow, SptSortBy as SptSortByReader,
     SptSwap as SptSwapRow, SptTransaction as SptTransactionRow, SptTransfer as SptTransferRow,
-    ViewerSocialContext,
+    ViewerSocialContext, pct_change, pct_change_i128,
 };
 use myso_indexer_alt_social_schema::models::{SptReservationHoldingRow, TOKEN_TYPE_POST};
 

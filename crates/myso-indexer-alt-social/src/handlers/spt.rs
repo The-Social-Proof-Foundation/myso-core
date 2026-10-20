@@ -6,7 +6,7 @@ use crate::handlers::common;
 use crate::metrics::SocialMetrics;
 use myso_indexer_alt_social_schema::models::{
     NewSocialProofTokensEvent, NewSptConfigEvent, NewSptHolding, NewSptPool, NewSptPriceHistory,
-    NewSptReservation, NewSptReservationPool, NewSptSwap, NewSptTransfer, NewSptTransaction,
+    NewSptReservation, NewSptReservationPool, NewSptSwap, NewSptTransaction, NewSptTransfer,
     RESERVATION_POOL_STATUS_ACTIVE, RESERVATION_POOL_STATUS_THRESHOLD_MET, TOKEN_TYPE_POST,
     TOKEN_TYPE_PROFILE, TRANSACTION_TYPE_BUY, TRANSACTION_TYPE_SELL,
 };
@@ -512,8 +512,7 @@ fn process_token_transferred_event(
     let pool_id = json_str(data.get("pool_id")?)?;
     let from = json_str(data.get("from")?)?;
     let to = json_str(data.get("to")?)?;
-    let amount =
-        require_chain_u64_as_i64(data.get("amount"), "amount", "TokenTransferredEvent")?;
+    let amount = require_chain_u64_as_i64(data.get("amount"), "amount", "TokenTransferredEvent")?;
 
     let transfer = NewSptTransfer {
         transaction_id: transaction_id.to_string(),
@@ -1487,16 +1486,14 @@ mod tests {
             "pool_id": "0xpool", "trader": "0xtrader", "source_post_id": "0xpost",
             "creator_fee": 1_000u64, "wallet_amount": 401u64, "vault_amount": 600u64,
         });
-        assert!(
-            handle_spt_event(
-                "TokenCreatorFeeSettledEvent",
-                &data,
-                "tx:2",
-                0,
-                1_700_000_000_000,
-            )
-            .is_none()
-        );
+        assert!(handle_spt_event(
+            "TokenCreatorFeeSettledEvent",
+            &data,
+            "tx:2",
+            0,
+            1_700_000_000_000,
+        )
+        .is_none());
     }
 
     #[test]
@@ -1587,8 +1584,14 @@ mod tests {
     #[test]
     fn token_swapped_event_produces_single_summary_row_only() {
         let data = sample_swap_event();
-        let rows = handle_spt_event("TokenSwappedEvent", &data, "tx_swap:0", 0, 1_700_000_000_000)
-            .expect("TokenSwappedEvent must produce a swap row");
+        let rows = handle_spt_event(
+            "TokenSwappedEvent",
+            &data,
+            "tx_swap:0",
+            0,
+            1_700_000_000_000,
+        )
+        .expect("TokenSwappedEvent must produce a swap row");
 
         // SUMMARY ONLY: exactly one SptSwap row and nothing that mutates
         // holdings/supply/price/revenue.
@@ -1652,11 +1655,20 @@ mod tests {
     #[test]
     fn token_transferred_event_produces_summary_and_two_holdings() {
         let data = sample_transfer_event();
-        let rows =
-            handle_spt_event("TokenTransferredEvent", &data, "tx_xfer:0", 0, 1_700_000_000_000)
-                .expect("TokenTransferredEvent must produce rows");
+        let rows = handle_spt_event(
+            "TokenTransferredEvent",
+            &data,
+            "tx_xfer:0",
+            0,
+            1_700_000_000_000,
+        )
+        .expect("TokenTransferredEvent must produce rows");
 
-        assert_eq!(rows.len(), 3, "transfer must produce summary + two holdings");
+        assert_eq!(
+            rows.len(),
+            3,
+            "transfer must produce summary + two holdings"
+        );
         let transfer = match &rows[0] {
             SocialEventRow::SptTransfer(t) => t,
             other => panic!("expected SptTransfer row first, got {other:?}"),
@@ -1696,9 +1708,14 @@ mod tests {
     #[test]
     fn token_transferred_event_alias_matches() {
         let data = sample_transfer_event();
-        let rows =
-            handle_spt_event("TransferEvent", &data, "tx_xfer_alias:0", 0, 1_700_000_000_000)
-                .expect("TransferEvent alias must produce rows");
+        let rows = handle_spt_event(
+            "TransferEvent",
+            &data,
+            "tx_xfer_alias:0",
+            0,
+            1_700_000_000_000,
+        )
+        .expect("TransferEvent alias must produce rows");
         assert_eq!(rows.len(), 3);
         assert!(matches!(rows[0], SocialEventRow::SptTransfer(_)));
     }

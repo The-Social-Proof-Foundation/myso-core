@@ -157,6 +157,9 @@ pub fn handle_governance_event(
                 checkpoint_timestamp_ms,
             )
         }
+        "ProposalRefundedJuryUnavailable" => process_proposal_refunded_event(data, event_id),
+        "VoteRefundClaimed" => process_vote_refund_claimed_event(data, event_id),
+        "VoteRefundsSwept" => process_vote_refunds_swept_event(data, event_id),
         "AnonymousVote" => process_anonymous_vote_event(data, event_id, checkpoint_timestamp_ms),
         "VoteDecryptionFailed" => {
             process_vote_decryption_failed_event(data, event_id, checkpoint_timestamp_ms)
@@ -1056,6 +1059,133 @@ fn process_proposal_reward_pool_forfeited_to_treasury_event(
             submitter_filter: None,
         },
     ])
+}
+
+/// No jury could form for 30 days at the community step: the proposal ends rejected, the submitter's
+/// stake is returned, and what voters paid stays in the pool for them to claim.
+fn process_proposal_refunded_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    #[derive(serde::Deserialize)]
+    struct Ev {
+        proposal_id: String,
+        submitter: String,
+        #[serde(deserialize_with = "de_u64")]
+        submitter_refund_mist: u64,
+        #[serde(deserialize_with = "de_u64")]
+        voter_refund_pool_mist: u64,
+        #[serde(deserialize_with = "de_u64")]
+        refunded_at_ms: u64,
+    }
+    let ev: Ev = deserialize_gov_ev("ProposalRefundedJuryUnavailableEvent", event_id, data)?;
+    let set = ProposalUpdateSet {
+        status: Some(GOVERNANCE_STATUS_REJECTED),
+        voting_start_time: None,
+        voting_end_time: None,
+        reward_pool: Some(ev.voter_refund_pool_mist as i64),
+        community_votes_for: None,
+        community_votes_against: None,
+        rescind_time: None,
+        rejection_time: Some(ev.refunded_at_ms as i64),
+        implementation_time: None,
+        implemented_description: None,
+    };
+    let mut rows = Vec::new();
+    if ev.submitter_refund_mist > 0 {
+        rows.push(SocialEventRow::RewardDistribution(NewRewardDistribution {
+            proposal_id: ev.proposal_id.clone(),
+            recipient_address: ev.submitter.clone(),
+            amount: ev.submitter_refund_mist as i64,
+            distribution_time: ev.refunded_at_ms as i64,
+            distribution_type: Some("refund_submitter_jury_unavailable".to_string()),
+            transaction_id: event_id.to_string(),
+        }));
+    }
+    rows.push(SocialEventRow::ProposalUpdate {
+        proposal_id: ev.proposal_id,
+        set,
+        governance_event: Some((
+            "ProposalRefundedJuryUnavailableEvent".to_string(),
+            data.clone(),
+            event_id.to_string(),
+        )),
+        submitter_filter: None,
+    });
+    Some(rows)
+}
+
+fn process_vote_refund_claimed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    #[derive(serde::Deserialize)]
+    struct Ev {
+        proposal_id: String,
+        voter: String,
+        #[serde(deserialize_with = "de_u64")]
+        amount_mist: u64,
+        #[serde(deserialize_with = "de_u64")]
+        claimed_at_ms: u64,
+    }
+    let ev: Ev = deserialize_gov_ev("VoteRefundClaimedEvent", event_id, data)?;
+    Some(vec![SocialEventRow::RewardDistribution(
+        NewRewardDistribution {
+            proposal_id: ev.proposal_id,
+            recipient_address: ev.voter,
+            amount: ev.amount_mist as i64,
+            distribution_time: ev.claimed_at_ms as i64,
+            distribution_type: Some("refund_voter_jury_unavailable".to_string()),
+            transaction_id: event_id.to_string(),
+        },
+    )])
+}
+
+/// What voters did not claim by the deadline (or rounding dust once all have claimed).
+fn process_vote_refunds_swept_event(
+    data: &serde_json::Value,
+    event_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    #[derive(serde::Deserialize)]
+    struct Ev {
+        proposal_id: String,
+        recipient: String,
+        #[serde(deserialize_with = "de_u64")]
+        amount_mist: u64,
+        #[serde(deserialize_with = "de_u64")]
+        swept_at_ms: u64,
+    }
+    let ev: Ev = deserialize_gov_ev("VoteRefundsSweptEvent", event_id, data)?;
+    let pool_zero = ProposalUpdateSet {
+        status: None,
+        voting_start_time: None,
+        voting_end_time: None,
+        reward_pool: Some(0),
+        community_votes_for: None,
+        community_votes_against: None,
+        rescind_time: None,
+        rejection_time: None,
+        implementation_time: None,
+        implemented_description: None,
+    };
+    let mut rows = Vec::new();
+    if ev.amount_mist > 0 {
+        rows.push(SocialEventRow::RewardDistribution(NewRewardDistribution {
+            proposal_id: ev.proposal_id.clone(),
+            recipient_address: ev.recipient,
+            amount: ev.amount_mist as i64,
+            distribution_time: ev.swept_at_ms as i64,
+            distribution_type: Some("vote_refunds_unclaimed_swept".to_string()),
+            transaction_id: event_id.to_string(),
+        }));
+    }
+    rows.push(SocialEventRow::ProposalUpdate {
+        proposal_id: ev.proposal_id,
+        set: pool_zero,
+        governance_event: None,
+        submitter_filter: None,
+    });
+    Some(rows)
 }
 
 fn process_anonymous_vote_event(

@@ -539,9 +539,11 @@ async fn get_object_contents(
         .clone()
         .inner_mut()
         .ledger_client()
-        .get_object(GetObjectRequest::new(&object_id).with_read_mask(FieldMask::from_paths([
-            Object::path_builder().contents().finish(),
-        ])))
+        .get_object(
+            GetObjectRequest::new(&object_id).with_read_mask(FieldMask::from_paths([
+                Object::path_builder().contents().finish(),
+            ])),
+        )
         .await
     {
         Ok(response) => Ok(Some(
@@ -556,8 +558,7 @@ async fn fetch_bridge_inner_field(
     client: &myso_rpc_api::Client,
     parent: Address,
     key: u64,
-) -> Result<myso_types::dynamic_field::Field<u64, myso_types::bridge::BridgeInnerV1>, BridgeError>
-{
+) -> Result<myso_types::dynamic_field::Field<u64, myso_types::bridge::BridgeInnerV1>, BridgeError> {
     let bridge_inner_id = parent.derive_dynamic_child_id(
         &myso_sdk_types::TypeTag::U64,
         &bcs::to_bytes(&key).map_err(|e| {
@@ -603,9 +604,8 @@ async fn resolve_bridge_inner_key_from_dynamic_fields(
     client: &myso_rpc_api::Client,
     parent: Address,
 ) -> Result<(Address, u64), BridgeError> {
-    let parent_id = ObjectID::from_bytes(<Address as AsRef<[u8]>>::as_ref(&parent)).map_err(|e| {
-        BridgeError::Generic(format!("Invalid Versioned parent id {parent}: {e}"))
-    })?;
+    let parent_id = ObjectID::from_bytes(<Address as AsRef<[u8]>>::as_ref(&parent))
+        .map_err(|e| BridgeError::Generic(format!("Invalid Versioned parent id {parent}: {e}")))?;
     let listed = client
         .get_dynamic_fields(parent_id, Some(16), None)
         .await
@@ -735,20 +735,18 @@ impl MySoClientInner for myso_rpc_api::Client {
     }
 
     async fn get_mutable_shared_object_arg(&self, id: ObjectID) -> Result<ObjectArg, BridgeError> {
-        let owner = self
-            .clone()
-            .inner_mut()
-            .ledger_client()
-            .get_object(
-                GetObjectRequest::new(&(id.into())).with_read_mask(FieldMask::from_paths([
-                    Object::path_builder().owner().finish(),
-                ])),
-            )
-            .await?
-            .into_inner()
-            .object()
-            .owner()
-            .to_owned();
+        let owner =
+            self.clone()
+                .inner_mut()
+                .ledger_client()
+                .get_object(GetObjectRequest::new(&(id.into())).with_read_mask(
+                    FieldMask::from_paths([Object::path_builder().owner().finish()]),
+                ))
+                .await?
+                .into_inner()
+                .object()
+                .owner()
+                .to_owned();
         Ok(ObjectArg::SharedObject {
             id,
             initial_shared_version: SequenceNumber::from_u64(owner.version()),

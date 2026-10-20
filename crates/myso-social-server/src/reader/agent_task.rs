@@ -3,18 +3,18 @@
 
 //! Task market reads: tasks, receipts, config and reputation (scores derived from indexed sums).
 
+use diesel::sql_types::BigInt;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
 use diesel::SelectableHelper;
-use diesel::sql_types::BigInt;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_reader::reputation::{
-    Aggregate, ScoringParams, Score, overall_score, parse_sum, role_score,
+    overall_score, parse_sum, role_score, Aggregate, Score, ScoringParams,
 };
 use myso_indexer_alt_social_schema::schema::{
-    agent_tasks, credibility, memory_accounts, reputation_aggregates, sub_agents, task_config_history,
-    task_disputes, task_receipts, task_reviews,
+    agent_tasks, credibility, memory_accounts, reputation_aggregates, sub_agents,
+    task_config_history, task_disputes, task_receipts, task_reviews,
 };
 use myso_pg_db::Db;
 
@@ -89,7 +89,10 @@ pub(crate) async fn list_tasks(
         query = query.filter(agent_tasks::status.eq_any(filter.statuses.clone()));
     }
     let rows = query
-        .order((agent_tasks::created_at_ms.desc(), agent_tasks::task_id.asc()))
+        .order((
+            agent_tasks::created_at_ms.desc(),
+            agent_tasks::task_id.asc(),
+        ))
         .limit(limit)
         .offset(offset)
         .select(AgentTaskInfo::as_select())
@@ -98,7 +101,10 @@ pub(crate) async fn list_tasks(
     Ok(rows)
 }
 
-pub(crate) async fn get_task(db: &Db, task_id: &str) -> Result<Option<TaskDetailInfo>, SocialError> {
+pub(crate) async fn get_task(
+    db: &Db,
+    task_id: &str,
+) -> Result<Option<TaskDetailInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let task = agent_tasks::table
         .filter(agent_tasks::task_id.eq(task_id))
@@ -143,7 +149,10 @@ pub(crate) async fn list_agent_receipts(
                 .eq(agent_object_id)
                 .or(task_receipts::buyer_agent_id.eq(agent_object_id)),
         )
-        .order((task_receipts::settled_at_ms.desc(), task_receipts::task_id.asc()))
+        .order((
+            task_receipts::settled_at_ms.desc(),
+            task_receipts::task_id.asc(),
+        ))
         .limit(limit)
         .offset(offset)
         .select(TaskReceiptInfo::as_select())
@@ -175,7 +184,19 @@ fn scoring_params(config: Option<&TaskConfigInfo>) -> ScoringParams {
     }
 }
 
-type AggregateRow = (i64, i64, i64, i64, i64, i64, String, String, i64, String, i64);
+type AggregateRow = (
+    i64,
+    i64,
+    i64,
+    i64,
+    i64,
+    i64,
+    String,
+    String,
+    i64,
+    String,
+    i64,
+);
 
 fn load_aggregate(row: Option<AggregateRow>) -> (Aggregate, Option<String>, Option<i64>) {
     let Some((count, s1, s2, s3, s4, s5, w, s, _score, last_receipt, updated)) = row else {
@@ -267,12 +288,14 @@ async fn load_credibility(
         .first::<(String, i64, String, i64)>(conn)
         .await
         .optional()?;
-    Ok(row.map(|(account_id, settled_count, volume_mist, credibility_bps)| CredibilityInfo {
-        account_id,
-        settled_count,
-        volume_mist,
-        credibility_bps,
-    }))
+    Ok(row.map(
+        |(account_id, settled_count, volume_mist, credibility_bps)| CredibilityInfo {
+            account_id,
+            settled_count,
+            volume_mist,
+            credibility_bps,
+        },
+    ))
 }
 
 /// An agent with no reviews yet is a normal case: the response is the prior, not a 404.
@@ -396,7 +419,9 @@ impl TopAgentSort {
             None | Some("score") => Ok(Self::Score),
             Some("reviews") => Ok(Self::Reviews),
             Some("volume") => Ok(Self::Volume),
-            Some(_) => Err(SocialError::bad_request("sort must be score, reviews or volume")),
+            Some(_) => Err(SocialError::bad_request(
+                "sort must be score, reviews or volume",
+            )),
         }
     }
 
@@ -404,7 +429,9 @@ impl TopAgentSort {
         match self {
             Self::Score => "r.bayesian_score_milli DESC, r.review_count DESC",
             Self::Reviews => "r.review_count DESC, r.bayesian_score_milli DESC",
-            Self::Volume => "COALESCE(c.volume_mist, '0')::NUMERIC DESC, r.bayesian_score_milli DESC",
+            Self::Volume => {
+                "COALESCE(c.volume_mist, '0')::NUMERIC DESC, r.bayesian_score_milli DESC"
+            }
         }
     }
 }
@@ -461,7 +488,10 @@ mod market_tests {
             ..Default::default()
         };
         assert!(by_status.is_listable());
-        assert!(!by_status.is_scoped(), "a status filter alone is not a party scope");
+        assert!(
+            !by_status.is_scoped(),
+            "a status filter alone is not a party scope"
+        );
         let by_party = TaskFilter {
             seller_agent_id: Some("0xa".into()),
             ..Default::default()
@@ -473,15 +503,25 @@ mod market_tests {
     fn top_agent_sorts_parse_from_a_closed_set() {
         assert_eq!(TopAgentSort::parse(None).unwrap(), TopAgentSort::Score);
         assert_eq!(TopAgentSort::parse(Some(" ")).unwrap(), TopAgentSort::Score);
-        assert_eq!(TopAgentSort::parse(Some("reviews")).unwrap(), TopAgentSort::Reviews);
-        assert_eq!(TopAgentSort::parse(Some("volume")).unwrap(), TopAgentSort::Volume);
+        assert_eq!(
+            TopAgentSort::parse(Some("reviews")).unwrap(),
+            TopAgentSort::Reviews
+        );
+        assert_eq!(
+            TopAgentSort::parse(Some("volume")).unwrap(),
+            TopAgentSort::Volume
+        );
         assert!(TopAgentSort::parse(Some("score; DROP TABLE agent_tasks")).is_err());
         assert!(TopAgentSort::parse(Some("price")).is_err());
     }
 
     #[test]
     fn every_sort_has_a_stable_tie_break_and_no_user_input() {
-        for sort in [TopAgentSort::Score, TopAgentSort::Reviews, TopAgentSort::Volume] {
+        for sort in [
+            TopAgentSort::Score,
+            TopAgentSort::Reviews,
+            TopAgentSort::Volume,
+        ] {
             let clause = sort.order_by();
             assert!(clause.contains("DESC"));
             assert!(!clause.contains('$'), "ordering must not take parameters");

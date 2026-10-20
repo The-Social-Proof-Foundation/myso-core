@@ -7,9 +7,7 @@ use serde::Deserialize;
 
 use super::common;
 use super::SocialEventRow;
-use myso_indexer_alt_social_schema::models::{
-    NewPostUsageDecisionEvent, NewRevenueManifestRecord,
-};
+use myso_indexer_alt_social_schema::models::{NewPostUsageDecisionEvent, NewRevenueManifestRecord};
 
 use super::media_asset::{chain_time, transaction_id_from_event_id};
 
@@ -182,7 +180,9 @@ pub fn handle_post_enforcement_event(
             )?;
             let binding_id = u64_from_json(&ev.binding_id)? as i64;
             let policy_version = u64_from_json(&ev.policy_version_at_decision)? as i64;
-            let policy_playback = ev.policy_playback_permitted.unwrap_or(ev.playback_permitted);
+            let policy_playback = ev
+                .policy_playback_permitted
+                .unwrap_or(ev.playback_permitted);
 
             let embedded_bindings = ev
                 .embedded_bindings

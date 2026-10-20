@@ -4,7 +4,8 @@
 use diesel::prelude::*;
 use myso_indexer_alt_social_schema::schema::{
     jury_cases, jury_evidence, jury_payouts, jury_roster, jury_rounds, jury_slots,
-    proposal_jury_referrals, proposal_jury_reviews, registry_jury_policies, task_disputes,
+    proposal_jury_referrals, proposal_jury_reviews, proposal_refunds, registry_jury_policies,
+    task_disputes,
 };
 use serde::Serialize;
 
@@ -333,6 +334,67 @@ pub struct ProposalJuryReviewInfo {
     pub decided_at_ms: Option<i64>,
     pub decision: Option<i16>,
     pub failed: bool,
+    /// The last time no jury could form for this step.
+    #[serde(rename = "unavailableAtMs")]
+    pub jury_unavailable_at_ms: Option<i64>,
+    /// When the step first waited for a jury; it resolves without one 30 days later.
+    #[serde(rename = "deferredSinceMs")]
+    pub jury_deferred_since_ms: Option<i64>,
+    /// Seats the chain could fill, and seats it needed, at the last check that found too few.
+    #[serde(rename = "formableSeats")]
+    pub jury_formable_seats: Option<i64>,
+    #[serde(rename = "requiredSeats")]
+    pub jury_required_seats: Option<i64>,
+}
+
+impl ProposalJuryReviewInfo {
+    /// Decided by the 30-day bound rather than by a jury or the paused-jury default.
+    pub fn resolved_by_wait(&self) -> bool {
+        self.state == 4 && self.case_id.is_none() && self.jury_deferred_since_ms.is_some()
+    }
+}
+
+/// A review as served, with `resolvedByWait` worked out.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProposalJuryReviewView {
+    #[serde(flatten)]
+    pub review: ProposalJuryReviewInfo,
+    pub resolved_by_wait: bool,
+}
+
+/// A community step refunded after 30 days without a jury.
+#[derive(Debug, Serialize, Queryable, Selectable)]
+#[diesel(table_name = proposal_refunds)]
+#[serde(rename_all = "camelCase")]
+pub struct ProposalRefundInfo {
+    pub submitter: String,
+    pub submitter_refund_mist: i64,
+    pub voter_refund_pool_mist: i64,
+    pub outstanding_mist: i64,
+    pub claim_deadline_ms: i64,
+    pub refunded_at_ms: i64,
+    pub swept_at_ms: Option<i64>,
+}
+
+/// One paying voter on a refunded proposal: what they can claim and whether they have.
+#[derive(Debug, Serialize, QueryableByName)]
+#[serde(rename_all = "camelCase")]
+pub struct VoteRefundInfo {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub voter: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    pub amount_mist: i64,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::BigInt>)]
+    pub claimed_at_ms: Option<i64>,
+}
+
+/// `GET /governance/proposals/:id/vote-refunds`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProposalVoteRefundsInfo {
+    pub refund: Option<ProposalRefundInfo>,
+    pub voters: Vec<VoteRefundInfo>,
 }
 
 #[derive(Debug, Serialize, Queryable, Selectable)]
@@ -348,8 +410,9 @@ pub struct ProposalJuryReferralInfo {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProposalJuryInfo {
-    pub reviews: Vec<ProposalJuryReviewInfo>,
+    pub reviews: Vec<ProposalJuryReviewView>,
     pub referrals: Vec<ProposalJuryReferralInfo>,
+    pub refund: Option<ProposalRefundInfo>,
 }
 
 /// `GET /governance/registries/:id/jury-policy`.
@@ -389,6 +452,9 @@ pub struct RosterHealth {
     pub active: i64,
     /// Jurors serving a suspension that has not ended.
     pub suspended: i64,
+    /// Distinct owners with an active juror. An upper bound for display only: whether a jury can
+    /// form for a case is decided on chain by `case_formable`, after that case's exclusions.
+    pub eligible_owners: i64,
     /// The floor below which task disputes cannot open (the jury config's `min_eligible_roster`).
     pub minimum: i64,
 }
@@ -455,7 +521,7 @@ pub struct RegistryJuryPolicyView {
     pub community_quorum_votes: Option<i64>,
 }
 
-/// One thing a keeper can do right now (`GET /jury/cranks`). `kind` is the crank's event type:
+/// One thing anyone can do right now (`GET /jury/cranks`, the public operator feed). `kind` is the crank's event type:
 /// `select_due`, `replace_due`, `round_finalize_due`, `case_finalize_due`, `execute_ready`,
 /// `neutral_start_due`, `neutral_due` or `fees_due`.
 #[derive(Debug, Serialize)]
@@ -535,7 +601,10 @@ mod tests {
         let info = CrankInfo::from(escalate);
         assert_eq!(info.registry_id.as_deref(), Some("0xreg"));
         assert_eq!(info.stage, Some(2));
-        assert_eq!(CrankInfo::from(crank(CrankKind::ExecuteVerdict, 0)).stage, None);
+        assert_eq!(
+            CrankInfo::from(crank(CrankKind::ExecuteVerdict, 0)).stage,
+            None
+        );
     }
 
     #[test]
@@ -562,8 +631,14 @@ mod tests {
 
     #[test]
     fn a_fee_crank_says_whether_the_case_must_be_closed_first() {
-        assert_eq!(CrankInfo::from(crank(CrankKind::SettleFees, 1)).close_case_first, Some(true));
-        assert_eq!(CrankInfo::from(crank(CrankKind::SettleFees, 0)).close_case_first, Some(false));
+        assert_eq!(
+            CrankInfo::from(crank(CrankKind::SettleFees, 1)).close_case_first,
+            Some(true)
+        );
+        assert_eq!(
+            CrankInfo::from(crank(CrankKind::SettleFees, 0)).close_case_first,
+            Some(false)
+        );
     }
 
     #[test]

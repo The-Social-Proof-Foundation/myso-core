@@ -12,7 +12,7 @@ use crate::deposit_sig_verification::{
 };
 use crate::error::BridgeError;
 use crate::storage::{
-    BridgeOrderDirection, BridgeOrderRecord, BridgeOrderStatus, BridgeOrchestratorTables,
+    BridgeOrchestratorTables, BridgeOrderDirection, BridgeOrderRecord, BridgeOrderStatus,
     DepositAddressKey, DepositRegistration, RegistrationType, new_order_id,
 };
 use alloy::primitives::Address as EthAddress;
@@ -828,12 +828,8 @@ fn parse_request_callback(
     let Some(raw) = raw else {
         return Ok((None, None));
     };
-    let url = validate_deposit_callback_url(raw, allowlist).map_err(|error| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse { error }),
-        )
-    })?;
+    let url = validate_deposit_callback_url(raw, allowlist)
+        .map_err(|error| (StatusCode::BAD_REQUEST, Json(ErrorResponse { error })))?;
     let api_key = req
         .callback_api_key
         .as_deref()

@@ -8,7 +8,6 @@
 
 mod access;
 mod agent_task_handler;
-mod jury_handler;
 mod ai_credit;
 mod ai_credit_handler;
 mod blocking;
@@ -19,11 +18,12 @@ mod governance;
 mod governance_handler;
 mod insurance;
 mod insurance_handler;
-mod memory;
-mod memory_handler;
+mod jury_handler;
 mod media_asset;
 mod media_asset_graph;
 mod media_asset_rights;
+mod memory;
+mod memory_handler;
 mod messaging;
 mod messaging_handler;
 mod mydata;
@@ -35,8 +35,8 @@ mod platform;
 mod platform_handler;
 mod poc;
 mod post;
-mod post_mydata;
 mod post_enforcement;
+mod post_mydata;
 mod posts_handler;
 mod profile;
 mod profiles_handler;
@@ -56,49 +56,50 @@ mod upgrade_handler;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     GovernanceRegistryPanelBoundaryUpdate, GovernanceRegistryUpdate, NewAgentMemoryVault,
-    NewAgenticOrganization, NewAiCreditAgentBudget, NewAiCreditBalance, NewAiCreditConfig,
-    NewAiCreditEvent, NewAiCreditSpendApproval, NewAiSpendReservation, NewAnonymousVote,
-    NewAuditLog, NewBlockedEvent, NewBlockedProfile, NewComment, NewCommunityVote, NewDelegate,
-    NewDelegateRating, NewDelegateVote, NewDeletionEvent, NewEcosystemTreasury, NewGovernanceEvent,
-    NewGovernanceRegistry, NewInsuranceCoverageRoute, NewInsuranceEventLog,
-    NewInsuranceMarketExposure, NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill,
-    NewInsuranceRouterConfig, NewInsuranceUserExposure, NewInsuranceVault,
-    NewInsuranceVaultTransaction, NewMemoryAccount, NewMemoryConfig, NewMessageDigest,
-    NewAgentRoom, NewMessagingAgentGroup, NewMessagingConfig, NewModerationEvent, NewMyDataAccessLog,
-    NewMyDataBroadPool, NewMyDataClaim, NewMyDataConfig, NewMyDataData, NewMyDataDistributionRound,
-    NewMyDataListingSubPool, NewMyDataMerkleRoot, NewMyDataPurchase, NewMyDataRegistry,
-    NewMyDataRevenue, NewMyDataSnapshotAnchor, NewMyDataSubPool, NewMyDataSubscription,
-    NewNominatedDelegate, NewObjectMigratedEvent, NewOrgInvitation, NewOrgMemoryPermission,
-    NewOrgRole, NewOrgRoleAssignment, NewOrganizationEvent, NewPaidMessageEscrow, NewPlatform,
-    NewPlatformBlockedProfile, NewPlatformConfig, NewPlatformEvent, NewPlatformMembership,
-    NewPlatformModerator, NewPlatformModeratorPermission, NewPlatformTreasuryWithdrawal,
-    NewPocAnalysisResult, NewPocConfiguration, NewPocCreatorIdentityLink,
-    NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
-    NewPocUsernameBeneficiaryEvent, NewPost, NewPostTransfer, NewProfile, NewProfileBadge,
-    NewCompositionAnalysisRecord, NewDetectedAssetRelationship, NewFingerprintObservation,
-    NewLicenseInstance, NewLicenseTemplateVersion, NewMediaAsset, NewMediaAssetAncestrySnapshot,
+    NewAgentRoom, NewAgenticOrganization, NewAiCreditAgentBudget, NewAiCreditBalance,
+    NewAiCreditConfig, NewAiCreditEvent, NewAiCreditSpendApproval, NewAiSpendReservation,
+    NewAnonymousVote, NewAuditLog, NewBlockedEvent, NewBlockedProfile, NewComment,
+    NewCommunityVote, NewCompositionAnalysisRecord, NewDelegate, NewDelegateRating,
+    NewDelegateVote, NewDeletionEvent, NewDetectedAssetRelationship, NewEcosystemTreasury,
+    NewFingerprintObservation, NewGovernanceEvent, NewGovernanceRegistry,
+    NewInsuranceCoverageRoute, NewInsuranceEventLog, NewInsuranceMarketExposure,
+    NewInsurancePolicy, NewInsurancePolicyEvent, NewInsuranceRouteFill, NewInsuranceRouterConfig,
+    NewInsuranceUserExposure, NewInsuranceVault, NewInsuranceVaultTransaction, NewLicenseInstance,
+    NewLicenseTemplateVersion, NewMediaAsset, NewMediaAssetAncestrySnapshot,
     NewMediaAssetDerivativeEdge, NewMediaAssetGovernanceLink, NewMediaAssetResolvedObligation,
-    NewMediaAssetResolvedPolicy, NewMediaAssetRightsUpdate, NewMediaAssetUsage, NewPostUsageDecisionEvent, NewRevenueManifestRecord,
-    NewProfileConfig, NewProfileEvent, NewWalletBadgeSelection, NewProfileSubscription, NewProfileSubscriptionPlan,
+    NewMediaAssetResolvedPolicy, NewMediaAssetRightsUpdate, NewMediaAssetUsage, NewMemoryAccount,
+    NewMemoryConfig, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig,
+    NewModerationEvent, NewMyDataAccessLog, NewMyDataBroadPool, NewMyDataClaim, NewMyDataConfig,
+    NewMyDataData, NewMyDataDistributionRound, NewMyDataListingSubPool, NewMyDataMerkleRoot,
+    NewMyDataPurchase, NewMyDataRegistry, NewMyDataRevenue, NewMyDataSnapshotAnchor,
+    NewMyDataSubPool, NewMyDataSubscription, NewNominatedDelegate, NewObjectMigratedEvent,
+    NewOrgInvitation, NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment,
+    NewOrganizationEvent, NewPaidMessageEscrow, NewPlatform, NewPlatformBlockedProfile,
+    NewPlatformConfig, NewPlatformEvent, NewPlatformMembership, NewPlatformModerator,
+    NewPlatformModeratorPermission, NewPlatformTreasuryWithdrawal, NewPocAnalysisResult,
+    NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute, NewPocDisputeVote,
+    NewPocRevenueRedirection, NewPocUsernameBeneficiary, NewPocUsernameBeneficiaryEvent, NewPost,
+    NewPostTransfer, NewPostUsageDecisionEvent, NewProfile, NewProfileBadge, NewProfileConfig,
+    NewProfileEvent, NewProfileSubscription, NewProfileSubscriptionPlan,
     NewProfileSubscriptionService, NewProposal, NewReaction, NewReport, NewRepost,
-    NewRewardDistribution, NewSocialGraphEvent, NewSocialGraphRelationship,
-    NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal, NewSpotClaim, NewSpotClaimVerdict,
-    NewSpotConfig, NewSpotCreatorPayout, NewSpotEventLog, NewSpotMarket, NewSpotPayout,
-    NewSpotPostLink, NewSpotRecord, NewSpotRefund, NewSpotResolution, NewSptConfigEvent,
-    NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation, NewSptReservationPool,
-    NewSptSwap, NewSptTransfer, NewSptTransaction, NewSubAgentEvent, NewSubscriptionAccessLog,
-    NewSubscriptionConfig,
-    NewSubscriptionEvent, NewTip, NewUnifiedRevenue, NewUpgradeEvent, NewUsernameListing,
-    NewUsernameOffer, NewUsernameRegistry, NewUsernameReservation, NewUsernameSaleFee,
-    NewVestingEvent, NewVestingWallet, NewVoteDecryptionFailure, ProposalUpdateSet,
+    NewRevenueManifestRecord, NewRewardDistribution, NewSocialGraphEvent,
+    NewSocialGraphRelationship, NewSocialProofTokensEvent, NewSpotBet, NewSpotBetWithdrawal,
+    NewSpotClaim, NewSpotClaimVerdict, NewSpotConfig, NewSpotCreatorPayout, NewSpotEventLog,
+    NewSpotMarket, NewSpotPayout, NewSpotPostLink, NewSpotRecord, NewSpotRefund, NewSpotResolution,
+    NewSptConfigEvent, NewSptHolding, NewSptPool, NewSptPriceHistory, NewSptReservation,
+    NewSptReservationPool, NewSptSwap, NewSptTransaction, NewSptTransfer, NewSubAgentEvent,
+    NewSubscriptionAccessLog, NewSubscriptionConfig, NewSubscriptionEvent, NewTip,
+    NewUnifiedRevenue, NewUpgradeEvent, NewUsernameListing, NewUsernameOffer, NewUsernameRegistry,
+    NewUsernameReservation, NewUsernameSaleFee, NewVestingEvent, NewVestingWallet,
+    NewVoteDecryptionFailure, NewWalletBadgeSelection, ProposalUpdateSet,
 };
 
 pub use agent_task_handler::TaskMarketHandler;
-pub use jury_handler::JuryHandler;
 pub use ai_credit_handler::AiCreditHandler;
 pub use blocking_handler::BlockingHandler;
 pub use governance_handler::GovernanceHandler;
 pub use insurance_handler::InsuranceHandler;
+pub use jury_handler::JuryHandler;
 pub use memory_handler::MemoryHandler;
 pub use messaging_handler::MessagingHandler;
 pub use mydata_handler::MyDataHandler;

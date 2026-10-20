@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::{
     jury_cases, jury_evidence, jury_payouts, jury_roster, jury_rounds, jury_slots,
-    proposal_jury_referrals, proposal_jury_reviews, registry_jury_policies,
+    proposal_jury_referrals, proposal_jury_reviews, proposal_refunds, proposal_vote_refunds,
+    registry_jury_policies,
 };
 
 pub const CASE_STATE_EVIDENCE: i16 = 1;
@@ -118,6 +119,7 @@ pub const REVIEW_STATE_REFERRING: i16 = 1;
 pub const REVIEW_STATE_AWAITING: i16 = 2;
 pub const REVIEW_STATE_ESCALATED: i16 = 3;
 pub const REVIEW_STATE_DECIDED: i16 = 4;
+pub const REVIEW_DECISION_REJECT: i16 = 1;
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = registry_jury_policies)]
@@ -166,5 +168,31 @@ pub struct NewProposalJuryReferral {
     pub delegate_address: String,
     pub reason: Option<String>,
     pub referred_at_ms: i64,
+    pub event_id: String,
+}
+
+/// A community step that went 30 days without a jury and refunded everyone.
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = proposal_refunds)]
+pub struct NewProposalRefund {
+    pub proposal_id: String,
+    pub submitter: String,
+    pub submitter_refund_mist: i64,
+    pub voter_refund_pool_mist: i64,
+    pub outstanding_mist: i64,
+    pub claim_deadline_ms: i64,
+    pub refunded_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = proposal_vote_refunds)]
+pub struct NewProposalVoteRefund {
+    pub proposal_id: String,
+    pub voter: String,
+    pub amount_mist: i64,
+    pub claimed_at_ms: i64,
     pub event_id: String,
 }

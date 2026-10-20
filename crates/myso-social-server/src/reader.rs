@@ -4,11 +4,11 @@
 pub mod agent_task;
 pub mod ai_credit;
 pub mod automation_outbox;
-mod jury_outbox;
 pub mod enterprise;
 mod governance;
 mod insurance;
 pub mod jury;
+mod jury_outbox;
 pub mod memory;
 mod messaging;
 mod mydata;
@@ -32,9 +32,9 @@ mod vesting;
 
 pub use types::*;
 
+use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
-use diesel::sql_types::{BigInt, Nullable, Text};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_social_schema::models::{MemoryAccountRow, Profile, SubAgentRow};
 use myso_indexer_alt_social_schema::schema::{
@@ -1080,8 +1080,8 @@ impl Reader {
         };
 
         let auto_renewed_renewals: i64 = {
-            use diesel::QueryableByName;
             use diesel::sql_query;
+            use diesel::QueryableByName;
             #[derive(QueryableByName)]
             struct CountRow {
                 #[diesel(sql_type = BigInt)]
@@ -1131,8 +1131,8 @@ impl Reader {
             q.count().get_result(&mut conn).await?
         };
         let refunded_cancels: i64 = {
-            use diesel::QueryableByName;
             use diesel::sql_query;
+            use diesel::QueryableByName;
             #[derive(QueryableByName)]
             struct CountRow {
                 #[diesel(sql_type = BigInt)]
@@ -1173,8 +1173,8 @@ impl Reader {
         };
 
         let average_subscription_duration: f64 = {
-            use diesel::QueryableByName;
             use diesel::sql_query;
+            use diesel::QueryableByName;
             #[derive(QueryableByName)]
             struct AvgRow {
                 #[diesel(sql_type = Nullable<BigInt>)]
@@ -1287,8 +1287,8 @@ impl Reader {
             _mrr_placeholder,
         ) in services
         {
-            use diesel::QueryableByName;
             use diesel::sql_query;
+            use diesel::QueryableByName;
             #[derive(QueryableByName)]
             struct ActiveRow {
                 #[diesel(sql_type = BigInt)]
@@ -1545,8 +1545,7 @@ impl Reader {
         windows: &[myso_indexer_alt_social_reader::ProfilePnLWindow],
         limit: i64,
         offset: i64,
-    ) -> Result<myso_indexer_alt_social_reader::SubAgentPnlSummary, crate::error::SocialError>
-    {
+    ) -> Result<myso_indexer_alt_social_reader::SubAgentPnlSummary, crate::error::SocialError> {
         let metrics = myso_indexer_alt_social_reader::standalone_reader_metrics();
         let mut conn = self.db.connect().await?;
         myso_indexer_alt_social_reader::agent_pnl::list_sub_agent_pnl(
@@ -1945,7 +1944,10 @@ impl Reader {
         automation_outbox::enrichment_for(&self.db, payload).await
     }
 
-    pub async fn mark_automation_event_sent(&self, id: i64) -> Result<(), crate::error::SocialError> {
+    pub async fn mark_automation_event_sent(
+        &self,
+        id: i64,
+    ) -> Result<(), crate::error::SocialError> {
         automation_outbox::mark_sent(&self.write_db, id).await
     }
 
@@ -1958,17 +1960,18 @@ impl Reader {
         automation_outbox::mark_failed(&self.write_db, id, error, retry_in_secs).await
     }
 
-    /// Queues the jury's scan-driven events (keeper cranks, juror duty polls, fee claims).
+    /// Queues the jury's scan-driven events (operator cranks, juror duty polls, fee claims, refund
+    /// reminders).
     pub async fn enqueue_due_jury_events(
         &self,
         now_ms: i64,
         batch: i64,
-        keeper_accounts: &[String],
+        operator_id: Option<&str>,
     ) -> Result<usize, crate::error::SocialError> {
-        jury_outbox::enqueue_jury_events(&self.write_db, now_ms, batch, keeper_accounts).await
+        jury_outbox::enqueue_jury_events(&self.write_db, now_ms, batch, operator_id).await
     }
 
-    /// Everything a keeper could crank right now.
+    /// Everything anyone could crank right now.
     pub async fn list_jury_cranks(
         &self,
         now_ms: i64,
@@ -2524,11 +2527,16 @@ impl Reader {
         agent_task::list_agent_receipts(&self.db, agent_object_id, limit, offset).await
     }
 
-    pub async fn get_task_config(&self) -> Result<Option<TaskConfigInfo>, crate::error::SocialError> {
+    pub async fn get_task_config(
+        &self,
+    ) -> Result<Option<TaskConfigInfo>, crate::error::SocialError> {
         agent_task::get_task_config(&self.db).await
     }
 
-    pub async fn get_task_stats(&self, now_ms: i64) -> Result<TaskStatsInfo, crate::error::SocialError> {
+    pub async fn get_task_stats(
+        &self,
+        now_ms: i64,
+    ) -> Result<TaskStatsInfo, crate::error::SocialError> {
         agent_task::get_task_stats(&self.db, now_ms).await
     }
 
@@ -2615,6 +2623,13 @@ impl Reader {
         proposal_id: &str,
     ) -> Result<ProposalJuryInfo, crate::error::SocialError> {
         jury::get_proposal_jury(&self.db, proposal_id).await
+    }
+
+    pub async fn get_proposal_vote_refunds(
+        &self,
+        proposal_id: &str,
+    ) -> Result<crate::reader::types::ProposalVoteRefundsInfo, crate::error::SocialError> {
+        jury::get_proposal_vote_refunds(&self.db, proposal_id).await
     }
 
     pub async fn get_registry_jury_policy(

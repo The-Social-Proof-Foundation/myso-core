@@ -16,7 +16,9 @@
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use myso_indexer_alt_social_schema::models::{platform_event, retry_delay_secs, AUTOMATION_FAMILY_TASK};
+use myso_indexer_alt_social_schema::models::{
+    platform_event, retry_delay_secs, AUTOMATION_FAMILY_TASK,
+};
 use reqwest::StatusCode;
 
 use crate::reader::Reader;
@@ -41,14 +43,19 @@ pub struct ForwarderConfig {
     /// Jury events are queued and delivered only when this is on, so the jury can be built and
     /// indexed without reaching the engine. Off by default.
     pub jury_enabled: bool,
-    /// Memory accounts of the platform's keepers; each gets its own copy of every crank event.
-    pub jury_keeper_accounts: Vec<String>,
+    /// The account crank events are addressed to: the platform's operator by default, or any
+    /// operator that runs the cranks. Without one, cranks are only listed on `GET /jury/cranks`.
+    pub jury_crank_operator_id: Option<String>,
 }
 
 impl ForwarderConfig {
     /// `None` unless both an engine URL and a secret are set. Blank values count as unset.
     pub fn from_lookup(lookup: &dyn Fn(&str) -> Option<String>) -> Option<Self> {
-        let get = |key: &str| lookup(key).map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+        let get = |key: &str| {
+            lookup(key)
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty())
+        };
         let events_url = get("AUTOMATION_EVENTS_URL")?;
         let secret = get("AUTOMATION_EVENTS_SECRET").or_else(|| get("INTERNAL_SYNC_SECRET"))?;
         let poll_secs = get("AUTOMATION_FORWARDER_POLL_SECS")
@@ -59,24 +66,17 @@ impl ForwarderConfig {
             .and_then(|v| v.parse::<i64>().ok())
             .filter(|v| (1..=500).contains(v))
             .unwrap_or(DEFAULT_BATCH);
-        let jury_enabled = get("JURY_AUTOMATION_ENABLED")
-            .is_some_and(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"));
-        let jury_keeper_accounts = get("JURY_KEEPER_ACCOUNT_IDS")
-            .map(|v| {
-                v.split(',')
-                    .map(str::trim)
-                    .filter(|id| !id.is_empty())
-                    .map(str::to_string)
-                    .collect()
-            })
-            .unwrap_or_default();
+        let jury_enabled = get("JURY_AUTOMATION_ENABLED").is_some_and(|v| {
+            matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on")
+        });
+        let jury_crank_operator_id = get("JURY_CRANK_OPERATOR_ID");
         Some(Self {
             events_url,
             secret,
             poll_interval: Duration::from_secs(poll_secs),
             batch,
             jury_enabled,
-            jury_keeper_accounts,
+            jury_crank_operator_id,
         })
     }
 
@@ -85,7 +85,10 @@ impl ForwarderConfig {
     }
 
     pub fn endpoint(&self) -> String {
-        format!("{}/internal/automation/events", self.events_url.trim_end_matches('/'))
+        format!(
+            "{}/internal/automation/events",
+            self.events_url.trim_end_matches('/')
+        )
     }
 }
 
@@ -127,7 +130,10 @@ async fn deliver_batch(
         let outcome = async {
             let mut payload = row.payload.clone();
             if row.event_family == AUTOMATION_FAMILY_TASK {
-                reader.automation_enrichment(&payload).await?.apply(&mut payload);
+                reader
+                    .automation_enrichment(&payload)
+                    .await?
+                    .apply(&mut payload);
             }
             let event = platform_event(&row.identity(), &payload);
             let response = client
@@ -170,14 +176,21 @@ pub async fn run(reader: Reader, config: ForwarderConfig) {
         if last_scan.is_none_or(|at| at.elapsed() >= DUE_SCAN_EVERY) {
             last_scan = Some(Instant::now());
             let now_ms = chrono::Utc::now().timestamp_millis();
-            match reader.enqueue_due_automation_events(now_ms, DUE_BATCH).await {
+            match reader
+                .enqueue_due_automation_events(now_ms, DUE_BATCH)
+                .await
+            {
                 Ok(0) => {}
                 Ok(queued) => tracing::info!(queued, "queued time-driven task events"),
                 Err(error) => tracing::warn!(%error, "scanning for due task events failed"),
             }
             if config.jury_enabled {
                 match reader
-                    .enqueue_due_jury_events(now_ms, DUE_BATCH, &config.jury_keeper_accounts)
+                    .enqueue_due_jury_events(
+                        now_ms,
+                        DUE_BATCH,
+                        config.jury_crank_operator_id.as_deref(),
+                    )
                     .await
                 {
                     Ok(0) => {}
@@ -213,7 +226,10 @@ mod tests {
     fn the_forwarder_is_off_unless_an_engine_and_a_secret_are_configured() {
         assert_eq!(ForwarderConfig::from_lookup(&lookup(&[])), None);
         assert_eq!(
-            ForwarderConfig::from_lookup(&lookup(&[("AUTOMATION_EVENTS_URL", "http://engine:8010")])),
+            ForwarderConfig::from_lookup(&lookup(&[(
+                "AUTOMATION_EVENTS_URL",
+                "http://engine:8010"
+            )])),
             None,
             "a URL without a secret would post unauthenticated events"
         );
@@ -260,13 +276,19 @@ mod tests {
         assert_eq!(default.batch, 50);
 
         let mut tuned = base.to_vec();
-        tuned.extend([("AUTOMATION_FORWARDER_POLL_SECS", "7"), ("AUTOMATION_FORWARDER_BATCH", "200")]);
+        tuned.extend([
+            ("AUTOMATION_FORWARDER_POLL_SECS", "7"),
+            ("AUTOMATION_FORWARDER_BATCH", "200"),
+        ]);
         let tuned = ForwarderConfig::from_lookup(&lookup(&tuned)).unwrap();
         assert_eq!(tuned.poll_interval, Duration::from_secs(7));
         assert_eq!(tuned.batch, 200);
 
         let mut bad = base.to_vec();
-        bad.extend([("AUTOMATION_FORWARDER_POLL_SECS", "0"), ("AUTOMATION_FORWARDER_BATCH", "100000")]);
+        bad.extend([
+            ("AUTOMATION_FORWARDER_POLL_SECS", "0"),
+            ("AUTOMATION_FORWARDER_BATCH", "100000"),
+        ]);
         let bad = ForwarderConfig::from_lookup(&lookup(&bad)).unwrap();
         assert_eq!(bad.poll_interval, Duration::from_secs(2));
         assert_eq!(bad.batch, 50);
@@ -279,7 +301,10 @@ mod tests {
             ("AUTOMATION_EVENTS_SECRET", "s"),
         ]))
         .unwrap();
-        assert_eq!(config.endpoint(), "http://engine:8010/internal/automation/events");
+        assert_eq!(
+            config.endpoint(),
+            "http://engine:8010/internal/automation/events"
+        );
     }
 
     #[test]
@@ -314,28 +339,38 @@ mod tests {
         ];
         let off = ForwarderConfig::from_lookup(&lookup(&base)).unwrap();
         assert!(!off.jury_enabled);
-        assert!(off.jury_keeper_accounts.is_empty());
+        assert!(off.jury_crank_operator_id.is_none());
 
         for value in ["1", "true", "TRUE", "yes", "on"] {
             let mut pairs = base.to_vec();
             pairs.push(("JURY_AUTOMATION_ENABLED", value));
-            assert!(ForwarderConfig::from_lookup(&lookup(&pairs)).unwrap().jury_enabled, "{value}");
+            assert!(
+                ForwarderConfig::from_lookup(&lookup(&pairs))
+                    .unwrap()
+                    .jury_enabled,
+                "{value}"
+            );
         }
         for value in ["0", "false", "", "maybe"] {
             let mut pairs = base.to_vec();
             pairs.push(("JURY_AUTOMATION_ENABLED", value));
-            assert!(!ForwarderConfig::from_lookup(&lookup(&pairs)).unwrap().jury_enabled, "{value}");
+            assert!(
+                !ForwarderConfig::from_lookup(&lookup(&pairs))
+                    .unwrap()
+                    .jury_enabled,
+                "{value}"
+            );
         }
     }
 
     #[test]
-    fn keeper_accounts_are_a_trimmed_comma_list() {
+    fn the_crank_operator_is_configured_and_trimmed() {
         let config = ForwarderConfig::from_lookup(&lookup(&[
             ("AUTOMATION_EVENTS_URL", "http://engine:8010"),
             ("AUTOMATION_EVENTS_SECRET", "s"),
-            ("JURY_KEEPER_ACCOUNT_IDS", " 0xaa , ,0xbb,"),
+            ("JURY_CRANK_OPERATOR_ID", " 0xaa "),
         ]))
         .unwrap();
-        assert_eq!(config.jury_keeper_accounts, vec!["0xaa".to_string(), "0xbb".to_string()]);
+        assert_eq!(config.jury_crank_operator_id.as_deref(), Some("0xaa"));
     }
 }

@@ -324,7 +324,7 @@ pub(crate) async fn get_platform_members(
     offset: i64,
 ) -> Result<Vec<PlatformMemberRow>, SocialError> {
     use diesel::sql_types::{BigInt, Text, Timestamp};
-    use diesel::{QueryableByName, sql_query};
+    use diesel::{sql_query, QueryableByName};
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     #[derive(QueryableByName)]
@@ -362,7 +362,7 @@ pub(crate) async fn check_platform_membership(
     profile_address: &str,
 ) -> Result<bool, SocialError> {
     use diesel::sql_types::{BigInt, Text};
-    use diesel::{QueryableByName, sql_query};
+    use diesel::{sql_query, QueryableByName};
     require_active_platform(db, platform_id).await?;
     let mut conn = db.connect().await?;
     #[derive(QueryableByName)]

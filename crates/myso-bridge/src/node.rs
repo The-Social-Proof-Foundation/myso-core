@@ -46,8 +46,8 @@ use myso_types::crypto::MySoKeyPair;
 use myso_types::event::EventID;
 use mysten_metrics::spawn_logged_monitored_task;
 use std::collections::{BTreeMap, HashMap};
-use std::str::FromStr;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::task::JoinHandle;
@@ -350,9 +350,8 @@ async fn start_client_components(
         .and_then(|c| c.relayer_eth_private_key.as_deref())
         .filter(|hex| !hex.is_empty())
         .map(|hex| {
-            PrivateKeySigner::from_str(hex).map_err(|e| {
-                anyhow::anyhow!("Invalid deposits.relayer-eth-private-key: {e}")
-            })
+            PrivateKeySigner::from_str(hex)
+                .map_err(|e| anyhow::anyhow!("Invalid deposits.relayer-eth-private-key: {e}"))
         })
         .transpose()?;
     let bridge_action_executor = BridgeActionExecutor::new(

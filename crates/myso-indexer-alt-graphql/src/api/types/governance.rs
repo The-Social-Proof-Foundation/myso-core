@@ -258,7 +258,10 @@ impl Proposal {
     async fn jury_reviews(&self, ctx: &Context<'_>) -> Option<Vec<ProposalJuryReview>> {
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
-        let rows = reader.get_proposal_jury_reviews(&self.inner.id).await.ok()?;
+        let rows = reader
+            .get_proposal_jury_reviews(&self.inner.id)
+            .await
+            .ok()?;
         Some(rows.into_iter().map(ProposalJuryReview::from_row).collect())
     }
 
@@ -266,8 +269,15 @@ impl Proposal {
     async fn jury_referrals(&self, ctx: &Context<'_>) -> Option<Vec<ProposalJuryReferral>> {
         let reader_opt = ctx.data_opt::<Arc<Option<SocialPgReader>>>()?;
         let reader = reader_opt.as_ref().as_ref()?;
-        let rows = reader.get_proposal_jury_referrals(&self.inner.id).await.ok()?;
-        Some(rows.into_iter().map(ProposalJuryReferral::from_row).collect())
+        let rows = reader
+            .get_proposal_jury_referrals(&self.inner.id)
+            .await
+            .ok()?;
+        Some(
+            rows.into_iter()
+                .map(ProposalJuryReferral::from_row)
+                .collect(),
+        )
     }
 
     /// Count of community votes on this proposal.

@@ -19,14 +19,19 @@ module social_contracts::governance_jury_tests {
     use myso::test_scenario::{Self as ts, Scenario};
 
     use social_contracts::governance::{Self, GovernanceAdminCap, GovernanceDAO, Proposal};
-    use social_contracts::jury::{Self, JuryCase, JuryConfig};
+    use social_contracts::jury::{Self, JuryCase, JuryConfig, JurorRoster};
     use social_contracts::jury_tests::{Self as jt};
-    use social_contracts::profile::EcosystemTreasury;
+    use social_contracts::profile::{EcosystemTreasury, UsernameRegistry};
 
     const DELEGATE_2: address = @0xD2;
     const DELEGATE_3: address = @0xD3;
     const SUBMITTER: address = @0x5B;
     const ANYONE: address = @0xEE;
+    const VOTER_A: address = @0x7A;
+    const VOTER_B: address = @0x7B;
+    const VOTER_C: address = @0x7C;
+    /// Quadratic base cost in the refund fixture: two votes cost 3x, three votes 8x.
+    const VOTE_BASE: u64 = 100;
     const POOL: u64 = 10_000;
     const FEE: u64 = 2_500;
 
@@ -47,6 +52,10 @@ module social_contracts::governance_jury_tests {
     /// Jury objects and `jurors` roster members, then governance, three delegates, a submitter with
     /// a profile and one proposal in delegate review. `policy` switches the jury on for both steps.
     fun setup(sc: &mut Scenario, jurors: u64, policy: bool): jt::Fixture {
+        setup_with_vote_cost(sc, jurors, policy, 0)
+    }
+
+    fun setup_with_vote_cost(sc: &mut Scenario, jurors: u64, policy: bool, vote_base: u64): jt::Fixture {
         let fx = jt::setup(sc, jurors);
         jt::fill_roster(sc, &fx, jurors);
         jt::set_min_roster(sc, 3);
@@ -66,7 +75,7 @@ module social_contracts::governance_jury_tests {
             let mut registry = take_registry(sc);
             let clock = ts::take_shared<Clock>(sc);
             governance::update_governance_parameters(
-                &mut registry, &cap, 3, 90, 10_000, 5, 0, 1_000, 2, &clock, ts::ctx(sc),
+                &mut registry, &cap, 3, 90, 10_000, 5, vote_base, 1_000, 2, &clock, ts::ctx(sc),
             );
             governance::test_add_delegate(&mut registry, DELEGATE_2);
             governance::test_add_delegate(&mut registry, DELEGATE_3);
@@ -160,13 +169,15 @@ module social_contracts::governance_jury_tests {
         let mut registry = take_registry(sc);
         let mut proposal = ts::take_shared<Proposal>(sc);
         let config = ts::take_shared<JuryConfig>(sc);
+        let roster = ts::take_shared<JurorRoster>(sc);
         let treasury = ts::take_shared<EcosystemTreasury>(sc);
         let clock = ts::take_shared<Clock>(sc);
         governance::escalate_to_jury(
-            &mut registry, &mut proposal, &config, &treasury, stage, &clock, ts::ctx(sc),
+            &mut registry, &mut proposal, &config, &roster, &treasury, stage, &clock, ts::ctx(sc),
         );
         ts::return_shared(clock);
         ts::return_shared(treasury);
+        ts::return_shared(roster);
         ts::return_shared(config);
         ts::return_shared(proposal);
         ts::return_shared(registry);
@@ -224,6 +235,92 @@ module social_contracts::governance_jury_tests {
         ts::return_shared(clock);
         ts::return_shared(proposal);
         ts::return_shared(registry);
+    }
+
+    fun community_vote(sc: &mut Scenario, who: address, votes: u64, approve: bool) {
+        ts::next_tx(sc, who);
+        let mut registry = take_registry(sc);
+        let usernames = ts::take_shared<UsernameRegistry>(sc);
+        let mut proposal = ts::take_shared<Proposal>(sc);
+        let clock = ts::take_shared<Clock>(sc);
+        let mut payment = coin::mint_for_testing<MYSO>(POOL, ts::ctx(sc));
+        governance::community_vote_on_proposal(
+            &mut registry, &usernames, &mut proposal, votes, approve, &mut payment, &clock, ts::ctx(sc),
+        );
+        coin::burn_for_testing(payment);
+        ts::return_shared(clock);
+        ts::return_shared(proposal);
+        ts::return_shared(usernames);
+        ts::return_shared(registry);
+    }
+
+    fun claim_refund(sc: &mut Scenario, who: address) {
+        ts::next_tx(sc, who);
+        let registry = take_registry(sc);
+        let mut proposal = ts::take_shared<Proposal>(sc);
+        let clock = ts::take_shared<Clock>(sc);
+        governance::claim_vote_refund(&registry, &mut proposal, &clock, ts::ctx(sc));
+        ts::return_shared(clock);
+        ts::return_shared(proposal);
+        ts::return_shared(registry);
+    }
+
+    fun sweep_refunds(sc: &mut Scenario) {
+        ts::next_tx(sc, ANYONE);
+        let registry = take_registry(sc);
+        let mut proposal = ts::take_shared<Proposal>(sc);
+        let treasury = ts::take_shared<EcosystemTreasury>(sc);
+        let clock = ts::take_shared<Clock>(sc);
+        governance::sweep_vote_refunds(&registry, &mut proposal, &treasury, &clock, ts::ctx(sc));
+        ts::return_shared(clock);
+        ts::return_shared(treasury);
+        ts::return_shared(proposal);
+        ts::return_shared(registry);
+    }
+
+    fun sweep_case(sc: &mut Scenario, case_id: ID) {
+        ts::next_tx(sc, ANYONE);
+        let mut case = ts::take_shared_by_id<JuryCase>(sc, case_id);
+        governance::sweep_jury_case(&mut case, ts::ctx(sc));
+        ts::return_shared(case);
+    }
+
+    fun deferred_since(sc: &mut Scenario, stage: u8): u64 {
+        ts::next_tx(sc, jt::admin());
+        let proposal = ts::take_shared<Proposal>(sc);
+        let v = governance::jury_deferred_since_ms(&proposal, stage);
+        ts::return_shared(proposal);
+        v
+    }
+
+    /// Takes jurors `from..to` off the draw, so fewer independent owners are left than a case needs.
+    fun pause_jurors(sc: &mut Scenario, fx: &jt::Fixture, from: u64, to: u64) {
+        let mut i = from;
+        while (i < to) {
+            jt::set_available(sc, fx, i, false);
+            i = i + 1;
+        };
+    }
+
+    fun resume_jurors(sc: &mut Scenario, fx: &jt::Fixture, from: u64, to: u64) {
+        let mut i = from;
+        while (i < to) {
+            jt::set_available(sc, fx, i, true);
+            i = i + 1;
+        };
+    }
+
+    /// Two voters pay for two votes each on opposite sides: quorum met, tied, so it goes to the jury.
+    fun tied_paid_vote(sc: &mut Scenario) {
+        jt::create_profile(sc, VOTER_A, b"votera");
+        jt::create_profile(sc, VOTER_B, b"voterb");
+        jt::create_profile(sc, VOTER_C, b"voterc");
+        open_community_vote(sc);
+        community_vote(sc, VOTER_A, 2, true);
+        community_vote(sc, VOTER_B, 3, false);
+        community_vote(sc, VOTER_C, 1, true);
+        jt::advance(sc, 2_000);
+        finalize(sc);
     }
 
     fun case_of(sc: &mut Scenario): ID {
@@ -488,9 +585,10 @@ module social_contracts::governance_jury_tests {
     #[test]
     fun delegates_and_the_submitter_never_sit_on_their_own_jury() {
         let mut sc = ts::begin(jt::admin());
-        // Six jurors and a jury of five: with juror 0 seated as a delegate only the other five can be drawn.
-        let fx = jt::setup(&mut sc, 6);
-        jt::fill_roster(&mut sc, &fx, 6);
+        // Eleven jurors and two rounds of five: with juror 0 seated as a delegate the other ten are
+        // exactly the independent owners a case needs.
+        let fx = jt::setup(&mut sc, 11);
+        jt::fill_roster(&mut sc, &fx, 11);
         jt::set_min_roster(&mut sc, 3);
         jt::create_profile(&mut sc, SUBMITTER, b"submitter");
         ts::next_tx(&mut sc, jt::admin());
@@ -646,6 +744,236 @@ module social_contracts::governance_jury_tests {
         assert!(status(&mut sc) == STATUS_REJECTED, 0);
         assert!(states(&mut sc) == both(0, 0), 1);
         assert!(jt::coin_total(&mut sc, jt::admin()) == before + POOL, 2);
+        ts::end(sc);
+    }
+
+    // ============================================================
+    // No jury can form: defer, then resolve without one
+    // ============================================================
+
+    #[test]
+    fun a_thin_roster_leaves_the_council_step_with_the_humans_and_takes_no_fee() {
+        let mut sc = ts::begin(jt::admin());
+        let fx = setup(&mut sc, 12, true);
+        pause_jurors(&mut sc, &fx, 0, 8);
+        jt::advance(&mut sc, jt::hour());
+        refer(&mut sc, DELEGATE_2);
+        refer(&mut sc, DELEGATE_3);
+        escalate(&mut sc, 1);
+
+        assert!(status(&mut sc) == STATUS_DELEGATE_REVIEW, 0);
+        assert!(pool(&mut sc) == POOL, 1);
+        assert!(states(&mut sc) == both(STATE_REFERRING, 0), 2);
+        assert!(deferred_since(&mut sc, 1) == jt::hour(), 3);
+        // The delegates can still decide while the jury waits.
+        council_vote(&mut sc, jt::admin(), true);
+        council_vote(&mut sc, DELEGATE_2, true);
+        assert!(status(&mut sc) == STATUS_COMMUNITY_VOTING, 4);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun a_thin_roster_at_the_community_step_waits_and_a_later_escalation_succeeds() {
+        let mut sc = ts::begin(jt::admin());
+        let fx = setup(&mut sc, 12, true);
+        open_community_vote(&mut sc);
+        end_vote_without_quorum(&mut sc);
+        pause_jurors(&mut sc, &fx, 0, 8);
+        escalate(&mut sc, 2);
+        assert!(status(&mut sc) == STATUS_COMMUNITY_VOTING, 0);
+        assert!(pool(&mut sc) == POOL, 1);
+        assert!(states(&mut sc) == both(0, STATE_AWAITING), 2);
+        let first = deferred_since(&mut sc, 2);
+        assert!(first > 0, 3);
+
+        jt::advance(&mut sc, jt::day());
+        escalate(&mut sc, 2);
+        // A repeated deferral keeps the first time, so the 30-day bound never restarts.
+        assert!(deferred_since(&mut sc, 2) == first, 4);
+
+        resume_jurors(&mut sc, &fx, 0, 8);
+        escalate(&mut sc, 2);
+        assert!(states(&mut sc) == both(0, STATE_ESCALATED), 5);
+        assert!(pool(&mut sc) == POOL - FEE, 6);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun after_thirty_days_without_a_jury_the_council_step_goes_to_the_community_vote() {
+        let mut sc = ts::begin(jt::admin());
+        let fx = setup(&mut sc, 12, true);
+        pause_jurors(&mut sc, &fx, 0, 8);
+        jt::advance(&mut sc, jt::hour());
+        refer(&mut sc, DELEGATE_2);
+        refer(&mut sc, DELEGATE_3);
+        escalate(&mut sc, 1);
+        jt::advance(&mut sc, governance::jury_defer_max_ms() - 1);
+        escalate(&mut sc, 1);
+        assert!(status(&mut sc) == STATUS_DELEGATE_REVIEW, 0);
+
+        jt::advance(&mut sc, 1);
+        escalate(&mut sc, 1);
+        assert!(status(&mut sc) == STATUS_COMMUNITY_VOTING, 1);
+        assert!(states(&mut sc) == both(STATE_DECIDED, 0), 2);
+        assert!(pool(&mut sc) == POOL, 3);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun after_thirty_days_without_a_jury_the_community_step_refunds_everyone() {
+        let mut sc = ts::begin(jt::admin());
+        let fx = setup_with_vote_cost(&mut sc, 4, true, VOTE_BASE);
+        tied_paid_vote(&mut sc);
+        assert!(states(&mut sc) == both(0, STATE_AWAITING), 0);
+        // Voter A paid 3x, voter B 8x, voter C's single vote was free.
+        assert!(pool(&mut sc) == POOL + 11 * VOTE_BASE, 1);
+        escalate(&mut sc, 2);
+        assert!(pool(&mut sc) == POOL + 11 * VOTE_BASE, 2);
+
+        jt::advance(&mut sc, governance::jury_defer_max_ms());
+        let treasury_before = jt::coin_total(&mut sc, jt::admin());
+        escalate(&mut sc, 2);
+        assert!(status(&mut sc) == STATUS_REJECTED, 3);
+        assert!(states(&mut sc) == both(0, STATE_DECIDED), 4);
+        assert!(jt::coin_total(&mut sc, SUBMITTER) == POOL, 5);
+        assert!(jt::coin_total(&mut sc, jt::admin()) == treasury_before, 6);
+        assert!(pool(&mut sc) == 11 * VOTE_BASE, 7);
+
+        claim_refund(&mut sc, VOTER_A);
+        claim_refund(&mut sc, VOTER_B);
+        assert!(jt::coin_total(&mut sc, VOTER_A) == 3 * VOTE_BASE, 8);
+        assert!(jt::coin_total(&mut sc, VOTER_B) == 8 * VOTE_BASE, 9);
+        assert!(pool(&mut sc) == 0, 10);
+        // Everything is claimed, so the (empty) rest may be swept before the deadline.
+        sweep_refunds(&mut sc);
+        ts::end(sc);
+    }
+
+    #[test, expected_failure(abort_code = governance::EAlreadyClaimed)]
+    fun a_vote_refund_is_claimed_once() {
+        let mut sc = ts::begin(jt::admin());
+        let _fx = setup_with_vote_cost(&mut sc, 4, true, VOTE_BASE);
+        tied_paid_vote(&mut sc);
+        escalate(&mut sc, 2);
+        jt::advance(&mut sc, governance::jury_defer_max_ms());
+        escalate(&mut sc, 2);
+        claim_refund(&mut sc, VOTER_A);
+        claim_refund(&mut sc, VOTER_A);
+        ts::end(sc);
+    }
+
+    #[test, expected_failure(abort_code = governance::ENothingToClaim)]
+    fun a_voter_who_paid_nothing_has_nothing_to_claim() {
+        let mut sc = ts::begin(jt::admin());
+        let _fx = setup_with_vote_cost(&mut sc, 4, true, VOTE_BASE);
+        tied_paid_vote(&mut sc);
+        escalate(&mut sc, 2);
+        jt::advance(&mut sc, governance::jury_defer_max_ms());
+        escalate(&mut sc, 2);
+        claim_refund(&mut sc, VOTER_C);
+        ts::end(sc);
+    }
+
+    #[test, expected_failure(abort_code = governance::ERefundsOutstanding)]
+    fun unclaimed_refunds_cannot_be_swept_before_the_deadline() {
+        let mut sc = ts::begin(jt::admin());
+        let _fx = setup_with_vote_cost(&mut sc, 4, true, VOTE_BASE);
+        tied_paid_vote(&mut sc);
+        escalate(&mut sc, 2);
+        jt::advance(&mut sc, governance::jury_defer_max_ms());
+        escalate(&mut sc, 2);
+        claim_refund(&mut sc, VOTER_A);
+        jt::advance(&mut sc, governance::vote_refund_claim_window_ms());
+        sweep_refunds(&mut sc);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun unclaimed_refunds_go_to_the_treasury_after_the_deadline() {
+        let mut sc = ts::begin(jt::admin());
+        let _fx = setup_with_vote_cost(&mut sc, 4, true, VOTE_BASE);
+        tied_paid_vote(&mut sc);
+        escalate(&mut sc, 2);
+        jt::advance(&mut sc, governance::jury_defer_max_ms());
+        escalate(&mut sc, 2);
+        claim_refund(&mut sc, VOTER_A);
+        jt::advance(&mut sc, governance::vote_refund_claim_window_ms() + 1);
+        let before = jt::coin_total(&mut sc, jt::admin());
+        sweep_refunds(&mut sc);
+        assert!(jt::coin_total(&mut sc, jt::admin()) == before + 8 * VOTE_BASE, 0);
+        assert!(pool(&mut sc) == 0, 1);
+        ts::end(sc);
+    }
+
+    #[test, expected_failure(abort_code = governance::EClaimWindowClosed)]
+    fun a_claim_after_the_deadline_aborts() {
+        let mut sc = ts::begin(jt::admin());
+        let _fx = setup_with_vote_cost(&mut sc, 4, true, VOTE_BASE);
+        tied_paid_vote(&mut sc);
+        escalate(&mut sc, 2);
+        jt::advance(&mut sc, governance::jury_defer_max_ms());
+        escalate(&mut sc, 2);
+        jt::advance(&mut sc, governance::vote_refund_claim_window_ms() + 1);
+        claim_refund(&mut sc, VOTER_A);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun a_case_that_cannot_seat_a_jury_returns_its_fee_and_the_proposal_waits() {
+        let mut sc = ts::begin(jt::admin());
+        let fx = setup(&mut sc, 12, true);
+        open_community_vote(&mut sc);
+        end_vote_without_quorum(&mut sc);
+        escalate(&mut sc, 2);
+        let case_id = case_of(&mut sc);
+        assert!(pool(&mut sc) == POOL - FEE, 0);
+        // Enough jurors step away before the draw that nobody can be seated.
+        pause_jurors(&mut sc, &fx, 0, 12);
+        jt::do_select(&mut sc, case_id);
+        while (jt::state_of(&mut sc, case_id) == jury::case_selecting()) {
+            jt::advance(&mut sc, 13 * jt::hour());
+            jt::do_replace(&mut sc, case_id);
+        };
+        assert!(jt::fail_reason_of(&mut sc, case_id) == jury::fail_cannot_form(), 1);
+        // The fee cannot be swept to the treasury before the decision is applied.
+        apply(&mut sc, case_id);
+        assert!(status(&mut sc) == STATUS_COMMUNITY_VOTING, 2);
+        assert!(pool(&mut sc) == POOL, 3);
+        assert!(states(&mut sc) == both(0, STATE_AWAITING), 4);
+        assert!(deferred_since(&mut sc, 2) > 0, 5);
+        sweep_case(&mut sc, case_id);
+        assert!(pool(&mut sc) == POOL, 6);
+        ts::end(sc);
+    }
+
+    #[test, expected_failure(abort_code = governance::EJuryNotFinished)]
+    fun a_governance_case_fee_cannot_be_swept_before_the_decision_is_applied() {
+        let mut sc = ts::begin(jt::admin());
+        let fx = setup(&mut sc, 12, true);
+        open_community_vote(&mut sc);
+        end_vote_without_quorum(&mut sc);
+        escalate(&mut sc, 2);
+        let case_id = case_of(&mut sc);
+        jt::do_void(&mut sc, case_id);
+        sweep_case(&mut sc, case_id);
+        ts::end(sc);
+    }
+
+    #[test]
+    fun an_unrelated_address_can_run_every_crank() {
+        let mut sc = ts::begin(jt::admin());
+        let fx = setup(&mut sc, 12, true);
+        refer(&mut sc, DELEGATE_2);
+        refer(&mut sc, DELEGATE_3);
+        escalate(&mut sc, 1);
+        let case_id = case_of(&mut sc);
+        jt::do_select_as(&mut sc, @0xC4A1, case_id);
+        jt::accept_all(&mut sc, &fx, case_id);
+        jt::commit_all(&mut sc, &fx, case_id, vector[0, 0, 0, 0, 0]);
+        jt::reveal_all(&mut sc, &fx, case_id, vector[0, 0, 0, 0, 0]);
+        jt::do_finalize_round_as(&mut sc, @0xC4A1, case_id);
+        apply(&mut sc, case_id);
+        assert!(status(&mut sc) == STATUS_COMMUNITY_VOTING, 0);
         ts::end(sc);
     }
 

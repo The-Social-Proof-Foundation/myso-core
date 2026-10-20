@@ -841,7 +841,8 @@ fn layout_for_struct(
         .serialized_module_map()
         .contains_key(module_name.as_str())
     {
-        owned = package.deserialize_module_by_str(module_name.as_str(), &BinaryConfig::standard())?;
+        owned =
+            package.deserialize_module_by_str(module_name.as_str(), &BinaryConfig::standard())?;
         &owned
     } else {
         return Ok(None);
@@ -910,9 +911,9 @@ fn signature_token_to_type_tag(
         SignatureToken::U256 => TypeTag::U256,
         SignatureToken::Address => TypeTag::Address,
         SignatureToken::Signer => TypeTag::Signer,
-        SignatureToken::Vector(inner) => {
-            TypeTag::Vector(Box::new(signature_token_to_type_tag(view, type_args, inner)?))
-        }
+        SignatureToken::Vector(inner) => TypeTag::Vector(Box::new(signature_token_to_type_tag(
+            view, type_args, inner,
+        )?)),
         SignatureToken::TypeParameter(idx) => type_args
             .get(*idx as usize)
             .cloned()

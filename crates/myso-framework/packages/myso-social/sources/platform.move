@@ -28,7 +28,7 @@ module social_contracts::platform {
     
     use social_contracts::profile;
     use social_contracts::governance;
-    use social_contracts::jury::{JuryCase, JuryConfig};
+    use social_contracts::jury::{JuryCase, JuryConfig, JurorRoster};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::block_list;
 
@@ -1214,11 +1214,14 @@ module social_contracts::platform {
 
     /// Anyone moves a platform proposal to the AI jury at the step that has earned it. The platform's
     /// developer is excluded from the jury, and unspent juror shares go to the platform treasury.
+    /// When no jury can form the step waits, then resolves without one (see
+    /// `governance::open_jury_for_proposal`); a juror shortage never forfeits the pool.
     public entry fun escalate_platform_proposal_to_jury(
         platform: &mut Platform,
         registry: &mut governance::GovernanceDAO,
         proposal: &mut governance::Proposal,
         jury_config: &JuryConfig,
+        roster: &JurorRoster,
         stage: u8,
         clock: &Clock,
         ctx: &mut TxContext
@@ -1229,13 +1232,14 @@ module social_contracts::platform {
             registry,
             proposal,
             jury_config,
+            roster,
             stage,
             platform_addr,
             vector[developer(platform)],
             clock,
             ctx,
         );
-        if (result == 1) {
+        if (result == governance::escalate_jury_paused_value()) {
             let reason = governance::jury_default_forfeit_reason(proposal);
             let bal = governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury(
                 registry,
@@ -1270,6 +1274,38 @@ module social_contracts::platform {
             );
             deposit_forfeited_pool(platform, bal, clock, ctx);
         };
+    }
+
+    /// Claim a vote refund on a platform proposal refunded because no jury could form.
+    public entry fun claim_platform_vote_refund(
+        platform: &Platform,
+        registry: &governance::GovernanceDAO,
+        proposal: &mut governance::Proposal,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_platform_registry(platform, registry);
+        let refund = governance::claim_vote_refund_internal(registry, proposal, clock, ctx);
+        if (balance::value(&refund) > 0) {
+            transfer::public_transfer(coin::from_balance(refund, ctx), tx_context::sender(ctx));
+        } else {
+            balance::destroy_zero(refund);
+        };
+    }
+
+    /// Move what voters did not claim (after the deadline, or dust once all claimed) to the
+    /// platform treasury. Permissionless.
+    public entry fun sweep_platform_vote_refunds(
+        platform: &mut Platform,
+        registry: &governance::GovernanceDAO,
+        proposal: &mut governance::Proposal,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_platform_registry(platform, registry);
+        let platform_addr = object::uid_to_address(&platform.id);
+        let rest = governance::take_unclaimed_vote_refunds(registry, proposal, platform_addr, clock);
+        deposit_forfeited_pool(platform, rest, clock, ctx);
     }
 
     public entry fun reject_platform_governance_proposal_manually(

@@ -61,6 +61,8 @@ Manages social media platforms and their timelines
 -  [Function `set_platform_jury_policy`](#social_contracts_platform_set_platform_jury_policy)
 -  [Function `escalate_platform_proposal_to_jury`](#social_contracts_platform_escalate_platform_proposal_to_jury)
 -  [Function `apply_platform_jury_decision`](#social_contracts_platform_apply_platform_jury_decision)
+-  [Function `claim_platform_vote_refund`](#social_contracts_platform_claim_platform_vote_refund)
+-  [Function `sweep_platform_vote_refunds`](#social_contracts_platform_sweep_platform_vote_refunds)
 -  [Function `reject_platform_governance_proposal_manually`](#social_contracts_platform_reject_platform_governance_proposal_manually)
 -  [Function `grant_moderator_permission`](#social_contracts_platform_grant_moderator_permission)
 -  [Function `grant_all_moderator_permissions`](#social_contracts_platform_grant_all_moderator_permissions)
@@ -3677,9 +3679,11 @@ Switch the AI jury on or off for this platform's governance steps. Platform deve
 
 Anyone moves a platform proposal to the AI jury at the step that has earned it. The platform's
 developer is excluded from the jury, and unspent juror shares go to the platform treasury.
+When no jury can form the step waits, then resolves without one (see
+<code><a href="../social_contracts/governance.md#social_contracts_governance_open_jury_for_proposal">governance::open_jury_for_proposal</a></code>); a juror shortage never forfeits the pool.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_escalate_platform_proposal_to_jury">escalate_platform_proposal_to_jury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, jury_config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, stage: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_escalate_platform_proposal_to_jury">escalate_platform_proposal_to_jury</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, jury_config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, stage: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3693,6 +3697,7 @@ developer is excluded from the jury, and unspent juror shares go to the platform
     registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>,
     proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">governance::Proposal</a>,
     jury_config: &JuryConfig,
+    roster: &JurorRoster,
     stage: u8,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
@@ -3703,13 +3708,14 @@ developer is excluded from the jury, and unspent juror shares go to the platform
         registry,
         proposal,
         jury_config,
+        roster,
         stage,
         platform_addr,
         vector[<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>)],
         clock,
         ctx,
     );
-    <b>if</b> (result == 1) {
+    <b>if</b> (result == <a href="../social_contracts/governance.md#social_contracts_governance_escalate_jury_paused_value">governance::escalate_jury_paused_value</a>()) {
         <b>let</b> reason = <a href="../social_contracts/governance.md#social_contracts_governance_jury_default_forfeit_reason">governance::jury_default_forfeit_reason</a>(proposal);
         <b>let</b> bal = <a href="../social_contracts/governance.md#social_contracts_governance_forfeit_proposal_pool_after_community_reject_to_platform_treasury">governance::forfeit_proposal_pool_after_community_reject_to_platform_treasury</a>(
             registry,
@@ -3764,6 +3770,78 @@ Apply a finished jury case to its platform proposal. Permissionless.
         );
         <a href="../social_contracts/platform.md#social_contracts_platform_deposit_forfeited_pool">deposit_forfeited_pool</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, bal, clock, ctx);
     };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_claim_platform_vote_refund"></a>
+
+## Function `claim_platform_vote_refund`
+
+Claim a vote refund on a platform proposal refunded because no jury could form.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_claim_platform_vote_refund">claim_platform_vote_refund</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_claim_platform_vote_refund">claim_platform_vote_refund</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">governance::Proposal</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry">assert_platform_registry</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, registry);
+    <b>let</b> refund = <a href="../social_contracts/governance.md#social_contracts_governance_claim_vote_refund_internal">governance::claim_vote_refund_internal</a>(registry, proposal, clock, ctx);
+    <b>if</b> (balance::value(&refund) &gt; 0) {
+        transfer::public_transfer(coin::from_balance(refund, ctx), tx_context::sender(ctx));
+    } <b>else</b> {
+        balance::destroy_zero(refund);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_sweep_platform_vote_refunds"></a>
+
+## Function `sweep_platform_vote_refunds`
+
+Move what voters did not claim (after the deadline, or dust once all claimed) to the
+platform treasury. Permissionless.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_sweep_platform_vote_refunds">sweep_platform_vote_refunds</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_sweep_platform_vote_refunds">sweep_platform_vote_refunds</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    registry: &<a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">governance::GovernanceDAO</a>,
+    proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">governance::Proposal</a>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_platform_registry">assert_platform_registry</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, registry);
+    <b>let</b> platform_addr = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>let</b> rest = <a href="../social_contracts/governance.md#social_contracts_governance_take_unclaimed_vote_refunds">governance::take_unclaimed_vote_refunds</a>(registry, proposal, platform_addr, clock);
+    <a href="../social_contracts/platform.md#social_contracts_platform_deposit_forfeited_pool">deposit_forfeited_pool</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, rest, clock, ctx);
 }
 </code></pre>
 

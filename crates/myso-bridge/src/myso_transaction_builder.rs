@@ -8,8 +8,9 @@ use fastcrypto::traits::ToFromBytes;
 use move_core_types::ident_str;
 use myso_types::base_types::{MySoAddress, ObjectRef};
 use myso_types::bridge::{
-    BRIDGE_CREATE_ADD_TOKEN_ON_MYSO_MESSAGE_FUNCTION_NAME, BRIDGE_EXECUTE_SYSTEM_MESSAGE_FUNCTION_NAME,
-    BRIDGE_MESSAGE_MODULE_NAME, BRIDGE_MODULE_NAME, TOKEN_ID_USDC,
+    BRIDGE_CREATE_ADD_TOKEN_ON_MYSO_MESSAGE_FUNCTION_NAME,
+    BRIDGE_EXECUTE_SYSTEM_MESSAGE_FUNCTION_NAME, BRIDGE_MESSAGE_MODULE_NAME, BRIDGE_MODULE_NAME,
+    TOKEN_ID_USDC,
 };
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::CallArg;

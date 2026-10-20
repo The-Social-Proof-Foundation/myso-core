@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use diesel::prelude::*;
+use diesel::sql_types::{BigInt, Double, Nullable, Text};
 use myso_indexer_alt_social_schema::schema::{
     agent_tasks, task_config_history, task_receipts, task_reviews,
 };
-use diesel::sql_types::{BigInt, Double, Nullable, Text};
 use serde::Serialize;
 
 /// `GET /tasks` and `GET /tasks/:task_id`.

@@ -2957,7 +2957,10 @@ mod wait_for_effects_with_retry_tests {
             &self,
             digests: &[TransactionDigest],
         ) -> Vec<Option<TransactionEffects>> {
-            digests.iter().map(|d| self.effects.get(d).cloned()).collect()
+            digests
+                .iter()
+                .map(|d| self.effects.get(d).cloned())
+                .collect()
         }
 
         fn multi_get_transaction_blocks(

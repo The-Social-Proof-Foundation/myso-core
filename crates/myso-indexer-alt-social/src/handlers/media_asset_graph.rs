@@ -8,9 +8,9 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewDetectedAssetRelationship, NewLicenseInstance, NewLicenseTemplateVersion,
-    NewMediaAsset, NewMediaAssetAncestrySnapshot, NewMediaAssetDerivativeEdge,
-    NewMediaAssetResolvedObligation, NewMediaAssetResolvedPolicy,
+    NewDetectedAssetRelationship, NewLicenseInstance, NewLicenseTemplateVersion, NewMediaAsset,
+    NewMediaAssetAncestrySnapshot, NewMediaAssetDerivativeEdge, NewMediaAssetResolvedObligation,
+    NewMediaAssetResolvedPolicy,
 };
 
 use super::media_asset::{bytes_from_json, chain_time, transaction_id_from_event_id};
@@ -208,19 +208,14 @@ pub fn handle_graph_media_asset_event(
                 .as_ref()
                 .and_then(bytes_from_json)
                 .map(|b| hex::encode(b));
-            let ancestor_ids: Vec<String> = ev
-                .ancestor_ids
-                .iter()
-                .filter_map(id_from_json)
-                .collect();
-            let mut rows = vec![SocialEventRow::MediaAsset(
-                new_media_asset_from_identity(
-                    ev.child_asset_id.clone(),
-                    &ev.identity,
-                    &tx_id,
-                    ev.timestamp,
-                )?,
-            )];
+            let ancestor_ids: Vec<String> =
+                ev.ancestor_ids.iter().filter_map(id_from_json).collect();
+            let mut rows = vec![SocialEventRow::MediaAsset(new_media_asset_from_identity(
+                ev.child_asset_id.clone(),
+                &ev.identity,
+                &tx_id,
+                ev.timestamp,
+            )?)];
             rows.push(SocialEventRow::MediaAssetAncestrySnapshot(
                 NewMediaAssetAncestrySnapshot {
                     media_asset_id: ev.child_asset_id.clone(),
@@ -325,10 +320,7 @@ pub fn handle_graph_media_asset_event(
                     media_asset_id: ev.media_asset_id,
                     policy_version,
                     obligation_index,
-                    beneficiary_asset_id: ev
-                        .beneficiary_asset_id
-                        .as_ref()
-                        .and_then(id_from_json),
+                    beneficiary_asset_id: ev.beneficiary_asset_id.as_ref().and_then(id_from_json),
                     beneficiary_address: ev.beneficiary_address,
                     share_bps,
                     source_relationship_id: ev
@@ -443,10 +435,7 @@ pub fn handle_discovery_event(
                 "DetectedRelationshipProposedEvent parse failed",
             )?;
             let similarity_bps = u64_from_json(&ev.similarity_bps)? as i64;
-            let evidence = ev
-                .evidence_commitment
-                .as_ref()
-                .and_then(bytes_from_json);
+            let evidence = ev.evidence_commitment.as_ref().and_then(bytes_from_json);
             let detected_by = if ev.detected_by.is_empty() {
                 tx_sender.unwrap_or("unknown").to_string()
             } else {
@@ -475,10 +464,7 @@ pub fn handle_discovery_event(
                 "DetectedRelationshipAcceptedEvent parse failed",
             )?;
             let similarity_bps = u64_from_json(&ev.similarity_bps)? as i64;
-            let evidence = ev
-                .evidence_commitment
-                .as_ref()
-                .and_then(bytes_from_json);
+            let evidence = ev.evidence_commitment.as_ref().and_then(bytes_from_json);
             Some(vec![new_detected_relationship(
                 ev.proposal_id,
                 ev.accused_pending_id,
@@ -502,10 +488,7 @@ pub fn handle_discovery_event(
                 "DetectedRelationshipRejectedEvent parse failed",
             )?;
             let similarity_bps = u64_from_json(&ev.similarity_bps)? as i64;
-            let evidence = ev
-                .evidence_commitment
-                .as_ref()
-                .and_then(bytes_from_json);
+            let evidence = ev.evidence_commitment.as_ref().and_then(bytes_from_json);
             Some(vec![new_detected_relationship(
                 ev.proposal_id,
                 ev.accused_pending_id,
@@ -586,11 +569,8 @@ pub fn handle_license_template_event(
                         .unwrap_or(u64::MAX) as i64,
                     allow_derivatives: ev.allow_derivatives.unwrap_or(true),
                     attribution_required: ev.attribution_required.unwrap_or(false),
-                    royalty_bps: ev
-                        .royalty_bps
-                        .as_ref()
-                        .and_then(u64_from_json)
-                        .unwrap_or(0) as i64,
+                    royalty_bps: ev.royalty_bps.as_ref().and_then(u64_from_json).unwrap_or(0)
+                        as i64,
                     derivative_royalty_bps: ev
                         .derivative_royalty_bps
                         .as_ref()

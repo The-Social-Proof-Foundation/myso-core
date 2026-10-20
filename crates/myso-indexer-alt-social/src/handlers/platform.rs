@@ -1337,8 +1337,7 @@ mod platform_deleted_tests {
     fn user_left_platform_event_json_through_handler() {
         let ts_ms = 1_735_891_200_000u64;
         let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
-        let wallet_address =
-            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        let wallet_address = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
         // Shape matches BCS → JSON in events.rs (`timestamp`, not `_timestamp`).
         let json = serde_json::json!({
             "wallet_address": wallet_address,
@@ -1378,8 +1377,7 @@ mod platform_deleted_tests {
     fn user_joined_platform_event_json_through_handler() {
         let ts_ms = 1_735_891_200_000u64;
         let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
-        let wallet_address =
-            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        let wallet_address = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
         let json = serde_json::json!({
             "wallet_address": wallet_address,
             "platform_id": platform_id,
@@ -1505,8 +1503,7 @@ mod platform_deleted_tests {
     fn platform_unblocked_profile_event_json_through_handler() {
         let platform_id = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
         let profile_id = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-        let unblocked_by =
-            "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+        let unblocked_by = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
         // Shape uses `unblocked_by` (not `_unblocked_by`) so the orphaned path cannot regress.
         let json = serde_json::json!({
             "platform_id": platform_id,
@@ -1514,9 +1511,8 @@ mod platform_deleted_tests {
             "unblocked_by": unblocked_by,
         });
         let event_id = "digest:platform-unblock";
-        let rows =
-            handle_platform_event("PlatformUnblockedProfileEvent", &json, event_id, CK_MS)
-                .expect("handler should recognize PlatformUnblockedProfileEvent");
+        let rows = handle_platform_event("PlatformUnblockedProfileEvent", &json, event_id, CK_MS)
+            .expect("handler should recognize PlatformUnblockedProfileEvent");
         assert_eq!(rows.len(), 2);
 
         let SocialEventRow::PlatformEvent(ev) = &rows[0] else {

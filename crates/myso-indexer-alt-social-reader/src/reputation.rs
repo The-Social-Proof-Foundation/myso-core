@@ -95,7 +95,9 @@ pub fn overall_score(seller: &Aggregate, buyer: &Aggregate, p: &ScoringParams) -
     let c = u128::from(p.prior_weight_bps);
     let a_s = u128::from(p.overall_seller_weight_bps);
     let a_b = u128::from(p.overall_buyer_weight_bps);
-    let prior_num = c.checked_mul(u128::from(p.prior_mean_milli))?.checked_mul(BPS)?;
+    let prior_num = c
+        .checked_mul(u128::from(p.prior_mean_milli))?
+        .checked_mul(BPS)?;
     let prior_den = c.checked_mul(BPS)?;
     let num = prior_num
         .checked_add(a_s.checked_mul(seller.weighted_star_sum)?)?
@@ -131,11 +133,17 @@ mod tests {
     fn no_reviews_is_the_prior_with_no_confidence() {
         assert_eq!(
             role_score(&Aggregate::default(), &P),
-            Some(Score { score_milli: 3000, confidence_bps: 0 })
+            Some(Score {
+                score_milli: 3000,
+                confidence_bps: 0
+            })
         );
         assert_eq!(
             overall_score(&Aggregate::default(), &Aggregate::default(), &P),
-            Some(Score { score_milli: 3000, confidence_bps: 0 })
+            Some(Score {
+                score_milli: 3000,
+                confidence_bps: 0
+            })
         );
     }
 
@@ -145,17 +153,27 @@ mod tests {
     fn one_five_star_review_at_base_credibility() {
         // w = 10000 * 2000 / 10000 = 2000; S = 2000 * 5000.
         let a = agg(1, [0, 0, 0, 0, 1], 2000, 10_000_000);
-        assert_eq!(role_score(&a, &P), Some(Score { score_milli: 3076, confidence_bps: 384 }));
+        assert_eq!(
+            role_score(&a, &P),
+            Some(Score {
+                score_milli: 3076,
+                confidence_bps: 384
+            })
+        );
     }
 
     #[test]
     fn one_four_star_and_one_two_star_review() {
         assert_eq!(
-            role_score(&agg(1, [0, 0, 0, 1, 0], 2000, 8_000_000), &P).unwrap().score_milli,
+            role_score(&agg(1, [0, 0, 0, 1, 0], 2000, 8_000_000), &P)
+                .unwrap()
+                .score_milli,
             3038
         );
         assert_eq!(
-            role_score(&agg(1, [0, 1, 0, 0, 0], 2000, 4_000_000), &P).unwrap().score_milli,
+            role_score(&agg(1, [0, 1, 0, 0, 0], 2000, 4_000_000), &P)
+                .unwrap()
+                .score_milli,
             2961
         );
     }
@@ -171,7 +189,13 @@ mod tests {
     fn overall_blends_the_two_roles() {
         let seller = agg(1, [0, 0, 0, 0, 1], 2000, 10_000_000);
         let overall = overall_score(&seller, &Aggregate::default(), &P).unwrap();
-        assert_eq!(overall, Score { score_milli: 3039, confidence_bps: 196 });
+        assert_eq!(
+            overall,
+            Score {
+                score_milli: 3039,
+                confidence_bps: 196
+            }
+        );
         // Pulled toward the prior relative to the seller-only score.
         assert!(overall.score_milli < role_score(&seller, &P).unwrap().score_milli);
     }
@@ -186,7 +210,12 @@ mod tests {
 
     #[test]
     fn sums_beyond_u64_are_exact() {
-        let a = agg(1, [0, 0, 0, 0, 1], 18_446_744_073_709_551_616, 92_233_720_368_547_758_080);
+        let a = agg(
+            1,
+            [0, 0, 0, 0, 1],
+            18_446_744_073_709_551_616,
+            92_233_720_368_547_758_080_000,
+        );
         // Weighted mean of 5 stars at overwhelming weight tends to 5000.
         assert_eq!(role_score(&a, &P).unwrap().score_milli, 4999);
     }
@@ -199,7 +228,10 @@ mod tests {
 
     #[test]
     fn sums_parse_only_as_plain_decimals() {
-        assert_eq!(parse_sum("340282366920938463463374607431768211455"), Some(u128::MAX));
+        assert_eq!(
+            parse_sum("340282366920938463463374607431768211455"),
+            Some(u128::MAX)
+        );
         assert_eq!(parse_sum("12x"), None);
         assert_eq!(parse_sum(""), None);
         assert_eq!(parse_sum("-1"), None);

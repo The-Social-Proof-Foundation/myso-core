@@ -117,7 +117,11 @@ impl MediaAsset {
             .list_license_templates_for_asset(&self.inner.media_asset_id, limit, offset)
             .await
             .ok()
-            .map(|rows| rows.into_iter().map(LicenseTemplateTerms::from_row).collect())
+            .map(|rows| {
+                rows.into_iter()
+                    .map(LicenseTemplateTerms::from_row)
+                    .collect()
+            })
     }
 
     async fn license_instances(
@@ -743,7 +747,9 @@ impl LicenseTemplateTerms {
 
     async fn legal_terms_hash(&self) -> Option<String> {
         self.inner.legal_terms_hash.as_ref().map(|b| {
-            b.iter().map(|byte| format!("{byte:02x}")).collect::<String>()
+            b.iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>()
         })
     }
 

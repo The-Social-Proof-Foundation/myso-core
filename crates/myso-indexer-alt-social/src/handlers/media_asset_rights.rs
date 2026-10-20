@@ -8,8 +8,8 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    GOV_LINK_STATUS_ACTIVE, GOV_LINK_STATUS_IMPLEMENTED, GOV_LINK_STATUS_REJECTED,
     NewLicenseInstance, NewMediaAssetGovernanceLink, NewMediaAssetRightsUpdate,
+    GOV_LINK_STATUS_ACTIVE, GOV_LINK_STATUS_IMPLEMENTED, GOV_LINK_STATUS_REJECTED,
 };
 
 use super::media_asset::{bytes_from_json, chain_time, transaction_id_from_event_id};
@@ -172,13 +172,14 @@ pub fn handle_media_asset_license_revoked_by_licensor_event(
     data: &serde_json::Value,
     event_id: &str,
 ) -> Option<Vec<SocialEventRow>> {
-    let ev: MediaAssetLicenseInstanceRevokedByLicensorEvent = common::deserialize_social_event_json(
-        "media_asset",
-        "MediaAssetLicenseInstanceRevokedByLicensorEvent",
-        event_id,
-        data,
-        "media_asset MediaAssetLicenseInstanceRevokedByLicensorEvent JSON did not match",
-    )?;
+    let ev: MediaAssetLicenseInstanceRevokedByLicensorEvent =
+        common::deserialize_social_event_json(
+            "media_asset",
+            "MediaAssetLicenseInstanceRevokedByLicensorEvent",
+            event_id,
+            data,
+            "media_asset MediaAssetLicenseInstanceRevokedByLicensorEvent JSON did not match",
+        )?;
     let media_asset_id = id_from_json(&ev.media_asset_id)?;
     let instance_id = id_from_json(&ev.license_instance_id)?;
     let tx_id = transaction_id_from_event_id(event_id);

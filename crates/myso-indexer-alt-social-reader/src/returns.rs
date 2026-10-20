@@ -4,8 +4,8 @@
 //! Personal SPT investment performance (WAC). Not token price % change.
 //! Window rankings use window P/L / capital-at-risk, never delta lifetime ROI.
 
-use diesel::sql_types::{BigInt, Bool, Double, Text, Timestamptz};
 use diesel::QueryableByName;
+use diesel::sql_types::{BigInt, Bool, Double, Text, Timestamptz};
 use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 

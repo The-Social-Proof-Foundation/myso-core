@@ -22,8 +22,8 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewPocAnalysisResult, NewPocConfiguration, NewPocCreatorIdentityLink,
-    NewPocDispute, NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
+    NewPocAnalysisResult, NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute,
+    NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
     NewPocUsernameBeneficiaryEvent, NewTip, NewUnifiedRevenue, CONTENT_TYPE_POST, CURRENCY_MYSO,
     DISPUTE_STATUS_VOTING, EVENT_TYPE_CLAIMED, EVENT_TYPE_CONFLICT,
     EVENT_TYPE_CREATOR_IDENTITY_WALLET_LINKED, EVENT_TYPE_ENDED, EVENT_TYPE_PROVISIONED,
@@ -207,11 +207,20 @@ struct PocConfigUpdatedEvent {
     max_disputes_per_post: u64,
     #[serde(default, deserialize_with = "deserialize_u64")]
     min_vault_deposit_amount: u64,
-    #[serde(default = "default_media_asset_dispute_cost", deserialize_with = "deserialize_u64")]
+    #[serde(
+        default = "default_media_asset_dispute_cost",
+        deserialize_with = "deserialize_u64"
+    )]
     media_asset_dispute_cost: u64,
-    #[serde(default = "default_max_disputes_per_media_asset", deserialize_with = "deserialize_u64")]
+    #[serde(
+        default = "default_max_disputes_per_media_asset",
+        deserialize_with = "deserialize_u64"
+    )]
     max_disputes_per_media_asset: u64,
-    #[serde(default = "default_max_embedded_asset_redirect_bps", deserialize_with = "deserialize_u64")]
+    #[serde(
+        default = "default_max_embedded_asset_redirect_bps",
+        deserialize_with = "deserialize_u64"
+    )]
     max_embedded_asset_redirect_bps: u64,
     #[serde(deserialize_with = "deserialize_u64")]
     timestamp: u64,
@@ -337,12 +346,9 @@ pub fn handle_poc_event(
                 event_name, data, event_id,
             )
         }
-        "PostCompositionAnalyzedEvent" => super::media_asset::handle_media_asset_event(
-            event_name,
-            data,
-            event_id,
-            tx_sender,
-        ),
+        "PostCompositionAnalyzedEvent" => {
+            super::media_asset::handle_media_asset_event(event_name, data, event_id, tx_sender)
+        }
         other => super::media_asset_graph::handle_discovery_event(other, data, event_id, tx_sender),
     }
 }

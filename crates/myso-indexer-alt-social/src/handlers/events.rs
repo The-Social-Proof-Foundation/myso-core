@@ -7,7 +7,7 @@
 use move_core_types::account_address::AccountAddress;
 use serde::{Deserialize, Serialize};
 
-use super::access::{self, BcsPostAccess, post_access_json_from_bcs};
+use super::access::{self, post_access_json_from_bcs, BcsPostAccess};
 
 /// Error returned when event contents fail to parse, for diagnostic logging.
 #[derive(Debug)]
@@ -243,7 +243,6 @@ struct BcsAgentGroupCreated {
     group_uuid: String,
     created_at: u64,
 }
-
 
 // ---------------------------------------------------------------------------
 // agent_task events (flat; field order must match social_contracts::agent_task)
@@ -569,6 +568,43 @@ pub struct BcsProposalRejectedByJuryEvent {
     pub proposal_id: BcsMoveObjectId,
     pub stage: u8,
     pub rejection_time: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsJuryUnavailableEvent {
+    pub proposal_id: BcsMoveObjectId,
+    pub stage: u8,
+    pub case_id: Option<BcsMoveObjectId>,
+    pub formable_seats: u64,
+    pub required_seats: u64,
+    pub deferred_since_ms: u64,
+    pub at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsProposalRefundedJuryUnavailableEvent {
+    pub proposal_id: BcsMoveObjectId,
+    pub submitter: AccountAddress,
+    pub submitter_refund_mist: u64,
+    pub voter_refund_pool_mist: u64,
+    pub claim_deadline_ms: u64,
+    pub refunded_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsVoteRefundClaimedEvent {
+    pub proposal_id: BcsMoveObjectId,
+    pub voter: AccountAddress,
+    pub amount_mist: u64,
+    pub claimed_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsVoteRefundsSweptEvent {
+    pub proposal_id: BcsMoveObjectId,
+    pub recipient: AccountAddress,
+    pub amount_mist: u64,
+    pub swept_at_ms: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -5007,6 +5043,51 @@ fn parse_governance_event(
                 "rejection_time": ev.rejection_time,
             })))
         }
+        "JuryUnavailableEvent" => {
+            let ev = bcs::from_bytes::<BcsJuryUnavailableEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": move_object_id_to_string(&ev.proposal_id),
+                "stage": ev.stage,
+                "case_id": optional_move_object_id_json(&ev.case_id),
+                "formable_seats": ev.formable_seats,
+                "required_seats": ev.required_seats,
+                "deferred_since_ms": ev.deferred_since_ms,
+                "at_ms": ev.at_ms,
+            })))
+        }
+        "ProposalRefundedJuryUnavailableEvent" => {
+            let ev = bcs::from_bytes::<BcsProposalRefundedJuryUnavailableEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": move_object_id_to_string(&ev.proposal_id),
+                "submitter": addr_to_string(&ev.submitter),
+                "submitter_refund_mist": ev.submitter_refund_mist,
+                "voter_refund_pool_mist": ev.voter_refund_pool_mist,
+                "claim_deadline_ms": ev.claim_deadline_ms,
+                "refunded_at_ms": ev.refunded_at_ms,
+            })))
+        }
+        "VoteRefundClaimedEvent" => {
+            let ev = bcs::from_bytes::<BcsVoteRefundClaimedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": move_object_id_to_string(&ev.proposal_id),
+                "voter": addr_to_string(&ev.voter),
+                "amount_mist": ev.amount_mist,
+                "claimed_at_ms": ev.claimed_at_ms,
+            })))
+        }
+        "VoteRefundsSweptEvent" => {
+            let ev = bcs::from_bytes::<BcsVoteRefundsSweptEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "proposal_id": move_object_id_to_string(&ev.proposal_id),
+                "recipient": addr_to_string(&ev.recipient),
+                "amount_mist": ev.amount_mist,
+                "swept_at_ms": ev.swept_at_ms,
+            })))
+        }
         "ProposalImplementedEvent" => {
             let ev = bcs::from_bytes::<BcsProposalImplementedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -8272,8 +8353,8 @@ mod tests {
     /// BCS field order must match Move `platform::PlatformCreatedEvent` (redirect_uri after moderators_group_id).
     #[test]
     fn platform_created_event_bcs_parse_then_handler_row_shape() {
-        use crate::handlers::SocialEventRow;
         use crate::handlers::platform::handle_platform_event;
+        use crate::handlers::SocialEventRow;
 
         let pid = AccountAddress::from_hex_literal(
             "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
@@ -8349,8 +8430,8 @@ mod tests {
     /// BCS → JSON → handler for join: membership upsert + audit event.
     #[test]
     fn user_joined_platform_event_bcs_parse_then_handler_row_shape() {
-        use crate::handlers::SocialEventRow;
         use crate::handlers::platform::handle_platform_event;
+        use crate::handlers::SocialEventRow;
 
         let wallet = AccountAddress::from_hex_literal(
             "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -8393,8 +8474,8 @@ mod tests {
     /// BCS → JSON → handler for leave: soft left_at stamp + audit event (no delete).
     #[test]
     fn user_left_platform_event_bcs_parse_then_handler_row_shape() {
-        use crate::handlers::SocialEventRow;
         use crate::handlers::platform::handle_platform_event;
+        use crate::handlers::SocialEventRow;
         use chrono::{TimeZone, Utc};
 
         let wallet = AccountAddress::from_hex_literal(
@@ -8450,8 +8531,8 @@ mod tests {
     /// BCS serialization matches Move `platform::PlatformDeletedEvent`; handlers produce delete + audit rows.
     #[test]
     fn platform_deleted_event_bcs_parse_then_handler_row_shape() {
-        use crate::handlers::SocialEventRow;
         use crate::handlers::platform::handle_platform_event;
+        use crate::handlers::SocialEventRow;
         use chrono::{TimeZone, Utc};
 
         let pid = AccountAddress::from_hex_literal(
@@ -8794,8 +8875,8 @@ mod tests {
     fn test_parse_sub_pool_created_event_from_live_transaction() {
         use move_core_types::account_address::AccountAddress;
 
-        use crate::handlers::SocialEventRow;
         use crate::handlers::mydata;
+        use crate::handlers::SocialEventRow;
 
         let sub_pool_id = AccountAddress::from_hex_literal(
             "0x2147facf6a89c71b6fe2144647a0810f9eaf2e755235f61b94bd18f624f85cb1",
@@ -9589,12 +9670,10 @@ mod tests {
             parse_event_contents("memory", "AgentMemoryVaultCreated", &bytes).expect("parse");
         assert!(json["vault_id"].as_str().unwrap().starts_with("0x"));
         assert!(json["agent_object_id"].as_str().unwrap().starts_with("0x"));
-        assert!(
-            json["memory_account_id"]
-                .as_str()
-                .unwrap()
-                .starts_with("0x")
-        );
+        assert!(json["memory_account_id"]
+            .as_str()
+            .unwrap()
+            .starts_with("0x"));
     }
 
     #[test]
@@ -9941,12 +10020,10 @@ mod tests {
         let bytes = bcs::to_bytes(&ev).expect("serialize PoCConfigUpdatedEvent");
         let json = parse_event_contents("proof_of_creativity", "PoCConfigUpdatedEvent", &bytes)
             .expect("parse PoCConfigUpdatedEvent");
-        assert!(
-            json["dispute_governance_registry_id"]
-                .as_str()
-                .unwrap()
-                .starts_with("0x")
-        );
+        assert!(json["dispute_governance_registry_id"]
+            .as_str()
+            .unwrap()
+            .starts_with("0x"));
         assert_eq!(json["media_asset_dispute_cost"], 10_000_000_000_i64);
         assert_eq!(json["max_disputes_per_media_asset"], 2);
         assert_eq!(json["max_embedded_asset_redirect_bps"], 5000);

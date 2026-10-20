@@ -76,7 +76,9 @@ fn apply_sell(state: &mut UserSptPositionState, sold_qty: i64, proceeds: i64) {
         return;
     }
     let disposed = proportional_cost(state.cost_basis_myso, qty, state.token_balance);
-    state.realized_myso = state.realized_myso.saturating_add(proceeds.saturating_sub(disposed));
+    state.realized_myso = state
+        .realized_myso
+        .saturating_add(proceeds.saturating_sub(disposed));
     state.disposed_cost_basis_myso = state.disposed_cost_basis_myso.saturating_add(disposed);
     state.sold_token_qty = state.sold_token_qty.saturating_add(qty);
     state.exit_proceeds_myso = state.exit_proceeds_myso.saturating_add(proceeds.max(0));
@@ -91,7 +93,9 @@ fn apply_reservation(state: &mut UserSptPositionState, myso_delta: i64) {
         state.reservation_cost_myso = state.reservation_cost_myso.saturating_add(myso_delta);
         state.total_invested_myso = state.total_invested_myso.saturating_add(myso_delta);
     } else if myso_delta < 0 {
-        let withdraw = myso_delta.saturating_neg().min(state.reservation_cost_myso.max(0));
+        let withdraw = myso_delta
+            .saturating_neg()
+            .min(state.reservation_cost_myso.max(0));
         state.reservation_cost_myso = state.reservation_cost_myso.saturating_sub(withdraw);
         state.total_invested_myso = state.total_invested_myso.saturating_sub(withdraw);
     }
@@ -179,7 +183,9 @@ pub fn unrealized_roi_pct(state: &UserSptPositionState, mark_value: i64) -> Opti
 }
 
 pub fn lifetime_net_myso(state: &UserSptPositionState, mark_value: i64) -> i64 {
-    state.realized_myso.saturating_add(unrealized_myso(state, mark_value))
+    state
+        .realized_myso
+        .saturating_add(unrealized_myso(state, mark_value))
 }
 
 pub fn lifetime_roi_pct(state: &UserSptPositionState, mark_value: i64) -> Option<f64> {

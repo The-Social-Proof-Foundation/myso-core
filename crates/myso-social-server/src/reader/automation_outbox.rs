@@ -380,7 +380,10 @@ mod tests {
             let sql = kind.sql();
             assert!(sql.contains("LIMIT $2"), "{kind:?} must be bounded");
             assert!(sql.contains("ORDER BY"), "{kind:?} must be ordered");
-            assert!(sql.contains("NOT EXISTS"), "{kind:?} must skip already queued tasks");
+            assert!(
+                sql.contains("NOT EXISTS"),
+                "{kind:?} must skip already queued tasks"
+            );
         }
     }
 

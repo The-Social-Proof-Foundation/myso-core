@@ -13,10 +13,7 @@ const CALLBACK_MAX_ATTEMPTS: u32 = 5;
 
 /// Validate a platform callback URL. HTTPS only; reject loopback / private hosts.
 /// When `allowlist` is non-empty, the host must match one of those names.
-pub fn validate_deposit_callback_url(
-    raw: &str,
-    allowlist: &[String],
-) -> Result<String, String> {
+pub fn validate_deposit_callback_url(raw: &str, allowlist: &[String]) -> Result<String, String> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return Err("callbackUrl is empty".to_string());
@@ -135,11 +132,7 @@ mod tests {
     #[test]
     fn allowlist_restricts_host() {
         let allow = vec!["api.example.com".to_string()];
-        assert!(
-            validate_deposit_callback_url("https://api.example.com/cb", &allow).is_ok()
-        );
-        assert!(
-            validate_deposit_callback_url("https://evil.example/cb", &allow).is_err()
-        );
+        assert!(validate_deposit_callback_url("https://api.example.com/cb", &allow).is_ok());
+        assert!(validate_deposit_callback_url("https://evil.example/cb", &allow).is_err());
     }
 }

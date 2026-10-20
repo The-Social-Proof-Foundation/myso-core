@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use axum::Json;
 use axum::extract::{Path, Query, State};
+use axum::Json;
 use std::sync::Arc;
 
 use crate::error::SocialError;

@@ -14,9 +14,9 @@ use myso_pg_db::{reset_database, Db, DbArgs};
 use prometheus::Registry;
 use social_indexer::{
     AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, JuryHandler,
-    MemoryHandler, MessagingHandler, MyDataHandler, PlatformHandler, PostsHandler,
-    ProfilesHandler, SocialEnv, SocialGraphHandler, SpotHandler, SptHandler,
-    SubAgentRegistryHandler, SubscriptionHandler, TaskMarketHandler, UpgradeHandler,
+    MemoryHandler, MessagingHandler, MyDataHandler, PlatformHandler, PostsHandler, ProfilesHandler,
+    SocialEnv, SocialGraphHandler, SpotHandler, SptHandler, SubAgentRegistryHandler,
+    SubscriptionHandler, TaskMarketHandler, UpgradeHandler,
 };
 use std::net::SocketAddr;
 use std::path::PathBuf;

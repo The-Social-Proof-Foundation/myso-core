@@ -27,8 +27,6 @@ the case id means a copied commitment can never be revealed by anyone else.
 -  [Struct `JuryAdminCap`](#social_contracts_jury_JuryAdminCap)
 -  [Struct `EligibilityParams`](#social_contracts_jury_EligibilityParams)
 -  [Struct `TimingParams`](#social_contracts_jury_TimingParams)
--  [Struct `DutyParams`](#social_contracts_jury_DutyParams)
--  [Struct `SelectionParams`](#social_contracts_jury_SelectionParams)
 -  [Struct `JuryConfig`](#social_contracts_jury_JuryConfig)
 -  [Struct `RosterEntry`](#social_contracts_jury_RosterEntry)
 -  [Struct `JurorRoster`](#social_contracts_jury_JurorRoster)
@@ -66,9 +64,7 @@ the case id means a copied commitment can never be revealed by anyone else.
 -  [Function `set_active`](#social_contracts_jury_set_active)
 -  [Function `set_eligibility`](#social_contracts_jury_set_eligibility)
 -  [Function `set_timing`](#social_contracts_jury_set_timing)
--  [Function `set_duty`](#social_contracts_jury_set_duty)
--  [Function `set_selection`](#social_contracts_jury_set_selection)
--  [Function `set_reputation_params`](#social_contracts_jury_set_reputation_params)
+-  [Function `sync_reputation_params`](#social_contracts_jury_sync_reputation_params)
 -  [Function `set_genesis_sunset`](#social_contracts_jury_set_genesis_sunset)
 -  [Function `add_genesis_agent`](#social_contracts_jury_add_genesis_agent)
 -  [Function `remove_genesis_agent`](#social_contracts_jury_remove_genesis_agent)
@@ -88,7 +84,6 @@ the case id means a copied commitment can never be revealed by anyone else.
 -  [Function `meets_reputation`](#social_contracts_jury_meets_reputation)
 -  [Function `draw_eligible`](#social_contracts_jury_draw_eligible)
 -  [Function `eligible_count`](#social_contracts_jury_eligible_count)
--  [Function `assert_roster_ready`](#social_contracts_jury_assert_roster_ready)
 -  [Function `open_case`](#social_contracts_jury_open_case)
 -  [Function `share_case`](#social_contracts_jury_share_case)
 -  [Function `add_evidence`](#social_contracts_jury_add_evidence)
@@ -101,6 +96,12 @@ the case id means a copied commitment can never be revealed by anyone else.
 -  [Function `select_jury`](#social_contracts_jury_select_jury)
 -  [Function `draw_jurors`](#social_contracts_jury_draw_jurors)
 -  [Function `conflicted`](#social_contracts_jury_conflicted)
+-  [Function `conflicts_with`](#social_contracts_jury_conflicts_with)
+-  [Function `excluded_by`](#social_contracts_jury_excluded_by)
+-  [Function `formable_seats`](#social_contracts_jury_formable_seats)
+-  [Function `required_seats`](#social_contracts_jury_required_seats)
+-  [Function `case_formable`](#social_contracts_jury_case_formable)
+-  [Function `assert_case_formable`](#social_contracts_jury_assert_case_formable)
 -  [Function `accept_assignment`](#social_contracts_jury_accept_assignment)
 -  [Function `all_seats_accepted`](#social_contracts_jury_all_seats_accepted)
 -  [Function `start_voting`](#social_contracts_jury_start_voting)
@@ -161,8 +162,11 @@ the case id means a copied commitment can never be revealed by anyone else.
 -  [Function `max_case_duration_ms`](#social_contracts_jury_max_case_duration_ms)
 -  [Function `min_eligible_roster`](#social_contracts_jury_min_eligible_roster)
 -  [Function `initial_duty_score`](#social_contracts_jury_initial_duty_score)
+-  [Function `max_strikes`](#social_contracts_jury_max_strikes)
+-  [Function `max_roster_size`](#social_contracts_jury_max_roster_size)
 -  [Function `genesis_sunset_ms`](#social_contracts_jury_genesis_sunset_ms)
 -  [Function `roster_count`](#social_contracts_jury_roster_count)
+-  [Function `roster_owner_count`](#social_contracts_jury_roster_owner_count)
 -  [Function `on_roster`](#social_contracts_jury_on_roster)
 -  [Function `entry_status`](#social_contracts_jury_entry_status)
 -  [Function `entry_duty_score`](#social_contracts_jury_entry_duty_score)
@@ -172,6 +176,7 @@ the case id means a copied commitment can never be revealed by anyone else.
 -  [Function `entry_active_cases`](#social_contracts_jury_entry_active_cases)
 -  [Function `entry_exempt`](#social_contracts_jury_entry_exempt)
 -  [Function `entry_owner`](#social_contracts_jury_entry_owner)
+-  [Function `entry_organization_id`](#social_contracts_jury_entry_organization_id)
 -  [Function `entry_suspended_until_ms`](#social_contracts_jury_entry_suspended_until_ms)
 -  [Function `case_state`](#social_contracts_jury_case_state)
 -  [Function `case_is_finished`](#social_contracts_jury_case_is_finished)
@@ -375,124 +380,12 @@ the case id means a copied commitment can never be revealed by anyone else.
 <dd>
 </dd>
 <dt>
-<code><a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code><a href="../social_contracts/jury.md#social_contracts_jury_appeal_window_ms">appeal_window_ms</a>: u64</code>
 </dt>
 <dd>
 </dd>
 <dt>
 <code><a href="../social_contracts/jury.md#social_contracts_jury_neutral_window_ms">neutral_window_ms</a>: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code><a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>: u64</code>
-</dt>
-<dd>
-</dd>
-</dl>
-
-
-</details>
-
-<a name="social_contracts_jury_DutyParams"></a>
-
-## Struct `DutyParams`
-
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/jury.md#social_contracts_jury_DutyParams">DutyParams</a> <b>has</b> <b>copy</b>, drop, store
-</code></pre>
-
-
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-<dt>
-<code>initial_score: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_score: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>min_score: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>gain: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>loss_accept: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>loss_noreveal: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_strikes: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>suspension_ms: u64</code>
-</dt>
-<dd>
-</dd>
-</dl>
-
-
-</details>
-
-<a name="social_contracts_jury_SelectionParams"></a>
-
-## Struct `SelectionParams`
-
-
-
-<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/jury.md#social_contracts_jury_SelectionParams">SelectionParams</a> <b>has</b> <b>copy</b>, drop, store
-</code></pre>
-
-
-
-<details>
-<summary>Fields</summary>
-
-
-<dl>
-<dt>
-<code>max_draws: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_replacements: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>max_evidence_per_party: u64</code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code><a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a>: u64</code>
 </dt>
 <dd>
 </dd>
@@ -544,20 +437,11 @@ Global jury parameters. Per-registry governance policy lives on the registry, no
 <dd>
 </dd>
 <dt>
-<code>duty: <a href="../social_contracts/jury.md#social_contracts_jury_DutyParams">social_contracts::jury::DutyParams</a></code>
-</dt>
-<dd>
-</dd>
-<dt>
-<code>selection: <a href="../social_contracts/jury.md#social_contracts_jury_SelectionParams">social_contracts::jury::SelectionParams</a></code>
-</dt>
-<dd>
-</dd>
-<dt>
 <code>reputation: <a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a></code>
 </dt>
 <dd>
- Scores a juror is judged by. Keep in step with the task market's <code>ReputationParams</code>.
+ Scores a juror is judged by. A copy of the task market's <code>ReputationParams</code>, written only
+ by <code><a href="../social_contracts/agent_task.md#social_contracts_agent_task_set_task_config">agent_task::set_task_config</a></code> through [<code><a href="../social_contracts/jury.md#social_contracts_jury_sync_reputation_params">sync_reputation_params</a></code>].
 </dd>
 <dt>
 <code><a href="../social_contracts/jury.md#social_contracts_jury_genesis_sunset_ms">genesis_sunset_ms</a>: u64</code>
@@ -721,7 +605,8 @@ One willing agent. No balances: nothing is held, so nothing can be slashed.
 
 ## Struct `JurorRoster`
 
-The roster with a dense index for O(1) uniform sampling.
+The roster, indexed by agent and grouped by owner. The draw walks owners, not agents, so
+every independent owner has the same chance however many agents it put on the roster.
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a> <b>has</b> key
@@ -761,6 +646,26 @@ The roster with a dense index for O(1) uniform sampling.
 </dd>
 <dt>
 <code>count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner_slots: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;u64, <b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner_index: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner_agents: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner_count: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2575,6 +2480,136 @@ A vote that backs no option. It counts toward quorum, never toward an option.
 
 
 
+<a name="social_contracts_jury_REVEAL_GRACE_MS"></a>
+
+Extra reveal time added after the reveal window, so a late network does not cost a vote.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_REVEAL_GRACE_MS">REVEAL_GRACE_MS</a>: u64 = 21600000;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_MAX_CASE_DURATION_MS"></a>
+
+A case older than this fails (or keeps its first verdict) when anyone finalizes it.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_MAX_CASE_DURATION_MS">MAX_CASE_DURATION_MS</a>: u64 = 2592000000;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_DUTY_INITIAL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_INITIAL">DUTY_INITIAL</a>: u64 = 100;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_DUTY_MAX"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_MAX">DUTY_MAX</a>: u64 = 200;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_DUTY_MIN"></a>
+
+Below this a juror is not drafted until completed duties raise the score again.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_MIN">DUTY_MIN</a>: u64 = 50;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_DUTY_GAIN"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_GAIN">DUTY_GAIN</a>: u64 = 5;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_DUTY_LOSS_ACCEPT"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_LOSS_ACCEPT">DUTY_LOSS_ACCEPT</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_DUTY_LOSS_NOREVEAL"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_LOSS_NOREVEAL">DUTY_LOSS_NOREVEAL</a>: u64 = 25;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_MAX_STRIKES"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_MAX_STRIKES">MAX_STRIKES</a>: u64 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_SUSPENSION_MS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_SUSPENSION_MS">SUSPENSION_MS</a>: u64 = 1209600000;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_MAX_REPLACEMENTS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_MAX_REPLACEMENTS">MAX_REPLACEMENTS</a>: u64 = 3;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_MAX_EVIDENCE_PER_PARTY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_MAX_EVIDENCE_PER_PARTY">MAX_EVIDENCE_PER_PARTY</a>: u64 = 8;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_MAX_EXCLUSIONS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_MAX_EXCLUSIONS">MAX_EXCLUSIONS</a>: u64 = 64;
+</code></pre>
+
+
+
+<a name="social_contracts_jury_MAX_ROSTER_SIZE"></a>
+
+Bounds the full roster pass every draw makes, so its gas ceiling is known in advance.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_MAX_ROSTER_SIZE">MAX_ROSTER_SIZE</a>: u64 = 2000;
+</code></pre>
+
+
+
 <a name="social_contracts_jury_EWrongVersion"></a>
 
 
@@ -2872,13 +2907,22 @@ A vote that backs no option. It counts toward quorum, never toward an option.
 
 
 
+<a name="social_contracts_jury_ERosterFull"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/jury.md#social_contracts_jury_ERosterFull">ERosterFull</a>: u64 = 34;
+</code></pre>
+
+
+
 <a name="social_contracts_jury_bootstrap_init"></a>
 
 ## Function `bootstrap_init`
 
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_bootstrap_init">bootstrap_init</a>(clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_bootstrap_init">bootstrap_init</a>(reputation: <a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -2887,7 +2931,7 @@ A vote that backs no option. It counts toward quorum, never toward an option.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext) {
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_bootstrap_init">bootstrap_init</a>(reputation: ReputationParams, clock: &Clock, ctx: &<b>mut</b> TxContext) {
     <b>let</b> now = clock::timestamp_ms(clock);
     <b>let</b> config = <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a> {
         id: object::new(ctx),
@@ -2906,30 +2950,10 @@ A vote that backs no option. It counts toward quorum, never toward an option.
             <a href="../social_contracts/jury.md#social_contracts_jury_accept_window_ms">accept_window_ms</a>: 12 * <a href="../social_contracts/jury.md#social_contracts_jury_MS_HOUR">MS_HOUR</a>,
             <a href="../social_contracts/jury.md#social_contracts_jury_commit_window_ms">commit_window_ms</a>: 24 * <a href="../social_contracts/jury.md#social_contracts_jury_MS_HOUR">MS_HOUR</a>,
             <a href="../social_contracts/jury.md#social_contracts_jury_reveal_window_ms">reveal_window_ms</a>: 12 * <a href="../social_contracts/jury.md#social_contracts_jury_MS_HOUR">MS_HOUR</a>,
-            <a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>: 6 * <a href="../social_contracts/jury.md#social_contracts_jury_MS_HOUR">MS_HOUR</a>,
             <a href="../social_contracts/jury.md#social_contracts_jury_appeal_window_ms">appeal_window_ms</a>: 48 * <a href="../social_contracts/jury.md#social_contracts_jury_MS_HOUR">MS_HOUR</a>,
             <a href="../social_contracts/jury.md#social_contracts_jury_neutral_window_ms">neutral_window_ms</a>: 72 * <a href="../social_contracts/jury.md#social_contracts_jury_MS_HOUR">MS_HOUR</a>,
-            <a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>: 30 * <a href="../social_contracts/jury.md#social_contracts_jury_MS_DAY">MS_DAY</a>,
         },
-        duty: <a href="../social_contracts/jury.md#social_contracts_jury_DutyParams">DutyParams</a> {
-            initial_score: 100,
-            max_score: 200,
-            min_score: 50,
-            gain: 5,
-            loss_accept: 10,
-            loss_noreveal: 25,
-            max_strikes: 3,
-            suspension_ms: 14 * <a href="../social_contracts/jury.md#social_contracts_jury_MS_DAY">MS_DAY</a>,
-        },
-        selection: <a href="../social_contracts/jury.md#social_contracts_jury_SelectionParams">SelectionParams</a> {
-            max_draws: 64,
-            max_replacements: 3,
-            max_evidence_per_party: 8,
-            <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a>: 64,
-        },
-        reputation: <a href="../social_contracts/memory.md#social_contracts_memory_new_reputation_params">memory::new_reputation_params</a>(
-            3000, 50000, 1_000_000_000, 500, 20000, 2000, 500, 16, 10000, 5000, 5000,
-        ),
+        reputation,
         <a href="../social_contracts/jury.md#social_contracts_jury_genesis_sunset_ms">genesis_sunset_ms</a>: now + 180 * <a href="../social_contracts/jury.md#social_contracts_jury_MS_DAY">MS_DAY</a>,
         genesis_agents: vec_set::empty(),
     };
@@ -2942,6 +2966,10 @@ A vote that backs no option. It counts toward quorum, never toward an option.
         index: table::new(ctx),
         entries: table::new(ctx),
         count: 0,
+        owner_slots: table::new(ctx),
+        owner_index: table::new(ctx),
+        owner_agents: table::new(ctx),
+        owner_count: 0,
     });
 }
 </code></pre>
@@ -2978,6 +3006,8 @@ A vote that backs no option. It counts toward quorum, never toward an option.
 
 ## Function `validate_config`
 
+The windows stay governable but the case lifetime does not, so the longest possible case
+(every round running every window in full) must still fit inside <code><a href="../social_contracts/jury.md#social_contracts_jury_MAX_CASE_DURATION_MS">MAX_CASE_DURATION_MS</a></code>.
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_validate_config">validate_config</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>)
@@ -2996,14 +3026,13 @@ A vote that backs no option. It counts toward quorum, never toward an option.
     <b>let</b> t = &config.timing;
     <b>assert</b>!(
         t.<a href="../social_contracts/jury.md#social_contracts_jury_accept_window_ms">accept_window_ms</a> &gt; 0 && t.<a href="../social_contracts/jury.md#social_contracts_jury_commit_window_ms">commit_window_ms</a> &gt; 0 && t.<a href="../social_contracts/jury.md#social_contracts_jury_reveal_window_ms">reveal_window_ms</a> &gt; 0
-            && t.<a href="../social_contracts/jury.md#social_contracts_jury_neutral_window_ms">neutral_window_ms</a> &gt; 0 && t.<a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a> &gt; 0,
+            && t.<a href="../social_contracts/jury.md#social_contracts_jury_neutral_window_ms">neutral_window_ms</a> &gt; 0,
         <a href="../social_contracts/jury.md#social_contracts_jury_EInvalidConfig">EInvalidConfig</a>,
     );
-    <b>let</b> d = &config.duty;
-    <b>assert</b>!(d.initial_score &lt;= d.max_score && d.min_score &lt;= d.initial_score, <a href="../social_contracts/jury.md#social_contracts_jury_EInvalidConfig">EInvalidConfig</a>);
-    <b>assert</b>!(d.max_strikes &gt; 0 && d.gain &gt; 0, <a href="../social_contracts/jury.md#social_contracts_jury_EInvalidConfig">EInvalidConfig</a>);
-    <b>let</b> s = &config.selection;
-    <b>assert</b>!(s.max_draws &gt; 0 && s.max_evidence_per_party &gt; 0 && s.<a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a> &gt; 0, <a href="../social_contracts/jury.md#social_contracts_jury_EInvalidConfig">EInvalidConfig</a>);
+    <b>let</b> round_ms = (t.<a href="../social_contracts/jury.md#social_contracts_jury_accept_window_ms">accept_window_ms</a> <b>as</b> u128) + (t.<a href="../social_contracts/jury.md#social_contracts_jury_commit_window_ms">commit_window_ms</a> <b>as</b> u128)
+        + (t.<a href="../social_contracts/jury.md#social_contracts_jury_reveal_window_ms">reveal_window_ms</a> <b>as</b> u128) + (<a href="../social_contracts/jury.md#social_contracts_jury_REVEAL_GRACE_MS">REVEAL_GRACE_MS</a> <b>as</b> u128) + (t.<a href="../social_contracts/jury.md#social_contracts_jury_appeal_window_ms">appeal_window_ms</a> <b>as</b> u128);
+    <b>assert</b>!(round_ms * (<a href="../social_contracts/jury.md#social_contracts_jury_MAX_ROUNDS_LIMIT">MAX_ROUNDS_LIMIT</a> <b>as</b> u128) &lt;= (<a href="../social_contracts/jury.md#social_contracts_jury_MAX_CASE_DURATION_MS">MAX_CASE_DURATION_MS</a> <b>as</b> u128), <a href="../social_contracts/jury.md#social_contracts_jury_EInvalidConfig">EInvalidConfig</a>);
+    <b>assert</b>!(t.<a href="../social_contracts/jury.md#social_contracts_jury_neutral_window_ms">neutral_window_ms</a> &lt;= <a href="../social_contracts/jury.md#social_contracts_jury_MAX_CASE_DURATION_MS">MAX_CASE_DURATION_MS</a>, <a href="../social_contracts/jury.md#social_contracts_jury_EInvalidConfig">EInvalidConfig</a>);
     <a href="../social_contracts/memory.md#social_contracts_memory_assert_reputation_params">memory::assert_reputation_params</a>(&config.reputation);
 }
 </code></pre>
@@ -3115,7 +3144,7 @@ A vote that backs no option. It counts toward quorum, never toward an option.
 
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_set_timing">set_timing</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryAdminCap">social_contracts::jury::JuryAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, <a href="../social_contracts/jury.md#social_contracts_jury_accept_window_ms">accept_window_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_commit_window_ms">commit_window_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_reveal_window_ms">reveal_window_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_appeal_window_ms">appeal_window_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_neutral_window_ms">neutral_window_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_set_timing">set_timing</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryAdminCap">social_contracts::jury::JuryAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, <a href="../social_contracts/jury.md#social_contracts_jury_accept_window_ms">accept_window_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_commit_window_ms">commit_window_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_reveal_window_ms">reveal_window_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_appeal_window_ms">appeal_window_ms</a>: u64, <a href="../social_contracts/jury.md#social_contracts_jury_neutral_window_ms">neutral_window_ms</a>: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3130,10 +3159,8 @@ A vote that backs no option. It counts toward quorum, never toward an option.
     <a href="../social_contracts/jury.md#social_contracts_jury_accept_window_ms">accept_window_ms</a>: u64,
     <a href="../social_contracts/jury.md#social_contracts_jury_commit_window_ms">commit_window_ms</a>: u64,
     <a href="../social_contracts/jury.md#social_contracts_jury_reveal_window_ms">reveal_window_ms</a>: u64,
-    <a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>: u64,
     <a href="../social_contracts/jury.md#social_contracts_jury_appeal_window_ms">appeal_window_ms</a>: u64,
     <a href="../social_contracts/jury.md#social_contracts_jury_neutral_window_ms">neutral_window_ms</a>: u64,
-    <a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>: u64,
     clock: &Clock,
     ctx: &TxContext,
 ) {
@@ -3142,10 +3169,8 @@ A vote that backs no option. It counts toward quorum, never toward an option.
         <a href="../social_contracts/jury.md#social_contracts_jury_accept_window_ms">accept_window_ms</a>,
         <a href="../social_contracts/jury.md#social_contracts_jury_commit_window_ms">commit_window_ms</a>,
         <a href="../social_contracts/jury.md#social_contracts_jury_reveal_window_ms">reveal_window_ms</a>,
-        <a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>,
         <a href="../social_contracts/jury.md#social_contracts_jury_appeal_window_ms">appeal_window_ms</a>,
         <a href="../social_contracts/jury.md#social_contracts_jury_neutral_window_ms">neutral_window_ms</a>,
-        <a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>,
     };
     <a href="../social_contracts/jury.md#social_contracts_jury_validate_config">validate_config</a>(config);
     <a href="../social_contracts/jury.md#social_contracts_jury_emit_config_updated">emit_config_updated</a>(2, clock, ctx);
@@ -3156,13 +3181,15 @@ A vote that backs no option. It counts toward quorum, never toward an option.
 
 </details>
 
-<a name="social_contracts_jury_set_duty"></a>
+<a name="social_contracts_jury_sync_reputation_params"></a>
 
-## Function `set_duty`
+## Function `sync_reputation_params`
+
+The task market owns the reputation math; it pushes every change here so jurors and task
+parties are always scored the same way.
 
 
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_set_duty">set_duty</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryAdminCap">social_contracts::jury::JuryAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, initial_score: u64, max_score: u64, min_score: u64, gain: u64, loss_accept: u64, loss_noreveal: u64, max_strikes: u64, suspension_ms: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_sync_reputation_params">sync_reputation_params</a>(config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, params: <a href="../social_contracts/memory.md#social_contracts_memory_ReputationParams">social_contracts::memory::ReputationParams</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3171,122 +3198,14 @@ A vote that backs no option. It counts toward quorum, never toward an option.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_set_duty">set_duty</a>(
-    _: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryAdminCap">JuryAdminCap</a>,
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_sync_reputation_params">sync_reputation_params</a>(
     config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>,
-    initial_score: u64,
-    max_score: u64,
-    min_score: u64,
-    gain: u64,
-    loss_accept: u64,
-    loss_noreveal: u64,
-    max_strikes: u64,
-    suspension_ms: u64,
+    params: ReputationParams,
     clock: &Clock,
     ctx: &TxContext,
 ) {
     <a href="../social_contracts/jury.md#social_contracts_jury_assert_config_live">assert_config_live</a>(config);
-    config.duty = <a href="../social_contracts/jury.md#social_contracts_jury_DutyParams">DutyParams</a> {
-        initial_score,
-        max_score,
-        min_score,
-        gain,
-        loss_accept,
-        loss_noreveal,
-        max_strikes,
-        suspension_ms,
-    };
-    <a href="../social_contracts/jury.md#social_contracts_jury_validate_config">validate_config</a>(config);
-    <a href="../social_contracts/jury.md#social_contracts_jury_emit_config_updated">emit_config_updated</a>(3, clock, ctx);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_jury_set_selection"></a>
-
-## Function `set_selection`
-
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_set_selection">set_selection</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryAdminCap">social_contracts::jury::JuryAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, max_draws: u64, max_replacements: u64, max_evidence_per_party: u64, <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a>: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_set_selection">set_selection</a>(
-    _: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryAdminCap">JuryAdminCap</a>,
-    config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>,
-    max_draws: u64,
-    max_replacements: u64,
-    max_evidence_per_party: u64,
-    <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a>: u64,
-    clock: &Clock,
-    ctx: &TxContext,
-) {
-    <a href="../social_contracts/jury.md#social_contracts_jury_assert_config_live">assert_config_live</a>(config);
-    config.selection = <a href="../social_contracts/jury.md#social_contracts_jury_SelectionParams">SelectionParams</a> { max_draws, max_replacements, max_evidence_per_party, <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a> };
-    <a href="../social_contracts/jury.md#social_contracts_jury_validate_config">validate_config</a>(config);
-    <a href="../social_contracts/jury.md#social_contracts_jury_emit_config_updated">emit_config_updated</a>(4, clock, ctx);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_jury_set_reputation_params"></a>
-
-## Function `set_reputation_params`
-
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_set_reputation_params">set_reputation_params</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryAdminCap">social_contracts::jury::JuryAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, prior_mean_milli: u64, prior_weight_bps: u64, value_ref_mist: u64, min_value_weight_bps: u64, max_value_weight_bps: u64, cred_base_bps: u64, cred_step_bps: u64, cred_cap_n: u64, cred_max_bps: u64, overall_seller_weight_bps: u64, overall_buyer_weight_bps: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_set_reputation_params">set_reputation_params</a>(
-    _: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryAdminCap">JuryAdminCap</a>,
-    config: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>,
-    prior_mean_milli: u64,
-    prior_weight_bps: u64,
-    value_ref_mist: u64,
-    min_value_weight_bps: u64,
-    max_value_weight_bps: u64,
-    cred_base_bps: u64,
-    cred_step_bps: u64,
-    cred_cap_n: u64,
-    cred_max_bps: u64,
-    overall_seller_weight_bps: u64,
-    overall_buyer_weight_bps: u64,
-    clock: &Clock,
-    ctx: &TxContext,
-) {
-    <a href="../social_contracts/jury.md#social_contracts_jury_assert_config_live">assert_config_live</a>(config);
-    config.reputation = <a href="../social_contracts/memory.md#social_contracts_memory_new_reputation_params">memory::new_reputation_params</a>(
-        prior_mean_milli,
-        prior_weight_bps,
-        value_ref_mist,
-        min_value_weight_bps,
-        max_value_weight_bps,
-        cred_base_bps,
-        cred_step_bps,
-        cred_cap_n,
-        cred_max_bps,
-        overall_seller_weight_bps,
-        overall_buyer_weight_bps,
-    );
+    config.reputation = params;
     <a href="../social_contracts/jury.md#social_contracts_jury_validate_config">validate_config</a>(config);
     <a href="../social_contracts/jury.md#social_contracts_jury_emit_config_updated">emit_config_updated</a>(5, clock, ctx);
 }
@@ -3519,6 +3438,7 @@ eligible now (or be an allow-listed genesis agent before the sunset).
     <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_memory_account_id">memory::sub_agent_memory_account_id</a>(agent) == object::id(account), <a href="../social_contracts/jury.md#social_contracts_jury_EWrongAgent">EWrongAgent</a>);
     <b>let</b> agent_id = object::id(agent);
     <b>assert</b>!(!table::contains(&roster.entries, agent_id), <a href="../social_contracts/jury.md#social_contracts_jury_EAlreadyOnRoster">EAlreadyOnRoster</a>);
+    <b>assert</b>!(roster.count &lt; <a href="../social_contracts/jury.md#social_contracts_jury_MAX_ROSTER_SIZE">MAX_ROSTER_SIZE</a>, <a href="../social_contracts/jury.md#social_contracts_jury_ERosterFull">ERosterFull</a>);
     <b>let</b> now = clock::timestamp_ms(clock);
     <b>let</b> snap = <a href="../social_contracts/jury.md#social_contracts_jury_take_snapshot">take_snapshot</a>(config, memory_config, account, agent);
     <b>assert</b>!(snap.ok, <a href="../social_contracts/jury.md#social_contracts_jury_EIneligible">EIneligible</a>);
@@ -3538,7 +3458,7 @@ eligible now (or be an allow-listed genesis agent before the sunset).
         status: <a href="../social_contracts/jury.md#social_contracts_jury_ROSTER_ACTIVE">ROSTER_ACTIVE</a>,
         suspended_until_ms: 0,
         exempt,
-        duty_score: config.duty.initial_score,
+        duty_score: <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_INITIAL">DUTY_INITIAL</a>,
         completed: 0,
         no_shows: 0,
         strikes: 0,
@@ -3758,11 +3678,20 @@ the capability or class). Needs a fresh snapshot, so a stale entry is refreshed 
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_add_to_roster">add_to_roster</a>(roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, agent_id: ID, <b>entry</b>: <a href="../social_contracts/jury.md#social_contracts_jury_RosterEntry">RosterEntry</a>) {
+    <b>let</b> owner = <b>entry</b>.owner;
     <b>let</b> position = roster.count;
     table::add(&<b>mut</b> roster.entries, agent_id, <b>entry</b>);
     table::add(&<b>mut</b> roster.slots, position, agent_id);
     table::add(&<b>mut</b> roster.index, agent_id, position);
     roster.count = position + 1;
+    <b>if</b> (!table::contains(&roster.owner_agents, owner)) {
+        <b>let</b> owner_position = roster.owner_count;
+        table::add(&<b>mut</b> roster.owner_slots, owner_position, owner);
+        table::add(&<b>mut</b> roster.owner_index, owner, owner_position);
+        table::add(&<b>mut</b> roster.owner_agents, owner, vector::empty());
+        roster.owner_count = owner_position + 1;
+    };
+    vector::push_back(table::borrow_mut(&<b>mut</b> roster.owner_agents, owner), agent_id);
 }
 </code></pre>
 
@@ -3774,7 +3703,7 @@ the capability or class). Needs a fresh snapshot, so a stale entry is refreshed 
 
 ## Function `remove_from_roster`
 
-Swap-remove keeps the slot index dense.
+Swap-remove keeps the agent and owner indexes dense.
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_remove_from_roster">remove_from_roster</a>(roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, agent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>)
@@ -3796,7 +3725,28 @@ Swap-remove keeps the slot index dense.
     };
     table::remove(&<b>mut</b> roster.slots, last);
     roster.count = last;
-    table::remove(&<b>mut</b> roster.entries, agent_id);
+    <b>let</b> <b>entry</b> = table::remove(&<b>mut</b> roster.entries, agent_id);
+    <b>let</b> owner = <b>entry</b>.owner;
+    <b>let</b> now_empty = {
+        <b>let</b> list = table::borrow_mut(&<b>mut</b> roster.owner_agents, owner);
+        <b>let</b> (found, i) = vector::index_of(list, &agent_id);
+        <b>if</b> (found) {
+            vector::swap_remove(list, i);
+        };
+        vector::is_empty(list)
+    };
+    <b>if</b> (now_empty) {
+        table::remove(&<b>mut</b> roster.owner_agents, owner);
+        <b>let</b> owner_position = table::remove(&<b>mut</b> roster.owner_index, owner);
+        <b>let</b> last_owner = roster.owner_count - 1;
+        <b>if</b> (owner_position != last_owner) {
+            <b>let</b> last_addr = *table::borrow(&roster.owner_slots, last_owner);
+            *table::borrow_mut(&<b>mut</b> roster.owner_slots, owner_position) = last_addr;
+            *table::borrow_mut(&<b>mut</b> roster.owner_index, last_addr) = owner_position;
+        };
+        table::remove(&<b>mut</b> roster.owner_slots, last_owner);
+        roster.owner_count = last_owner;
+    };
 }
 </code></pre>
 
@@ -3942,7 +3892,7 @@ The coarse filter the draw applies from the snapshot; <code><a href="../social_c
     <b>if</b> (<b>entry</b>.active_cases &gt;= config.eligibility.max_active_cases) {
         <b>return</b> <b>false</b>
     };
-    <b>if</b> (<b>entry</b>.duty_score &lt; config.duty.min_score) {
+    <b>if</b> (<b>entry</b>.duty_score &lt; <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_MIN">DUTY_MIN</a>) {
         <b>return</b> <b>false</b>
     };
     <b>if</b> (<b>entry</b>.exempt && now &lt;= config.<a href="../social_contracts/jury.md#social_contracts_jury_genesis_sunset_ms">genesis_sunset_ms</a>) {
@@ -3967,8 +3917,8 @@ The coarse filter the draw applies from the snapshot; <code><a href="../social_c
 
 ## Function `eligible_count`
 
-Entries a draw could pick right now. An integrator refuses to open a case below the minimum,
-so a thin roster fails closed instead of being gamed.
+Entries a draw could pick right now, for display. Whether a case can open is decided by
+[<code><a href="../social_contracts/jury.md#social_contracts_jury_case_formable">case_formable</a></code>], which counts independent owners after the case's exclusions.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_eligible_count">eligible_count</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, now: u64): u64
@@ -3991,33 +3941,6 @@ so a thin roster fails closed instead of being gamed.
         i = i + 1;
     };
     count
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="social_contracts_jury_assert_roster_ready"></a>
-
-## Function `assert_roster_ready`
-
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_assert_roster_ready">assert_roster_ready</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_assert_roster_ready">assert_roster_ready</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>, roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, clock: &Clock) {
-    <b>assert</b>!(
-        <a href="../social_contracts/jury.md#social_contracts_jury_eligible_count">eligible_count</a>(config, roster, clock::timestamp_ms(clock)) &gt;= config.eligibility.<a href="../social_contracts/jury.md#social_contracts_jury_min_eligible_roster">min_eligible_roster</a>,
-        <a href="../social_contracts/jury.md#social_contracts_jury_ERosterTooSmall">ERosterTooSmall</a>,
-    );
 }
 </code></pre>
 
@@ -4080,7 +4003,7 @@ strictly); <code>quorum</code> is the minimum reveals (abstentions included) for
     };
     <b>assert</b>!(
         vector::length(&exclusion_owners) + vector::length(&exclusion_orgs) + vector::length(&exclusion_agents)
-            &lt;= config.selection.<a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a>,
+            &lt;= <a href="../social_contracts/jury.md#social_contracts_jury_MAX_EXCLUSIONS">MAX_EXCLUSIONS</a>,
         <a href="../social_contracts/jury.md#social_contracts_jury_ETooManyExclusions">ETooManyExclusions</a>,
     );
     <b>let</b> now = clock::timestamp_ms(clock);
@@ -4208,6 +4131,7 @@ checks who <code>submitter</code> is.
     uri: vector&lt;u8&gt;,
     clock: &Clock,
 ) {
+    <a href="../social_contracts/jury.md#social_contracts_jury_assert_config_live">assert_config_live</a>(config);
     <b>let</b> now = clock::timestamp_ms(clock);
     <b>let</b> undrawn = vector::length(&case.rounds) == case.round;
     <b>let</b> open = (case.state == <a href="../social_contracts/jury.md#social_contracts_jury_CASE_EVIDENCE">CASE_EVIDENCE</a> && now &lt;= case.evidence_deadline_ms)
@@ -4224,7 +4148,7 @@ checks who <code>submitter</code> is.
         };
         i = i + 1;
     };
-    <b>assert</b>!(count &lt; config.selection.max_evidence_per_party, <a href="../social_contracts/jury.md#social_contracts_jury_ETooMuchEvidence">ETooMuchEvidence</a>);
+    <b>assert</b>!(count &lt; <a href="../social_contracts/jury.md#social_contracts_jury_MAX_EVIDENCE_PER_PARTY">MAX_EVIDENCE_PER_PARTY</a>, <a href="../social_contracts/jury.md#social_contracts_jury_ETooMuchEvidence">ETooMuchEvidence</a>);
     <b>let</b> item = <a href="../social_contracts/jury.md#social_contracts_jury_EvidenceItem">EvidenceItem</a> { submitter, round: case.round, kind, digest, uri, submitted_at_ms: now };
     event::emit(<a href="../social_contracts/jury.md#social_contracts_jury_EvidenceSubmitted">EvidenceSubmitted</a> {
         case_id: object::id(case),
@@ -4489,9 +4413,11 @@ evidence window has closed (or an appeal/next round is waiting).
 
 ## Function `draw_jurors`
 
-Uniform rejection sampling over the roster with a fixed attempt budget. A candidate is
-skipped when the snapshot says it cannot serve or it conflicts with the case; one juror per
-owner and per organisation is kept across every round of the case.
+Picks <code>needed</code> distinct owners uniformly from every owner with at least one agent that can
+serve and does not conflict with the case, then one of that owner's serving agents uniformly.
+The full roster pass always runs and the sampling takes a fixed number of steps, so the gas
+used does not reveal the random outcome. One juror per owner and per organisation is kept
+across every round of the case.
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_draw_jurors">draw_jurors</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, gen: &<b>mut</b> <a href="../myso/random.md#myso_random_RandomGenerator">myso::random::RandomGenerator</a>, needed: u64, round: u64, now: u64): vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
@@ -4513,20 +4439,47 @@ owner and per organisation is kept across every round of the case.
     now: u64,
 ): vector&lt;ID&gt; {
     <b>let</b> <b>mut</b> chosen = vector::empty&lt;ID&gt;();
-    <b>if</b> (roster.count == 0 || needed == 0) {
+    <b>if</b> (needed == 0) {
         <b>return</b> chosen
     };
-    <b>let</b> <b>mut</b> attempts = 0;
-    <b>while</b> (attempts &lt; config.selection.max_draws && vector::length(&chosen) &lt; needed) {
-        attempts = attempts + 1;
-        <b>let</b> position = random::generate_u64_in_range(gen, 0, roster.count - 1);
-        <b>let</b> agent_id = *table::borrow(&roster.slots, position);
-        <b>let</b> (picked, owner, org, payout) = {
+    <b>let</b> <b>mut</b> candidates = vector::empty&lt;vector&lt;ID&gt;&gt;();
+    <b>let</b> <b>mut</b> o = 0;
+    <b>while</b> (o &lt; roster.owner_count) {
+        <b>let</b> owner = *table::borrow(&roster.owner_slots, o);
+        <b>let</b> agents = table::borrow(&roster.owner_agents, owner);
+        <b>let</b> <b>mut</b> serving = vector::empty&lt;ID&gt;();
+        <b>let</b> <b>mut</b> a = 0;
+        <b>let</b> count = vector::length(agents);
+        <b>while</b> (a &lt; count) {
+            <b>let</b> agent_id = *vector::borrow(agents, a);
             <b>let</b> <b>entry</b> = table::borrow(&roster.entries, agent_id);
-            <b>let</b> ok = <a href="../social_contracts/jury.md#social_contracts_jury_draw_eligible">draw_eligible</a>(config, <b>entry</b>, now) && !<a href="../social_contracts/jury.md#social_contracts_jury_conflicted">conflicted</a>(case, <b>entry</b>);
-            (ok, <b>entry</b>.owner, <b>entry</b>.organization_id, <b>entry</b>.payout_address)
+            <b>if</b> (<a href="../social_contracts/jury.md#social_contracts_jury_draw_eligible">draw_eligible</a>(config, <b>entry</b>, now) && !<a href="../social_contracts/jury.md#social_contracts_jury_conflicted">conflicted</a>(case, <b>entry</b>)) {
+                vector::push_back(&<b>mut</b> serving, agent_id);
+            };
+            a = a + 1;
         };
-        <b>if</b> (!picked) {
+        <b>if</b> (!vector::is_empty(&serving)) {
+            vector::push_back(&<b>mut</b> candidates, serving);
+        };
+        o = o + 1;
+    };
+    <b>let</b> len = vector::length(&candidates);
+    <b>let</b> take = <b>if</b> (needed &lt; len) { needed } <b>else</b> { len };
+    <b>let</b> <b>mut</b> k = 0;
+    <b>while</b> (k &lt; take) {
+        <b>let</b> j = random::generate_u64_in_range(gen, k, len - 1);
+        vector::swap(&<b>mut</b> candidates, k, j);
+        <b>let</b> serving = vector::borrow(&candidates, k);
+        <b>let</b> pick = random::generate_u64_in_range(gen, 0, vector::length(serving) - 1);
+        <b>let</b> agent_id = *vector::borrow(serving, pick);
+        <b>let</b> (owner, org, payout) = {
+            <b>let</b> <b>entry</b> = table::borrow(&roster.entries, agent_id);
+            (<b>entry</b>.owner, <b>entry</b>.organization_id, <b>entry</b>.payout_address)
+        };
+        k = k + 1;
+        // Distinct owners imply distinct organisations (an organisation belongs to one account);
+        // this guard only matters <b>if</b> that <b>invariant</b> is ever broken.
+        <b>if</b> (vector::contains(&case.exclusions.used_orgs, &org)) {
             <b>continue</b>
         };
         {
@@ -4578,24 +4531,228 @@ owner and per organisation is kept across every round of the case.
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_conflicted">conflicted</a>(case: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">JuryCase</a>, <b>entry</b>: &<a href="../social_contracts/jury.md#social_contracts_jury_RosterEntry">RosterEntry</a>): bool {
-    <b>let</b> ex = &case.exclusions;
-    <b>if</b> (vector::contains(&ex.owners, &<b>entry</b>.owner)
-        || vector::contains(&ex.orgs, &<b>entry</b>.organization_id)
-        || vector::contains(&ex.agents, &<b>entry</b>.agent_id)
+    <a href="../social_contracts/jury.md#social_contracts_jury_conflicts_with">conflicts_with</a>(&case.exclusions, <b>entry</b>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_conflicts_with"></a>
+
+## Function `conflicts_with`
+
+The one conflict rule every round, every replacement and the formation check share.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_conflicts_with">conflicts_with</a>(ex: &<a href="../social_contracts/jury.md#social_contracts_jury_Exclusions">social_contracts::jury::Exclusions</a>, <b>entry</b>: &<a href="../social_contracts/jury.md#social_contracts_jury_RosterEntry">social_contracts::jury::RosterEntry</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_conflicts_with">conflicts_with</a>(ex: &<a href="../social_contracts/jury.md#social_contracts_jury_Exclusions">Exclusions</a>, <b>entry</b>: &<a href="../social_contracts/jury.md#social_contracts_jury_RosterEntry">RosterEntry</a>): bool {
+    <a href="../social_contracts/jury.md#social_contracts_jury_excluded_by">excluded_by</a>(&ex.owners, &ex.orgs, &ex.agents, <b>entry</b>)
         || vector::contains(&ex.used_owners, &<b>entry</b>.owner)
-        || vector::contains(&ex.used_orgs, &<b>entry</b>.organization_id)) {
+        || vector::contains(&ex.used_orgs, &<b>entry</b>.organization_id)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_excluded_by"></a>
+
+## Function `excluded_by`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_excluded_by">excluded_by</a>(owners: &vector&lt;<b>address</b>&gt;, orgs: &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, agents: &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, <b>entry</b>: &<a href="../social_contracts/jury.md#social_contracts_jury_RosterEntry">social_contracts::jury::RosterEntry</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_excluded_by">excluded_by</a>(owners: &vector&lt;<b>address</b>&gt;, orgs: &vector&lt;ID&gt;, agents: &vector&lt;ID&gt;, <b>entry</b>: &<a href="../social_contracts/jury.md#social_contracts_jury_RosterEntry">RosterEntry</a>): bool {
+    <b>if</b> (vector::contains(owners, &<b>entry</b>.owner)
+        || vector::contains(orgs, &<b>entry</b>.organization_id)
+        || vector::contains(agents, &<b>entry</b>.agent_id)) {
         <b>return</b> <b>true</b>
     };
     // A juror that descends from an excluded agent is <b>as</b> <a href="../social_contracts/jury.md#social_contracts_jury_conflicted">conflicted</a> <b>as</b> the agent itself.
     <b>let</b> <b>mut</b> i = 0;
     <b>let</b> len = vector::length(&<b>entry</b>.ancestor_ids);
     <b>while</b> (i &lt; len) {
-        <b>if</b> (vector::contains(&ex.agents, vector::borrow(&<b>entry</b>.ancestor_ids, i))) {
+        <b>if</b> (vector::contains(agents, vector::borrow(&<b>entry</b>.ancestor_ids, i))) {
             <b>return</b> <b>true</b>
         };
         i = i + 1;
     };
     <b>false</b>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_formable_seats"></a>
+
+## Function `formable_seats`
+
+Seats a new case with these exclusions could fill right now: distinct owners with at least one
+agent the draw would accept. Exact, not an estimate: an organisation belongs to one account, so
+one seat per owner already means one seat per organisation. Stops counting at <code>stop_at</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_formable_seats">formable_seats</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, owners: &vector&lt;<b>address</b>&gt;, orgs: &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, agents: &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, now: u64, stop_at: u64): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_formable_seats">formable_seats</a>(
+    config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>,
+    roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>,
+    owners: &vector&lt;<b>address</b>&gt;,
+    orgs: &vector&lt;ID&gt;,
+    agents: &vector&lt;ID&gt;,
+    now: u64,
+    stop_at: u64,
+): u64 {
+    <b>let</b> <b>mut</b> seats = 0;
+    <b>let</b> <b>mut</b> o = 0;
+    <b>while</b> (o &lt; roster.owner_count && seats &lt; stop_at) {
+        <b>let</b> owner = *table::borrow(&roster.owner_slots, o);
+        <b>if</b> (!vector::contains(owners, &owner)) {
+            <b>let</b> list = table::borrow(&roster.owner_agents, owner);
+            <b>let</b> <b>mut</b> a = 0;
+            <b>let</b> count = vector::length(list);
+            <b>while</b> (a &lt; count) {
+                <b>let</b> <b>entry</b> = table::borrow(&roster.entries, *vector::borrow(list, a));
+                <b>if</b> (<a href="../social_contracts/jury.md#social_contracts_jury_draw_eligible">draw_eligible</a>(config, <b>entry</b>, now) && !<a href="../social_contracts/jury.md#social_contracts_jury_excluded_by">excluded_by</a>(owners, orgs, agents, <b>entry</b>)) {
+                    seats = seats + 1;
+                    <b>break</b>
+                };
+                a = a + 1;
+            };
+        };
+        o = o + 1;
+    };
+    seats
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_required_seats"></a>
+
+## Function `required_seats`
+
+Seats a case needs before it may open: the configured minimum, and enough distinct owners
+for every round, because no owner sits twice in one case.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_required_seats">required_seats</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, round_sizes: &vector&lt;u64&gt;): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_required_seats">required_seats</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>, round_sizes: &vector&lt;u64&gt;): u64 {
+    <b>let</b> <b>mut</b> total = 0;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>let</b> len = vector::length(round_sizes);
+    <b>while</b> (i &lt; len) {
+        total = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(total, *vector::borrow(round_sizes, i));
+        i = i + 1;
+    };
+    <b>let</b> min = config.eligibility.<a href="../social_contracts/jury.md#social_contracts_jury_min_eligible_roster">min_eligible_roster</a>;
+    <b>if</b> (min &gt; total) { min } <b>else</b> { total }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_case_formable"></a>
+
+## Function `case_formable`
+
+Whether a case with these exclusions and rounds can form a jury now. Replacements and
+eligibility changes can still exhaust owners later; the draw then fails with
+<code><a href="../social_contracts/jury.md#social_contracts_jury_FAIL_CANNOT_FORM">FAIL_CANNOT_FORM</a></code>, which integrators treat as a shortage.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_case_formable">case_formable</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, owners: &vector&lt;<b>address</b>&gt;, orgs: &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, agents: &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, round_sizes: &vector&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_case_formable">case_formable</a>(
+    config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>,
+    roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>,
+    owners: &vector&lt;<b>address</b>&gt;,
+    orgs: &vector&lt;ID&gt;,
+    agents: &vector&lt;ID&gt;,
+    round_sizes: &vector&lt;u64&gt;,
+    clock: &Clock,
+): bool {
+    <b>let</b> required = <a href="../social_contracts/jury.md#social_contracts_jury_required_seats">required_seats</a>(config, round_sizes);
+    <a href="../social_contracts/jury.md#social_contracts_jury_formable_seats">formable_seats</a>(config, roster, owners, orgs, agents, clock::timestamp_ms(clock), required) &gt;= required
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_assert_case_formable"></a>
+
+## Function `assert_case_formable`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_assert_case_formable">assert_case_formable</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, owners: &vector&lt;<b>address</b>&gt;, orgs: &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, agents: &vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, round_sizes: &vector&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_assert_case_formable">assert_case_formable</a>(
+    config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>,
+    roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>,
+    owners: &vector&lt;<b>address</b>&gt;,
+    orgs: &vector&lt;ID&gt;,
+    agents: &vector&lt;ID&gt;,
+    round_sizes: &vector&lt;u64&gt;,
+    clock: &Clock,
+) {
+    <b>assert</b>!(<a href="../social_contracts/jury.md#social_contracts_jury_case_formable">case_formable</a>(config, roster, owners, orgs, agents, round_sizes, clock), <a href="../social_contracts/jury.md#social_contracts_jury_ERosterTooSmall">ERosterTooSmall</a>);
 }
 </code></pre>
 
@@ -4724,7 +4881,7 @@ reputation, class), which is the authoritative check behind the draw's snapshot.
     <b>let</b> commit_deadline = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(now, config.timing.<a href="../social_contracts/jury.md#social_contracts_jury_commit_window_ms">commit_window_ms</a>);
     <b>let</b> reveal_deadline = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(
         commit_deadline,
-        <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(config.timing.<a href="../social_contracts/jury.md#social_contracts_jury_reveal_window_ms">reveal_window_ms</a>, config.timing.<a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>),
+        <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(config.timing.<a href="../social_contracts/jury.md#social_contracts_jury_reveal_window_ms">reveal_window_ms</a>, <a href="../social_contracts/jury.md#social_contracts_jury_REVEAL_GRACE_MS">REVEAL_GRACE_MS</a>),
     );
     <b>let</b> jurors = {
         <b>let</b> r = vector::borrow_mut(&<b>mut</b> case.rounds, round);
@@ -4790,7 +4947,7 @@ the round goes ahead with the jurors it has when they meet the quorum, otherwise
         <b>let</b> agent_id = *vector::borrow(&seats, i);
         <b>if</b> (table::borrow(&case.slots, agent_id).status == <a href="../social_contracts/jury.md#social_contracts_jury_SLOT_DRAFTED">SLOT_DRAFTED</a>) {
             table::borrow_mut(&<b>mut</b> case.slots, agent_id).status = <a href="../social_contracts/jury.md#social_contracts_jury_SLOT_REPLACED">SLOT_REPLACED</a>;
-            <a href="../social_contracts/jury.md#social_contracts_jury_penalize_duty">penalize_duty</a>(config, roster, agent_id, config.duty.loss_accept, <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_NO_ACCEPT">DUTY_NO_ACCEPT</a>, case_id, now);
+            <a href="../social_contracts/jury.md#social_contracts_jury_penalize_duty">penalize_duty</a>(roster, agent_id, <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_LOSS_ACCEPT">DUTY_LOSS_ACCEPT</a>, <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_NO_ACCEPT">DUTY_NO_ACCEPT</a>, case_id, now);
             <a href="../social_contracts/jury.md#social_contracts_jury_release_seat">release_seat</a>(roster, agent_id);
             event::emit(<a href="../social_contracts/jury.md#social_contracts_jury_JurorReplaced">JurorReplaced</a> { case_id, round, agent_id });
         } <b>else</b> {
@@ -4806,7 +4963,7 @@ the round goes ahead with the jurors it has when they meet the quorum, otherwise
         <b>return</b>
     };
     <b>let</b> used = vector::borrow(&case.rounds, round).replacements_used;
-    <b>if</b> (used &lt; config.selection.max_replacements) {
+    <b>if</b> (used &lt; <a href="../social_contracts/jury.md#social_contracts_jury_MAX_REPLACEMENTS">MAX_REPLACEMENTS</a>) {
         <b>let</b> <b>mut</b> gen = random::new_generator(rand, ctx);
         <b>let</b> drawn = <a href="../social_contracts/jury.md#social_contracts_jury_draw_jurors">draw_jurors</a>(config, roster, case, &<b>mut</b> gen, missing, round, now);
         <b>let</b> accept_deadline = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(now, config.timing.<a href="../social_contracts/jury.md#social_contracts_jury_accept_window_ms">accept_window_ms</a>);
@@ -4820,7 +4977,7 @@ the round goes ahead with the jurors it has when they meet the quorum, otherwise
     } <b>else</b> <b>if</b> (accepted &gt;= case.quorum) {
         <a href="../social_contracts/jury.md#social_contracts_jury_start_voting">start_voting</a>(config, case, now);
     } <b>else</b> {
-        <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(config, roster, case, now, <b>true</b>);
+        <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(roster, case, now, <b>true</b>);
         <a href="../social_contracts/jury.md#social_contracts_jury_end_failed">end_failed</a>(case, <a href="../social_contracts/jury.md#social_contracts_jury_FAIL_CANNOT_FORM">FAIL_CANNOT_FORM</a>, now);
     };
 }
@@ -5089,7 +5246,7 @@ jury, or fails the case.
         <b>let</b> r = vector::borrow(&case.rounds, round);
         <b>assert</b>!(now &gt; r.reveal_deadline_ms || <a href="../social_contracts/jury.md#social_contracts_jury_all_revealed">all_revealed</a>(case, round), <a href="../social_contracts/jury.md#social_contracts_jury_ERoundNotOver">ERoundNotOver</a>);
     };
-    <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(config, roster, case, now, <b>true</b>);
+    <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(roster, case, now, <b>true</b>);
     <b>let</b> (decisive, leading) = <a href="../social_contracts/jury.md#social_contracts_jury_evaluate_round">evaluate_round</a>(case, round);
     <b>let</b> max_rounds = vector::length(&case.round_sizes);
     <b>let</b> appeal_deadline_ms = <b>if</b> (decisive && case.appealable && round + 1 &lt; max_rounds) {
@@ -5262,9 +5419,9 @@ Anyone, after the appeal window, finalizes a decisive round; or, once the case h
             || case.state == <a href="../social_contracts/jury.md#social_contracts_jury_CASE_SELECTING">CASE_SELECTING</a> || case.state == <a href="../social_contracts/jury.md#social_contracts_jury_CASE_VOTING">CASE_VOTING</a>,
         <a href="../social_contracts/jury.md#social_contracts_jury_EWrongCaseState">EWrongCaseState</a>,
     );
-    <b>let</b> deadline = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(case.created_at_ms, config.timing.<a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>);
+    <b>let</b> deadline = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(case.created_at_ms, <a href="../social_contracts/jury.md#social_contracts_jury_MAX_CASE_DURATION_MS">MAX_CASE_DURATION_MS</a>);
     <b>assert</b>!(now &gt; deadline, <a href="../social_contracts/jury.md#social_contracts_jury_ENotYet">ENotYet</a>);
-    <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(config, roster, case, now, <b>true</b>);
+    <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(roster, case, now, <b>true</b>);
     <a href="../social_contracts/jury.md#social_contracts_jury_end_failed">end_failed</a>(case, <a href="../social_contracts/jury.md#social_contracts_jury_FAIL_TIMEOUT">FAIL_TIMEOUT</a>, now);
 }
 </code></pre>
@@ -5300,7 +5457,7 @@ standing in an appeal round); it never chooses an outcome.
     <a href="../social_contracts/jury.md#social_contracts_jury_assert_config_live">assert_config_live</a>(config);
     <b>assert</b>!(roster.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/jury.md#social_contracts_jury_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(case.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/jury.md#social_contracts_jury_EWrongVersion">EWrongVersion</a>);
-    <a href="../social_contracts/jury.md#social_contracts_jury_force_end">force_end</a>(config, roster, case, clock::timestamp_ms(clock));
+    <a href="../social_contracts/jury.md#social_contracts_jury_force_end">force_end</a>(roster, case, clock::timestamp_ms(clock));
 }
 </code></pre>
 
@@ -5335,7 +5492,7 @@ without a penalty; a tallied verdict simply becomes final.
     <a href="../social_contracts/jury.md#social_contracts_jury_assert_config_live">assert_config_live</a>(config);
     <b>assert</b>!(roster.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/jury.md#social_contracts_jury_EWrongVersion">EWrongVersion</a>);
     <b>assert</b>!(case.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/jury.md#social_contracts_jury_EWrongVersion">EWrongVersion</a>);
-    <a href="../social_contracts/jury.md#social_contracts_jury_force_end">force_end</a>(config, roster, case, clock::timestamp_ms(clock));
+    <a href="../social_contracts/jury.md#social_contracts_jury_force_end">force_end</a>(roster, case, clock::timestamp_ms(clock));
 }
 </code></pre>
 
@@ -5349,7 +5506,7 @@ without a penalty; a tallied verdict simply becomes final.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_force_end">force_end</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, now: u64)
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_force_end">force_end</a>(roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, now: u64)
 </code></pre>
 
 
@@ -5358,14 +5515,14 @@ without a penalty; a tallied verdict simply becomes final.
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_force_end">force_end</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>, roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">JuryCase</a>, now: u64) {
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_force_end">force_end</a>(roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">JuryCase</a>, now: u64) {
     <b>assert</b>!(!<a href="../social_contracts/jury.md#social_contracts_jury_is_finished">is_finished</a>(case.state), <a href="../social_contracts/jury.md#social_contracts_jury_EWrongCaseState">EWrongCaseState</a>);
     <b>if</b> (case.state == <a href="../social_contracts/jury.md#social_contracts_jury_CASE_TALLIED">CASE_TALLIED</a>) {
         <b>let</b> outcome = *option::borrow(&case.provisional_outcome);
         <a href="../social_contracts/jury.md#social_contracts_jury_finalize_outcome">finalize_outcome</a>(case, outcome, now);
         <b>return</b>
     };
-    <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(config, roster, case, now, <b>false</b>);
+    <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(roster, case, now, <b>false</b>);
     <a href="../social_contracts/jury.md#social_contracts_jury_end_failed">end_failed</a>(case, <a href="../social_contracts/jury.md#social_contracts_jury_FAIL_VOIDED">FAIL_VOIDED</a>, now);
 }
 </code></pre>
@@ -5463,7 +5620,7 @@ penalized: the failure was not the juror's. <code>penalize = <b>false</b></code>
 seat without a penalty.
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, now: u64, penalize: bool)
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">social_contracts::jury::JuryCase</a>, now: u64, penalize: bool)
 </code></pre>
 
 
@@ -5472,7 +5629,7 @@ seat without a penalty.
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>, roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">JuryCase</a>, now: u64, penalize: bool) {
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_close_round">close_round</a>(roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, case: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JuryCase">JuryCase</a>, now: u64, penalize: bool) {
     <b>let</b> round = case.round;
     <b>if</b> (vector::length(&case.rounds) &lt;= round) {
         <b>return</b>
@@ -5489,13 +5646,13 @@ seat without a penalty.
         <b>let</b> agent_id = *vector::borrow(&seats, i);
         <b>let</b> status = table::borrow(&case.slots, agent_id).status;
         <b>if</b> (status == <a href="../social_contracts/jury.md#social_contracts_jury_SLOT_REVEALED">SLOT_REVEALED</a>) {
-            <a href="../social_contracts/jury.md#social_contracts_jury_reward_duty">reward_duty</a>(config, roster, agent_id, case_id, now);
+            <a href="../social_contracts/jury.md#social_contracts_jury_reward_duty">reward_duty</a>(roster, agent_id, case_id, now);
         } <b>else</b> <b>if</b> (penalize && status == <a href="../social_contracts/jury.md#social_contracts_jury_SLOT_DRAFTED">SLOT_DRAFTED</a>) {
             table::borrow_mut(&<b>mut</b> case.slots, agent_id).status = <a href="../social_contracts/jury.md#social_contracts_jury_SLOT_DEFAULTED">SLOT_DEFAULTED</a>;
-            <a href="../social_contracts/jury.md#social_contracts_jury_penalize_duty">penalize_duty</a>(config, roster, agent_id, config.duty.loss_accept, <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_NO_ACCEPT">DUTY_NO_ACCEPT</a>, case_id, now);
+            <a href="../social_contracts/jury.md#social_contracts_jury_penalize_duty">penalize_duty</a>(roster, agent_id, <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_LOSS_ACCEPT">DUTY_LOSS_ACCEPT</a>, <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_NO_ACCEPT">DUTY_NO_ACCEPT</a>, case_id, now);
         } <b>else</b> <b>if</b> (penalize && voting && (status == <a href="../social_contracts/jury.md#social_contracts_jury_SLOT_ACCEPTED">SLOT_ACCEPTED</a> || status == <a href="../social_contracts/jury.md#social_contracts_jury_SLOT_COMMITTED">SLOT_COMMITTED</a>)) {
             table::borrow_mut(&<b>mut</b> case.slots, agent_id).status = <a href="../social_contracts/jury.md#social_contracts_jury_SLOT_DEFAULTED">SLOT_DEFAULTED</a>;
-            <a href="../social_contracts/jury.md#social_contracts_jury_penalize_duty">penalize_duty</a>(config, roster, agent_id, config.duty.loss_noreveal, <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_NO_REVEAL">DUTY_NO_REVEAL</a>, case_id, now);
+            <a href="../social_contracts/jury.md#social_contracts_jury_penalize_duty">penalize_duty</a>(roster, agent_id, <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_LOSS_NOREVEAL">DUTY_LOSS_NOREVEAL</a>, <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_NO_REVEAL">DUTY_NO_REVEAL</a>, case_id, now);
         };
         <a href="../social_contracts/jury.md#social_contracts_jury_release_seat">release_seat</a>(roster, agent_id);
         i = i + 1;
@@ -5514,7 +5671,7 @@ seat without a penalty.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_reward_duty">reward_duty</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, agent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, case_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, now: u64)
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_reward_duty">reward_duty</a>(roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, agent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, case_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, now: u64)
 </code></pre>
 
 
@@ -5523,15 +5680,15 @@ seat without a penalty.
 <summary>Implementation</summary>
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_reward_duty">reward_duty</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>, roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, agent_id: ID, case_id: ID, now: u64) {
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_reward_duty">reward_duty</a>(roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, agent_id: ID, case_id: ID, now: u64) {
     <b>if</b> (!table::contains(&roster.entries, agent_id)) {
         <b>return</b>
     };
     <b>let</b> <b>entry</b> = table::borrow_mut(&<b>mut</b> roster.entries, agent_id);
     <b>entry</b>.completed = <b>entry</b>.completed + 1;
     <b>entry</b>.last_duty_ms = now;
-    <b>let</b> raised = <b>entry</b>.duty_score + config.duty.gain;
-    <b>entry</b>.duty_score = <b>if</b> (raised &gt; config.duty.max_score) { config.duty.max_score } <b>else</b> { raised };
+    <b>let</b> raised = <b>entry</b>.duty_score + <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_GAIN">DUTY_GAIN</a>;
+    <b>entry</b>.duty_score = <b>if</b> (raised &gt; <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_MAX">DUTY_MAX</a>) { <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_MAX">DUTY_MAX</a> } <b>else</b> { raised };
     <b>if</b> (<b>entry</b>.strikes &gt; 0) {
         <b>entry</b>.strikes = <b>entry</b>.strikes - 1;
     };
@@ -5558,7 +5715,7 @@ seat without a penalty.
 
 
 
-<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_penalize_duty">penalize_duty</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>, roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, agent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, loss: u64, reason: u8, case_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, now: u64)
+<pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_penalize_duty">penalize_duty</a>(roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, agent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, loss: u64, reason: u8, case_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, now: u64)
 </code></pre>
 
 
@@ -5568,7 +5725,6 @@ seat without a penalty.
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_penalize_duty">penalize_duty</a>(
-    config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>,
     roster: &<b>mut</b> <a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>,
     agent_id: ID,
     loss: u64,
@@ -5584,8 +5740,8 @@ seat without a penalty.
     <b>entry</b>.strikes = <b>entry</b>.strikes + 1;
     <b>entry</b>.last_duty_ms = now;
     <b>entry</b>.duty_score = <b>if</b> (<b>entry</b>.duty_score &gt; loss) { <b>entry</b>.duty_score - loss } <b>else</b> { 0 };
-    <b>if</b> (<b>entry</b>.strikes &gt;= config.duty.max_strikes) {
-        <b>let</b> until = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(now, config.duty.suspension_ms);
+    <b>if</b> (<b>entry</b>.strikes &gt;= <a href="../social_contracts/jury.md#social_contracts_jury_MAX_STRIKES">MAX_STRIKES</a>) {
+        <b>let</b> until = <a href="../social_contracts/memory.md#social_contracts_memory_checked_add_u64">memory::checked_add_u64</a>(now, <a href="../social_contracts/jury.md#social_contracts_jury_SUSPENSION_MS">SUSPENSION_MS</a>);
         <b>entry</b>.status = <a href="../social_contracts/jury.md#social_contracts_jury_ROSTER_SUSPENDED">ROSTER_SUSPENDED</a>;
         <b>entry</b>.suspended_until_ms = until;
         <b>entry</b>.strikes = 0;
@@ -6342,7 +6498,7 @@ of the same owner is rejected.
 The most owners, organizations and agents a case may exclude; integrators trim to it.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>): u64
 </code></pre>
 
 
@@ -6351,7 +6507,7 @@ The most owners, organizations and agents a case may exclude; integrators trim t
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>): u64 { config.selection.<a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a> }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_exclusions">max_exclusions</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>): u64 { <a href="../social_contracts/jury.md#social_contracts_jury_MAX_EXCLUSIONS">MAX_EXCLUSIONS</a> }
 </code></pre>
 
 
@@ -6452,7 +6608,7 @@ The most owners, organizations and agents a case may exclude; integrators trim t
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>): u64
 </code></pre>
 
 
@@ -6461,7 +6617,7 @@ The most owners, organizations and agents a case may exclude; integrators trim t
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>): u64 { config.timing.<a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a> }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_reveal_grace_ms">reveal_grace_ms</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>): u64 { <a href="../social_contracts/jury.md#social_contracts_jury_REVEAL_GRACE_MS">REVEAL_GRACE_MS</a> }
 </code></pre>
 
 
@@ -6496,7 +6652,7 @@ The most owners, organizations and agents a case may exclude; integrators trim t
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>): u64
 </code></pre>
 
 
@@ -6505,7 +6661,7 @@ The most owners, organizations and agents a case may exclude; integrators trim t
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>): u64 { config.timing.<a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a> }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_case_duration_ms">max_case_duration_ms</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>): u64 { <a href="../social_contracts/jury.md#social_contracts_jury_MAX_CASE_DURATION_MS">MAX_CASE_DURATION_MS</a> }
 </code></pre>
 
 
@@ -6540,7 +6696,7 @@ The most owners, organizations and agents a case may exclude; integrators trim t
 
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_initial_duty_score">initial_duty_score</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>): u64
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_initial_duty_score">initial_duty_score</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">social_contracts::jury::JuryConfig</a>): u64
 </code></pre>
 
 
@@ -6549,7 +6705,51 @@ The most owners, organizations and agents a case may exclude; integrators trim t
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_initial_duty_score">initial_duty_score</a>(config: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>): u64 { config.duty.initial_score }
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_initial_duty_score">initial_duty_score</a>(_: &<a href="../social_contracts/jury.md#social_contracts_jury_JuryConfig">JuryConfig</a>): u64 { <a href="../social_contracts/jury.md#social_contracts_jury_DUTY_INITIAL">DUTY_INITIAL</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_max_strikes"></a>
+
+## Function `max_strikes`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_strikes">max_strikes</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_strikes">max_strikes</a>(): u64 { <a href="../social_contracts/jury.md#social_contracts_jury_MAX_STRIKES">MAX_STRIKES</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_max_roster_size"></a>
+
+## Function `max_roster_size`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_roster_size">max_roster_size</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_max_roster_size">max_roster_size</a>(): u64 { <a href="../social_contracts/jury.md#social_contracts_jury_MAX_ROSTER_SIZE">MAX_ROSTER_SIZE</a> }
 </code></pre>
 
 
@@ -6594,6 +6794,28 @@ The most owners, organizations and agents a case may exclude; integrators trim t
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_roster_count">roster_count</a>(roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>): u64 { roster.count }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_roster_owner_count"></a>
+
+## Function `roster_owner_count`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_roster_owner_count">roster_owner_count</a>(roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_roster_owner_count">roster_owner_count</a>(roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>): u64 { roster.owner_count }
 </code></pre>
 
 
@@ -6792,6 +7014,30 @@ The most owners, organizations and agents a case may exclude; integrators trim t
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_entry_owner">entry_owner</a>(roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, agent_id: ID): <b>address</b> { table::borrow(&roster.entries, agent_id).owner }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_jury_entry_organization_id"></a>
+
+## Function `entry_organization_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_entry_organization_id">entry_organization_id</a>(roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">social_contracts::jury::JurorRoster</a>, agent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/jury.md#social_contracts_jury_entry_organization_id">entry_organization_id</a>(roster: &<a href="../social_contracts/jury.md#social_contracts_jury_JurorRoster">JurorRoster</a>, agent_id: ID): ID {
+    table::borrow(&roster.entries, agent_id).organization_id
+}
 </code></pre>
 
 

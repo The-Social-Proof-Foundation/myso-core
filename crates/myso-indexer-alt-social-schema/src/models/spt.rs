@@ -1,9 +1,9 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use diesel::QueryableByName;
 use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Bool, Nullable, SmallInt, Text, Timestamptz};
-use diesel::QueryableByName;
 use serde::{Deserialize, Serialize};
 
 use super::revenue::{
@@ -1084,9 +1084,7 @@ pub struct NewSocialProofTokensEvent {
 
 #[cfg(test)]
 mod spt_config_merge_tests {
-    use super::{
-        default_spt_config, merge_spt_config, NewSptConfigEvent, DEFAULT_BASE_PRICE,
-    };
+    use super::{DEFAULT_BASE_PRICE, NewSptConfigEvent, default_spt_config, merge_spt_config};
 
     #[test]
     fn kill_switch_preserves_fee_fields() {

@@ -262,13 +262,22 @@ impl Processor for MyDataHandler {
     async fn process(&self, checkpoint: &Arc<Checkpoint>) -> Result<Vec<Self::Value>> {
         let mut values = Vec::new();
         for tx in &checkpoint.transactions {
-            let object_rows = mydata_object::process_mydata_objects_from_tx(&checkpoint.object_set, tx);
-            let mut object_mydata_ids: HashSet<String> = object_rows.iter().filter_map(|row| match row {
-                MyDataRow::MyDataData(d) => Some(d.mydata_id.clone()), _ => None,
-            }).collect();
-            let mut registry_mydata_ids: HashSet<String> = object_rows.iter().filter_map(|row| match row {
-                MyDataRow::MyDataRegistry(r) => Some(r.mydata_id.clone()), _ => None,
-            }).collect();
+            let object_rows =
+                mydata_object::process_mydata_objects_from_tx(&checkpoint.object_set, tx);
+            let mut object_mydata_ids: HashSet<String> = object_rows
+                .iter()
+                .filter_map(|row| match row {
+                    MyDataRow::MyDataData(d) => Some(d.mydata_id.clone()),
+                    _ => None,
+                })
+                .collect();
+            let mut registry_mydata_ids: HashSet<String> = object_rows
+                .iter()
+                .filter_map(|row| match row {
+                    MyDataRow::MyDataRegistry(r) => Some(r.mydata_id.clone()),
+                    _ => None,
+                })
+                .collect();
             let expiries = mydata_object::subscription_expiries_from_tx(&checkpoint.object_set, tx);
             values.extend(object_rows);
             let tx_digest = tx.transaction.digest().to_string();

@@ -8,10 +8,11 @@
 //! * **Jurors** are told what to do about their own duty. The indexer queues `duty_drafted` and
 //!   `voting_started` in the transaction that applies the chain event, and the social server's scan
 //!   adds `duty_poll` (a heartbeat the juror runner answers) and `fee_claimable`.
-//! * **Keepers** run the permissionless cranks that move a case along (draw, replace, finalize,
+//! * **Operators** run the permissionless cranks that move a case along (draw, replace, finalize,
 //!   apply the verdict). What needs cranking is a fact about the indexed state, so the server finds
-//!   it by scanning and queues one event per keeper account; the indexer never needs to know who
-//!   the keepers are.
+//!   it by scanning and queues one event per crank for the configured default operator. Anyone else
+//!   can run the same cranks from the public `GET /jury/cranks` feed; the chain decides who was first.
+//! * **Voters** on a proposal refunded for want of a jury are told once that they can claim.
 //!
 //! Every row carries a real `account_id` and never an organization, so the engine scopes it to
 //! exactly one party. Ids are strings and amounts are decimal strings.
@@ -63,10 +64,12 @@ pub enum CrankKind {
     EvictIneligible,
     /// `sweep_jury_case`: a governance case has ended and its unclaimed fees can go back.
     SweepCase,
+    /// `sweep_vote_refunds`: a refunded proposal's claim window closed, or every voter claimed.
+    SweepVoteRefunds,
 }
 
 impl CrankKind {
-    pub const ALL: [CrankKind; 14] = [
+    pub const ALL: [CrankKind; 15] = [
         CrankKind::SelectDue,
         CrankKind::ReplaceDue,
         CrankKind::RoundFinalizeDue,
@@ -81,6 +84,7 @@ impl CrankKind {
         CrankKind::RefreshRoster,
         CrankKind::EvictIneligible,
         CrankKind::SweepCase,
+        CrankKind::SweepVoteRefunds,
     ];
 
     pub fn event_type(self) -> &'static str {
@@ -99,6 +103,7 @@ impl CrankKind {
             CrankKind::RefreshRoster => "roster_refresh_due",
             CrankKind::EvictIneligible => "evict_due",
             CrankKind::SweepCase => "sweep_due",
+            CrankKind::SweepVoteRefunds => "vote_refund_sweep_due",
         }
     }
 
@@ -106,9 +111,10 @@ impl CrankKind {
     /// hourly because someone is waiting on it; upkeep that nobody waits on is retried daily.
     pub fn retry_bucket_ms(self) -> i64 {
         match self {
-            CrankKind::RefreshRoster | CrankKind::EvictIneligible | CrankKind::SweepCase => {
-                UPKEEP_RETRY_BUCKET_MS
-            }
+            CrankKind::RefreshRoster
+            | CrankKind::EvictIneligible
+            | CrankKind::SweepCase
+            | CrankKind::SweepVoteRefunds => UPKEEP_RETRY_BUCKET_MS,
             _ => CRANK_RETRY_BUCKET_MS,
         }
     }
@@ -122,7 +128,10 @@ impl CrankKind {
     pub fn is_governance_crank(self) -> bool {
         matches!(
             self,
-            CrankKind::EscalateProposal | CrankKind::FinalizeProposal | CrankKind::ApplyDecision
+            CrankKind::EscalateProposal
+                | CrankKind::FinalizeProposal
+                | CrankKind::ApplyDecision
+                | CrankKind::SweepVoteRefunds
         )
     }
 
@@ -138,7 +147,7 @@ impl CrankKind {
     }
 }
 
-/// The objects a keeper job needs to fill its action's parameters, which an event can name but
+/// The objects a crank job needs to fill its action's parameters, which an event can name but
 /// a registered action cannot look up.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CrankRefs {
@@ -183,7 +192,10 @@ impl Crank {
         if self.kind.is_task_crank() {
             payload.insert("task_id".into(), json!(self.subject_id));
             payload.insert("buyer_account_id".into(), json!(self.refs.buyer_account_id));
-            payload.insert("seller_account_id".into(), json!(self.refs.seller_account_id));
+            payload.insert(
+                "seller_account_id".into(),
+                json!(self.refs.seller_account_id),
+            );
             // `null` is dropped from a job's parameters, so the SDK falls back to its default platform.
             payload.insert("platform_object_id".into(), json!(self.refs.platform_id));
         }
@@ -195,7 +207,10 @@ impl Crank {
         }
         if self.kind.is_roster_crank() {
             payload.insert("agent_id".into(), json!(self.subject_id));
-            payload.insert("memory_account_id".into(), json!(self.refs.memory_account_id));
+            payload.insert(
+                "memory_account_id".into(),
+                json!(self.refs.memory_account_id),
+            );
         }
         if self.kind == CrankKind::SettleFees {
             payload.insert("close_case_first".into(), json!(self.extra == 1));
@@ -203,43 +218,54 @@ impl Crank {
         Value::Object(payload)
     }
 
-    /// The key a keeper's copy of this crank is queued under. `bucket` is the retry bucket.
-    pub fn dedup_key(&self, keeper_account: &str, bucket: i64) -> String {
+    /// The key this crank is queued under. `bucket` is the retry bucket. There is one event per
+    /// crank, so the operator is not part of the key: changing operators does not re-queue work.
+    pub fn dedup_key(&self, bucket: i64) -> String {
         // A replacement draw moves the accept deadline, and a proposal can reach the jury at two
         // steps, so each of those is a different crank with a different key.
-        let discriminator = if matches!(self.kind, CrankKind::ReplaceDue | CrankKind::EscalateProposal) {
+        let discriminator = if matches!(
+            self.kind,
+            CrankKind::ReplaceDue | CrankKind::EscalateProposal
+        ) {
             format!(":{}", self.extra)
         } else {
             String::new()
         };
-        let subject = if self.case_id.is_empty() { &self.subject_id } else { &self.case_id };
+        let subject = if self.case_id.is_empty() {
+            &self.subject_id
+        } else {
+            &self.case_id
+        };
         format!(
-            "jury:{}:r{}:{}{}:{}:b{}",
+            "jury:{}:r{}:{}{}:b{}",
             subject,
             self.round,
             self.kind.event_type(),
             discriminator,
-            keeper_account,
             bucket
         )
     }
 }
 
-/// One event for one keeper account.
-pub fn keeper_event(crank: &Crank, keeper_account: &str, now_ms: i64) -> NewAutomationEvent {
+/// The crank's one event, addressed to the operator account the forwarder is configured with.
+pub fn crank_event(crank: &Crank, operator_id: &str, now_ms: i64) -> NewAutomationEvent {
     let bucket = now_ms / crank.kind.retry_bucket_ms();
     NewAutomationEvent {
-        dedup_key: crank.dedup_key(keeper_account, bucket),
+        dedup_key: crank.dedup_key(bucket),
         event_family: AUTOMATION_FAMILY_JURY.to_string(),
         event_type: crank.kind.event_type().to_string(),
-        account_id: keeper_account.to_string(),
+        account_id: operator_id.to_string(),
         agent_object_id: None,
         payload: crank.payload(),
         occurred_at_ms: now_ms,
         source_event_id: format!(
             "crank:{}:{}",
             crank.kind.event_type(),
-            if crank.case_id.is_empty() { &crank.subject_id } else { &crank.case_id }
+            if crank.case_id.is_empty() {
+                &crank.subject_id
+            } else {
+                &crank.case_id
+            }
         ),
     }
 }
@@ -318,7 +344,10 @@ pub fn duty_drafted_event(
 ) -> NewAutomationEvent {
     seat.event(
         "duty_drafted",
-        format!("jury:{}:r{}:duty_drafted:{}", seat.case_id, seat.round, seat.agent_id),
+        format!(
+            "jury:{}:r{}:duty_drafted:{}",
+            seat.case_id, seat.round, seat.agent_id
+        ),
         seat.payload(DutyKind::Accept, accept_deadline_ms),
         occurred_at_ms,
         source_event_id,
@@ -339,7 +368,10 @@ pub fn voting_started_event(
     payload.insert("reveal_deadline_ms".into(), json!(reveal_deadline_ms));
     seat.event(
         "voting_started",
-        format!("jury:{}:r{}:voting_started:{}", seat.case_id, seat.round, seat.agent_id),
+        format!(
+            "jury:{}:r{}:voting_started:{}",
+            seat.case_id, seat.round, seat.agent_id
+        ),
         payload,
         occurred_at_ms,
         source_event_id,
@@ -382,11 +414,56 @@ pub fn fee_claimable_event(seat: &JurorSeat, now_ms: i64) -> NewAutomationEvent 
     payload.insert("subject_id".into(), json!(seat.subject_id));
     seat.event(
         "fee_claimable",
-        format!("jury:{}:fee_claimable:{}:b{}", seat.case_id, seat.agent_id, bucket),
+        format!(
+            "jury:{}:fee_claimable:{}:b{}",
+            seat.case_id, seat.agent_id, bucket
+        ),
         payload,
         now_ms,
         &format!("fee:{}:{}", seat.case_id, seat.agent_id),
     )
+}
+
+/// A voter who paid to vote on a proposal that was refunded because no jury could form.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VoteRefundReminder {
+    pub proposal_id: String,
+    pub voter: String,
+    /// The voter's own MemoryAccount, which the engine scopes the event to.
+    pub account_id: String,
+    pub amount_mist: i64,
+    pub claim_deadline_ms: i64,
+    pub registry_id: String,
+    pub platform_id: Option<String>,
+}
+
+/// Sent once per voter: the refund stays claimable until the deadline, and a yearlong reminder
+/// would only be noise.
+pub fn vote_refund_claimable_event(
+    reminder: &VoteRefundReminder,
+    now_ms: i64,
+) -> NewAutomationEvent {
+    NewAutomationEvent {
+        dedup_key: format!(
+            "jury:{}:vote_refund_claimable:{}",
+            reminder.proposal_id, reminder.voter
+        ),
+        event_family: AUTOMATION_FAMILY_JURY.to_string(),
+        event_type: "vote_refund_claimable".to_string(),
+        account_id: reminder.account_id.clone(),
+        agent_object_id: None,
+        payload: json!({
+            "proposal_id": reminder.proposal_id,
+            "voter": reminder.voter,
+            "amount_mist": reminder.amount_mist.to_string(),
+            "claim_deadline_ms": reminder.claim_deadline_ms,
+            "expires_at_ms": reminder.claim_deadline_ms,
+            "registry_id": reminder.registry_id,
+            "platform_id": reminder.platform_id,
+        }),
+        occurred_at_ms: now_ms,
+        source_event_id: format!("refund:{}:{}", reminder.proposal_id, reminder.voter),
+    }
 }
 
 #[cfg(test)]
@@ -444,9 +521,24 @@ mod tests {
 
     #[test]
     fn a_poll_repeats_once_per_bucket_and_never_within_one() {
-        let a = duty_poll_event(&seat(), DutyKind::Commit, 9_000_000, DUTY_POLL_BUCKET_MS * 4 + 10);
-        let b = duty_poll_event(&seat(), DutyKind::Commit, 9_000_000, DUTY_POLL_BUCKET_MS * 5 - 1);
-        let c = duty_poll_event(&seat(), DutyKind::Commit, 9_000_000, DUTY_POLL_BUCKET_MS * 5);
+        let a = duty_poll_event(
+            &seat(),
+            DutyKind::Commit,
+            9_000_000,
+            DUTY_POLL_BUCKET_MS * 4 + 10,
+        );
+        let b = duty_poll_event(
+            &seat(),
+            DutyKind::Commit,
+            9_000_000,
+            DUTY_POLL_BUCKET_MS * 5 - 1,
+        );
+        let c = duty_poll_event(
+            &seat(),
+            DutyKind::Commit,
+            9_000_000,
+            DUTY_POLL_BUCKET_MS * 5,
+        );
         assert_eq!(a.dedup_key, b.dedup_key);
         assert_ne!(a.dedup_key, c.dedup_key);
         assert!(a.dedup_key.contains(":commit:"));
@@ -461,16 +553,53 @@ mod tests {
     }
 
     #[test]
-    fn a_keepers_crank_is_scoped_to_that_keeper_and_retried_hourly() {
+    fn a_crank_is_one_event_for_the_operator_and_retried_hourly() {
         let c = crank(CrankKind::RoundFinalizeDue);
-        let a = keeper_event(&c, "0xkeeper_a", 10);
-        let b = keeper_event(&c, "0xkeeper_b", 10);
-        assert_ne!(a.dedup_key, b.dedup_key);
-        assert_eq!(a.account_id, "0xkeeper_a");
+        let a = crank_event(&c, "0xoperator", 10);
+        assert_eq!(a.account_id, "0xoperator");
         assert!(a.agent_object_id.is_none());
-        let later = keeper_event(&c, "0xkeeper_a", CRANK_RETRY_BUCKET_MS + 1);
-        assert_ne!(a.dedup_key, later.dedup_key);
         assert_eq!(a.event_type, "round_finalize_due");
+        // A different operator does not make it a different crank.
+        assert_eq!(a.dedup_key, crank_event(&c, "0xother", 10).dedup_key);
+        assert!(!a.dedup_key.contains("0xoperator"));
+        let later = crank_event(&c, "0xoperator", CRANK_RETRY_BUCKET_MS + 1);
+        assert_ne!(a.dedup_key, later.dedup_key);
+    }
+
+    #[test]
+    fn a_vote_refund_sweep_names_the_proposal_and_repeats_daily() {
+        let mut sweep = crank(CrankKind::SweepVoteRefunds);
+        sweep.case_id = String::new();
+        sweep.subject_kind = 2;
+        sweep.subject_id = "0xprop".into();
+        sweep.refs = CrankRefs {
+            registry_id: Some("0xreg".into()),
+            ..Default::default()
+        };
+        let payload = sweep.payload();
+        assert_eq!(payload["proposal_id"], "0xprop");
+        assert_eq!(payload["registry_id"], "0xreg");
+        assert_eq!(sweep.kind.retry_bucket_ms(), UPKEEP_RETRY_BUCKET_MS);
+    }
+
+    #[test]
+    fn a_refunded_voter_is_told_once_with_the_deadline() {
+        let reminder = VoteRefundReminder {
+            proposal_id: "0xprop".into(),
+            voter: "0xvoter".into(),
+            account_id: "0xacct".into(),
+            amount_mist: 300,
+            claim_deadline_ms: 9_000,
+            registry_id: "0xreg".into(),
+            platform_id: None,
+        };
+        let a = vote_refund_claimable_event(&reminder, 10);
+        let b = vote_refund_claimable_event(&reminder, 10 + UPKEEP_RETRY_BUCKET_MS);
+        assert_eq!(a.dedup_key, b.dedup_key);
+        assert_eq!(a.account_id, "0xacct");
+        assert_eq!(a.event_type, "vote_refund_claimable");
+        assert_eq!(a.payload["amount_mist"], "300");
+        assert_eq!(a.payload["expires_at_ms"], 9_000);
     }
 
     #[test]
@@ -479,8 +608,8 @@ mod tests {
         first.extra = 1_000;
         let mut second = first.clone();
         second.extra = 2_000;
-        assert_ne!(first.dedup_key("0xk", 0), second.dedup_key("0xk", 0));
-        assert_eq!(first.dedup_key("0xk", 0), first.dedup_key("0xk", 0));
+        assert_ne!(first.dedup_key(0), second.dedup_key(0));
+        assert_eq!(first.dedup_key(0), first.dedup_key(0));
     }
 
     #[test]
@@ -502,7 +631,12 @@ mod tests {
         assert_eq!(payload["buyer_account_id"], "0xbuyer");
         assert_eq!(payload["seller_account_id"], "0xseller");
         assert!(payload["platform_object_id"].is_null());
-        assert!(crank(CrankKind::SelectDue).payload().get("buyer_account_id").is_none());
+        assert!(
+            crank(CrankKind::SelectDue)
+                .payload()
+                .get("buyer_account_id")
+                .is_none()
+        );
     }
 
     #[test]
@@ -525,10 +659,10 @@ mod tests {
         assert_eq!(payload["stage"], 2);
         assert!(payload.get("task_id").is_none());
         // Keyed by the proposal, and a different step is a different crank.
-        assert!(escalate.dedup_key("0xk", 0).starts_with("jury:0xprop:"));
+        assert!(escalate.dedup_key(0).starts_with("jury:0xprop:"));
         let mut council = escalate.clone();
         council.extra = 1;
-        assert_ne!(escalate.dedup_key("0xk", 0), council.dedup_key("0xk", 0));
+        assert_ne!(escalate.dedup_key(0), council.dedup_key(0));
     }
 
     #[test]
@@ -538,19 +672,41 @@ mod tests {
         refresh.round = 0;
         refresh.subject_kind = 3;
         refresh.subject_id = "0xagent".into();
-        refresh.refs = CrankRefs { memory_account_id: Some("0xacct".into()), ..Default::default() };
+        refresh.refs = CrankRefs {
+            memory_account_id: Some("0xacct".into()),
+            ..Default::default()
+        };
         let payload = refresh.payload();
         assert_eq!(payload["agent_id"], "0xagent");
         assert_eq!(payload["memory_account_id"], "0xacct");
         assert!(payload.get("case_id").is_none());
         assert!(payload.get("task_id").is_none());
-        assert!(refresh.dedup_key("0xk", 5).starts_with("jury:0xagent:"));
+        assert!(refresh.dedup_key(5).starts_with("jury:0xagent:"));
         // Not re-queued inside a day, queued again the next day; a deadline crank still repeats hourly.
-        let at = |kind: CrankKind, ms: i64| keeper_event(&Crank { kind, ..refresh.clone() }, "0xk", ms).dedup_key;
+        let at = |kind: CrankKind, ms: i64| {
+            crank_event(
+                &Crank {
+                    kind,
+                    ..refresh.clone()
+                },
+                "0xk",
+                ms,
+            )
+            .dedup_key
+        };
         let day = UPKEEP_RETRY_BUCKET_MS;
-        assert_eq!(at(CrankKind::RefreshRoster, day + 1), at(CrankKind::RefreshRoster, day + 3_600_000));
-        assert_ne!(at(CrankKind::RefreshRoster, day + 1), at(CrankKind::RefreshRoster, 2 * day + 1));
-        assert_ne!(at(CrankKind::SelectDue, day + 1), at(CrankKind::SelectDue, day + 3_600_001));
+        assert_eq!(
+            at(CrankKind::RefreshRoster, day + 1),
+            at(CrankKind::RefreshRoster, day + 3_600_000)
+        );
+        assert_ne!(
+            at(CrankKind::RefreshRoster, day + 1),
+            at(CrankKind::RefreshRoster, 2 * day + 1)
+        );
+        assert_ne!(
+            at(CrankKind::SelectDue, day + 1),
+            at(CrankKind::SelectDue, day + 3_600_001)
+        );
         assert_eq!(CrankKind::EvictIneligible.event_type(), "evict_due");
         assert_eq!(CrankKind::SweepCase.event_type(), "sweep_due");
     }

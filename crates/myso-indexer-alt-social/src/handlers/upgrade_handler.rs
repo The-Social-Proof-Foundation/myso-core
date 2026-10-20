@@ -138,10 +138,12 @@ async fn fanout_object_migration<'a>(
             update_latest_config_version("insurance_config", new_version, conn).await?;
         }
         "UnderwriterVault" => {
-            diesel::update(insurance_vaults::table.filter(insurance_vaults::vault_id.eq(object_id)))
-                .set(insurance_vaults::version.eq(new_version))
-                .execute(conn)
-                .await?;
+            diesel::update(
+                insurance_vaults::table.filter(insurance_vaults::vault_id.eq(object_id)),
+            )
+            .set(insurance_vaults::version.eq(new_version))
+            .execute(conn)
+            .await?;
         }
         "CoveragePolicy" => {
             diesel::update(

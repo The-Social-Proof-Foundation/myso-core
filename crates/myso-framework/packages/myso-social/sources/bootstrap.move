@@ -68,7 +68,7 @@ module social_contracts::bootstrap {
         social_contracts::mydata::bootstrap_init(clock, ctx);
         social_contracts::memory::bootstrap_init(clock, ctx);
         social_contracts::agent_task::bootstrap_init(admin, clock, ctx);
-        social_contracts::jury::bootstrap_init(clock, ctx);
+        social_contracts::jury::bootstrap_init(social_contracts::memory::default_reputation_params(), clock, ctx);
         let gov_ids = social_contracts::governance::bootstrap_init(clock, ctx);
         social_contracts::post::bootstrap_init(clock, ctx);
         social_contracts::subscription::bootstrap_init(clock, ctx);

@@ -377,7 +377,9 @@ impl Processor for SubscriptionHandler {
                 }
             }
             // Apply final object balances after funding and renewal events in the transaction.
-            for (subscription_id, balance) in subscription_object::renewal_balance_updates_from_tx(&checkpoint.object_set, tx) {
+            for (subscription_id, balance) in
+                subscription_object::renewal_balance_updates_from_tx(&checkpoint.object_set, tx)
+            {
                 values.push(SubscriptionRow::ProfileSubscriptionRenewalBalanceUpdate {
                     subscription_id,
                     new_balance: super::mydata::u64_to_db_i64(balance),
