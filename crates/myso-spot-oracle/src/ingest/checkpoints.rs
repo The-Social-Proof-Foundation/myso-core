@@ -13,6 +13,7 @@ use myso_rpc::proto::myso::rpc::v2::subscription_service_client::SubscriptionSer
 use myso_rpc::proto::myso::rpc::v2::SubscribeCheckpointsRequest;
 use myso_types::base_types::ObjectID;
 use myso_types::full_checkpoint_content::Checkpoint;
+use tonic::transport::ClientTlsConfig;
 use tonic::transport::Endpoint;
 use tracing::{error, info, warn};
 
@@ -57,8 +58,12 @@ pub async fn run_checkpoint_ingest_loop(state: Arc<AppState>) -> anyhow::Result<
 }
 
 async fn run_stream_once(state: Arc<AppState>, streaming_url: &str) -> anyhow::Result<()> {
-    let endpoint =
+    let mut endpoint =
         Endpoint::from_shared(streaming_url.to_string())?.connect_timeout(Duration::from_secs(10));
+    // `Endpoint::from_shared` does not enable TLS for https URLs on its own.
+    if streaming_url.starts_with("https://") {
+        endpoint = endpoint.tls_config(ClientTlsConfig::new().with_enabled_roots())?;
+    }
     let mut client = SubscriptionServiceClient::connect(endpoint)
         .await?
         .max_decoding_message_size(MAX_GRPC_MESSAGE_SIZE_BYTES);

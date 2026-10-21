@@ -36,6 +36,9 @@ static VERSION: &str = const_str::concat!(
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
+    // axum-server is built with `tls-rustls-no-provider`, so TLS needs a process-level provider.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     // Enable tracing, configured by environment variables.
     let _guard = telemetry_subscribers::TelemetryConfig::new()
         .with_env()

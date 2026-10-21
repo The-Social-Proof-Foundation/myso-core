@@ -14,6 +14,7 @@ use myso_types::transaction::TransactionData;
 use prometheus::Registry;
 use prost_types::FieldMask;
 use tonic::transport::Channel;
+use tonic::transport::ClientTlsConfig;
 use tracing::instrument;
 
 use crate::metrics::FullnodeClientMetrics;
@@ -51,9 +52,17 @@ impl FullnodeClient {
         registry: &Registry,
     ) -> Result<Self, Error> {
         let execution_client = if let Some(url) = &args.fullnode_rpc_url {
-            let channel = Channel::from_shared(url.clone())
-                .context("Failed to create channel for gRPC endpoint")?
-                .connect_lazy();
+            let mut endpoint = Channel::from_shared(url.clone())
+                .context("Failed to create channel for gRPC endpoint")?;
+
+            // `Channel::from_shared` does not enable TLS for https URLs on its own.
+            if url.starts_with("https://") {
+                endpoint = endpoint
+                    .tls_config(ClientTlsConfig::new().with_enabled_roots())
+                    .context("Failed to configure TLS for gRPC endpoint")?;
+            }
+
+            let channel = endpoint.connect_lazy();
 
             Some(TransactionExecutionServiceClient::new(channel))
         } else {
