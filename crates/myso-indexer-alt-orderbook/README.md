@@ -77,7 +77,7 @@ cargo run -p myso-indexer-alt-orderbook --bin myso-orderbook-indexer -- \
 ```bash
 DATABASE_URL="postgresql://user:pass@localhost/orderbook" \
 cargo run -p myso-indexer-alt-orderbook --bin myso-orderbook-indexer -- \
-  --env testnet --streaming-url http://fullnode.testnet.mysocial.network:9000
+  --env testnet --streaming-url https://fullnode.testnet.mysocial.network:443
 ```
 
 ### Notes
