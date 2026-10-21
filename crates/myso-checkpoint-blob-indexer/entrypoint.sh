@@ -8,7 +8,7 @@ echo "Starting checkpoint blob indexer..."
 RPC_URL="${RPC_API_URL:-$REST_URL}"
 if [ -z "$RPC_URL" ]; then
   echo "ERROR: RPC_API_URL or REST_URL environment variable is not set"
-  echo "Expected: RPC_API_URL=http://fullnode.testnet.mysocial.network:9000"
+  echo "Expected: RPC_API_URL=https://fullnode.testnet.mysocial.network:443"
   exit 1
 fi
 

@@ -19,7 +19,7 @@ fi
 
 if [ -z "$MYSO_RPC_URL" ]; then
   echo "ERROR: MYSO_RPC_URL environment variable is not set"
-  echo "Expected: MYSO_RPC_URL=http://fullnode.testnet.mysocial.network:9000"
+  echo "Expected: MYSO_RPC_URL=https://fullnode.testnet.mysocial.network:443"
   exit 1
 fi
 

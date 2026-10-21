@@ -1,7 +1,7 @@
 client_metric_host: "127.0.0.1"
 client_metric_port: 9184
-rpc_api_url: "http://fullnode.testnet.mysocial.network:9000"
-streaming_url: "http://fullnode.testnet.mysocial.network:9000"
+rpc_api_url: "https://fullnode.testnet.mysocial.network:443"
+streaming_url: "https://fullnode.testnet.mysocial.network:443"
 
 output_store:
   type: clickhouse

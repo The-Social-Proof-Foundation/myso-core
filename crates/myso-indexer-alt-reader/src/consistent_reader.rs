@@ -15,6 +15,7 @@ use myso_types::base_types::ObjectRef;
 use myso_types::base_types::SequenceNumber;
 use prometheus::Registry;
 use tonic::transport::Channel;
+use tonic::transport::ClientTlsConfig;
 use tracing::instrument;
 use url::Url;
 
@@ -85,6 +86,13 @@ impl ConsistentReader {
         let client = if let Some(url) = &args.consistent_store_url {
             let mut endpoint = Channel::from_shared(url.to_string())
                 .context("Failed to create channel for gRPC endpoint")?;
+
+            // `Channel::from_shared` does not enable TLS for https URLs on its own.
+            if url.scheme() == "https" {
+                endpoint = endpoint
+                    .tls_config(ClientTlsConfig::new().with_enabled_roots())
+                    .context("Failed to configure TLS for gRPC endpoint")?;
+            }
 
             if let Some(timeout) = args.statement_timeout() {
                 endpoint = endpoint.timeout(timeout);

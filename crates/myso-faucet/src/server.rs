@@ -623,7 +623,7 @@ pub async fn create_wallet_context(
     };
 
     let network_url = std::env::var("NETWORK_URL")
-        .unwrap_or_else(|_| "http://fullnode.testnet.mysocial.network:9000".to_string());
+        .unwrap_or_else(|_| "https://fullnode.testnet.mysocial.network:443".to_string());
     let network_alias = std::env::var("NETWORK_ALIAS").unwrap_or_else(|_| "testnet".to_string());
 
     let mut context = WalletContext::new_for_tests(keystore, None, Some(wallet_conf.clone()));

@@ -8,7 +8,7 @@ services:
     environment:
       DATABASE_URL: "postgres://postgres:postgrespw@postgres:5432/bridge"
       REMOTE_STORE_URL: "https://storage.googleapis.com/mysocial-testnet-checkpoint-blobs"
-      STREAMING_URL: "http://fullnode.testnet.mysocial.network:9000"
+      STREAMING_URL: "https://fullnode.testnet.mysocial.network:443"
       FIRST_CHECKPOINT: "43917829"
       RUST_LOG: "info,myso_bridge_indexer_alt=debug"
     ports:

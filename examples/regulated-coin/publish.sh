@@ -16,7 +16,7 @@ MOVE_PACKAGE_PATH=./move
 
 myso client switch --env testnet
 
-NETWORK="https://fullnode.testnet.mysocial.network:9000"
+NETWORK="https://fullnode.testnet.mysocial.network:443"
 FAUCET="https://faucet.mysocial.network/gas"
     
 myso client switch --env testnet

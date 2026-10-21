@@ -41,8 +41,8 @@ services:
       - DATABASE_MAX_CONNECTIONS=10
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
-      - STREAMING_URL=http://fullnode.testnet.mysocial.network:9000
-      - RPC_API_URL=http://fullnode.testnet.mysocial.network:9000
+      - STREAMING_URL=https://fullnode.testnet.mysocial.network:443
+      - RPC_API_URL=https://fullnode.testnet.mysocial.network:443
       # Optional: FIRST_CHECKPOINT near chain head when catching up (e.g. "2000000")
       # - FIRST_CHECKPOINT=2000000
       - INDEXER_CONCURRENCY=5

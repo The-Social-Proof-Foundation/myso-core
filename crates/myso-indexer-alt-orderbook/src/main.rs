@@ -80,7 +80,7 @@ async fn main() -> Result<(), anyhow::Error> {
             ),
             OrderbookEnv::Testnet => anyhow::bail!(
                 "Testnet requires --streaming-url or --remote-store-url for checkpoint ingestion \
-                 (e.g. --streaming-url http://fullnode.testnet.mysocial.network:9000 or \
+                 (e.g. --streaming-url https://fullnode.testnet.mysocial.network:443 or \
                  --remote-store-url https://storage.googleapis.com/mysocial-testnet-checkpoint-blobs)"
             ),
             OrderbookEnv::Mainnet => IngestionClientArgs {

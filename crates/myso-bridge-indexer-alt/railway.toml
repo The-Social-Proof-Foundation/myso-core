@@ -23,7 +23,7 @@ RUST_LOG = "info,myso_bridge_indexer_alt=debug"
 REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-archive"
 
 # gRPC streaming (optional, for faster ingestion)
-STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
+STREAMING_URL = "https://fullnode.testnet.mysocial.network:443"
 
 # Start near chain head to avoid "Outside buffer size" delay. Update periodically.
 # For bridge genesis backfill use 43917829; for catch-up use current head minus ~5000.

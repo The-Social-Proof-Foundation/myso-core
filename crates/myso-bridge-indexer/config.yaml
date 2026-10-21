@@ -3,7 +3,7 @@
 # For local dev: set DB_URL or DATABASE_URL; override other values as needed.
 
 remote_store_url: https://storage.googleapis.com/mysocial-testnet-checkpoints
-myso_rpc_url: http://fullnode.testnet.mysocial.network:9000
+myso_rpc_url: https://fullnode.testnet.mysocial.network:443
 eth_rpc_url: https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
 eth_ws_url: wss://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
 db_url: postgres://localhost:5432/bridge

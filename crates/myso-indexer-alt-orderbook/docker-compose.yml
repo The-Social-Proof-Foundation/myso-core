@@ -34,8 +34,8 @@ services:
       - ENV=testnet
       - PORT=9184
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/orderbook
-      - STREAMING_URL=http://fullnode.testnet.mysocial.network:9000
-      - RPC_API_URL=http://fullnode.testnet.mysocial.network:9000
+      - STREAMING_URL=https://fullnode.testnet.mysocial.network:443
+      - RPC_API_URL=https://fullnode.testnet.mysocial.network:443
       - RUST_LOG=info,myso_indexer_alt_framework=warn,myso_indexer_alt_orderbook=info
     ports:
       - "9184:9184"

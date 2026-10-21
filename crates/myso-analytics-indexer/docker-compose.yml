@@ -9,9 +9,9 @@ services:
       dockerfile: crates/myso-analytics-indexer/Dockerfile
     environment:
       # Core configuration (RPC_API_URL or REST_URL)
-      RPC_API_URL: "http://fullnode.testnet.mysocial.network:9000"
+      RPC_API_URL: "https://fullnode.testnet.mysocial.network:443"
       # gRPC streaming - when set, uses gRPC instead of HTTP checkpoint store
-      STREAMING_URL: "http://fullnode.testnet.mysocial.network:9000"
+      STREAMING_URL: "https://fullnode.testnet.mysocial.network:443"
       PIPELINES: "Checkpoint,Transaction,Event,Object,MoveCall"
       FILE_FORMAT: "parquet"
       
@@ -52,8 +52,8 @@ services:
       context: ../..
       dockerfile: crates/myso-analytics-indexer/Dockerfile
     environment:
-      RPC_API_URL: "http://fullnode.testnet.mysocial.network:9000"
-      STREAMING_URL: "http://fullnode.testnet.mysocial.network:9000"
+      RPC_API_URL: "https://fullnode.testnet.mysocial.network:443"
+      STREAMING_URL: "https://fullnode.testnet.mysocial.network:443"
       PIPELINES: "Checkpoint,Transaction,Event,Object,MoveCall"
       FILE_FORMAT: "parquet"
       

@@ -15,9 +15,9 @@ PORT = { sync = false }
 RUST_LOG = "info,myso_analytics_indexer=debug"
 
 # Core MySocial configuration (RPC_API_URL or REST_URL for backward compatibility)
-RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
+RPC_API_URL = "https://fullnode.testnet.mysocial.network:443"
 # gRPC streaming URL - when set, uses gRPC for checkpoint ingestion (primary), HTTP store fallback
-STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
+STREAMING_URL = "https://fullnode.testnet.mysocial.network:443"
 # Start near chain head to avoid massive backfill (update periodically as chain grows)
 FIRST_CHECKPOINT = "1159000"
 # Pipelines: full set for GCS (Checkpoint,Transaction,Event,Object,MoveCall) or ClickHouse defaults

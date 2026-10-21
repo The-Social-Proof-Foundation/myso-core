@@ -12,6 +12,7 @@ use futures::StreamExt;
 use myso_rpc::proto::myso::rpc::v2::SubscribeCheckpointsRequest;
 use myso_rpc::proto::myso::rpc::v2::subscription_service_client::SubscriptionServiceClient;
 use tonic::Status;
+use tonic::transport::ClientTlsConfig;
 use tonic::transport::Endpoint;
 use tonic::transport::Uri;
 
@@ -54,7 +55,15 @@ impl GrpcStreamingClient {
 #[async_trait]
 impl CheckpointStreamingClient for GrpcStreamingClient {
     async fn connect(&mut self) -> Result<CheckpointStream> {
-        let endpoint = Endpoint::from(self.uri.clone()).connect_timeout(self.connection_timeout);
+        let mut endpoint =
+            Endpoint::from(self.uri.clone()).connect_timeout(self.connection_timeout);
+
+        // `Endpoint::from` does not enable TLS for https URIs on its own.
+        if self.uri.scheme_str() == Some("https") {
+            endpoint = endpoint
+                .tls_config(ClientTlsConfig::new().with_enabled_roots())
+                .map_err(|err| Error::RpcClientError(Status::from_error(err.into())))?;
+        }
 
         let mut client = SubscriptionServiceClient::connect(endpoint)
             .await

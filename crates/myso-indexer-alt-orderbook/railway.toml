@@ -21,5 +21,5 @@ DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 RUST_LOG = "info,myso_indexer_alt_framework=warn,myso_indexer_alt_orderbook=info"
 
 # Blockchain Configuration - gRPC for streaming and ingestion fallback
-RPC_API_URL = "http://fullnode.testnet.mysocial.network:9000"
-STREAMING_URL = "http://fullnode.testnet.mysocial.network:9000"
+RPC_API_URL = "https://fullnode.testnet.mysocial.network:443"
+STREAMING_URL = "https://fullnode.testnet.mysocial.network:443"

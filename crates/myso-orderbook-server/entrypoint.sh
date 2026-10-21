@@ -17,7 +17,7 @@ set -- \
   --server-port "$API_PORT" \
   --metrics-address "0.0.0.0:9184" \
   --database-url "$DATABASE_URL" \
-  --rpc-url "${RPC_URL:-http://fullnode.testnet.mysocial.network:9000}"
+  --rpc-url "${RPC_URL:-https://fullnode.testnet.mysocial.network:443}"
 
 [ -n "$ORDERBOOK_PACKAGE_ID" ] && set -- "$@" --orderbook-package-id "$ORDERBOOK_PACKAGE_ID"
 [ -n "$MYSO_TOKEN_PACKAGE_ID" ] && set -- "$@" --myso-token-package-id "$MYSO_TOKEN_PACKAGE_ID"

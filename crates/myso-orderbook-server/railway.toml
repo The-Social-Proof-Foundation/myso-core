@@ -12,5 +12,5 @@ PORT = { sync = false }
 
 [variables]
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
-RPC_URL = "http://fullnode.testnet.mysocial.network:9000"
+RPC_URL = "https://fullnode.testnet.mysocial.network:443"
 RUST_LOG = "info"
