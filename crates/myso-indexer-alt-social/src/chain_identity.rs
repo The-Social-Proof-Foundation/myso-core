@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Context;
-use diesel::QueryableByName;
 use diesel::sql_query;
 use diesel::sql_types::BigInt;
 use diesel::sql_types::Nullable;
 use diesel::sql_types::Text;
+use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use myso_pg_db::Connection;
 use myso_pg_db::Db;
@@ -14,8 +14,7 @@ use myso_rpc::proto::myso::rpc::v2::GetServiceInfoRequest;
 use tracing::info;
 use tracing::warn;
 
-const ADD_CHAIN_ID_COLUMN: &str =
-    "ALTER TABLE watermarks ADD COLUMN IF NOT EXISTS chain_id TEXT";
+const ADD_CHAIN_ID_COLUMN: &str = "ALTER TABLE watermarks ADD COLUMN IF NOT EXISTS chain_id TEXT";
 
 /// Compare the fullnode chain id to the one stored with these watermarks.
 ///
@@ -31,7 +30,7 @@ pub async fn sync_chain_identity(store: &Db, grpc_url: Option<&str>) -> anyhow::
         return Ok(());
     };
 
-    let rpc = myso_rpc::Client::new(grpc_url.to_owned())
+    let mut rpc = myso_rpc::Client::new(grpc_url.to_owned())
         .context("Failed to build fullnode client for chain identity")?;
     let info = rpc
         .ledger_client()
@@ -56,26 +55,23 @@ pub async fn sync_chain_identity(store: &Db, grpc_url: Option<&str>) -> anyhow::
         .await
         .context("Failed to ensure watermarks.chain_id")?;
 
-    let stored = sql_query(
-        "SELECT chain_id FROM watermarks WHERE chain_id IS NOT NULL LIMIT 1",
-    )
-    .get_result::<ChainIdRow>(&mut conn)
-    .await
-    .optional()
-    .context("Failed to read watermarks.chain_id")?
-    .map(|row| row.chain_id);
-    let max_hi = sql_query(
-        "SELECT MAX(checkpoint_hi_inclusive) AS max_checkpoint_hi FROM watermarks",
-    )
-    .get_result::<MaxCheckpointRow>(&mut conn)
-    .await
-    .context("Failed to read watermark cursors")?
-    .max_checkpoint_hi
-    .and_then(|hi| u64::try_from(hi).ok());
+    let stored = sql_query("SELECT chain_id FROM watermarks WHERE chain_id IS NOT NULL LIMIT 1")
+        .get_result::<ChainIdRow>(&mut conn)
+        .await
+        .optional()
+        .context("Failed to read watermarks.chain_id")?
+        .map(|row| row.chain_id);
+    let max_hi =
+        sql_query("SELECT MAX(checkpoint_hi_inclusive) AS max_checkpoint_hi FROM watermarks")
+            .get_result::<MaxCheckpointRow>(&mut conn)
+            .await
+            .context("Failed to read watermark cursors")?
+            .max_checkpoint_hi
+            .and_then(|hi| u64::try_from(hi).ok());
 
     if !should_reset_watermarks(stored.as_deref(), &chain_id, max_hi, tip) {
+        remember_chain_id(&mut conn, &chain_id).await?;
         if stored.is_none() {
-            save_chain_id(&mut conn, &chain_id).await?;
             info!(chain_id, tip, "Recorded indexer chain id");
         } else {
             info!(chain_id, tip, "Indexer chain id unchanged");
@@ -87,6 +83,8 @@ pub async fn sync_chain_identity(store: &Db, grpc_url: Option<&str>) -> anyhow::
         .execute(&mut conn)
         .await
         .context("Failed to reset watermarks for chain change")?;
+    // Rows are gone, so the column default is what the next watermark insert picks up.
+    remember_chain_id(&mut conn, &chain_id).await?;
     warn!(
         previous_chain_id = stored.as_deref().unwrap_or(""),
         chain_id,
@@ -110,13 +108,31 @@ fn should_reset_watermarks(
     }
 }
 
-async fn save_chain_id(conn: &mut Connection<'_>, chain_id: &str) -> anyhow::Result<()> {
-    sql_query("UPDATE watermarks SET chain_id = $1")
+async fn remember_chain_id(conn: &mut Connection<'_>, chain_id: &str) -> anyhow::Result<()> {
+    let literal = sql_string_literal(chain_id)
+        .context("Refusing to store a chain id that is not a digest")?;
+    sql_query(format!(
+        "ALTER TABLE watermarks ALTER COLUMN chain_id SET DEFAULT {literal}"
+    ))
+    .execute(conn)
+    .await
+    .context("Failed to set watermarks.chain_id default")?;
+    sql_query("UPDATE watermarks SET chain_id = $1 WHERE chain_id IS DISTINCT FROM $2")
+        .bind::<Text, _>(chain_id)
         .bind::<Text, _>(chain_id)
         .execute(conn)
         .await
         .context("Failed to store indexer chain id")?;
     Ok(())
+}
+
+/// Chain ids are checkpoint digests. Only those characters are safe to place in DDL.
+fn sql_string_literal(value: &str) -> anyhow::Result<String> {
+    if !value.is_empty() && value.chars().all(|c| c.is_ascii_alphanumeric()) {
+        Ok(format!("'{value}'"))
+    } else {
+        anyhow::bail!("unexpected chain id {value:?}");
+    }
 }
 
 #[derive(QueryableByName)]

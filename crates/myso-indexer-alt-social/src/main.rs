@@ -117,15 +117,12 @@ async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
 
     let env = env.context("--env is required when running the social indexer")?;
 
-    let grpc_url = rpc_api_url
-        .as_ref()
-        .map(|url| url.to_string())
-        .or_else(|| {
-            streaming_args
-                .streaming_url
-                .as_ref()
-                .map(|url| url.to_string())
-        });
+    let grpc_url = rpc_api_url.as_ref().map(|url| url.to_string()).or_else(|| {
+        streaming_args
+            .streaming_url
+            .as_ref()
+            .map(|url| url.to_string())
+    });
 
     let ingestion_args = if let Some(path) = local_ingestion_path {
         IngestionClientArgs {
