@@ -2,7 +2,7 @@
 #
 # Copy in all crates, Cargo.toml and Cargo.lock unmodified,
 # and build the application.
-FROM rust:1.92-bookworm AS chef
+FROM rust:1.94.1-bookworm AS chef
 
 RUN apt-get update && apt-get install -y \
     cmake \
