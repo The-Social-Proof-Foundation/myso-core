@@ -12088,6 +12088,7 @@ dependencies = [
  "myso-indexer-alt-metrics",
  "myso-indexer-alt-social-schema",
  "myso-pg-db",
+ "myso-rpc",
  "myso-types",
  "prometheus 0.13.4",
  "rand 0.8.5",

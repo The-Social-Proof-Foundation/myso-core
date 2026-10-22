@@ -12,5 +12,8 @@ CREATE TABLE IF NOT EXISTS watermarks
     timestamp_ms_hi_inclusive   BIGINT        NOT NULL,
     reader_lo                   BIGINT        NOT NULL,
     pruner_timestamp            TIMESTAMP     NOT NULL,
-    pruner_hi                   BIGINT        NOT NULL
+    pruner_hi                   BIGINT        NOT NULL,
+    -- Genesis checkpoint digest these cursors were indexed against. Null until the indexer
+    -- records it. A different value means the chain was reset and cursors start over at 0.
+    chain_id                    TEXT
 );

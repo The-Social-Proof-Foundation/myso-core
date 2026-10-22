@@ -3,9 +3,12 @@
 
 use url::Url;
 
+mod chain_identity;
 mod handlers;
 pub mod metrics;
 pub mod position_accounting;
+
+pub use chain_identity::sync_chain_identity;
 
 pub use handlers::{
     AiCreditHandler, BlockingHandler, GovernanceHandler, InsuranceHandler, JuryHandler,
@@ -60,6 +63,22 @@ pub async fn setup_social_indexer(
         .run_migrations(Some(&MIGRATIONS))
         .await
         .context("Failed to run social migrations")?;
+
+    let grpc_url = client_args
+        .ingestion
+        .rpc_api_url
+        .as_ref()
+        .map(|url| url.to_string())
+        .or_else(|| {
+            client_args
+                .streaming
+                .streaming_url
+                .as_ref()
+                .map(|url| url.to_string())
+        });
+    sync_chain_identity(&store, grpc_url.as_deref())
+        .await
+        .context("Failed to sync indexer chain identity")?;
 
     registry.register(Box::new(DbConnectionStatsCollector::new(
         Some("social_indexer_db"),

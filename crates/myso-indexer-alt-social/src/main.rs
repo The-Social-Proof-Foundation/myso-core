@@ -117,6 +117,16 @@ async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
 
     let env = env.context("--env is required when running the social indexer")?;
 
+    let grpc_url = rpc_api_url
+        .as_ref()
+        .map(|url| url.to_string())
+        .or_else(|| {
+            streaming_args
+                .streaming_url
+                .as_ref()
+                .map(|url| url.to_string())
+        });
+
     let ingestion_args = if let Some(path) = local_ingestion_path {
         IngestionClientArgs {
             local_ingestion_path: Some(path),
@@ -146,6 +156,10 @@ async fn run_indexer(args: Args) -> Result<(), anyhow::Error> {
         .run_migrations(Some(&MIGRATIONS))
         .await
         .context("Failed to run pending migrations")?;
+
+    social_indexer::sync_chain_identity(&store, grpc_url.as_deref())
+        .await
+        .context("Failed to sync indexer chain identity")?;
 
     registry.register(Box::new(DbConnectionStatsCollector::new(
         Some("social_indexer_db"),
