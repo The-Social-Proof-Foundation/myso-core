@@ -8,9 +8,8 @@ ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
 WORKDIR /app
 
-# librocksdb-sys can produce a malformed static archive when C/C++ builds run with
-# high parallelism on memory-constrained builders (e.g. Railway).
-ENV CARGO_BUILD_JOBS=1
+# librocksdb-sys can produce a malformed static archive when its C/C++ build runs
+# with high parallelism on memory-constrained builders (e.g. Railway).
 ENV CMAKE_BUILD_PARALLEL_LEVEL=1
 
 # Install dependencies
@@ -28,13 +27,17 @@ RUN apt-get update && apt-get install -y \
 # Copy workspace (build context must be repo root)
 COPY . .
 
-# Build librocksdb-sys first so its static archive is created before other crates
-# compile in parallel.
-RUN cargo build --release -p librocksdb-sys
-
-# Rust crates can compile with more parallelism once rocksdb is built.
-ENV CARGO_BUILD_JOBS=4
-RUN cargo build --release --bin myso-indexer-alt-graphql
+# Railway reuses a cache mount across deploys only when its id is
+# s/<service id>-<path>. This id is the testnet myso-graphql-rpc service.
+# The mount is not an image layer, so the binary is copied out of target/.
+# A cold cache still compiles RocksDB serially. A warm cache skips crates
+# whose sources did not change.
+RUN --mount=type=cache,id=s/6181256e-b22f-4efd-b49e-45423df9e66d-/usr/local/cargo/registry,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=s/6181256e-b22f-4efd-b49e-45423df9e66d-/usr/local/cargo/git,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,id=s/6181256e-b22f-4efd-b49e-45423df9e66d-/app/target,target=/app/target,sharing=locked \
+    CARGO_BUILD_JOBS=1 cargo build --release -p librocksdb-sys \
+    && CARGO_BUILD_JOBS=4 cargo build --release --bin myso-indexer-alt-graphql \
+    && cp /app/target/release/myso-indexer-alt-graphql /usr/local/bin/myso-indexer-alt-graphql
 
 # Production Image
 FROM debian:bookworm-slim AS runtime
@@ -54,7 +57,7 @@ RUN apt-get update && apt-get install -y \
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 
 WORKDIR /app
-COPY --from=builder /app/target/release/myso-indexer-alt-graphql /usr/local/bin
+COPY --from=builder /usr/local/bin/myso-indexer-alt-graphql /usr/local/bin/myso-indexer-alt-graphql
 COPY crates/myso-indexer-alt-graphql/config/indexer-config.toml /app/config/indexer-config.toml
 
 # Create entrypoint script
