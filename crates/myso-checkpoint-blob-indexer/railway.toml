@@ -22,10 +22,12 @@ STREAMING_URL = "https://fullnode.testnet.mysocial.network:443"
 # Zstd compression level for checkpoint blobs (produces .binpb.zst format expected by downstream consumers)
 COMPRESSION_LEVEL = "3"
 
-# Google Cloud Storage (REQUIRED) - output bucket for checkpoint blobs
-REMOTE_STORE_BUCKET = "mysocial-testnet-archive"
-# HTTP checkpoint store for ingestion (fallback when streaming, or primary when STREAMING_URL not set)
-REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-checkpoints"
-
-# GCS Authentication - Set this in Railway UI (not here for security)
-# GCS_SERVICE_ACCOUNT_JSON = "{ your service account JSON content }"
+# S3 bucket the indexer writes checkpoint blobs to (Tigris)
+REMOTE_STORE_BUCKET = "checkpoints-archive"
+# Public HTTP URL for the same bucket. Used when STREAMING_URL is unset.
+REMOTE_STORE_URL = "https://checkpoints-archive.t3.tigrisfiles.io"
+# Tigris S3 API. Keys stay in the Railway UI.
+AWS_ENDPOINT = "https://t3.storage.dev"
+AWS_DEFAULT_REGION = "auto"
+# AWS_ACCESS_KEY_ID
+# AWS_SECRET_ACCESS_KEY

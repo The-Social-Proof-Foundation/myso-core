@@ -12,7 +12,7 @@ fi
 
 if [ -z "$REMOTE_STORE_URL" ]; then
   echo "ERROR: REMOTE_STORE_URL environment variable is not set"
-  echo "Expected: REMOTE_STORE_URL=https://storage.googleapis.com/mysocial-testnet-checkpoint-blobs"
+  echo "Expected: REMOTE_STORE_URL=https://checkpoints-archive.t3.tigrisfiles.io"
   exit 1
 fi
 

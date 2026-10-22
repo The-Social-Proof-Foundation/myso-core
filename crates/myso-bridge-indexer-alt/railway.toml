@@ -19,8 +19,8 @@ RUST_LOG = "info,myso_bridge_indexer_alt=debug"
 # DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 
 # Checkpoint store - only used when STREAMING_URL is not set. When streaming is set, gRPC GetCheckpoint
-# is used for ingestion fallback (no remote store needed). Use mysocial-testnet-archive for .binpb.zst.
-REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-archive"
+# is used for ingestion fallback (no remote store needed). Public Tigris URL for .binpb.zst blobs.
+REMOTE_STORE_URL = "https://checkpoints-archive.t3.tigrisfiles.io"
 
 # gRPC streaming (optional, for faster ingestion)
 STREAMING_URL = "https://fullnode.testnet.mysocial.network:443"

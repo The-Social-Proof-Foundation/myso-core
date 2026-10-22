@@ -7,7 +7,7 @@ services:
       dockerfile: crates/myso-bridge-indexer-alt/Dockerfile
     environment:
       DATABASE_URL: "postgres://postgres:postgrespw@postgres:5432/bridge"
-      REMOTE_STORE_URL: "https://storage.googleapis.com/mysocial-testnet-checkpoint-blobs"
+      REMOTE_STORE_URL: "https://checkpoints-archive.t3.tigrisfiles.io"
       STREAMING_URL: "https://fullnode.testnet.mysocial.network:443"
       FIRST_CHECKPOINT: "43917829"
       RUST_LOG: "info,myso_bridge_indexer_alt=debug"

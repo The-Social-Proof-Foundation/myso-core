@@ -8,14 +8,14 @@ services:
     environment:
       RPC_API_URL: "https://fullnode.testnet.mysocial.network:443"
       STREAMING_URL: "https://fullnode.testnet.mysocial.network:443"
-      REMOTE_STORE_BUCKET: "mysocial-testnet-archive"
+      REMOTE_STORE_BUCKET: "checkpoints-archive"
+      REMOTE_STORE_URL: "https://checkpoints-archive.t3.tigrisfiles.io"
+      AWS_ENDPOINT: "https://t3.storage.dev"
+      AWS_DEFAULT_REGION: "auto"
       COMPRESSION_LEVEL: "3"
-      REMOTE_STORE_URL: "https://storage.googleapis.com/mysocial-testnet-checkpoints"
+      # Required: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
       RUST_LOG: "info,myso_checkpoint_blob_indexer=debug"
       RUST_BACKTRACE: "1"
     ports:
       - "9184:9184"
-    # Optional: mount GCS credentials for local dev
-    # volumes:
-    #   - ./credentials/gcs-key.json:/app/credentials/gcs-key.json:ro
     restart: unless-stopped

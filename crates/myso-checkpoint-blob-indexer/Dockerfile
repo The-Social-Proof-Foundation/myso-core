@@ -1,5 +1,5 @@
 # Build application
-FROM rust:1.82-bookworm AS builder
+FROM rust:1.94.1-bookworm AS builder
 ARG PROFILE=release
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
@@ -28,8 +28,6 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
     gettext-base \
-    libssl1.1 \
-    jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc as memory allocator
@@ -39,9 +37,6 @@ WORKDIR /app
 
 # Copy the binary
 COPY --from=builder /app/target/release/myso-checkpoint-blob-indexer /usr/local/bin/
-
-# Create directory for credentials
-RUN mkdir -p /app/credentials
 
 # Copy and install entrypoint script
 COPY crates/myso-checkpoint-blob-indexer/entrypoint.sh /usr/local/bin/entrypoint.sh

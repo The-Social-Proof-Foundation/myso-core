@@ -14,50 +14,38 @@ fi
 
 if [ -z "$REMOTE_STORE_BUCKET" ]; then
   echo "ERROR: REMOTE_STORE_BUCKET environment variable is not set"
-  echo "Expected: REMOTE_STORE_BUCKET=mysocial-testnet-archive"
+  echo "Expected: REMOTE_STORE_BUCKET=checkpoints-archive"
   exit 1
 fi
 
-# Create GCS service account key from environment variables
-if [ -n "$GCS_SERVICE_ACCOUNT_JSON" ]; then
-  echo "Creating GCS service account key file..."
-  printf "%s" "$GCS_SERVICE_ACCOUNT_JSON" > /app/credentials/gcs-key.json
-  export GOOGLE_APPLICATION_CREDENTIALS="/app/credentials/gcs-key.json"
-  echo "✓ GCS authentication configured"
-
-  if [ -f "/app/credentials/gcs-key.json" ]; then
-    if jq empty /app/credentials/gcs-key.json 2>/dev/null; then
-      if jq -e ".type and .project_id and .private_key and .client_email" /app/credentials/gcs-key.json >/dev/null 2>&1; then
-        echo "✓ GCS key file valid"
-      else
-        echo "✗ GCS key file missing required fields"
-        exit 1
-      fi
-    else
-      echo "✗ GCS key file is not valid JSON"
-      exit 1
-    fi
-  else
-    echo "✗ GCS key file not found"
-    exit 1
-  fi
-else
-  echo "WARNING: GCS_SERVICE_ACCOUNT_JSON not set - uploads may fail"
+# AmazonS3Builder::from_env reads AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+# AWS_DEFAULT_REGION (or AWS_REGION), and optional AWS_ENDPOINT.
+if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+  echo "ERROR: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set"
+  exit 1
 fi
+if [ -z "${AWS_DEFAULT_REGION:-$AWS_REGION}" ]; then
+  echo "ERROR: AWS_DEFAULT_REGION or AWS_REGION must be set"
+  exit 1
+fi
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-$AWS_REGION}"
 
 # Use PORT from Railway (or default 9184) so health checks reach the metrics server
 METRICS_PORT="${PORT:-9184}"
-REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://storage.googleapis.com/mysocial-testnet-checkpoints}"
 COMPRESSION_LEVEL="${COMPRESSION_LEVEL:-3}"
 
 # Build CLI args - when streaming is set, ingestion uses gRPC fallback (no remote-store-url needed)
-set -- --gcs "$REMOTE_STORE_BUCKET" \
+set -- --s3 "$REMOTE_STORE_BUCKET" \
   --metrics-address "0.0.0.0:$METRICS_PORT" \
   --compression-level "$COMPRESSION_LEVEL"
 
 if [ -n "$STREAMING_URL" ]; then
   set -- "$@" --streaming-url "$STREAMING_URL" --rpc-api-url "$STREAMING_URL"
 else
+  if [ -z "$REMOTE_STORE_URL" ]; then
+    echo "ERROR: REMOTE_STORE_URL must be set when STREAMING_URL is unset"
+    exit 1
+  fi
   set -- "$@" --remote-store-url "$REMOTE_STORE_URL"
 fi
 
@@ -72,7 +60,11 @@ fi
 echo "=== Configuration ==="
 echo "RPC_URL: $RPC_URL"
 echo "BUCKET: $REMOTE_STORE_BUCKET"
-echo "REMOTE_STORE_URL: $REMOTE_STORE_URL"
+echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
+if [ -n "$AWS_ENDPOINT" ]; then
+  echo "AWS_ENDPOINT: $AWS_ENDPOINT"
+fi
+echo "REMOTE_STORE_URL: ${REMOTE_STORE_URL:-unset}"
 echo "METRICS_PORT: $METRICS_PORT"
 echo "COMPRESSION_LEVEL: $COMPRESSION_LEVEL"
 if [ -n "$STREAMING_URL" ]; then
