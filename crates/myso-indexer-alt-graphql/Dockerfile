@@ -2,17 +2,8 @@
 #
 # Copy in all crates, Cargo.toml and Cargo.lock unmodified,
 # and build the application.
-FROM rust:1.92-bookworm AS builder
-ARG PROFILE=release
-ARG GIT_REVISION
-ENV GIT_REVISION=$GIT_REVISION
-WORKDIR /app
+FROM rust:1.92-bookworm AS chef
 
-# librocksdb-sys can produce a malformed static archive when its C/C++ build runs
-# with high parallelism on memory-constrained builders (e.g. Railway).
-ENV CMAKE_BUILD_PARALLEL_LEVEL=1
-
-# Install dependencies
 RUN apt-get update && apt-get install -y \
     cmake \
     clang \
@@ -23,21 +14,29 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
+RUN cargo install cargo-chef --version 0.1.78 --locked
+WORKDIR /app
 
-# Copy workspace (build context must be repo root)
+# librocksdb-sys can produce a malformed static archive when its C/C++ build runs
+# with high parallelism on memory-constrained builders (e.g. Railway).
+ENV CMAKE_BUILD_PARALLEL_LEVEL=1
+ENV CARGO_BUILD_JOBS=1
+
+FROM chef AS planner
 COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
-# Railway reuses a cache mount across deploys only when its id is
-# s/<service id>-<path>. This id is the testnet myso-graphql-rpc service.
-# The mount is not an image layer, so the binary is copied out of target/.
-# A cold cache still compiles RocksDB serially. A warm cache skips crates
-# whose sources did not change.
-RUN --mount=type=cache,id=s/6181256e-b22f-4efd-b49e-45423df9e66d-/usr/local/cargo/registry,target=/usr/local/cargo/registry,sharing=locked \
-    --mount=type=cache,id=s/6181256e-b22f-4efd-b49e-45423df9e66d-/usr/local/cargo/git,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,id=s/6181256e-b22f-4efd-b49e-45423df9e66d-/app/target,target=/app/target,sharing=locked \
-    CARGO_BUILD_JOBS=1 cargo build --release -p librocksdb-sys \
-    && CARGO_BUILD_JOBS=4 cargo build --release --bin myso-indexer-alt-graphql \
-    && cp /app/target/release/myso-indexer-alt-graphql /usr/local/bin/myso-indexer-alt-graphql
+FROM chef AS builder
+ARG PROFILE=release
+ARG GIT_REVISION
+ENV GIT_REVISION=$GIT_REVISION
+COPY --from=planner /app/recipe.json recipe.json
+# Dependencies only, including RocksDB. Reused when Cargo manifests do not change.
+RUN cargo chef cook --release --recipe-path recipe.json --bin myso-indexer-alt-graphql
+COPY . .
+# Rust crates can compile with more parallelism once rocksdb is built.
+ENV CARGO_BUILD_JOBS=4
+RUN cargo build --release --bin myso-indexer-alt-graphql
 
 # Production Image
 FROM debian:bookworm-slim AS runtime
@@ -57,7 +56,7 @@ RUN apt-get update && apt-get install -y \
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 
 WORKDIR /app
-COPY --from=builder /usr/local/bin/myso-indexer-alt-graphql /usr/local/bin/myso-indexer-alt-graphql
+COPY --from=builder /app/target/release/myso-indexer-alt-graphql /usr/local/bin
 COPY crates/myso-indexer-alt-graphql/config/indexer-config.toml /app/config/indexer-config.toml
 
 # Create entrypoint script
