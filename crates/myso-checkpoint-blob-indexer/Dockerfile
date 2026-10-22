@@ -16,8 +16,16 @@ RUN apt-get update && apt-get install -y \
 # Copy source code
 COPY . .
 
-# Build the checkpoint blob indexer
-RUN cargo build --release --bin myso-checkpoint-blob-indexer
+# Railway reuses a cache mount across deploys only when its id is
+# s/<service id>-<path>. This id is the testnet myso-checkpoint-blob-indexer service.
+# The mount is not an image layer, so the binary is copied out of target/.
+# A cold cache still compiles the release binary. A warm cache skips crates
+# whose sources did not change.
+RUN --mount=type=cache,id=s/ad04e43b-07d8-4981-a490-0f8a9445bcee-/usr/local/cargo/registry,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=s/ad04e43b-07d8-4981-a490-0f8a9445bcee-/usr/local/cargo/git,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,id=s/ad04e43b-07d8-4981-a490-0f8a9445bcee-/app/target,target=/app/target,sharing=locked \
+    cargo build --release --bin myso-checkpoint-blob-indexer \
+    && cp /app/target/release/myso-checkpoint-blob-indexer /usr/local/bin/myso-checkpoint-blob-indexer
 
 # Production Image
 FROM debian:bookworm-slim AS runtime
@@ -36,7 +44,7 @@ ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 WORKDIR /app
 
 # Copy the binary
-COPY --from=builder /app/target/release/myso-checkpoint-blob-indexer /usr/local/bin/
+COPY --from=builder /usr/local/bin/myso-checkpoint-blob-indexer /usr/local/bin/myso-checkpoint-blob-indexer
 
 # Copy and install entrypoint script
 COPY crates/myso-checkpoint-blob-indexer/entrypoint.sh /usr/local/bin/entrypoint.sh
