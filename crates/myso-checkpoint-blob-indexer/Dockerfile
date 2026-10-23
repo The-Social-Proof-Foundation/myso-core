@@ -1,27 +1,22 @@
 # Build application
-FROM rust:1.94.1-bookworm AS chef
+FROM rust:1.94.1-bookworm AS builder
+ARG PROFILE=release
+ARG GIT_REVISION
+ENV GIT_REVISION=$GIT_REVISION
+WORKDIR /app
+
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     cmake \
     clang \
     ca-certificates \
     pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
-RUN cargo install cargo-chef --version 0.1.78 --locked
-WORKDIR /app
+    libssl-dev
 
-FROM chef AS planner
+# Copy source code
 COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
 
-FROM chef AS builder
-ARG PROFILE=release
-ARG GIT_REVISION
-ENV GIT_REVISION=$GIT_REVISION
-COPY --from=planner /app/recipe.json recipe.json
-# Dependencies only. Reused when Cargo manifests do not change.
-RUN cargo chef cook --release --recipe-path recipe.json --bin myso-checkpoint-blob-indexer
-COPY . .
+# Build the checkpoint blob indexer
 RUN cargo build --release --bin myso-checkpoint-blob-indexer
 
 # Production Image

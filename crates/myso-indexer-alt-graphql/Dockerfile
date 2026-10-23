@@ -2,7 +2,16 @@
 #
 # Copy in all crates, Cargo.toml and Cargo.lock unmodified,
 # and build the application.
-FROM rust:1.94.1-bookworm AS chef
+FROM rust:1.94.1-bookworm AS builder
+ARG PROFILE=release
+ARG GIT_REVISION
+ENV GIT_REVISION=$GIT_REVISION
+WORKDIR /app
+
+# librocksdb-sys can produce a malformed static archive when its C/C++ build runs
+# with high parallelism on memory-constrained builders (e.g. Railway).
+ENV CMAKE_BUILD_PARALLEL_LEVEL=1
+ENV CARGO_BUILD_JOBS=1
 
 RUN apt-get update && apt-get install -y \
     cmake \
@@ -14,26 +23,11 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
-RUN cargo install cargo-chef --version 0.1.78 --locked
-WORKDIR /app
 
-# librocksdb-sys can produce a malformed static archive when its C/C++ build runs
-# with high parallelism on memory-constrained builders (e.g. Railway).
-ENV CMAKE_BUILD_PARALLEL_LEVEL=1
-ENV CARGO_BUILD_JOBS=1
-
-FROM chef AS planner
 COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
 
-FROM chef AS builder
-ARG PROFILE=release
-ARG GIT_REVISION
-ENV GIT_REVISION=$GIT_REVISION
-COPY --from=planner /app/recipe.json recipe.json
-# Dependencies only, including RocksDB. Reused when Cargo manifests do not change.
-RUN cargo chef cook --release --recipe-path recipe.json --bin myso-indexer-alt-graphql
-COPY . .
+RUN cargo build --release -p librocksdb-sys
+
 # Rust crates can compile with more parallelism once rocksdb is built.
 ENV CARGO_BUILD_JOBS=4
 RUN cargo build --release --bin myso-indexer-alt-graphql
