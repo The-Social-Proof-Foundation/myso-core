@@ -86,4 +86,4 @@ echo "✅ Created myso.keystore"
 echo "🚀 Starting MySocial faucet..."
 
 # Start the faucet with correct host binding for Railway
-exec ./bin/myso-faucet --write-ahead-log /app/faucet.wal --host-ip 0.0.0.0 --port ${PORT:-5003}
+exec /app/bin/myso-faucet --write-ahead-log /app/faucet.wal --host-ip 0.0.0.0 --port ${PORT:-5003}
