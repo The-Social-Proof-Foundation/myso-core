@@ -1,5 +1,5 @@
 # Build application
-FROM rust:1.82-bookworm AS builder
+FROM rust:1.94.1-bookworm AS builder
 ARG PROFILE=release
 ARG GIT_REVISION
 ENV GIT_REVISION=$GIT_REVISION
@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
     libpq5 \
-    libssl1.1 \
+    libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Use jemalloc as memory allocator
