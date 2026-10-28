@@ -1,5 +1,5 @@
-alter table progress_store
-    add target_checkpoint BIGINT default 9223372036854775807 not null;
+ALTER TABLE progress_store
+    ADD COLUMN IF NOT EXISTS target_checkpoint BIGINT DEFAULT 9223372036854775807 NOT NULL;
 
-alter table progress_store
-    add timestamp timestamp default now() not null;
+ALTER TABLE progress_store
+    ADD COLUMN IF NOT EXISTS timestamp TIMESTAMP DEFAULT now() NOT NULL;

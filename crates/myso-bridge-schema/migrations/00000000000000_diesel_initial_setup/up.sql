@@ -1,4 +1,4 @@
-CREATE TABLE token_transfer_data
+CREATE TABLE IF NOT EXISTS token_transfer_data
 (
     chain_id                    INT          NOT NULL,
     nonce                       BIGINT       NOT NULL,
@@ -12,13 +12,13 @@ CREATE TABLE token_transfer_data
     amount                      BIGINT       NOT NULL,
     PRIMARY KEY(chain_id, nonce)
 );
-CREATE INDEX token_transfer_data_block_height ON token_transfer_data (block_height);
-CREATE INDEX token_transfer_data_timestamp_ms ON token_transfer_data (timestamp_ms);
-CREATE INDEX token_transfer_data_sender_address ON token_transfer_data (sender_address);
-CREATE INDEX token_transfer_data_destination_chain ON token_transfer_data (destination_chain);
-CREATE INDEX token_transfer_data_token_id ON token_transfer_data (token_id);
+CREATE INDEX IF NOT EXISTS token_transfer_data_block_height ON token_transfer_data (block_height);
+CREATE INDEX IF NOT EXISTS token_transfer_data_timestamp_ms ON token_transfer_data (timestamp_ms);
+CREATE INDEX IF NOT EXISTS token_transfer_data_sender_address ON token_transfer_data (sender_address);
+CREATE INDEX IF NOT EXISTS token_transfer_data_destination_chain ON token_transfer_data (destination_chain);
+CREATE INDEX IF NOT EXISTS token_transfer_data_token_id ON token_transfer_data (token_id);
 
-CREATE TABLE token_transfer
+CREATE TABLE IF NOT EXISTS token_transfer
 (
     chain_id                    INT          NOT NULL,
     nonce                       BIGINT       NOT NULL,
@@ -31,16 +31,16 @@ CREATE TABLE token_transfer
     data_source                 TEXT         NOT NULL,
     PRIMARY KEY(chain_id, nonce, status)
 );
-CREATE INDEX token_transfer_block_height ON token_transfer (block_height);
-CREATE INDEX token_transfer_timestamp_ms ON token_transfer (timestamp_ms);
+CREATE INDEX IF NOT EXISTS token_transfer_block_height ON token_transfer (block_height);
+CREATE INDEX IF NOT EXISTS token_transfer_timestamp_ms ON token_transfer (timestamp_ms);
 
-CREATE TABLE progress_store
+CREATE TABLE IF NOT EXISTS progress_store
 (
     task_name                   TEXT          PRIMARY KEY,
     checkpoint                  BIGINT        NOT NULL
 );
 
-CREATE TABLE myso_progress_store
+CREATE TABLE IF NOT EXISTS myso_progress_store
 (
     id                           INT          PRIMARY KEY, -- dummy value
     txn_digest                   bytea        NOT NULL

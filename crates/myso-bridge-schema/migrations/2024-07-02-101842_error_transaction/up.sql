@@ -1,4 +1,4 @@
-CREATE TABLE myso_error_transactions
+CREATE TABLE IF NOT EXISTS myso_error_transactions
 (
     txn_digest                  bytea        PRIMARY KEY,
     sender_address              bytea        NOT NULL,

@@ -1,4 +1,4 @@
-CREATE TABLE governance_actions
+CREATE TABLE IF NOT EXISTS governance_actions
 (
     id                          BIGSERIAL    PRIMARY KEY,
     nonce                       BIGINT,
