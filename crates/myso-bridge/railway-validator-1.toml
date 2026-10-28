@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "crates/myso-bridge/Dockerfile"
 
 [deploy]
-startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key_validator_1 && /work/target/release/myso-bridge-node --config-path /app/bridge-config-validator-1.yaml'"
+startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key_validator_1 && envsubst \"\\$ETH_RPC_URL \\$ETH_BRIDGE_PROXY_ADDRESS\" < /app/bridge-config-validator-1.yaml > /tmp/bridge-config-validator-1.yaml && /work/target/release/myso-bridge-node --config-path /tmp/bridge-config-validator-1.yaml'"
 healthcheckPath = "/ping"
 healthcheckTimeout = 300
 
@@ -26,7 +26,7 @@ DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 # ETH_RPC_URL must be set (contains API keys - do not commit to Git)
 ETH_RPC_URL = ""
 # ETH_BRIDGE_PROXY_ADDRESS must be set (UPDATED to new deployment)
-ETH_BRIDGE_PROXY_ADDRESS = "0x02D265E77590025660a4eff50E7227136762b0d2"
+ETH_BRIDGE_PROXY_ADDRESS = "0x538f62e8E903DcaAAB6eB2cD1c5b9A8742e66CB1"
 
 # Optional: Override other config values
 # MYSO_RPC_URL = "https://fullnode.testnet.mysocial.network:443"
