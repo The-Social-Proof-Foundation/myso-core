@@ -87,6 +87,12 @@ pub enum ProfileRow {
         username: String,
         owner_address: Option<String>,
     },
+    ProfileOwnerRotate {
+        profile_id: String,
+        previous_owner: String,
+        new_owner: String,
+        updated_at: chrono::NaiveDateTime,
+    },
     ProfileEvent(NewProfileEvent),
     UsernameListing(NewUsernameListing),
     UsernameListingStatusUpdate {
@@ -184,6 +190,17 @@ impl ProfileRow {
                 profile_id,
                 username,
                 owner_address,
+            }),
+            crate::handlers::SocialEventRow::ProfileOwnerRotate {
+                profile_id,
+                previous_owner,
+                new_owner,
+                updated_at,
+            } => Some(ProfileRow::ProfileOwnerRotate {
+                profile_id,
+                previous_owner,
+                new_owner,
+                updated_at,
             }),
             crate::handlers::SocialEventRow::ProfileEvent(e) => Some(ProfileRow::ProfileEvent(e)),
             crate::handlers::SocialEventRow::UsernameListing(l) => {
@@ -739,6 +756,27 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 );
             }
             total += updated;
+        }
+        ProfileRow::ProfileOwnerRotate {
+            profile_id,
+            previous_owner,
+            new_owner,
+            updated_at,
+        } => {
+            // Older rows may lack profile_id; the old owner still identifies them.
+            total += diesel::update(profiles::table)
+                .filter(
+                    profiles::profile_id
+                        .eq(common::normalize_hex_address(profile_id))
+                        .or(profiles::owner_address
+                            .eq(common::normalize_hex_address(previous_owner))),
+                )
+                .set((
+                    profiles::owner_address.eq(common::normalize_hex_address(new_owner)),
+                    profiles::updated_at.eq(updated_at),
+                ))
+                .execute(conn)
+                .await?;
         }
         ProfileRow::ProfileUsernameSet {
             profile_id,

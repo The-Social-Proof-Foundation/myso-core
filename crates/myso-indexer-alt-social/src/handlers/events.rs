@@ -797,6 +797,17 @@ struct BcsAgentRoomBound {
     created_at_ms: u64,
 }
 
+/// Mirror of `messaging::AgentRoomTaskBound`; field order must match the Move struct.
+#[derive(Debug, Deserialize)]
+struct BcsAgentRoomTaskBound {
+    group_id: BcsMoveObjectId,
+    task_id: BcsMoveObjectId,
+    binder_actor: AccountAddress,
+    binder_principal: AccountAddress,
+    organization_id: Option<BcsMoveObjectId>,
+    bound_at_ms: u64,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct BcsEcosystemTreasuryUpdatedEvent {
     updated_by: AccountAddress,
@@ -2688,13 +2699,23 @@ pub struct BcsPolicyExpiredEvent {
 }
 
 // MyData marketplace event structs - field order matches mydata.move exactly
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BcsMyDataCreatedEvent {
     ip_id: AccountAddress,
     owner: AccountAddress,
     media_type: String,
     platform_id: Option<AccountAddress>,
     access_configuration_kind: u8,
+    created_at: u64,
+}
+
+/// Listings created before `access_configuration_kind` was added to the event.
+#[derive(Debug, Deserialize)]
+struct BcsMyDataCreatedEventLegacy {
+    ip_id: AccountAddress,
+    owner: AccountAddress,
+    media_type: String,
+    platform_id: Option<AccountAddress>,
     created_at: u64,
 }
 
@@ -3253,6 +3274,24 @@ pub struct BcsProfileSubscriptionServiceDeactivatedEvent {
     service_id: AccountAddress,
     profile_owner: AccountAddress,
     deactivated_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsServicePaymentRecipientUpdatedEvent {
+    service_id: AccountAddress,
+    previous_recipient: AccountAddress,
+    new_recipient: AccountAddress,
+    updated_by: AccountAddress,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsSubscriptionAutoRenewUpdatedEvent {
+    subscription_id: AccountAddress,
+    service_id: AccountAddress,
+    subscriber: AccountAddress,
+    auto_renew: bool,
+    timestamp: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -3823,6 +3862,133 @@ fn parse_event_contents_inner(
     }
 }
 
+// Mirrors for events added after the first pass. Field order must match the Move structs.
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsTaskFeeRecipientChanged {
+    pub previous_recipient: AccountAddress,
+    pub new_recipient: AccountAddress,
+    pub updated_by: AccountAddress,
+    pub updated_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsJuryCaseRemainderSweptEvent {
+    pub case_id: BcsMoveObjectId,
+    pub recipient: AccountAddress,
+    pub amount_mist: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsRosterEntryRefreshed {
+    pub agent_id: BcsMoveObjectId,
+    pub refreshed_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsOrgTreasuryAccessChanged {
+    pub organization_id: BcsMoveObjectId,
+    pub recipient: AccountAddress,
+    pub has_access: bool,
+    pub updated_by: AccountAddress,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsOrgTreasuryFunded {
+    pub organization_id: BcsMoveObjectId,
+    pub amount: u64,
+    pub funded_by: AccountAddress,
+    pub new_balance: u64,
+    pub coin_type: BcsMoveTypeName,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BcsOrgTreasuryWithdrawn {
+    pub organization_id: BcsMoveObjectId,
+    pub recipient: AccountAddress,
+    pub amount: u64,
+    pub withdrawn_by: AccountAddress,
+    pub remaining_balance: u64,
+    pub coin_type: BcsMoveTypeName,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsSubAgentOwnerPolicyChanged {
+    pub account_id: BcsMoveObjectId,
+    pub principal_owner: AccountAddress,
+    pub agent_object_id: BcsMoveObjectId,
+    pub derived_address: AccountAddress,
+    pub change_kind: u8,
+    pub capability_mask: u64,
+    pub previous_capabilities: u64,
+    pub next_capabilities: u64,
+    pub delegatable_caps: u64,
+    pub previous_max_action_spend: Option<u64>,
+    pub next_max_action_spend: Option<u64>,
+    pub platform_scope: Option<AccountAddress>,
+    pub timestamp_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsMemoryAccountOwnerRotationProposed {
+    pub account_id: BcsMoveObjectId,
+    pub old_owner: AccountAddress,
+    pub new_owner: AccountAddress,
+    pub agent_count: u64,
+    pub organization_count: u64,
+    pub proposed_at_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsMemoryAccountOwnerRotated {
+    pub account_id: BcsMoveObjectId,
+    pub old_owner: AccountAddress,
+    pub new_owner: AccountAddress,
+    pub profile_id: AccountAddress,
+    pub timestamp_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsMemoryAccountOwnerRotationReferenceUpdated {
+    pub account_id: BcsMoveObjectId,
+    pub reference_id: BcsMoveObjectId,
+    pub reference_kind: u8,
+    pub old_owner: AccountAddress,
+    pub new_owner: AccountAddress,
+    pub updated_by: AccountAddress,
+    pub timestamp_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsPlatformDeveloperChangedEvent {
+    pub platform_id: AccountAddress,
+    pub previous_developer: AccountAddress,
+    pub new_developer: AccountAddress,
+    pub changed_by: AccountAddress,
+    pub changed_at: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsPostAccessPurchaseEvent {
+    pub post_id: AccountAddress,
+    pub mydata_id: BcsMoveObjectId,
+    pub buyer: AccountAddress,
+    pub seller: AccountAddress,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BcsProfileOwnerRotatedEvent {
+    pub profile_id: AccountAddress,
+    pub memory_account_id: BcsMoveObjectId,
+    pub old_owner: AccountAddress,
+    pub new_owner: AccountAddress,
+    pub timestamp_ms: u64,
+}
+
 fn parse_profile_event(
     event_name: &str,
     contents: &[u8],
@@ -3849,6 +4015,17 @@ fn parse_profile_event(
                 "owner_address": addr_to_string(&ev.owner),
                 "username": ev.username,
                 "deleted_at": ev.deleted_at,
+            })))
+        }
+        "ProfileOwnerRotatedEvent" => {
+            let ev = bcs::from_bytes::<BcsProfileOwnerRotatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "profile_id": addr_to_string(&ev.profile_id),
+                "memory_account_id": move_object_id_to_string(&ev.memory_account_id),
+                "previous_owner": addr_to_string(&ev.old_owner),
+                "new_owner": addr_to_string(&ev.new_owner),
+                "timestamp_ms": ev.timestamp_ms,
             })))
         }
         "ProfileUpdatedEvent" => {
@@ -4196,6 +4373,14 @@ fn parse_jury_event(
                 "left_at_ms": ev.left_at_ms,
             })))
         }
+        "RosterEntryRefreshed" => {
+            let ev = bcs::from_bytes::<BcsRosterEntryRefreshed>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "agent_id": move_object_id_to_string(&ev.agent_id),
+                "refreshed_at_ms": ev.refreshed_at_ms,
+            })))
+        }
         "RosterSuspended" => {
             let ev = bcs::from_bytes::<BcsRosterSuspended>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -4529,6 +4714,16 @@ fn parse_agent_task_event(
                 "reviewed_at_ms": ev.reviewed_at_ms,
             })))
         }
+        "TaskFeeRecipientChanged" => {
+            let ev = bcs::from_bytes::<BcsTaskFeeRecipientChanged>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "previous_recipient": addr_to_string(&ev.previous_recipient),
+                "new_recipient": addr_to_string(&ev.new_recipient),
+                "updated_by": addr_to_string(&ev.updated_by),
+                "updated_at_ms": ev.updated_at_ms,
+            })))
+        }
         "TaskConfigUpdated" => {
             let ev = bcs::from_bytes::<BcsTaskConfigUpdated>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -4698,6 +4893,18 @@ fn parse_messaging_event(
                 "creator_principal": addr_to_string(&ev.creator_principal),
                 "organization_id": optional_move_object_id_json(&ev.organization_id),
                 "created_at_ms": ev.created_at_ms,
+            })))
+        }
+        "AgentRoomTaskBound" => {
+            let ev = bcs::from_bytes::<BcsAgentRoomTaskBound>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "group_id": move_object_id_to_string(&ev.group_id),
+                "task_id": move_object_id_to_string(&ev.task_id),
+                "binder_actor": addr_to_string(&ev.binder_actor),
+                "binder_principal": addr_to_string(&ev.binder_principal),
+                "organization_id": optional_move_object_id_json(&ev.organization_id),
+                "bound_at_ms": ev.bound_at_ms,
             })))
         }
         _ => Ok(None),
@@ -5078,6 +5285,15 @@ fn parse_governance_event(
                 "claimed_at_ms": ev.claimed_at_ms,
             })))
         }
+        "JuryCaseRemainderSweptEvent" => {
+            let ev = bcs::from_bytes::<BcsJuryCaseRemainderSweptEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "case_id": move_object_id_to_string(&ev.case_id),
+                "recipient": addr_to_string(&ev.recipient),
+                "amount_mist": ev.amount_mist,
+            })))
+        }
         "VoteRefundsSweptEvent" => {
             let ev = bcs::from_bytes::<BcsVoteRefundsSweptEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -5384,6 +5600,17 @@ fn parse_post_event(
                 "reported_at": ev.reported_at,
             })))
         }
+        "PostAccessPurchaseEvent" => {
+            let ev = bcs::from_bytes::<BcsPostAccessPurchaseEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "post_id": addr_to_string(&ev.post_id),
+                "mydata_id": move_object_id_to_string(&ev.mydata_id),
+                "buyer": addr_to_string(&ev.buyer),
+                "seller": addr_to_string(&ev.seller),
+                "timestamp": ev.timestamp,
+            })))
+        }
         "PostDeletedEvent" => {
             let ev = bcs::from_bytes::<BcsPostDeletedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -5648,6 +5875,97 @@ fn parse_memory_event(
                 "volume_mist": ev.volume_mist.to_string(),
                 "credibility_bps": ev.credibility_bps,
                 "updated_at_ms": ev.updated_at_ms,
+            })))
+        }
+        "OrgTreasuryAccessChanged" => {
+            let ev = bcs::from_bytes::<BcsOrgTreasuryAccessChanged>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": move_object_id_to_string(&ev.organization_id),
+                "recipient": addr_to_string(&ev.recipient),
+                "has_access": ev.has_access,
+                "updated_by": addr_to_string(&ev.updated_by),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "OrgTreasuryFunded" => {
+            let ev = bcs::from_bytes::<BcsOrgTreasuryFunded>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": move_object_id_to_string(&ev.organization_id),
+                "amount": ev.amount,
+                "funded_by": addr_to_string(&ev.funded_by),
+                "new_balance": ev.new_balance,
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "OrgTreasuryWithdrawn" => {
+            let ev = bcs::from_bytes::<BcsOrgTreasuryWithdrawn>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "organization_id": move_object_id_to_string(&ev.organization_id),
+                "recipient": addr_to_string(&ev.recipient),
+                "amount": ev.amount,
+                "withdrawn_by": addr_to_string(&ev.withdrawn_by),
+                "remaining_balance": ev.remaining_balance,
+                "coin_type": bcs_move_type_name_display(&ev.coin_type),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "SubAgentOwnerPolicyChanged" => {
+            let ev = bcs::from_bytes::<BcsSubAgentOwnerPolicyChanged>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": move_object_id_to_string(&ev.account_id),
+                "principal_owner": addr_to_string(&ev.principal_owner),
+                "agent_object_id": move_object_id_to_string(&ev.agent_object_id),
+                "derived_address": addr_to_string(&ev.derived_address),
+                "change_kind": ev.change_kind,
+                "capability_mask": ev.capability_mask,
+                "previous_capabilities": ev.previous_capabilities,
+                "capabilities": ev.next_capabilities,
+                "delegatable_caps": ev.delegatable_caps,
+                "previous_max_action_spend": ev.previous_max_action_spend,
+                "max_action_spend": ev.next_max_action_spend,
+                "platform_scope": optional_addr_json(&ev.platform_scope),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "MemoryAccountOwnerRotationProposed" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountOwnerRotationProposed>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": move_object_id_to_string(&ev.account_id),
+                "previous_owner": addr_to_string(&ev.old_owner),
+                "new_owner": addr_to_string(&ev.new_owner),
+                "agent_count": ev.agent_count,
+                "organization_count": ev.organization_count,
+                "proposed_at_ms": ev.proposed_at_ms,
+            })))
+        }
+        "MemoryAccountOwnerRotated" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountOwnerRotated>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": move_object_id_to_string(&ev.account_id),
+                "previous_owner": addr_to_string(&ev.old_owner),
+                "new_owner": addr_to_string(&ev.new_owner),
+                "profile_id": addr_to_string(&ev.profile_id),
+                "timestamp_ms": ev.timestamp_ms,
+            })))
+        }
+        "MemoryAccountOwnerRotationReferenceUpdated" => {
+            let ev = bcs::from_bytes::<BcsMemoryAccountOwnerRotationReferenceUpdated>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "account_id": move_object_id_to_string(&ev.account_id),
+                "reference_id": move_object_id_to_string(&ev.reference_id),
+                "reference_kind": ev.reference_kind,
+                "previous_owner": addr_to_string(&ev.old_owner),
+                "new_owner": addr_to_string(&ev.new_owner),
+                "updated_by": addr_to_string(&ev.updated_by),
+                "timestamp_ms": ev.timestamp_ms,
             })))
         }
         "MemoryAccountDeactivated" => {
@@ -6187,6 +6505,17 @@ fn parse_platform_event(
                 "updated_at": ev.updated_at,
             })))
         }
+        "PlatformDeveloperChangedEvent" => {
+            let ev = bcs::from_bytes::<BcsPlatformDeveloperChangedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "platform_id": addr_to_string(&ev.platform_id),
+                "previous_developer": addr_to_string(&ev.previous_developer),
+                "new_developer": addr_to_string(&ev.new_developer),
+                "changed_by": addr_to_string(&ev.changed_by),
+                "changed_at": ev.changed_at,
+            })))
+        }
         "PlatformApprovalChangedEvent" => {
             let ev = bcs::from_bytes::<BcsPlatformApprovalChangedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -6697,16 +7026,26 @@ fn parse_mydata_event(
 ) -> Result<Option<serde_json::Value>, EventParseError> {
     let result = match event_name {
         "MyDataCreatedEvent" | "DataCreatedEvent" => {
-            let ev = bcs::from_bytes::<BcsMyDataCreatedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "ip_id": addr_to_string(&ev.ip_id),
-                "owner": addr_to_string(&ev.owner),
-                "media_type": ev.media_type,
-                "platform_id": ev.platform_id.as_ref().map(addr_to_string),
-                "access_configuration_kind": ev.access_configuration_kind,
-                "created_at": ev.created_at,
-            })))
+            if let Ok(ev) = bcs::from_bytes::<BcsMyDataCreatedEvent>(contents) {
+                Ok(Some(serde_json::json!({
+                    "ip_id": addr_to_string(&ev.ip_id),
+                    "owner": addr_to_string(&ev.owner),
+                    "media_type": ev.media_type,
+                    "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                    "access_configuration_kind": ev.access_configuration_kind,
+                    "created_at": ev.created_at,
+                })))
+            } else {
+                let ev = bcs::from_bytes::<BcsMyDataCreatedEventLegacy>(contents)
+                    .map_err(|e| bcs_parse_err(e, contents))?;
+                Ok(Some(serde_json::json!({
+                    "ip_id": addr_to_string(&ev.ip_id),
+                    "owner": addr_to_string(&ev.owner),
+                    "media_type": ev.media_type,
+                    "platform_id": ev.platform_id.as_ref().map(addr_to_string),
+                    "created_at": ev.created_at,
+                })))
+            }
         }
         "PurchaseEvent" | "DataPurchasedEvent" => {
             if let Ok(ev) = bcs::from_bytes::<BcsPurchaseEventV2>(contents) {
@@ -7830,6 +8169,28 @@ fn parse_subscription_event(
                 "timestamp": ev.timestamp,
             })))
         }
+        "ServicePaymentRecipientUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsServicePaymentRecipientUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "service_id": addr_to_string(&ev.service_id),
+                "previous_recipient": addr_to_string(&ev.previous_recipient),
+                "new_recipient": addr_to_string(&ev.new_recipient),
+                "updated_by": addr_to_string(&ev.updated_by),
+                "timestamp": ev.timestamp,
+            })))
+        }
+        "SubscriptionAutoRenewUpdatedEvent" => {
+            let ev = bcs::from_bytes::<BcsSubscriptionAutoRenewUpdatedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "subscription_id": addr_to_string(&ev.subscription_id),
+                "service_id": addr_to_string(&ev.service_id),
+                "subscriber": addr_to_string(&ev.subscriber),
+                "auto_renew": ev.auto_renew,
+                "timestamp": ev.timestamp,
+            })))
+        }
         _ => Ok(None),
     };
     result
@@ -7896,6 +8257,46 @@ pub(crate) fn username_beneficiary_claimed_bcs_fixture() -> Vec<u8> {
 mod tests {
     use super::*;
     use move_core_types::account_address::AccountAddress;
+
+    #[test]
+    fn one_time_mydata_created_event_decodes_without_object() {
+        let ip_id = AccountAddress::from_hex_literal(
+            "0x0206060712ef2d2a73c0a03a3502ad289907eabe7f7797cb2f4ff9cc01f0932c",
+        )
+        .unwrap();
+        let owner = AccountAddress::from_hex_literal(
+            "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+        )
+        .unwrap();
+        let ev = BcsMyDataCreatedEvent {
+            ip_id,
+            owner,
+            media_type: "application/octet-stream".to_string(),
+            platform_id: None,
+            access_configuration_kind: 2,
+            created_at: 1_721_000_000_000,
+        };
+        let bytes = bcs::to_bytes(&ev).expect("serialize MyDataCreatedEvent");
+        let json = parse_mydata_event("MyDataCreatedEvent", &bytes)
+            .expect("parse")
+            .expect("json");
+        let rows =
+            crate::handlers::mydata::handle_mydata_event("MyDataCreatedEvent", &json, "digest:0")
+                .expect("rows");
+        let listing = rows.iter().find_map(|row| match row {
+            crate::handlers::SocialEventRow::MyDataData(data) => Some(data),
+            _ => None,
+        });
+        let listing = listing.expect("mydata_data row");
+        assert_eq!(
+            listing.access_configuration_kind.as_deref(),
+            Some("one_time")
+        );
+        assert_eq!(listing.one_time_price, None);
+        assert!(rows
+            .iter()
+            .any(|row| matches!(row, crate::handlers::SocialEventRow::MyDataRegistry(_))));
+    }
 
     pub(crate) fn brandon_profile_created_bcs(created_at: u64) -> Vec<u8> {
         let profile_id = AccountAddress::from_hex_literal(
@@ -8733,6 +9134,55 @@ mod tests {
         assert_eq!(json2["expires_at"], 99999);
         assert_eq!(json2["price"], 500);
         assert_eq!(json2["auto_renew"], true);
+
+        let recipient = BcsServicePaymentRecipientUpdatedEvent {
+            service_id: addr1,
+            previous_recipient: addr2,
+            new_recipient: addr1,
+            updated_by: addr2,
+            timestamp: 55,
+        };
+        let recipient_bytes = bcs::to_bytes(&recipient).expect("serialize");
+        let recipient_json = parse_event_contents(
+            "subscription",
+            "ServicePaymentRecipientUpdatedEvent",
+            &recipient_bytes,
+        )
+        .expect("BCS parse should succeed");
+        assert!(recipient_json["service_id"]
+            .as_str()
+            .unwrap()
+            .starts_with("0x"));
+        assert_eq!(
+            recipient_json["previous_recipient"],
+            recipient_json["updated_by"]
+        );
+        assert_eq!(
+            recipient_json["new_recipient"],
+            recipient_json["service_id"]
+        );
+        assert_eq!(recipient_json["timestamp"], 55);
+
+        let auto_renew = BcsSubscriptionAutoRenewUpdatedEvent {
+            subscription_id: addr1,
+            service_id: addr2,
+            subscriber: addr1,
+            auto_renew: false,
+            timestamp: 77,
+        };
+        let auto_renew_bytes = bcs::to_bytes(&auto_renew).expect("serialize");
+        let auto_renew_json = parse_event_contents(
+            "subscription",
+            "SubscriptionAutoRenewUpdatedEvent",
+            &auto_renew_bytes,
+        )
+        .expect("BCS parse should succeed");
+        assert_eq!(
+            auto_renew_json["subscription_id"],
+            auto_renew_json["subscriber"]
+        );
+        assert_eq!(auto_renew_json["auto_renew"], false);
+        assert_eq!(auto_renew_json["timestamp"], 77);
     }
 
     #[test]

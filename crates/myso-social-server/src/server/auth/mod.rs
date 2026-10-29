@@ -6,6 +6,9 @@ mod schemes;
 mod signature;
 mod wallet;
 
-pub use org_role::{org_auditor_access_middleware, org_dashboard_access_middleware};
+pub use org_role::{
+    caller_has_org_permission, org_auditor_access_middleware, org_dashboard_access_middleware,
+    OrgAccessRequirement,
+};
 pub use signature::DEFAULT_WALLET_AUTH_TTL_SECONDS;
-pub use wallet::wallet_auth_middleware;
+pub use wallet::{wallet_auth_middleware, WalletAuthContext};

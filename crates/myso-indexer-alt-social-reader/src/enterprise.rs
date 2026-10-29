@@ -224,6 +224,31 @@ pub async fn list_org_invitations(
     Ok(rows)
 }
 
+/// Return only pending invitations addressed to one wallet, across organizations.
+/// This supports recipient inboxes; callers must still verify acceptance on chain.
+pub async fn list_org_invitations_for_invitee(
+    conn: &mut Connection<'_>,
+    invitee: &str,
+    limit: i64,
+    offset: i64,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<OrgInvitationRow>> {
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let rows = org_invitations::table
+        .filter(org_invitations::invitee_address.eq(invitee))
+        .filter(org_invitations::status.eq("pending"))
+        .order(org_invitations::created_at_ms.desc())
+        .then_order_by(org_invitations::organization_id.asc())
+        .limit(limit.clamp(1, 100))
+        .offset(offset.max(0))
+        .select(OrgInvitationRow::as_select())
+        .load(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows)
+}
+
 pub async fn list_org_role_assignments(
     conn: &mut Connection<'_>,
     organization_id: &str,

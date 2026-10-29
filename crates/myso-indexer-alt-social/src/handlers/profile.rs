@@ -243,6 +243,9 @@ pub fn handle_profile_event(
             process_profile_x_username_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
         "UsernameClaimedEvent" => process_username_claimed_event(data, event_id),
+        "ProfileOwnerRotatedEvent" => {
+            process_profile_owner_rotated_event(data, event_id, checkpoint_timestamp_ms)
+        }
         "UsernameReassignedEvent" => {
             process_username_reassigned_event(data, event_id, checkpoint_timestamp_ms)
         }
@@ -625,6 +628,50 @@ fn process_username_claimed_event(
             owner_address: None,
         },
         SocialEventRow::ProfileEvent(audit_event),
+    ])
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ProfileOwnerRotatedEvent {
+    profile_id: String,
+    previous_owner: String,
+    new_owner: String,
+    #[serde(default)]
+    timestamp_ms: Option<i64>,
+}
+
+fn process_profile_owner_rotated_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ProfileOwnerRotatedEvent = common::deserialize_social_event_json(
+        "profile",
+        "ProfileOwnerRotatedEvent",
+        event_id,
+        data,
+        "profile ProfileOwnerRotatedEvent JSON did not match ProfileOwnerRotatedEvent",
+    )?;
+    let now = common::chain_time_from_ms(common::chain_timestamp_ms(
+        ev.timestamp_ms,
+        checkpoint_timestamp_ms,
+    ))
+    .naive_utc();
+    Some(vec![
+        SocialEventRow::ProfileOwnerRotate {
+            profile_id: ev.profile_id.clone(),
+            previous_owner: ev.previous_owner,
+            new_owner: ev.new_owner,
+            updated_at: now,
+        },
+        SocialEventRow::ProfileEvent(NewProfileEvent {
+            event_type: "ProfileOwnerRotated".to_string(),
+            profile_id: ev.profile_id,
+            event_data: data.clone(),
+            event_id: Some(event_id.to_string()),
+            created_at: now,
+            updated_at: now,
+        }),
     ])
 }
 

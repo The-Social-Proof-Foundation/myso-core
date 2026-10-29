@@ -84,6 +84,27 @@ pub async fn get_mydata_purchases(
     Ok(Json(data))
 }
 
+pub async fn get_mydata_purchases_by_buyer(
+    State(state): State<Arc<AppState>>,
+    Path(buyer): Path<String>,
+    Query(params): Query<MyDataQuery>,
+) -> Result<Json<Vec<crate::reader::PurchaseInfo>>, SocialError> {
+    let address = buyer.strip_prefix("0x").unwrap_or(&buyer);
+    if address.len() != 64 || !address.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(SocialError::bad_request(
+            "buyer must be a 32-byte MySo address",
+        ));
+    }
+    let buyer = format!("0x{}", address.to_ascii_lowercase());
+    let limit = params.limit.unwrap_or(20).clamp(1, 100);
+    let offset = params.offset.unwrap_or(0).clamp(0, 100_000);
+    let data = state
+        .reader
+        .get_mydata_purchases_by_buyer(&buyer, limit, offset)
+        .await?;
+    Ok(Json(data))
+}
+
 pub async fn get_mydata_subscriptions(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,

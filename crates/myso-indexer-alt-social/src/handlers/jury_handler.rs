@@ -59,6 +59,7 @@ pub const GOVERNANCE_JURY_EVENTS: &[&str] = &[
     "ProposalRefundedJuryUnavailableEvent",
     "VoteRefundClaimedEvent",
     "VoteRefundsSweptEvent",
+    "JuryCaseRemainderSweptEvent",
 ];
 
 /// Every event `jury.move` emits. A Move event missing here is caught by
@@ -68,6 +69,7 @@ pub const JURY_EVENTS: &[&str] = &[
     "RosterJoined",
     "RosterLeft",
     "RosterSuspended",
+    "RosterEntryRefreshed",
     "DutyScoreChanged",
     "CaseOpened",
     "EvidenceSubmitted",
@@ -96,6 +98,11 @@ pub enum JuryRow {
     RosterSuspended {
         agent_id: String,
         until_ms: i64,
+    },
+    /// The entry's eligibility snapshot was retaken.
+    RosterRefreshed {
+        agent_id: String,
+        refreshed_at_ms: i64,
     },
     Duty {
         agent_id: String,
@@ -206,6 +213,12 @@ pub enum JuryRow {
         amount_mist: i64,
         swept_at_ms: i64,
     },
+    /// What the jurors did not claim went back to `recipient`.
+    RemainderSwept {
+        case_id: String,
+        recipient: String,
+        amount_mist: i64,
+    },
 }
 
 impl FieldCount for JuryRow {
@@ -276,6 +289,10 @@ pub fn jury_rows(
         "RosterSuspended" => JuryRow::RosterSuspended {
             agent_id: str_field(data, "agent_id")?,
             until_ms: i64_field(data, "until_ms")?,
+        },
+        "RosterEntryRefreshed" => JuryRow::RosterRefreshed {
+            agent_id: str_field(data, "agent_id")?,
+            refreshed_at_ms: i64_field(data, "refreshed_at_ms")?,
         },
         "DutyScoreChanged" => JuryRow::Duty {
             agent_id: str_field(data, "agent_id")?,
@@ -593,6 +610,11 @@ pub fn jury_rows(
             amount_mist: i64_field(data, "amount_mist")?,
             swept_at_ms: i64_field(data, "swept_at_ms")?,
         },
+        "JuryCaseRemainderSweptEvent" => JuryRow::RemainderSwept {
+            case_id: str_field(data, "case_id")?,
+            recipient: str_field(data, "recipient")?,
+            amount_mist: i64_field(data, "amount_mist")?,
+        },
         "JurorPaid" => JuryRow::Paid(NewJuryPayout {
             case_id: str_field(data, "case_id")?,
             agent_id: str_field(data, "agent_id")?,
@@ -756,6 +778,15 @@ impl Handler for JuryHandler {
                             jury_roster::left_at_ms.eq(*left_at_ms),
                             jury_roster::left_reason.eq(*reason),
                         ))
+                        .execute(conn)
+                        .await?;
+                }
+                JuryRow::RosterRefreshed {
+                    agent_id,
+                    refreshed_at_ms,
+                } => {
+                    total += diesel::update(jury_roster::table.find(agent_id))
+                        .set(jury_roster::refreshed_at_ms.eq(Some(*refreshed_at_ms)))
                         .execute(conn)
                         .await?;
                 }
@@ -1352,6 +1383,19 @@ impl Handler for JuryHandler {
                     .execute(conn)
                     .await?;
                 }
+                JuryRow::RemainderSwept {
+                    case_id,
+                    recipient,
+                    amount_mist,
+                } => {
+                    total += diesel::update(jury_cases::table.find(case_id))
+                        .set((
+                            jury_cases::remainder_recipient.eq(Some(recipient)),
+                            jury_cases::remainder_swept_mist.eq(Some(*amount_mist)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
                 JuryRow::Paid(payout) => {
                     total += diesel::insert_into(jury_payouts::table)
                         .values(payout)
@@ -1386,9 +1430,10 @@ mod tests {
 
     use super::super::events::{
         parse_event_contents, BcsCaseFinalized, BcsCaseOpened, BcsCommunityVoteNeedsJuryEvent,
-        BcsDelegateReferredToJuryEvent, BcsJuryDecisionAppliedEvent, BcsJuryDrawn,
-        BcsJuryPolicyUpdatedEvent, BcsMoveObjectId, BcsProposalEscalatedToJuryEvent,
-        BcsProposalRejectedByJuryEvent, BcsRoundFinalized, BcsVoteRevealed,
+        BcsDelegateReferredToJuryEvent, BcsJuryCaseRemainderSweptEvent,
+        BcsJuryDecisionAppliedEvent, BcsJuryDrawn, BcsJuryPolicyUpdatedEvent, BcsMoveObjectId,
+        BcsProposalEscalatedToJuryEvent, BcsProposalRejectedByJuryEvent, BcsRosterEntryRefreshed,
+        BcsRoundFinalized, BcsVoteRevealed,
     };
     use super::*;
 
@@ -1766,6 +1811,51 @@ mod tests {
         assert!(jury_rows("JuryConfigUpdated", &json, "d:0")
             .unwrap()
             .is_empty());
+    }
+
+    #[test]
+    fn a_refresh_stamps_the_roster_entry() {
+        let out = rows(
+            "RosterEntryRefreshed",
+            &bcs::to_bytes(&BcsRosterEntryRefreshed {
+                agent_id: id("0xa1"),
+                refreshed_at_ms: 42,
+            })
+            .unwrap(),
+        );
+        let [JuryRow::RosterRefreshed {
+            agent_id,
+            refreshed_at_ms,
+        }] = out.as_slice()
+        else {
+            panic!("expected one RosterRefreshed row, got {out:?}");
+        };
+        assert!(agent_id.ends_with("a1"));
+        assert_eq!(*refreshed_at_ms, 42);
+    }
+
+    #[test]
+    fn a_sweep_records_the_remainder_and_its_recipient() {
+        let out = gov_rows(
+            "JuryCaseRemainderSweptEvent",
+            &bcs::to_bytes(&BcsJuryCaseRemainderSweptEvent {
+                case_id: id("0xca5e"),
+                recipient: addr("0x7e"),
+                amount_mist: 900,
+            })
+            .unwrap(),
+        );
+        let [JuryRow::RemainderSwept {
+            case_id,
+            recipient,
+            amount_mist,
+        }] = out.as_slice()
+        else {
+            panic!("expected one RemainderSwept row, got {out:?}");
+        };
+        assert!(case_id.ends_with("ca5e"));
+        assert!(recipient.ends_with("7e"));
+        assert_eq!(*amount_mist, 900);
     }
 
     #[test]

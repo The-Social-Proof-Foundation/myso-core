@@ -124,6 +124,24 @@ struct ProfileSubscriptionServiceDeactivatedEvent {
     deactivated_at: u64,
 }
 
+#[derive(Debug, Deserialize)]
+struct ServicePaymentRecipientUpdatedEvent {
+    service_id: String,
+    previous_recipient: String,
+    new_recipient: String,
+    updated_by: String,
+    timestamp: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct SubscriptionAutoRenewUpdatedEvent {
+    subscription_id: String,
+    service_id: String,
+    subscriber: String,
+    auto_renew: bool,
+    timestamp: u64,
+}
+
 pub fn handle_subscription_event(
     event_name: &str,
     data: &serde_json::Value,
@@ -165,6 +183,12 @@ pub fn handle_subscription_event(
         "SubscriptionConfigUpdatedEvent" => {
             process_subscription_config_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
+        "ServicePaymentRecipientUpdatedEvent" => {
+            process_service_payment_recipient_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "SubscriptionAutoRenewUpdatedEvent" => {
+            process_subscription_auto_renew_updated_event(data, event_id, checkpoint_timestamp_ms)
+        }
         _ => None,
     }
 }
@@ -194,6 +218,7 @@ fn process_subscription_service_created_event(
         updated_at: None,
         time: now,
         transaction_id: event_id.to_string(),
+        payment_recipient: event.profile_owner.clone(),
     };
     let sub_event = NewSubscriptionEvent {
         event_type: "ProfileSubscriptionServiceCreatedEvent".to_string(),
@@ -603,6 +628,83 @@ fn process_renewal_balance_funded_event(
     ])
 }
 
+fn process_service_payment_recipient_updated_event(
+    data: &Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let event: ServicePaymentRecipientUpdatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "ServicePaymentRecipientUpdatedEvent",
+        event_id,
+        data,
+        "subscription ServicePaymentRecipientUpdatedEvent JSON did not match struct",
+    )?;
+    let ms = common::chain_timestamp_ms(Some(event.timestamp as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
+    let sub_event = NewSubscriptionEvent {
+        event_type: "ServicePaymentRecipientUpdatedEvent".to_string(),
+        subscription_id: None,
+        service_id: Some(event.service_id.clone()),
+        subscriber: None,
+        event_data: serde_json::json!({
+            "service_id": event.service_id,
+            "previous_recipient": event.previous_recipient,
+            "new_recipient": event.new_recipient,
+            "updated_by": event.updated_by,
+            "timestamp": event.timestamp,
+        }),
+        event_time: event.timestamp as i64,
+        time: now,
+        transaction_id: event_id.to_string(),
+        processing_success: true,
+        processing_error: None,
+    };
+    Some(vec![
+        SocialEventRow::ProfileSubscriptionServicePaymentRecipientUpdate {
+            service_id: event.service_id,
+            payment_recipient: event.new_recipient,
+            updated_at: event.timestamp as i64,
+        },
+        SocialEventRow::SubscriptionEvent(sub_event),
+    ])
+}
+
+fn process_subscription_auto_renew_updated_event(
+    data: &Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let event: SubscriptionAutoRenewUpdatedEvent = common::deserialize_social_event_json(
+        "subscription",
+        "SubscriptionAutoRenewUpdatedEvent",
+        event_id,
+        data,
+        "subscription SubscriptionAutoRenewUpdatedEvent JSON did not match struct",
+    )?;
+    let ms = common::chain_timestamp_ms(Some(event.timestamp as i64), checkpoint_timestamp_ms);
+    let now = common::chain_time_from_ms(ms);
+    let sub_event = NewSubscriptionEvent {
+        event_type: "SubscriptionAutoRenewUpdatedEvent".to_string(),
+        subscription_id: Some(event.subscription_id.clone()),
+        service_id: Some(event.service_id.clone()),
+        subscriber: Some(event.subscriber.clone()),
+        event_data: data.clone(),
+        event_time: event.timestamp as i64,
+        time: now,
+        transaction_id: event_id.to_string(),
+        processing_success: true,
+        processing_error: None,
+    };
+    Some(vec![
+        SocialEventRow::ProfileSubscriptionAutoRenewUpdate {
+            subscription_id: event.subscription_id,
+            auto_renew: event.auto_renew,
+        },
+        SocialEventRow::SubscriptionEvent(sub_event),
+    ])
+}
+
 fn process_subscription_service_deactivated_event(
     data: &Value,
     event_id: &str,
@@ -841,5 +943,93 @@ mod tests {
         assert!(rows.is_some());
         let rows = rows.unwrap();
         assert_eq!(rows.len(), 2);
+        let pays_owner = rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::ProfileSubscriptionService(service)
+                    if service.payment_recipient == "0xowner"
+            )
+        });
+        assert!(pays_owner);
+    }
+
+    #[test]
+    fn test_handle_service_payment_recipient_updated_event() {
+        let data = serde_json::json!({
+            "service_id": "0xsvc",
+            "previous_recipient": "0xowner",
+            "new_recipient": "0xrecipient",
+            "updated_by": "0xowner",
+            "timestamp": 1234567890u64
+        });
+        let rows = handle_subscription_event(
+            "ServicePaymentRecipientUpdatedEvent",
+            &data,
+            "tx_recipient",
+            1_700_000_000_000,
+            None,
+        )
+        .unwrap();
+        assert!(rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::ProfileSubscriptionServicePaymentRecipientUpdate {
+                    service_id,
+                    payment_recipient,
+                    updated_at,
+                } if service_id == "0xsvc"
+                    && payment_recipient == "0xrecipient"
+                    && *updated_at == 1234567890
+            )
+        }));
+        assert!(rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::SubscriptionEvent(event)
+                    if event.event_type == "ServicePaymentRecipientUpdatedEvent"
+                        && event.service_id.as_deref() == Some("0xsvc")
+                        && event.event_data["previous_recipient"] == "0xowner"
+                        && event.event_data["new_recipient"] == "0xrecipient"
+            )
+        }));
+    }
+
+    #[test]
+    fn test_handle_subscription_auto_renew_updated_event() {
+        let data = serde_json::json!({
+            "subscription_id": "0xsub",
+            "service_id": "0xsvc",
+            "subscriber": "0xsubscriber",
+            "auto_renew": false,
+            "timestamp": 1234567890u64
+        });
+        let rows = handle_subscription_event(
+            "SubscriptionAutoRenewUpdatedEvent",
+            &data,
+            "tx_auto_renew",
+            1_700_000_000_000,
+            None,
+        )
+        .unwrap();
+        assert!(rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::ProfileSubscriptionAutoRenewUpdate {
+                    subscription_id,
+                    auto_renew,
+                } if subscription_id == "0xsub" && !*auto_renew
+            )
+        }));
+        assert!(rows.iter().any(|r| {
+            matches!(
+                r,
+                SocialEventRow::SubscriptionEvent(event)
+                    if event.event_type == "SubscriptionAutoRenewUpdatedEvent"
+                        && event.subscription_id.as_deref() == Some("0xsub")
+                        && event.service_id.as_deref() == Some("0xsvc")
+                        && event.subscriber.as_deref() == Some("0xsubscriber")
+                        && event.event_data["auto_renew"] == false
+            )
+        }));
     }
 }

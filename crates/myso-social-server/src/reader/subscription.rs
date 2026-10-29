@@ -29,7 +29,7 @@ pub(crate) async fn get_profile_subscription_service(
     let mut conn = db.connect().await?;
     let query = "
         SELECT s.service_id, s.profile_owner, s.profile_id, s.plan_count, s.active,
-               s.subscriber_count, s.created_at, s.updated_at,
+               s.subscriber_count, s.created_at, s.updated_at, s.payment_recipient,
                p.username, p.display_name, p.profile_photo
         FROM profile_subscription_services s
         LEFT JOIN profiles p ON p.owner_address = s.profile_owner
@@ -88,7 +88,7 @@ pub(crate) async fn get_profile_subscription_services_by_owner(
     let mut conn = db.connect().await?;
     let query = "
         SELECT s.service_id, s.profile_owner, s.profile_id, s.plan_count, s.active,
-               s.subscriber_count, s.created_at, s.updated_at,
+               s.subscriber_count, s.created_at, s.updated_at, s.payment_recipient,
                p.username, p.display_name, p.profile_photo
         FROM profile_subscription_services s
         LEFT JOIN profiles p ON p.owner_address = s.profile_owner
@@ -243,7 +243,7 @@ pub(crate) async fn list_subscription_services(
     let mut conn = db.connect().await?;
     let query = "
         SELECT s.service_id, s.profile_owner, s.profile_id, s.plan_count, s.active,
-               s.subscriber_count, s.created_at, s.updated_at,
+               s.subscriber_count, s.created_at, s.updated_at, s.payment_recipient,
                p.username, p.display_name, p.profile_photo
         FROM profile_subscription_services s
         LEFT JOIN profiles p ON p.owner_address = s.profile_owner

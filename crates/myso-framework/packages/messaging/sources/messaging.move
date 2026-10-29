@@ -39,6 +39,7 @@ use messaging::metadata;
 use messaging::paid_messaging_policy::{Self, PaidMessagingRegistry};
 use messaging::version::{Self as version, Version};
 use social_contracts::block_list::{Self, BlockListRegistry};
+use social_contracts::agent_task::{Self, TaskEscrow};
 use social_contracts::memory::{Self, ActingContext, MemoryAccount, MemoryConfig};
 use social_contracts::platform::{Self, Platform};
 use social_contracts::profile::{Self, EcosystemTreasury};
@@ -88,6 +89,8 @@ const EAgentSenderMismatch: u64 = 8;
 const ERegisteredAgentCannotCreateGroup: u64 = 9;
 /// `room_kind` is not a known agent-room kind.
 const EUnknownRoomKind: u64 = 10;
+/// The caller, task, or group does not satisfy the private task-room binding rules.
+const EInvalidTaskRoomBinding: u64 = 11;
 
 const CONVERSATION_KIND_KEY: vector<u8> = b"conversation_kind";
 const CONVERSATION_KIND_DM: vector<u8> = b"dm";
@@ -167,6 +170,17 @@ public struct AgentRoomBound has copy, drop {
     creator_principal: address,
     organization_id: Option<ID>,
     created_at_ms: u64,
+}
+
+/// Emitted when a task that already points at an agent room is linked back from the room.
+/// This is separate from `AgentRoomBound`, which records room creation.
+public struct AgentRoomTaskBound has copy, drop {
+    group_id: ID,
+    task_id: ID,
+    binder_actor: address,
+    binder_principal: address,
+    organization_id: Option<ID>,
+    bound_at_ms: u64,
 }
 
 /// Singletons are shared from genesis via `create_genesis_objects`, not package init.
@@ -358,6 +372,97 @@ fun create_group_inner(
     let message_log = message_log::new(&mut namespace.id, uuid, object::id(&group), ctx);
 
     (group, encryption_history, message_log)
+}
+
+/// Completes the reverse side of a task-room link after task creation. The task must already
+/// point at this exact room, the caller must act for a task party, and both task principals
+/// must be able to read the room. Repeating the same bind is safe; rebinding is rejected.
+public fun bind_agent_room_to_task(
+    version: &Version,
+    group_manager: &GroupManager,
+    group: &mut PermissionedGroup<Messaging>,
+    task: &TaskEscrow,
+    block_list: &BlockListRegistry,
+    platform: &Platform,
+    memory_config: &MemoryConfig,
+    memory_account: &MemoryAccount,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    version.validate_version();
+    assert_group_not_archived(group);
+
+    let group_id = object::id(group);
+    let task_room_id = agent_task::room_group_id(task);
+    assert!(option::contains(&task_room_id, &group_id), EInvalidTaskRoomBinding);
+    let task_status = agent_task::status(task);
+    assert!(
+        task_status == agent_task::status_offered()
+            || task_status == agent_task::status_accepted(),
+        EInvalidTaskRoomBinding,
+    );
+
+    let acting = resolve_messaging_actor(
+        memory_config,
+        memory_account,
+        platform,
+        block_list,
+        memory::cap_message_send(),
+        0,
+        clock,
+        ctx,
+    );
+    let actor_address = memory::acting_actor_address(&acting);
+    let principal = memory::acting_principal_owner(&acting);
+    assert!(actor_address == ctx.sender(), EAgentSenderMismatch);
+    assert!(
+        acting_is_task_party(task, &acting)
+            && group.has_permission<Messaging, MetadataAdmin>(principal)
+            && group.has_permission<Messaging, MessagingReader>(actor_address)
+            && group.has_permission<Messaging, MessagingReader>(agent_task::buyer_principal(task))
+            && group.has_permission<Messaging, MessagingReader>(agent_task::seller_principal(task)),
+        EInvalidTaskRoomBinding,
+    );
+
+    let kind = group_data(group_manager, group, string::utf8(ROOM_KIND_KEY));
+    assert!(
+        option::is_some(&kind)
+            && *option::borrow(&kind) == string::utf8(ROOM_KIND_AGENT_ROOM_LABEL),
+        EInvalidTaskRoomBinding,
+    );
+
+    let task_id = object::id(task);
+    let encoded_task_id = id_to_metadata_string(task_id);
+    let current_task_id = group_data(group_manager, group, string::utf8(ROOM_TASK_ID_KEY));
+    if (option::is_some(&current_task_id)) {
+        assert!(*option::borrow(&current_task_id) == encoded_task_id, EInvalidTaskRoomBinding);
+    } else {
+        let metadata = group_manager::borrow_metadata_mut<Messaging>(group_manager, group);
+        metadata.insert_data(string::utf8(ROOM_TASK_ID_KEY), encoded_task_id);
+        event::emit(AgentRoomTaskBound {
+            group_id,
+            task_id,
+            binder_actor: actor_address,
+            binder_principal: principal,
+            organization_id: memory::acting_organization_id(&acting),
+            bound_at_ms: clock::timestamp_ms(clock),
+        });
+    };
+}
+
+fun acting_is_task_party(task: &TaskEscrow, acting: &ActingContext): bool {
+    let principal = memory::acting_principal_owner(acting);
+    let acting_agent_id = memory::acting_sub_agent_id(acting);
+    if (principal == agent_task::buyer_principal(task)) {
+        let expected_agent_id = agent_task::buyer_agent_id(task);
+        option::is_none(&acting_agent_id)
+            || option::contains(&expected_agent_id, option::borrow(&acting_agent_id))
+    } else if (principal == agent_task::seller_principal(task)) {
+        option::is_none(&acting_agent_id)
+            || *option::borrow(&acting_agent_id) == agent_task::seller_agent_id(task)
+    } else {
+        false
+    }
 }
 
 /// Creates a new messaging group and shares both objects.

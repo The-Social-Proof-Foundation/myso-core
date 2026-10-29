@@ -8,11 +8,12 @@ use serde::Deserialize;
 use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig,
-    NewPaidMessageEscrow, NewUnifiedRevenue, NewWalletMessagingPolicy, PAID_MESSAGE_STATUS_CLAIMED,
-    PAID_MESSAGE_STATUS_ESCROWED, PAID_MESSAGE_STATUS_REFUNDED, PAID_MESSAGE_STATUS_SETTLED,
-    REVENUE_TYPE_MESSAGING_CLAIM, REVENUE_TYPE_MESSAGING_NET, REVENUE_TYPE_MESSAGING_PLATFORM_FEE,
-    REVENUE_TYPE_MESSAGING_REFUND, REVENUE_TYPE_MESSAGING_TREASURY_FEE,
+    NewAgentRoom, NewAgentRoomTaskBind, NewMessageDigest, NewMessagingAgentGroup,
+    NewMessagingConfig, NewPaidMessageEscrow, NewUnifiedRevenue, NewWalletMessagingPolicy,
+    PAID_MESSAGE_STATUS_CLAIMED, PAID_MESSAGE_STATUS_ESCROWED, PAID_MESSAGE_STATUS_REFUNDED,
+    PAID_MESSAGE_STATUS_SETTLED, REVENUE_TYPE_MESSAGING_CLAIM, REVENUE_TYPE_MESSAGING_NET,
+    REVENUE_TYPE_MESSAGING_PLATFORM_FEE, REVENUE_TYPE_MESSAGING_REFUND,
+    REVENUE_TYPE_MESSAGING_TREASURY_FEE,
 };
 
 #[derive(Debug, Deserialize)]
@@ -110,6 +111,13 @@ struct AgentRoomBoundEvent {
     created_at_ms: u64,
 }
 
+#[derive(Debug, Deserialize)]
+struct AgentRoomTaskBoundEvent {
+    group_id: String,
+    task_id: String,
+    bound_at_ms: u64,
+}
+
 fn content_id(group_id: &str, seq: u64) -> String {
     format!("{group_id}:{seq}")
 }
@@ -128,8 +136,36 @@ pub fn handle_messaging_event(
             process_agent_group_created_event(data, event_id, checkpoint_timestamp_ms)
         }
         "AgentRoomBound" => process_agent_room_bound_event(data, event_id, checkpoint_timestamp_ms),
+        "AgentRoomTaskBound" => {
+            process_agent_room_task_bound_event(data, event_id, checkpoint_timestamp_ms)
+        }
         _ => None,
     }
+}
+
+fn process_agent_room_task_bound_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: AgentRoomTaskBoundEvent = common::deserialize_social_event_json(
+        "messaging",
+        "AgentRoomTaskBound",
+        event_id,
+        data,
+        "messaging AgentRoomTaskBound JSON did not match AgentRoomTaskBoundEvent",
+    )?;
+    let timestamp_ms =
+        common::chain_timestamp_ms(Some(ev.bound_at_ms as i64), checkpoint_timestamp_ms);
+    Some(vec![SocialEventRow::AgentRoomTaskBind(
+        NewAgentRoomTaskBind {
+            group_id: ev.group_id,
+            task_id: ev.task_id,
+            event_id: event_id.to_string(),
+            transaction_id: event_id.split(':').next().unwrap_or(event_id).to_string(),
+            time: common::chain_time_from_ms(timestamp_ms),
+        },
+    )])
 }
 
 pub fn handle_message_log_event(

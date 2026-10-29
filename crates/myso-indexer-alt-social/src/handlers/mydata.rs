@@ -45,6 +45,33 @@ pub(crate) fn u64_to_db_i64(n: u64) -> i64 {
     i64::try_from(n).unwrap_or(i64::MAX)
 }
 
+pub(crate) fn listing_id(id: &str) -> String {
+    super::common::normalize_hex_address(id)
+}
+
+/// The create event always supplies a listing row. A `MyData` object parsed
+/// from the same transaction keeps its `one_time_price`; a priceless event
+/// must not replace that object row.
+pub(crate) fn one_time_listing_row(
+    mut event_row: NewMyDataData,
+    object_row: Option<NewMyDataData>,
+) -> NewMyDataData {
+    event_row.mydata_id = listing_id(&event_row.mydata_id);
+    match object_row {
+        Some(mut object_row) => {
+            object_row.mydata_id = listing_id(&object_row.mydata_id);
+            if object_row.one_time_price.is_none() {
+                object_row.one_time_price = event_row.one_time_price;
+            }
+            if object_row.access_configuration_kind.is_none() {
+                object_row.access_configuration_kind = event_row.access_configuration_kind;
+            }
+            object_row
+        }
+        None => event_row,
+    }
+}
+
 pub(crate) fn new_mydata_registry_row(
     mydata_id: String,
     owner: String,
@@ -154,7 +181,7 @@ fn process_mydata_created_event(
     let created_at = json_to_i64(data.get("created_at")?);
 
     let new_data = NewMyDataData {
-        mydata_id: ip_id.clone(),
+        mydata_id: listing_id(&ip_id),
         owner: owner.clone(),
         media_type,
         tags: json_tags_field(data),
@@ -182,7 +209,12 @@ fn process_mydata_created_event(
         transaction_id: transaction_id.to_string(),
     };
 
-    let registry = new_mydata_registry_row(ip_id, owner, created_at, transaction_id.to_string());
+    let registry = new_mydata_registry_row(
+        listing_id(&ip_id),
+        owner,
+        created_at,
+        transaction_id.to_string(),
+    );
 
     Some(vec![
         SocialEventRow::MyDataData(new_data),
@@ -737,6 +769,57 @@ mod tests {
         assert_eq!(d.collection_method.as_deref(), Some("cli"));
         assert_eq!(d.subscription_duration_days, 45);
         assert!(matches!(&rows[1], SocialEventRow::MyDataRegistry(_)));
+    }
+
+    #[test]
+    fn one_time_created_event_writes_data_and_registry_without_object() {
+        let data = serde_json::json!({
+            "ip_id": "0x0206060712ef2d2a73c0a03a3502ad289907eabe7f7797cb2f4ff9cc01f0932c",
+            "owner": "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8",
+            "media_type": "application/octet-stream",
+            "access_configuration_kind": 2,
+            "created_at": 1_721_000_000_000u64,
+        });
+        let rows = process_mydata_created_event(&data, "create_tx").expect("rows");
+        assert_eq!(rows.len(), 2);
+        let SocialEventRow::MyDataData(listing) = &rows[0] else {
+            panic!("expected MyDataData");
+        };
+        assert_eq!(
+            listing.access_configuration_kind.as_deref(),
+            Some("one_time")
+        );
+        assert_eq!(listing.one_time_price, None);
+        assert!(matches!(&rows[1], SocialEventRow::MyDataRegistry(_)));
+
+        let without_object = one_time_listing_row(listing.clone(), None);
+        assert_eq!(without_object.one_time_price, None);
+        assert_eq!(without_object.mydata_id, listing.mydata_id);
+    }
+
+    #[test]
+    fn object_one_time_price_is_kept_when_event_has_none() {
+        let data = serde_json::json!({
+            "ip_id": "0xabc",
+            "owner": "0xdef",
+            "media_type": "application/octet-stream",
+            "access_configuration_kind": 2,
+            "created_at": 10,
+        });
+        let rows = process_mydata_created_event(&data, "create_tx").expect("rows");
+        let SocialEventRow::MyDataData(event_row) = &rows[0] else {
+            panic!("expected MyDataData");
+        };
+        let mut object_row = event_row.clone();
+        object_row.one_time_price = Some(2_000_000_000);
+        object_row.mydata_id = "0xABC".to_string();
+        let merged = one_time_listing_row(event_row.clone(), Some(object_row));
+        assert_eq!(merged.one_time_price, Some(2_000_000_000));
+        assert_eq!(
+            merged.access_configuration_kind.as_deref(),
+            Some("one_time")
+        );
+        assert_eq!(merged.mydata_id, "0xabc");
     }
 
     #[test]

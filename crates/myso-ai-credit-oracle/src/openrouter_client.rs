@@ -98,6 +98,8 @@ struct AssistantEnvelope {
     text: String,
     #[serde(default)]
     tool_calls: Vec<ToolCall>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    finish_reason: Option<String>,
 }
 
 /// Persist text plus tool calls in the reservation `content` column without a
@@ -110,6 +112,7 @@ pub fn encode_assistant_content(text: &str, tool_calls: &[ToolCall]) -> String {
         v: ASSISTANT_ENVELOPE_VERSION.to_string(),
         text: text.to_string(),
         tool_calls: tool_calls.to_vec(),
+        finish_reason: None,
     })
     .unwrap_or_else(|_| text.to_string())
 }
@@ -121,8 +124,19 @@ pub fn decode_assistant_content(content: &str) -> (String, Vec<ToolCall>) {
     }
 }
 
+/// Preserve the actual provider terminal reason in the existing reservation content.
+/// Old text/tool envelopes remain readable; absent reasons stay unknown rather than inferred as success.
+pub fn encode_assistant_completion(text: &str, tool_calls: &[ToolCall], finish_reason: Option<&str>) -> String {
+    serde_json::to_string(&AssistantEnvelope { v: ASSISTANT_ENVELOPE_VERSION.into(), text: text.into(), tool_calls: tool_calls.to_vec(), finish_reason: finish_reason.map(str::to_owned) })
+        .expect("assistant envelope contains only serializable text")
+}
+pub fn decode_assistant_finish_reason(content: &str) -> Option<String> {
+    serde_json::from_str::<AssistantEnvelope>(content).ok().filter(|env| env.v == ASSISTANT_ENVELOPE_VERSION).and_then(|env| env.finish_reason)
+}
+
 #[derive(Debug, Clone)]
 pub struct ChatCompletionResult {
+    pub finish_reason: Option<String>,
     pub content: String,
     pub tool_calls: Vec<ToolCall>,
     pub prompt_tokens: u64,
@@ -191,6 +205,8 @@ struct ChatCompletionResponse {
 
 #[derive(Debug, Deserialize)]
 struct ChatChoice {
+    #[serde(default)]
+    finish_reason: Option<String>,
     #[serde(default)]
     message: Option<ChatChoiceMessage>,
 }
@@ -328,6 +344,7 @@ fn parse_chat_completion(response: ChatCompletionResponse) -> Result<ChatComplet
         .map(parse_usd_micros)
         .transpose()?;
     Ok(ChatCompletionResult {
+        finish_reason: response.choices.first().and_then(|c| c.finish_reason.clone()),
         content,
         tool_calls,
         prompt_tokens: usage.prompt_tokens,

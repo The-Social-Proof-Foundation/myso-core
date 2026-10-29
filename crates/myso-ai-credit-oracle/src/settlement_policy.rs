@@ -85,6 +85,7 @@ mod tests {
         OracleArgs {
             listen_addr: "0.0.0.0:8095".into(),
             database_url: "postgres://localhost/test".into(),
+            response_encryption_key_hex: None,
             database_max_connections: 2,
             outbox_lease_secs: 60,
             replica_count: 1,

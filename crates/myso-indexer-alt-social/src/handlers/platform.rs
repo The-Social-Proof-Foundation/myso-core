@@ -280,6 +280,14 @@ struct PlatformDeletedEvent {
 }
 
 #[derive(Debug, Deserialize)]
+struct PlatformDeveloperChangedEvent {
+    platform_id: String,
+    new_developer: String,
+    #[serde(deserialize_with = "de_u64")]
+    changed_at: u64,
+}
+
+#[derive(Debug, Deserialize)]
 struct PlatformTreasuryFundedEvent {
     platform_id: String,
     #[serde(deserialize_with = "de_u64")]
@@ -304,6 +312,9 @@ pub fn handle_platform_event(
         }
         "PlatformApprovalChangedEvent" | "ApprovalChangedEvent" => {
             process_platform_approval_changed_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "PlatformDeveloperChangedEvent" => {
+            process_platform_developer_changed_event(data, event_id, checkpoint_timestamp_ms)
         }
         "ModeratorPermissionsGrantedEvent" => {
             process_moderator_permissions_granted_event(data, event_id, checkpoint_timestamp_ms)
@@ -746,6 +757,36 @@ fn process_platform_approval_changed_event(
             changed_at,
         },
         SocialEventRow::PlatformEvent(platform_event),
+    ])
+}
+
+fn process_platform_developer_changed_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: PlatformDeveloperChangedEvent = common::deserialize_social_event_json(
+        "platform",
+        "PlatformDeveloperChangedEvent",
+        event_id,
+        data,
+        "platform PlatformDeveloperChangedEvent JSON did not match PlatformDeveloperChangedEvent",
+    )?;
+    let changed_at = ms_to_naive(ev.changed_at, checkpoint_timestamp_ms);
+    Some(vec![
+        SocialEventRow::PlatformDeveloperChange {
+            platform_id: ev.platform_id.clone(),
+            new_developer: ev.new_developer,
+            changed_at,
+        },
+        SocialEventRow::PlatformEvent(NewPlatformEvent {
+            event_type: "DeveloperChanged".to_string(),
+            platform_id: ev.platform_id,
+            event_data: data.clone(),
+            event_id: Some(event_id.to_string()),
+            created_at: changed_at,
+            reasoning: None,
+        }),
     ])
 }
 

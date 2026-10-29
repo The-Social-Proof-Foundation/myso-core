@@ -640,7 +640,7 @@ pub fn chat_completion_response(model: &str, result: &InferenceResponse) -> Valu
         "choices": [{
             "index": 0,
             "message": message,
-            "finish_reason": if has_tools { "tool_calls" } else { "stop" },
+            "finish_reason": result.finish_reason,
         }],
         "usage": {
             "prompt_tokens": result.tokens_in,
@@ -706,6 +706,7 @@ fn build_inference_request(
         chat_messages: prompt.chat_messages,
         tools: prompt.tools,
         tool_choice: prompt.tool_choice,
+        max_amount_mist: None,
     }
 }
 
@@ -921,6 +922,7 @@ mod tests {
     #[test]
     fn chat_and_responses_shapes() {
         let result = InferenceResponse {
+            finish_reason: Some("stop".into()),
             receipt_id: None,
             amount_mist: 14,
             settlement_nonce: None,
@@ -1052,6 +1054,7 @@ mod tests {
     #[test]
     fn responses_api_emits_function_call_items() {
         let result = InferenceResponse {
+            finish_reason: Some("tool_calls".into()),
             receipt_id: None,
             amount_mist: 14,
             settlement_nonce: None,
@@ -1138,6 +1141,7 @@ mod tests {
         OracleArgs {
             listen_addr: "0.0.0.0:8095".into(),
             database_url: "postgres://localhost/test".into(),
+            response_encryption_key_hex: None,
             database_max_connections: 10,
             outbox_lease_secs: 60,
             replica_count: 1,

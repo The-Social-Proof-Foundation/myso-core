@@ -23,7 +23,7 @@ mod vesting;
 
 pub use agent_task::{
     AgentReputationInfo, AgentTaskInfo, CredibilityInfo, OverallScoreInfo, PrincipalReputationInfo,
-    ReputationScoreInfo, TaskConfigInfo, TaskDetailInfo, TaskReceiptInfo, TaskReviewInfo,
+    ReputationScoreInfo, TaskConfigInfo, TaskDetailInfo, TaskHistoryInfo, TaskReceiptInfo, TaskReviewInfo,
     TaskStatsInfo, TopAgentInfo,
 };
 pub use common::{ChartSummary, DateRange, SystemStatsResponse};

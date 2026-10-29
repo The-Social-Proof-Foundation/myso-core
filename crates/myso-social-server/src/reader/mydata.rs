@@ -47,9 +47,14 @@ pub(crate) async fn list_mydata(
 ) -> Result<Vec<MyDataBasic>, SocialError> {
     let mut conn = db.connect().await?;
     let sort_clause = match sort_by {
-        Some("price") => " ORDER BY COALESCE(one_time_price, subscription_price) DESC",
-        Some("updated") => " ORDER BY last_updated DESC",
-        _ => " ORDER BY created_at DESC",
+        // Offset-based MCP/UI pagination needs a total order. Without the unique
+        // object ID tie-breaker, rows sharing a timestamp or price can drift
+        // between pages and be repeated or skipped.
+        Some("price") => {
+            " ORDER BY COALESCE(one_time_price, subscription_price) DESC, mydata_id ASC"
+        }
+        Some("updated") => " ORDER BY last_updated DESC, mydata_id ASC",
+        _ => " ORDER BY created_at DESC, mydata_id ASC",
     };
     let query = format!(
         "
@@ -111,7 +116,7 @@ pub(crate) async fn get_popular_mydata(
             d.geographic_region, d.data_quality, d.sample_size, d.collection_method, d.is_updating, d.update_frequency
         FROM mydata_popular_30_days p
         INNER JOIN mydata_data d ON d.mydata_id = p.mydata_id
-        ORDER BY p.unique_purchasers DESC, p.total_revenue DESC NULLS LAST, d.created_at DESC
+        ORDER BY p.unique_purchasers DESC, p.total_revenue DESC NULLS LAST, d.created_at DESC, d.mydata_id ASC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
@@ -135,11 +140,36 @@ pub(crate) async fn get_mydata_purchases(
                revoked, revoked_at, revoked_by
         FROM mydata_purchases
         WHERE mydata_id = $1
-        ORDER BY purchase_time DESC
+        ORDER BY purchase_time DESC, id DESC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
         .bind::<Text, _>(mydata_id)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(offset)
+        .load::<PurchaseInfo>(&mut conn)
+        .await?;
+    Ok(results)
+}
+
+pub(crate) async fn get_mydata_purchases_by_buyer(
+    db: &Db,
+    buyer: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<PurchaseInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT id, mydata_id, buyer, price, platform_fee, ecosystem_fee, creator_amount,
+               platform_address, purchase_type, purchase_time, time, transaction_id,
+               revoked, revoked_at, revoked_by
+        FROM mydata_purchases
+        WHERE buyer = $1
+        ORDER BY purchase_time DESC, mydata_id ASC, id ASC
+        LIMIT $2 OFFSET $3
+    ";
+    let results = diesel::sql_query(query)
+        .bind::<Text, _>(buyer)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<PurchaseInfo>(&mut conn)
@@ -159,7 +189,7 @@ pub(crate) async fn get_mydata_subscriptions(
                revoked, revoked_at, revoked_by
         FROM mydata_subscriptions
         WHERE mydata_id = $1
-        ORDER BY subscription_start DESC
+        ORDER BY subscription_start DESC, id DESC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -183,7 +213,7 @@ pub(crate) async fn get_mydata_revenue(
                creator_amount, platform_address, revenue_type, revenue_time, time, transaction_id
         FROM mydata_revenue
         WHERE mydata_id = $1
-        ORDER BY revenue_time DESC
+        ORDER BY revenue_time DESC, id DESC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -206,7 +236,7 @@ pub(crate) async fn get_mydata_access_logs(
         SELECT id, mydata_id, user_address, access_type, access_time, time, transaction_id
         FROM mydata_access_logs
         WHERE mydata_id = $1
-        ORDER BY access_time DESC
+        ORDER BY access_time DESC, id DESC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -231,7 +261,7 @@ pub(crate) async fn get_creator_mydata(
                geographic_region, data_quality, sample_size, collection_method, is_updating, update_frequency
         FROM mydata_data
         WHERE owner = $1
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, mydata_id ASC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -323,7 +353,7 @@ pub(crate) async fn list_mydata_broad_pools(
     let query = "
         SELECT pool_id, name, platform_address, created_at_ms, event_id, transaction_id, time
         FROM mydata_broad_pools
-        ORDER BY created_at_ms DESC
+        ORDER BY created_at_ms DESC, pool_id ASC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
@@ -345,7 +375,7 @@ pub(crate) async fn list_mydata_sub_pools_for_broad_pool(
         SELECT sub_pool_id, broad_pool_id, name, created_at_ms, event_id, transaction_id, time
         FROM mydata_sub_pools
         WHERE broad_pool_id = $1
-        ORDER BY created_at_ms DESC
+        ORDER BY created_at_ms DESC, sub_pool_id ASC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -369,7 +399,7 @@ pub(crate) async fn list_mydata_sub_pools_for_listing(
         FROM mydata_listing_sub_pools j
         INNER JOIN mydata_sub_pools s ON s.sub_pool_id = j.sub_pool_id
         WHERE j.listing_id = $1
-        ORDER BY j.assigned_at_ms DESC
+        ORDER BY j.assigned_at_ms DESC, s.sub_pool_id ASC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -392,7 +422,7 @@ pub(crate) async fn list_mydata_listings_for_sub_pool(
         SELECT listing_id, sub_pool_id, assigned_at_ms, event_id, transaction_id, time
         FROM mydata_listing_sub_pools
         WHERE sub_pool_id = $1
-        ORDER BY assigned_at_ms DESC
+        ORDER BY assigned_at_ms DESC, listing_id ASC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)

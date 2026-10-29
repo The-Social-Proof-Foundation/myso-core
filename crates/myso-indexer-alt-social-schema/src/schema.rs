@@ -1531,6 +1531,7 @@ diesel::table! {
         updated_at -> Nullable<Int8>,
         time -> Timestamptz,
         transaction_id -> Text,
+        payment_recipient -> Text,
     }
 }
 
@@ -3347,6 +3348,8 @@ diesel::table! {
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
+        remainder_recipient -> Nullable<Text>,
+        remainder_swept_mist -> Nullable<Int8>,
     }
 }
 
@@ -3424,6 +3427,7 @@ diesel::table! {
         event_id -> Text,
         transaction_id -> Text,
         time -> Timestamptz,
+        refreshed_at_ms -> Nullable<Int8>,
     }
 }
 
@@ -3611,6 +3615,61 @@ diesel::table! {
         attempts -> Int4,
         last_error -> Nullable<Text>,
         next_attempt_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    org_treasury_balances (organization_id, coin_type) {
+        organization_id -> Text,
+        coin_type -> Text,
+        balance -> Int8,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    org_treasury_access (organization_id, recipient) {
+        organization_id -> Text,
+        recipient -> Text,
+        has_access -> Bool,
+        updated_by -> Text,
+        updated_at_ms -> Int8,
+        event_id -> Text,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    org_treasury_events (event_id) {
+        event_id -> Text,
+        organization_id -> Text,
+        event_type -> Text,
+        coin_type -> Nullable<Text>,
+        amount -> Nullable<Int8>,
+        balance_after -> Nullable<Int8>,
+        actor -> Text,
+        recipient -> Nullable<Text>,
+        has_access -> Nullable<Bool>,
+        timestamp_ms -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    post_access_purchases (event_id) {
+        event_id -> Text,
+        post_id -> Text,
+        mydata_id -> Text,
+        buyer -> Text,
+        seller -> Text,
+        purchased_at_ms -> Int8,
+        transaction_id -> Text,
+        time -> Timestamptz,
     }
 }
 
@@ -3817,4 +3876,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     platform_config,
     profile_config,
     subscription_config,
+    org_treasury_balances,
+    org_treasury_access,
+    org_treasury_events,
+    post_access_purchases,
 );

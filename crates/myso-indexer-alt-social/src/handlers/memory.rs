@@ -3,15 +3,18 @@
 
 use chrono::Utc;
 
+use super::common;
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
     builtin_org_role_mask, expand_org_permission_mask, AuditAction, NewAgentMemoryVault,
     NewAgenticOrganization, NewAuditLog, NewMemoryAccount, NewMemoryConfig, NewOrgInvitation,
-    NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment, NewOrganizationEvent, NewSubAgent,
+    NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment, NewOrgTreasuryAccess,
+    NewOrgTreasuryBalance, NewOrgTreasuryEvent, NewOrganizationEvent, NewSubAgent,
     NewSubAgentEvent, AUDIT_ACTOR_HUMAN, AUDIT_SOURCE_CHAIN, BUILTIN_ORG_ROLES,
     EVENT_TYPE_ORG_CATEGORY_UPDATED, EVENT_TYPE_ORG_CREATED, EVENT_TYPE_ORG_DEACTIVATED,
     EVENT_TYPE_ORG_UPDATED, ORG_INVITATION_STATUS_ACCEPTED, ORG_INVITATION_STATUS_DECLINED,
-    ORG_INVITATION_STATUS_PENDING,
+    ORG_INVITATION_STATUS_PENDING, ORG_TREASURY_EVENT_ACCESS_CHANGED, ORG_TREASURY_EVENT_FUNDED,
+    ORG_TREASURY_EVENT_WITHDRAWN,
 };
 
 pub(crate) fn json_to_i64(v: &serde_json::Value) -> i64 {
@@ -837,6 +840,90 @@ pub(crate) fn handle_memory_event(
                     &transaction_id,
                     now,
                 )),
+            ])
+        }
+        "OrgTreasuryFunded" | "OrgTreasuryWithdrawn" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let coin_type = json_str(data, "coin_type")?;
+            let timestamp_ms = json_u64(data, "timestamp");
+            let funded = event_name == "OrgTreasuryFunded";
+            let (balance, actor, recipient) = if funded {
+                (
+                    json_u64(data, "new_balance"),
+                    json_str(data, "funded_by")?,
+                    None,
+                )
+            } else {
+                (
+                    json_u64(data, "remaining_balance"),
+                    json_str(data, "withdrawn_by")?,
+                    json_str(data, "recipient"),
+                )
+            };
+            let time = common::chain_time_from_ms(timestamp_ms);
+            Some(vec![
+                SocialEventRow::OrgTreasuryBalance(NewOrgTreasuryBalance {
+                    organization_id: organization_id.clone(),
+                    coin_type: coin_type.clone(),
+                    balance,
+                    updated_at_ms: timestamp_ms,
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                    time,
+                }),
+                SocialEventRow::OrgTreasuryEvent(NewOrgTreasuryEvent {
+                    event_id: event_id.to_string(),
+                    organization_id,
+                    event_type: if funded {
+                        ORG_TREASURY_EVENT_FUNDED
+                    } else {
+                        ORG_TREASURY_EVENT_WITHDRAWN
+                    }
+                    .to_string(),
+                    coin_type: Some(coin_type),
+                    amount: Some(json_u64(data, "amount")),
+                    balance_after: Some(balance),
+                    actor,
+                    recipient,
+                    has_access: None,
+                    timestamp_ms,
+                    transaction_id,
+                    time,
+                }),
+            ])
+        }
+        "OrgTreasuryAccessChanged" => {
+            let organization_id = json_str(data, "organization_id")?;
+            let recipient = json_str(data, "recipient")?;
+            let updated_by = json_str(data, "updated_by")?;
+            let has_access = data.get("has_access")?.as_bool()?;
+            let timestamp_ms = json_u64(data, "timestamp");
+            let time = common::chain_time_from_ms(timestamp_ms);
+            Some(vec![
+                SocialEventRow::OrgTreasuryAccess(NewOrgTreasuryAccess {
+                    organization_id: organization_id.clone(),
+                    recipient: recipient.clone(),
+                    has_access,
+                    updated_by: updated_by.clone(),
+                    updated_at_ms: timestamp_ms,
+                    event_id: event_id.to_string(),
+                    transaction_id: transaction_id.clone(),
+                    time,
+                }),
+                SocialEventRow::OrgTreasuryEvent(NewOrgTreasuryEvent {
+                    event_id: event_id.to_string(),
+                    organization_id,
+                    event_type: ORG_TREASURY_EVENT_ACCESS_CHANGED.to_string(),
+                    coin_type: None,
+                    amount: None,
+                    balance_after: None,
+                    actor: updated_by,
+                    recipient: Some(recipient),
+                    has_access: Some(has_access),
+                    timestamp_ms,
+                    transaction_id,
+                    time,
+                }),
             ])
         }
         "MemoryConfigUpdatedEvent" => {

@@ -28,12 +28,12 @@ use myso_indexer_alt_social_schema::models::{
     NewMediaAssetResolvedPolicy, NewMediaAssetRightsUpdate, NewMediaAssetUsage, NewModerationEvent,
     NewPocAnalysisResult, NewPocConfiguration, NewPocCreatorIdentityLink, NewPocDispute,
     NewPocDisputeVote, NewPocRevenueRedirection, NewPocUsernameBeneficiary,
-    NewPocUsernameBeneficiaryEvent, NewPocVaultClaim, NewPocVaultDeposit, NewPost, NewPostTransfer,
-    NewPostUsageDecisionEvent, NewPromotedPost, NewPromotionBudgetEvent, NewPromotionStatusEvent,
-    NewPromotionView, NewReaction, NewReactionCount, NewReport, NewRepost,
-    NewRevenueManifestRecord, NewSubscriptionAccessLog, NewTip, NewUnifiedRevenue,
-    REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE, REVENUE_TYPE_PROMOTION_PLATFORM_FEE,
-    REVENUE_TYPE_PROMOTION_VIEWER_NET,
+    NewPocUsernameBeneficiaryEvent, NewPocVaultClaim, NewPocVaultDeposit, NewPost,
+    NewPostAccessPurchase, NewPostTransfer, NewPostUsageDecisionEvent, NewPromotedPost,
+    NewPromotionBudgetEvent, NewPromotionStatusEvent, NewPromotionView, NewReaction,
+    NewReactionCount, NewReport, NewRepost, NewRevenueManifestRecord, NewSubscriptionAccessLog,
+    NewTip, NewUnifiedRevenue, REVENUE_TYPE_PROMOTION_ECOSYSTEM_FEE,
+    REVENUE_TYPE_PROMOTION_PLATFORM_FEE, REVENUE_TYPE_PROMOTION_VIEWER_NET,
 };
 use myso_indexer_alt_social_schema::schema::{
     comments, composition_analysis_records, detected_asset_relationships, ecosystem_treasury,
@@ -42,9 +42,10 @@ use myso_indexer_alt_social_schema::schema::{
     media_asset_resolved_obligations, media_asset_resolved_policies, media_asset_rights_updates,
     media_asset_usages, media_assets, poc_analysis_results, poc_config, poc_creator_identity_links,
     poc_dispute_votes, poc_disputes, poc_revenue_redirections, poc_username_beneficiary_events,
-    poc_vault_claims, poc_vault_deposits, post_config, post_usage_decision_events, posts,
-    promoted_posts, promotion_budget_events, promotion_status_events, promotion_views,
-    reaction_counts, reactions, reposts, revenue_manifests, subscription_access_logs, tips,
+    poc_vault_claims, poc_vault_deposits, post_access_purchases, post_config,
+    post_usage_decision_events, posts, promoted_posts, promotion_budget_events,
+    promotion_status_events, promotion_views, reaction_counts, reactions, reposts,
+    revenue_manifests, subscription_access_logs, tips,
 };
 use myso_indexer_alt_social_schema::schema::{
     posts_deletion_events, posts_moderation_events, posts_reports, posts_transfers, profiles,
@@ -86,6 +87,7 @@ pub enum PostRow {
         is_post: bool,
     },
     Repost(NewRepost),
+    PostAccessPurchase(NewPostAccessPurchase),
     RepostRemoved {
         repost_id: String,
         original_id: String,
@@ -369,6 +371,7 @@ impl PostRow {
                 is_post,
             }),
             SocialEventRow::Repost(r) => Some(PostRow::Repost(r)),
+            SocialEventRow::PostAccessPurchase(p) => Some(PostRow::PostAccessPurchase(p)),
             SocialEventRow::RepostRemoved {
                 repost_id,
                 original_id,
@@ -1414,6 +1417,14 @@ impl Handler for PostsHandler {
                             .execute(conn)
                             .await;
                     }
+                }
+                PostRow::PostAccessPurchase(p) => {
+                    total += diesel::insert_into(post_access_purchases::table)
+                        .values(p)
+                        .on_conflict(post_access_purchases::event_id)
+                        .do_nothing()
+                        .execute(conn)
+                        .await?;
                 }
                 PostRow::Repost(r) => {
                     let mut repost = r.clone();

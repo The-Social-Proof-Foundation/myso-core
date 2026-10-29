@@ -332,6 +332,13 @@ module social_contracts::governance {
         swept_at_ms: u64,
     }
 
+    /// Records the exact treasury transfer (or zero remainder) from a finished jury case.
+    public struct JuryCaseRemainderSweptEvent has copy, drop {
+        case_id: ID,
+        recipient: address,
+        amount_mist: u64,
+    }
+
     public struct JuryPolicyUpdatedEvent has copy, drop {
         registry_id: ID,
         council_stage_enabled: bool,
@@ -2227,7 +2234,7 @@ module social_contracts::governance {
         outcome
     }
 
-    /// Ecosystem and proof-of-creativity only: `ecosystem_treasury` used when the delegate council rejects the proposal.
+    /// Global governance registries, including Spot: `ecosystem_treasury` receives a rejected proposal pool.
     public entry fun delegate_vote_on_proposal(
         registry: &mut GovernanceDAO,
         proposal: &mut Proposal,
@@ -4088,11 +4095,14 @@ module social_contracts::governance {
             assert!(jury::case_executed(case), EJuryNotFinished);
         };
         let remainder = jury::sweep_remainder(case);
-        if (balance::value(&remainder) > 0) {
-            transfer::public_transfer(coin::from_balance(remainder, ctx), jury::case_sweep_to(case));
+        let amount_mist = balance::value(&remainder);
+        let recipient = jury::case_sweep_to(case);
+        if (amount_mist > 0) {
+            transfer::public_transfer(coin::from_balance(remainder, ctx), recipient);
         } else {
             balance::destroy_zero(remainder);
         };
+        event::emit(JuryCaseRemainderSweptEvent { case_id: object::id(case), recipient, amount_mist });
     }
 
     // Views

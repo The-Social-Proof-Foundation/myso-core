@@ -318,4 +318,92 @@ module social_contracts::subscription_plan_tests {
 
         test_scenario::end(scenario);
     }
+    #[test]
+    fun quoted_plan_guard_accepts_exact_terms() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_env(&mut scenario);
+        let (plan_id, _) = share_service_with_two_plans(&mut scenario);
+        test_scenario::next_tx(&mut scenario, SUBSCRIBER);
+        let service = test_scenario::take_shared<ProfileSubscriptionService>(&scenario);
+        subscription::assert_plan_terms<MYSO>(&service, plan_id, CREATOR, BASIC_PRICE, MONTHLY_MS, option::none(), option::none(), true);
+        test_scenario::return_shared(service);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 88, location = social_contracts::subscription)]
+    fun quoted_plan_guard_rejects_a_different_price_before_payment() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_env(&mut scenario);
+        let (plan_id, _) = share_service_with_two_plans(&mut scenario);
+        test_scenario::next_tx(&mut scenario, SUBSCRIBER);
+        let service = test_scenario::take_shared<ProfileSubscriptionService>(&scenario);
+        subscription::assert_plan_terms<MYSO>(&service, plan_id, CREATOR, BASIC_PRICE + 1, MONTHLY_MS, option::none(), option::none(), true);
+        test_scenario::return_shared(service);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun subscriber_can_toggle_renewal_without_changing_funds_or_expiry() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_env(&mut scenario);
+        let (plan_id, _) = share_service_with_two_plans(&mut scenario);
+        subscribe_with_plan(&mut scenario, plan_id, BASIC_PRICE);
+        test_scenario::next_tx(&mut scenario, SUBSCRIBER);
+        let registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+        let service = test_scenario::take_shared<ProfileSubscriptionService>(&scenario);
+        let mut sub = test_scenario::take_from_sender<ProfileSubscription>(&scenario);
+        let clock = test_scenario::take_shared<Clock>(&scenario);
+        let expiry = subscription::subscription_expires_at(&sub);
+        let balance = subscription::subscription_renewal_balance<MYSO>(&sub);
+        subscription::set_auto_renew(&registry, &service, &mut sub, true, &clock, test_scenario::ctx(&mut scenario));
+        assert!(subscription::subscription_auto_renew(&sub));
+        subscription::set_auto_renew(&registry, &service, &mut sub, false, &clock, test_scenario::ctx(&mut scenario));
+        assert!(!subscription::subscription_auto_renew(&sub));
+        assert_eq!(subscription::subscription_expires_at(&sub), expiry);
+        assert_eq!(subscription::subscription_renewal_balance<MYSO>(&sub), balance);
+        test_scenario::return_to_sender(&scenario, sub);
+        test_scenario::return_shared(registry);
+        test_scenario::return_shared(service);
+        test_scenario::return_shared(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 80, location = social_contracts::subscription)]
+    fun creator_cannot_toggle_a_subscriber_renewal_preference() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_env(&mut scenario);
+        let (plan_id, _) = share_service_with_two_plans(&mut scenario);
+        subscribe_with_plan(&mut scenario, plan_id, BASIC_PRICE);
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        let registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
+        let service = test_scenario::take_shared<ProfileSubscriptionService>(&scenario);
+        let mut sub = test_scenario::take_from_address<ProfileSubscription>(&scenario, SUBSCRIBER);
+        let clock = test_scenario::take_shared<Clock>(&scenario);
+        subscription::set_auto_renew(&registry, &service, &mut sub, true, &clock, test_scenario::ctx(&mut scenario));
+        test_scenario::return_to_address(SUBSCRIBER, sub);
+        test_scenario::return_shared(registry);
+        test_scenario::return_shared(service);
+        test_scenario::return_shared(clock);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 88, location = social_contracts::subscription)]
+    fun renewal_quote_cannot_substitute_another_plan_in_the_same_service() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_env(&mut scenario);
+        let (monthly, annual) = share_service_with_two_plans(&mut scenario);
+        subscribe_with_plan(&mut scenario, monthly, BASIC_PRICE);
+        test_scenario::next_tx(&mut scenario, SUBSCRIBER);
+        let service = test_scenario::take_shared<ProfileSubscriptionService>(&scenario);
+        let sub = test_scenario::take_from_sender<ProfileSubscription>(&scenario);
+        subscription::assert_subscription_terms<MYSO>(&service, &sub, annual, CREATOR,
+            BASIC_PRICE * 10, ANNUAL_MS, option::none(), option::none());
+        test_scenario::return_to_sender(&scenario, sub);
+        test_scenario::return_shared(service);
+        test_scenario::end(scenario);
+    }
+
 }

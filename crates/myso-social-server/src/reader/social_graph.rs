@@ -65,11 +65,15 @@ pub(crate) async fn enrich_users_with_universal_data(
             rp.required_threshold,
             rp.status as reservation_status
         FROM latest_profiles p
-        LEFT JOIN profile_badges pb ON
-            p.selected_badge_id IS NOT NULL AND
-            pb.badge_id = p.selected_badge_id AND
-            pb.profile_id = p.profile_id AND
-            pb.revoked = false
+        LEFT JOIN LATERAL (
+            SELECT badge.*
+            FROM profile_badges badge
+            WHERE p.selected_badge_id IS NOT NULL
+              AND badge.badge_id = p.selected_badge_id
+              AND badge.profile_id = p.profile_id
+            ORDER BY badge.time DESC, badge.id DESC
+            LIMIT 1
+        ) pb ON pb.revoked = false
         LEFT JOIN LATERAL (
             SELECT * FROM spt_pools spt_row
             WHERE LOWER(spt_row.associated_id) = LOWER('profile_' || p.owner_address)
@@ -750,10 +754,10 @@ pub(crate) async fn get_profile_badges(
             SELECT DISTINCT ON (badge_id) *
             FROM profile_badges
             WHERE profile_id = $1 OR profile_id = $2
-            ORDER BY badge_id, time DESC
+            ORDER BY badge_id, time DESC, id DESC
         ) pb
         WHERE pb.revoked = false
-        ORDER BY pb.assigned_at DESC
+        ORDER BY pb.assigned_at DESC, pb.badge_id COLLATE \"C\" ASC
         LIMIT $3 OFFSET $4
     ";
     let results = diesel::sql_query(query)
@@ -1739,11 +1743,15 @@ pub(crate) async fn list_badges(
 ) -> Result<Vec<ProfileBadgeRow>, SocialError> {
     let mut conn = db.connect().await?;
     let query = "
-        SELECT DISTINCT ON (badge_id) badge_id, badge_name, badge_description, badge_media_url,
+        SELECT badge_id, badge_name, badge_description, badge_media_url,
                badge_icon_url, platform_id, assigned_by, assigned_at, revoked, revoked_at, revoked_by, badge_type
-        FROM profile_badges
+        FROM (
+            SELECT DISTINCT ON (badge_id) *
+            FROM profile_badges
+            ORDER BY badge_id, time DESC, id DESC
+        ) latest
         WHERE revoked = false
-        ORDER BY badge_id, time DESC
+        ORDER BY badge_id COLLATE \"C\" ASC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
@@ -1835,7 +1843,7 @@ pub(crate) async fn get_badge_by_id(
             SELECT DISTINCT ON (badge_id) *
             FROM profile_badges
             WHERE badge_id = $1
-            ORDER BY badge_id, time DESC
+            ORDER BY badge_id, time DESC, id DESC
         ) sub
     ";
     let result = diesel::sql_query(query)

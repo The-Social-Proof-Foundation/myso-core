@@ -1,7 +1,7 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{Extension, Path, Query, State};
 use axum::http::HeaderMap;
 use axum::Json;
 use std::sync::Arc;
@@ -9,12 +9,45 @@ use std::sync::Arc;
 use crate::error::SocialError;
 use crate::reader::ai_credit::{AiCreditBalanceResponse, IngestUsageLineRequest};
 
+use super::super::auth::WalletAuthContext;
 use super::super::{page_params, AppState, PageParams};
+
+fn same_address(left: &str, right: &str) -> bool {
+    left.trim_start_matches("0x")
+        .eq_ignore_ascii_case(right.trim_start_matches("0x"))
+}
+
+async fn require_balance_owner(
+    state: &AppState,
+    balance_id: &str,
+    auth: Option<&WalletAuthContext>,
+) -> Result<(), SocialError> {
+    if let Some(auth) = auth {
+        let balance = state
+            .reader
+            .get_ai_credit_balance_by_owner(&auth.sender_address)
+            .await?;
+        if !balance.is_some_and(|balance| balance.balance_id.eq_ignore_ascii_case(balance_id)) {
+            return Err(SocialError::forbidden(
+                "AI credit data is outside the authenticated wallet scope",
+            ));
+        }
+    }
+    Ok(())
+}
 
 pub async fn get_profile_ai_credit_balance(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
+    auth: Option<Extension<WalletAuthContext>>,
 ) -> Result<Json<AiCreditBalanceResponse>, SocialError> {
+    if let Some(auth) = auth.as_ref() {
+        if !same_address(&auth.sender_address, &address) {
+            return Err(SocialError::forbidden(
+                "AI credit data is outside the authenticated wallet scope",
+            ));
+        }
+    }
     let balance = state
         .reader
         .get_ai_credit_balance_by_owner(&address)
@@ -56,7 +89,9 @@ pub async fn list_ai_spend_reservations(
     State(state): State<Arc<AppState>>,
     Path(balance_id): Path<String>,
     Query(query): Query<ReservationHistoryQuery>,
+    auth: Option<Extension<WalletAuthContext>>,
 ) -> Result<Json<Vec<myso_indexer_alt_social_schema::models::AiSpendReservationRow>>, SocialError> {
+    require_balance_owner(&state, &balance_id, auth.as_ref().map(|auth| &auth.0)).await?;
     const STATUSES: [&str; 4] = ["reserved", "captured", "cancelled", "expired"];
     if let Some(status) = query.status.as_deref() {
         if !STATUSES.contains(&status) {
@@ -80,7 +115,9 @@ pub async fn list_ai_spend_reservations(
 pub async fn get_ai_spend_reservation(
     State(state): State<Arc<AppState>>,
     Path((balance_id, reservation_nonce)): Path<(String, i64)>,
+    auth: Option<Extension<WalletAuthContext>>,
 ) -> Result<Json<myso_indexer_alt_social_schema::models::AiSpendReservationRow>, SocialError> {
+    require_balance_owner(&state, &balance_id, auth.as_ref().map(|auth| &auth.0)).await?;
     state
         .reader
         .get_ai_spend_reservation(&balance_id, reservation_nonce)
@@ -128,7 +165,9 @@ pub async fn list_ai_credit_usage_history(
     State(state): State<Arc<AppState>>,
     Path(balance_id): Path<String>,
     Query(query): Query<UsageHistoryQuery>,
+    auth: Option<Extension<WalletAuthContext>>,
 ) -> Result<Json<Vec<myso_indexer_alt_social_schema::models::AiCreditUsageLineRow>>, SocialError> {
+    require_balance_owner(&state, &balance_id, auth.as_ref().map(|auth| &auth.0)).await?;
     let lines = state
         .reader
         .list_ai_credit_usage_lines(

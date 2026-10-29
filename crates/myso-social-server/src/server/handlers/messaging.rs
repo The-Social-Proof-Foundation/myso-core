@@ -126,6 +126,18 @@ pub async fn list_group_digests(
         .map(Json)
 }
 
+pub async fn get_agent_room_by_group(
+    State(state): State<Arc<AppState>>,
+    Path(group_id): Path<String>,
+) -> Result<Json<crate::reader::AgentRoomInfo>, SocialError> {
+    state
+        .reader
+        .get_agent_room_by_group(&group_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found(format!("Agent room for group '{group_id}'")))
+        .map(Json)
+}
+
 pub async fn get_messaging_revenue_summary(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,

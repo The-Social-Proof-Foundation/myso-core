@@ -63,6 +63,11 @@ pub enum PlatformRow {
         approved_by: String,
         changed_at: chrono::NaiveDateTime,
     },
+    PlatformDeveloperChange {
+        platform_id: String,
+        new_developer: String,
+        changed_at: chrono::NaiveDateTime,
+    },
     PlatformModerator(NewPlatformModerator),
     PlatformModeratorRemove {
         platform_id: String,
@@ -186,6 +191,15 @@ impl PlatformRow {
                 platform_id,
                 is_approved,
                 approved_by,
+                changed_at,
+            }),
+            crate::handlers::SocialEventRow::PlatformDeveloperChange {
+                platform_id,
+                new_developer,
+                changed_at,
+            } => Some(PlatformRow::PlatformDeveloperChange {
+                platform_id,
+                new_developer,
                 changed_at,
             }),
             crate::handlers::SocialEventRow::PlatformModerator(m) => {
@@ -458,6 +472,20 @@ impl Handler for PlatformHandler {
                             platforms::is_approved.eq(is_approved),
                             platforms::approval_changed_at.eq(Some(changed_at)),
                             platforms::approved_by.eq(Some(approved_by)),
+                            platforms::updated_at.eq(changed_at),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                PlatformRow::PlatformDeveloperChange {
+                    platform_id,
+                    new_developer,
+                    changed_at,
+                } => {
+                    total += diesel::update(platforms::table)
+                        .filter(platforms::platform_id.eq(platform_id))
+                        .set((
+                            platforms::developer_address.eq(new_developer),
                             platforms::updated_at.eq(changed_at),
                         ))
                         .execute(conn)

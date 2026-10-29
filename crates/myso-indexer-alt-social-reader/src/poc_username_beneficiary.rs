@@ -111,7 +111,10 @@ pub async fn list_username_beneficiaries(
     let _guard = metrics.latency.start_timer();
     let mut query = poc_username_beneficiaries::table
         .into_boxed()
-        .order(poc_username_beneficiaries::provisioned_at_ms.desc());
+        .order((
+            poc_username_beneficiaries::provisioned_at_ms.desc(),
+            poc_username_beneficiaries::beneficiary_id.desc(),
+        ));
     if let Some(status) = status {
         query = query.filter(poc_username_beneficiaries::status.eq(status));
     }

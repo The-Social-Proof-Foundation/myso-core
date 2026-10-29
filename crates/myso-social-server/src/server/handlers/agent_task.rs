@@ -101,6 +101,58 @@ pub async fn get_task(
         .map(Json)
 }
 
+/// Resolve task-bound room metadata. The authenticated MCP facade must first
+/// prove that the caller is a buyer or seller on this task. This endpoint only
+/// returns the indexed room reference; it grants no messaging permission.
+pub async fn get_task_room(
+    State(state): State<Arc<AppState>>,
+    Path(task_id): Path<String>,
+) -> Result<Json<crate::reader::AgentRoomInfo>, SocialError> {
+    state
+        .reader
+        .get_task_room(&task_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found("Task room"))
+        .map(Json)
+}
+
+pub async fn get_task_receipt(
+    State(state): State<Arc<AppState>>,
+    Path(task_id): Path<String>,
+) -> Result<Json<TaskReceiptInfo>, SocialError> {
+    state
+        .reader
+        .get_task_receipt(&task_id)
+        .await?
+        .ok_or_else(|| SocialError::not_found("Task settlement receipt"))
+        .map(Json)
+}
+
+pub async fn list_task_history(
+    State(state): State<Arc<AppState>>,
+    Path(task_id): Path<String>,
+    Query(query): Query<PageQuery>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let limit = query.limit.unwrap_or(50).clamp(1, 100);
+    let offset = query.offset.unwrap_or(0).clamp(0, 100_000);
+    let events = state
+        .reader
+        .list_task_history(&task_id, limit, offset)
+        .await?;
+    let next_offset = if events.len() as i64 == limit && offset + limit <= 100_000 {
+        Some(offset + limit)
+    } else {
+        None
+    };
+    Ok(Json(serde_json::json!({
+        "taskId": task_id,
+        "events": events,
+        "limit": limit,
+        "offset": offset,
+        "nextOffset": next_offset
+    })))
+}
+
 pub async fn list_agent_receipts(
     State(state): State<Arc<AppState>>,
     Path(agent_object_id): Path<String>,

@@ -18,6 +18,7 @@ mod metrics;
 pub mod mydata;
 pub mod org_leaderboard;
 pub mod org_stats;
+pub mod org_treasury;
 pub mod organization;
 pub mod pg_reader;
 pub mod platform;
@@ -25,6 +26,7 @@ pub mod pnl;
 pub mod poc;
 pub mod poc_username_beneficiary;
 pub mod post;
+pub mod post_access;
 pub mod profile;
 pub mod promotion;
 pub mod reputation;
@@ -57,6 +59,8 @@ pub use jury::{
     JuryCaseSummaryRow, ProposalJuryReferralRow, ProposalJuryReviewRow, RegistryJuryPolicyRow,
 };
 pub use memory::MemoryConfigRow;
+pub use org_treasury::{OrgTreasuryAccessRow, OrgTreasuryBalanceRow};
+pub use post_access::PostAccessPurchaseRow;
 pub use memory::{SocialAttributionRow, SubAgentListResult};
 pub use messaging::{MessagingAgentGroupRow, MessagingConfigRow, PaidMessageEscrowRow};
 pub use metrics::standalone_reader_metrics;

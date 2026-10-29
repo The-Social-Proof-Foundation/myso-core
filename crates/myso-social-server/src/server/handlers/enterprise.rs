@@ -4,7 +4,7 @@
 //! Enterprise workforce endpoints: org memory permissions, roles, spend approvals,
 //! audit logs, and internal ingest for off-chain producers (oracle + memory relayer).
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{Extension, Path, Query, State};
 use axum::http::HeaderMap;
 use axum::Json;
 use myso_indexer_alt_social_reader::OrganizationStatsWindow;
@@ -13,6 +13,7 @@ use myso_indexer_alt_social_schema::models::{
     OrgRoleAssignmentRow, OrgRoleRow,
 };
 use serde::Deserialize;
+use serde::Serialize;
 use std::sync::Arc;
 
 use crate::error::SocialError;
@@ -22,6 +23,7 @@ use crate::reader::enterprise::{
 use crate::workflow_client::{memory_access_idempotency_key, WorkflowClient, WorkflowItemIngest};
 
 use super::super::{page_params, AppState, PageParams};
+use super::super::auth::WalletAuthContext;
 
 fn check_sync_secret(
     headers: &HeaderMap,
@@ -112,6 +114,68 @@ pub async fn list_org_memory_permissions_internal(
     Ok(Json(rows))
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OrgAccessQuery {
+    pub member: String,
+    pub permission: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrgAccessResponse {
+    pub organization_id: String,
+    pub member: String,
+    pub permission: String,
+    pub allowed: bool,
+    pub evidence_source: &'static str,
+}
+
+/// Service-to-service mirror of the exact dashboard/auditor read gate used by
+/// `org_role` middleware. The internal caller still has to bind this result to
+/// its authenticated organization and wallet before exposing any data.
+pub async fn check_org_access_internal(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(organization_id): Path<String>,
+    Query(query): Query<OrgAccessQuery>,
+) -> Result<Json<OrgAccessResponse>, SocialError> {
+    check_required_sync_secret(&headers, "x-internal-sync-secret", "INTERNAL_SYNC_SECRET")?;
+    let member = query.member.trim();
+    let valid_member = member.strip_prefix("0x").unwrap_or(member);
+    if valid_member.is_empty()
+        || valid_member.len() > 64
+        || !valid_member.bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
+        return Err(SocialError::bad_request(
+            "invalid organization member address",
+        ));
+    }
+    let required = match query.permission.as_str() {
+        "dashboard_viewer" => super::super::auth::OrgAccessRequirement::DashboardViewer,
+        "auditor" => super::super::auth::OrgAccessRequirement::Auditor,
+        _ => {
+            return Err(SocialError::bad_request(
+                "unsupported organization read permission",
+            ))
+        }
+    };
+    let allowed = super::super::auth::caller_has_org_permission(
+        &state.reader,
+        member,
+        &organization_id,
+        required,
+    )
+    .await?;
+    Ok(Json(OrgAccessResponse {
+        organization_id,
+        member: member.to_string(),
+        permission: query.permission,
+        allowed,
+        evidence_source: "same_indexed_active_permission_rows_as_org_role_middleware",
+    }))
+}
+
 pub async fn list_org_roles(
     State(state): State<Arc<AppState>>,
     Path(organization_id): Path<String>,
@@ -179,6 +243,30 @@ pub async fn list_org_invitations(
     Ok(Json(rows))
 }
 
+/// Recipient inbox projection. It returns only pending invitations for the
+/// addressed wallet; the indexed rows are informational and never authorize
+/// acceptance without the invitee signing the matching Move action.
+pub async fn list_profile_org_invitations(
+    State(state): State<Arc<AppState>>,
+    Path(address): Path<String>,
+    Query(query): Query<PageParams>,
+) -> Result<Json<Vec<OrgInvitationRow>>, SocialError> {
+    let hex = address.strip_prefix("0x").unwrap_or(&address);
+    if hex.is_empty() || hex.len() > 64 || !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(SocialError::bad_request("Invalid invitee address"));
+    }
+    let address = format!("0x{:0>64}", hex.to_ascii_lowercase());
+    let rows = state
+        .reader
+        .list_org_invitations_for_invitee(
+            &address,
+            query.limit().clamp(1, 100),
+            query.offset().max(0).min(100_000),
+        )
+        .await?;
+    Ok(Json(rows))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ApprovalsQuery {
     pub status: Option<String>,
@@ -198,7 +286,19 @@ pub async fn list_profile_spend_approvals(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
     Query(query): Query<ApprovalsQuery>,
+    auth: Option<Extension<WalletAuthContext>>,
 ) -> Result<Json<Vec<AiCreditSpendApprovalRow>>, SocialError> {
+    if let Some(auth) = auth.as_ref() {
+        if !auth
+            .sender_address
+            .trim_start_matches("0x")
+            .eq_ignore_ascii_case(address.trim_start_matches("0x"))
+        {
+            return Err(SocialError::forbidden(
+                "AI credit approvals are outside the authenticated wallet scope",
+            ));
+        }
+    }
     let rows = state
         .reader
         .list_spend_approvals_by_owner(
@@ -337,6 +437,21 @@ pub async fn ingest_approval_internal(
     )?;
     state.reader.ingest_requested_approval(req).await?;
     Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+/// Stored memory totals for one account. The caller must already be authenticated;
+/// this handler does not accept a different account than the path names.
+pub async fn get_account_memory_usage(
+    State(state): State<Arc<AppState>>,
+    Path(account_id): Path<String>,
+) -> Result<Json<serde_json::Value>, SocialError> {
+    let hex = account_id.trim().strip_prefix("0x").unwrap_or(account_id.trim());
+    if hex.is_empty() || hex.len() > 64 || !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(SocialError::bad_request("invalid memory account id"));
+    }
+    let account_id = format!("0x{:0>64}", hex.to_ascii_lowercase());
+    let agents = state.reader.list_memory_usage_for_account(&account_id).await?;
+    Ok(Json(serde_json::json!({ "agents": agents })))
 }
 
 /// Memory relayer pushes per-agent usage aggregates.

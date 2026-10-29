@@ -27,7 +27,7 @@ pub(crate) async fn list_poc_badges(
             ORDER BY badge_id, time DESC
         ) sub
         WHERE COALESCE(revoked, false) = false
-        ORDER BY issued_at DESC
+        ORDER BY issued_at DESC, badge_id DESC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
@@ -76,7 +76,7 @@ pub(crate) async fn list_poc_revenue_redirections(
             ORDER BY redirection_id, time DESC
         ) sub
         WHERE COALESCE(removed, false) = false
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, redirection_id DESC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
@@ -98,7 +98,7 @@ pub(crate) async fn list_poc_analysis_results(
                oracle_address, original_creator, analysis_timestamp,
                reasoning, evidence_urls
         FROM poc_analysis_results
-        ORDER BY analysis_timestamp DESC
+        ORDER BY analysis_timestamp DESC, post_id DESC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
@@ -126,7 +126,7 @@ pub(crate) async fn list_poc_disputes(
             FROM poc_disputes
             ORDER BY dispute_id, time DESC
         ) sub
-        ORDER BY submitted_at DESC
+        ORDER BY submitted_at DESC, dispute_id DESC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
@@ -179,7 +179,7 @@ pub(crate) async fn get_poc_dispute_votes(
             WHERE dispute_id = $1
             ORDER BY dispute_id, voter, time DESC
         ) sub
-        ORDER BY voted_at DESC
+        ORDER BY voted_at DESC, voter DESC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -242,7 +242,7 @@ pub(crate) async fn get_poc_configuration(db: &Db) -> Result<Option<PocConfigRow
                dispute_governance_registry_id,
                updated_by, updated_at, transaction_id
         FROM poc_config
-        ORDER BY updated_at DESC
+        ORDER BY updated_at DESC, transaction_id DESC
         LIMIT 1
     ";
     let result = diesel::sql_query(query)

@@ -23,7 +23,8 @@ use crate::ledger::BalanceLedger;
 use crate::markup_refresh::{spawn_markup_refresh_worker, startup_markup_refresh};
 use crate::myso_price_client::MysoPriceClient;
 use crate::openrouter_client::{
-    decode_assistant_content, encode_assistant_content, ChatMessage, OpenRouterClient, ToolCall,
+    decode_assistant_content, decode_assistant_finish_reason, encode_assistant_completion,
+    ChatMessage, OpenRouterClient, ToolCall,
 };
 use crate::price_refresh::{spawn_price_refresh_worker, startup_price_refresh};
 use crate::pricing::{
@@ -195,10 +196,15 @@ pub struct InferenceRequest {
     pub tools: Option<serde_json::Value>,
     #[serde(default)]
     pub tool_choice: Option<serde_json::Value>,
+    /// Optional caller budget ceiling for this inference reservation. The value
+    /// is a decimal string to preserve exact MIST amounts through JSON.
+    #[serde(default)]
+    pub max_amount_mist: Option<String>,
 }
 
 #[derive(Debug, serde::Serialize)]
 pub struct InferenceResponse {
+    pub finish_reason: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub receipt_id: Option<u128>,
     pub amount_mist: u64,
@@ -267,6 +273,7 @@ pub async fn serve(args: OracleArgs) -> anyhow::Result<()> {
         &args.database_url,
         args.database_max_connections,
         args.outbox_lease_secs,
+        args.response_encryption_key_hex.as_deref(),
     )
     .await?;
     let incomplete_reservations = reservation_ledger.incomplete_count().await?;
@@ -535,6 +542,7 @@ fn inference_response_from_reservation(
     }
     let (content, tool_calls) = decode_assistant_content(record.content.as_deref().unwrap_or(""));
     Ok(InferenceResponse {
+        finish_reason: decode_assistant_finish_reason(record.content.as_deref().unwrap_or("")),
         receipt_id: Some(derive_receipt_id(
             &record.idempotency_key,
             &record.balance_id,
@@ -1287,7 +1295,16 @@ pub async fn run_inference_core(
     const MAX_PROMPT_BYTES: usize = 1_048_576;
 
     let system_prompt = req.system_prompt.as_deref().unwrap_or("");
-    let combined_prompt_bytes = req.prompt.len().saturating_add(system_prompt.len());
+    let chat_bytes = if req.chat_messages.is_empty() {
+        Vec::new()
+    } else {
+        serde_json::to_vec(&req.chat_messages).map_err(|_| StatusCode::BAD_REQUEST)?
+    };
+    let combined_prompt_bytes = if chat_bytes.is_empty() {
+        req.prompt.len().saturating_add(system_prompt.len())
+    } else {
+        chat_bytes.len()
+    };
     if combined_prompt_bytes > MAX_PROMPT_BYTES {
         return Err(StatusCode::PAYLOAD_TOO_LARGE);
     }
@@ -1295,6 +1312,46 @@ pub async fn run_inference_core(
     if max_tokens == 0 || max_tokens > MAX_INFERENCE_OUTPUT_TOKENS {
         return Err(StatusCode::BAD_REQUEST);
     }
+    let requested_max_amount_mist = match req.max_amount_mist.as_deref() {
+        Some(value) if !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()) => {
+            Some(value.parse::<u64>().map_err(|_| StatusCode::BAD_REQUEST)?)
+        }
+        Some(_) => return Err(StatusCode::BAD_REQUEST),
+        None => None,
+    };
+
+    let max_token_bytes = (max_tokens as u64).to_le_bytes();
+    let tools_hash = req
+        .tools
+        .as_ref()
+        .map(|value| value.to_string())
+        .unwrap_or_default();
+    let tool_choice_hash = req
+        .tool_choice
+        .as_ref()
+        .map(|value| value.to_string())
+        .unwrap_or_default();
+    let mut request_parts: Vec<&[u8]> = vec![
+        req.owner.as_bytes(),
+        req.balance_id.as_bytes(),
+        req.memory_account_id.as_bytes(),
+        req.agent_object_id.as_bytes(),
+        req.model_id.as_bytes(),
+        system_prompt.as_bytes(),
+        req.prompt.as_bytes(),
+        tools_hash.as_bytes(),
+        tool_choice_hash.as_bytes(),
+        &max_token_bytes,
+        req.idempotency_key.as_bytes(),
+    ];
+    let budget_bytes = requested_max_amount_mist.map(u64::to_le_bytes);
+    if let Some(budget_bytes) = budget_bytes.as_ref() {
+        request_parts.push(budget_bytes);
+    }
+    if !chat_bytes.is_empty() {
+        request_parts.push(&chat_bytes);
+    }
+    let request_hash = hash32(&request_parts);
 
     // Completed retries return the original result. Every nonterminal state fails closed:
     // in particular, no retry can duplicate provider spend after a crash or timeout.
@@ -1307,6 +1364,9 @@ pub async fn run_inference_core(
             StatusCode::SERVICE_UNAVAILABLE
         })?
     {
+        if existing.request_hash_hex != hex::encode(&request_hash) {
+            return Err(StatusCode::CONFLICT);
+        }
         return inference_response_from_reservation(&existing);
     }
 
@@ -1332,6 +1392,10 @@ pub async fn run_inference_core(
             pricing.catalog_version().to_string(),
         )
     };
+    if requested_max_amount_mist.is_some_and(|ceiling| max_amount_mist > ceiling) {
+        tracing::warn!(reserved_mist = max_amount_mist, budget_ceiling_mist = requested_max_amount_mist.unwrap_or_default(), "inference rejected: run budget ceiling exceeded");
+        return Err(StatusCode::PAYMENT_REQUIRED);
+    }
 
     // This indexed preflight produces the UX-friendly reason/approval workflow. The Move
     // reserve call repeats capability, revocation, allowance, balance, and cap checks against
@@ -1372,29 +1436,6 @@ pub async fn run_inference_core(
         &(max_tokens as u64).to_le_bytes(),
         catalog_version.as_bytes(),
         &state.oracle_args.reservation_price_buffer_bps.to_le_bytes(),
-    ]);
-    let tools_hash = req
-        .tools
-        .as_ref()
-        .map(|value| value.to_string())
-        .unwrap_or_default();
-    let tool_choice_hash = req
-        .tool_choice
-        .as_ref()
-        .map(|value| value.to_string())
-        .unwrap_or_default();
-    let request_hash = hash32(&[
-        req.owner.as_bytes(),
-        req.balance_id.as_bytes(),
-        req.memory_account_id.as_bytes(),
-        req.agent_object_id.as_bytes(),
-        req.model_id.as_bytes(),
-        system_prompt.as_bytes(),
-        req.prompt.as_bytes(),
-        tools_hash.as_bytes(),
-        tool_choice_hash.as_bytes(),
-        &(max_tokens as u64).to_le_bytes(),
-        req.idempotency_key.as_bytes(),
     ]);
     let fx_quote_id = hash32(&[
         state.myso_price_oracle_url.as_bytes(),
@@ -1665,9 +1706,10 @@ pub async fn run_inference_core(
             record.provider_cost_usd_micros = Some(provider.provider_cost_usd_micros);
             record.upstream_cost_usd_micros = provider.upstream_cost_usd_micros;
             record.provider_generation_id = provider.generation_id.clone();
-            record.content = Some(encode_assistant_content(
+            record.content = Some(encode_assistant_completion(
                 &completion.content,
                 &completion.tool_calls,
+                completion.finish_reason.as_deref(),
             ));
             record.tokens_in = Some(completion.prompt_tokens);
             record.tokens_out = Some(completion.completion_tokens);

@@ -20,6 +20,7 @@ module social_contracts::subscription {
         bag::{Self, Bag},
         event,
         table::{Self, Table},
+        dynamic_field,
     };
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
     use social_contracts::platform::{Self, Platform};
@@ -39,6 +40,7 @@ module social_contracts::subscription {
     const EPlanNotFound: u64 = 85;
     const ENoActivePlans: u64 = 86;
     const ECoinTypeMismatch: u64 = 87;
+    const EPlanTermsChanged: u64 = 88;
 
     /// Default bootstrap values (used only at init)
     const MAX_RENEWAL_MONTHS: u64 = 12;
@@ -122,6 +124,18 @@ module social_contracts::subscription {
         version: u64,
     }
 
+    /// Optional, backward-compatible payout destination. Existing services without
+    /// this dynamic field continue to pay their profile owner.
+    public struct ServicePaymentRecipientKey has copy, drop, store {}
+
+    public struct ServicePaymentRecipientUpdatedEvent has copy, drop {
+        service_id: ID,
+        previous_recipient: address,
+        new_recipient: address,
+        updated_by: address,
+        timestamp: u64,
+    }
+
     /// Individual subscription to a profile
     public struct ProfileSubscription has key {
         id: UID,
@@ -147,6 +161,15 @@ module social_contracts::subscription {
         renewal_balances: Bag,
         /// Number of times this subscription has been renewed
         renewal_count: u64,
+    }
+
+    /// Subscriber-controlled renewal preference. This event never implies new funding.
+    public struct SubscriptionAutoRenewUpdatedEvent has copy, drop {
+        subscription_id: ID,
+        service_id: ID,
+        subscriber: address,
+        auto_renew: bool,
+        timestamp: u64,
     }
 
     /// Events
@@ -250,6 +273,23 @@ module social_contracts::subscription {
         service_id: ID,
         profile_owner: address,
         deactivated_at: u64,
+    }
+
+    fun payment_recipient(service: &ProfileSubscriptionService): address {
+        if (dynamic_field::exists_(&service.id, ServicePaymentRecipientKey {})) {
+            *dynamic_field::borrow<ServicePaymentRecipientKey, address>(
+                &service.id,
+                ServicePaymentRecipientKey {},
+            )
+        } else {
+            service.profile_owner
+        }
+    }
+
+    /// The current payout destination for this service. For older services this
+    /// resolves to the profile owner until the owner changes it.
+    public fun get_service_payment_recipient(service: &ProfileSubscriptionService): address {
+        payment_recipient(service)
     }
 
     fun validate_fee_config(
@@ -685,7 +725,7 @@ module social_contracts::subscription {
             distribute_subscription_payment_fees_no_platform(
                 config,
                 treasury,
-                service.profile_owner,
+                payment_recipient(service),
                 first_period_payment,
                 ctx,
             );
@@ -752,7 +792,7 @@ module social_contracts::subscription {
             distribute_subscription_payment_fees_with_platform(
                 config,
                 treasury,
-                service.profile_owner,
+                payment_recipient(service),
                 first_period_payment,
                 platform,
                 clock,
@@ -931,7 +971,7 @@ module social_contracts::subscription {
             distribute_subscription_payment_fees_no_platform(
                 config,
                 treasury,
-                service.profile_owner,
+                payment_recipient(service),
                 payment,
                 ctx,
             );
@@ -976,7 +1016,7 @@ module social_contracts::subscription {
             distribute_subscription_payment_fees_with_platform(
                 config,
                 treasury,
-                service.profile_owner,
+                payment_recipient(service),
                 payment,
                 platform,
                 clock,
@@ -1132,7 +1172,7 @@ module social_contracts::subscription {
             distribute_subscription_payment_fees_no_platform(
                 config,
                 treasury,
-                service.profile_owner,
+                payment_recipient(service),
                 renewal_payment,
                 ctx,
             );
@@ -1195,7 +1235,7 @@ module social_contracts::subscription {
             distribute_subscription_payment_fees_with_platform(
                 config,
                 treasury,
-                service.profile_owner,
+                payment_recipient(service),
                 renewal_payment,
                 platform,
                 clock,
@@ -1375,6 +1415,88 @@ module social_contracts::subscription {
             service_id: object::id(service),
             profile_owner: service.profile_owner,
             deactivated_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Pin a quoted plan in the same PTB as subscribing or renewing. Plan changes
+    /// abort the whole transaction before any payment is moved. The coin type is
+    /// part of the quote; numeric prices are base units of T, never assumed MIST.
+    public entry fun assert_plan_terms<T>(
+        service: &ProfileSubscriptionService,
+        plan_id: ID,
+        expected_profile_owner: address,
+        expected_price: u64,
+        expected_duration_ms: u64,
+        expected_tier_level: Option<u64>,
+        expected_platform_id: Option<address>,
+        for_new_subscription: bool,
+    ) {
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        assert!(service.profile_owner == expected_profile_owner, EPlanTermsChanged);
+        if (for_new_subscription) { assert!(service.active, ENoAccess); };
+        let plan = if (for_new_subscription) {
+            borrow_active_plan(service, plan_id)
+        } else {
+            borrow_plan_for_renewal(service, plan_id)
+        };
+        assert_plan_coin_type<T>(plan);
+        assert!(
+            plan.price == expected_price &&
+            plan.duration_ms == expected_duration_ms &&
+            plan.tier_level == expected_tier_level &&
+            plan.platform_id == expected_platform_id,
+            EPlanTermsChanged,
+        );
+    }
+
+    /// A renewal quote must describe this subscription's actual plan, rather
+    /// than a different cheaper plan in the same service.
+    public entry fun assert_subscription_terms<T>(
+        service: &ProfileSubscriptionService,
+        subscription: &ProfileSubscription,
+        expected_plan_id: ID,
+        expected_profile_owner: address,
+        expected_price: u64,
+        expected_duration_ms: u64,
+        expected_tier_level: Option<u64>,
+        expected_platform_id: Option<address>,
+    ) {
+        assert!(subscription.service_id == object::id(service), ENoAccess);
+        assert!(subscription.plan_id == expected_plan_id, EPlanTermsChanged);
+        assert_subscription_coin_type<T>(subscription);
+        assert_plan_terms<T>(service, expected_plan_id, expected_profile_owner,
+            expected_price, expected_duration_ms, expected_tier_level,
+            expected_platform_id, false);
+    }
+
+    /// Change only the subscriber's renewal preference. Enabling uses the
+    /// existing pre-funded renewal bag; it cannot pull more money from a wallet.
+    /// Disabling remains possible while the creator/service is blocked/inactive.
+    public entry fun set_auto_renew(
+        block_list_registry: &BlockListRegistry,
+        service: &ProfileSubscriptionService,
+        subscription: &mut ProfileSubscription,
+        enabled: bool,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        assert!(subscription.service_id == object::id(service), ENoAccess);
+        let subscriber = tx_context::sender(ctx);
+        assert!(subscription.subscriber == subscriber, ENotSubscriptionOwner);
+        if (enabled) {
+            assert!(service.active, ENoAccess);
+            assert_subscriber_not_blocked(block_list_registry, subscriber, service.profile_owner);
+            let plan = borrow_plan_for_renewal(service, subscription.plan_id);
+            assert!(plan.coin_type == subscription.coin_type, ECoinTypeMismatch);
+        };
+        subscription.auto_renew = enabled;
+        event::emit(SubscriptionAutoRenewUpdatedEvent {
+            subscription_id: object::id(subscription),
+            service_id: object::id(service),
+            subscriber,
+            auto_renew: enabled,
+            timestamp: clock::timestamp_ms(clock),
         });
     }
 
@@ -1727,6 +1849,44 @@ module social_contracts::subscription {
         table::add(&mut service.plans, plan_id, plan);
         service.plan_count = service.plan_count + 1;
         plan_id
+    }
+
+    /// Migration function for ProfileSubscriptionService
+    /// Change only where future subscription payments are sent. The profile owner
+    /// remains the service administrator and historical transfers are untouched.
+    public entry fun change_service_payment_recipient(
+        service: &mut ProfileSubscriptionService,
+        new_recipient: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(service.version == upgrade::current_version(), EWrongVersion);
+        let sender = tx_context::sender(ctx);
+        assert!(sender == service.profile_owner, ENoAccess);
+        assert!(new_recipient != @0x0, EInvalidInput);
+        let previous_recipient = payment_recipient(service);
+        assert!(previous_recipient != new_recipient, EInvalidInput);
+
+        if (dynamic_field::exists_(&service.id, ServicePaymentRecipientKey {})) {
+            *dynamic_field::borrow_mut<ServicePaymentRecipientKey, address>(
+                &mut service.id,
+                ServicePaymentRecipientKey {},
+            ) = new_recipient;
+        } else {
+            dynamic_field::add(
+                &mut service.id,
+                ServicePaymentRecipientKey {},
+                new_recipient,
+            );
+        };
+
+        event::emit(ServicePaymentRecipientUpdatedEvent {
+            service_id: object::id(service),
+            previous_recipient,
+            new_recipient,
+            updated_by: sender,
+            timestamp: clock::timestamp_ms(clock),
+        });
     }
 
     /// Migration function for ProfileSubscriptionService

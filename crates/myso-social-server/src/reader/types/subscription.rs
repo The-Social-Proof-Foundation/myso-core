@@ -23,6 +23,8 @@ pub struct ProfileSubscriptionServiceInfo {
     pub created_at: i64,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub updated_at: Option<i64>,
+    #[diesel(sql_type = Text)]
+    pub payment_recipient: String,
     #[diesel(sql_type = Nullable<Text>)]
     pub username: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]

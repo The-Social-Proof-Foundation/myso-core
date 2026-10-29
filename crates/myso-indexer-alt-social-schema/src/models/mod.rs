@@ -128,7 +128,7 @@ pub use memory::{
     NewMemoryAccount, NewMemoryConfig, NewSubAgent, NewSubAgentEvent, SubAgentRow,
 };
 pub use messaging::{
-    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig,
+    NewAgentRoom, NewAgentRoomTaskBind, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig,
     NewPaidMessageEscrow, PAID_MESSAGE_STATUS_CLAIMED, PAID_MESSAGE_STATUS_ESCROWED,
     PAID_MESSAGE_STATUS_REFUNDED, PAID_MESSAGE_STATUS_SETTLED,
 };
@@ -168,6 +168,8 @@ pub use organization::{
     EVENT_TYPE_ORG_CATEGORY_UPDATED, EVENT_TYPE_ORG_CREATED, EVENT_TYPE_ORG_DEACTIVATED,
     EVENT_TYPE_ORG_ROOT_AGENT_SET, EVENT_TYPE_ORG_UPDATED, MAX_ORG_DESCRIPTION_LENGTH,
     MAX_ORG_NAME_LENGTH, MAX_ORGANIZATIONS_PER_USER, NewAgenticOrganization,
+    ORG_TREASURY_EVENT_ACCESS_CHANGED, ORG_TREASURY_EVENT_FUNDED, ORG_TREASURY_EVENT_WITHDRAWN,
+    NewOrgTreasuryAccess, NewOrgTreasuryBalance, NewOrgTreasuryEvent,
     NewOrganizationCounterparty, NewOrganizationEvent, NewOrganizationStats,
     NewOrganizationStatsDaily, ORG_TYPE_BRAND, ORG_TYPE_COMMUNITY, ORG_TYPE_COMPANY,
     ORG_TYPE_COUNT, ORG_TYPE_EDUCATION, ORG_TYPE_GOVERNMENT, ORG_TYPE_HEALTHCARE,
@@ -209,7 +211,7 @@ pub use post::{
     COMMENTER_TIP_PERCENTAGE, CommentRow, ENABLE_SPOT, ENABLE_SPT, MAX_CONTENT_LENGTH,
     MAX_DESCRIPTION_LENGTH, MAX_MEDIA_URLS, MAX_MENTIONS, MAX_METADATA_SIZE, MAX_PROMOTION_AMOUNT,
     MAX_REACTION_LENGTH, MIN_PROMOTION_AMOUNT, MIN_VIEW_DURATION, MODERATION_APPROVED,
-    MODERATION_FLAGGED, NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewPostTransfer,
+    MODERATION_FLAGGED, NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewPostAccessPurchase, NewPostTransfer,
     NewReaction, NewReactionCount, NewReport, NewRepost, NewTip, PERMISSION_ALLOW_COMMENTS,
     PERMISSION_ALLOW_QUOTES, PERMISSION_ALLOW_REACTIONS, PERMISSION_ALLOW_REPOSTS,
     PERMISSION_ALLOW_TIPS, POST_TYPE_QUOTE_REPOST, POST_TYPE_REPOST, POST_TYPE_STANDARD,

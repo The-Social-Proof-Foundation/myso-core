@@ -661,18 +661,19 @@ pub(crate) async fn get_profile_badges(
         FROM (
             SELECT DISTINCT ON (badge_id) *
             FROM profile_badges
-            WHERE revoked = false
-              AND (
+            WHERE (
                 (COALESCE(badge_kind, 'owned') = 'owned' AND (profile_id = $1 OR profile_id = $2))
                 OR (
                   badge_kind = 'platform'
                   AND LOWER(wallet_address) = LOWER($1)
-                  AND (expires_at IS NULL OR expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
                 )
               )
-            ORDER BY badge_id, time DESC
+            ORDER BY badge_id, time DESC, id DESC
         ) pb
-        ORDER BY pb.assigned_at DESC
+        WHERE pb.revoked = false
+          AND (COALESCE(pb.badge_kind, 'owned') = 'owned' OR pb.expires_at IS NULL
+               OR pb.expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+        ORDER BY pb.assigned_at DESC, pb.badge_id COLLATE \"C\" ASC
         LIMIT $3 OFFSET $4
     ";
     let results = diesel::sql_query(query)
@@ -702,13 +703,13 @@ pub(crate) async fn get_wallet_platform_badges(
         FROM (
             SELECT DISTINCT ON (badge_id) *
             FROM profile_badges
-            WHERE revoked = false
-              AND badge_kind = 'platform'
+            WHERE badge_kind = 'platform'
               AND LOWER(wallet_address) = LOWER($1)
-              AND (expires_at IS NULL OR expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
-            ORDER BY badge_id, time DESC
+            ORDER BY badge_id, time DESC, id DESC
         ) pb
-        ORDER BY pb.assigned_at DESC
+        WHERE pb.revoked = false
+          AND (pb.expires_at IS NULL OR pb.expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+        ORDER BY pb.assigned_at DESC, pb.badge_id COLLATE \"C\" ASC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -732,16 +733,20 @@ pub(crate) async fn get_wallet_selected_platform_badge(
         SELECT pb.badge_id, pb.badge_name, pb.badge_description, pb.badge_media_url,
                pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at, pb.badge_type,
                COALESCE(pb.badge_kind, 'platform') AS badge_kind, pb.expires_at
-        FROM profile_badges pb
-        JOIN wallet_badge_selections sel
-          ON LOWER(sel.wallet_address) = LOWER($1)
-         AND sel.badge_id IS NOT NULL
-         AND pb.badge_id = sel.badge_id
+        FROM (
+            SELECT DISTINCT ON (badge.badge_id) badge.*
+            FROM profile_badges badge
+            JOIN wallet_badge_selections sel
+              ON LOWER(sel.wallet_address) = LOWER($1)
+             AND sel.badge_id IS NOT NULL
+             AND badge.badge_id = sel.badge_id
+            WHERE badge.badge_kind = 'platform'
+              AND LOWER(badge.wallet_address) = LOWER($1)
+            ORDER BY badge.badge_id, badge.time DESC, badge.id DESC
+        ) pb
         WHERE pb.revoked = false
-          AND pb.badge_kind = 'platform'
-          AND LOWER(pb.wallet_address) = LOWER($1)
           AND (pb.expires_at IS NULL OR pb.expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
-        ORDER BY pb.time DESC
+        ORDER BY pb.time DESC, pb.id DESC
         LIMIT 1
     ";
     let row = diesel::sql_query(query)
@@ -803,23 +808,28 @@ pub(crate) async fn get_resolved_selected_badge(
         SELECT pb.badge_id, pb.badge_name, pb.badge_description, pb.badge_media_url,
                pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at, pb.badge_type,
                COALESCE(pb.badge_kind, 'owned') AS badge_kind, pb.expires_at
-        FROM profile_badges pb
-        LEFT JOIN sel ON true
-        LEFT JOIN prof ON true
+        FROM (
+            SELECT DISTINCT ON (badge.badge_id) badge.*
+            FROM profile_badges badge
+            LEFT JOIN sel ON true
+            LEFT JOIN prof ON true
+            WHERE (
+              (sel.badge_id IS NOT NULL
+               AND badge.badge_id = sel.badge_id
+               AND badge.badge_kind = 'platform'
+               AND LOWER(badge.wallet_address) = LOWER($1))
+              OR
+              (prof.selected_badge_id IS NOT NULL
+               AND badge.badge_id = prof.selected_badge_id
+               AND COALESCE(badge.badge_kind, 'owned') = 'owned'
+               AND (badge.profile_id = prof.profile_id OR badge.profile_id = $1))
+            )
+            ORDER BY badge.badge_id, badge.time DESC, badge.id DESC
+        ) pb
         WHERE pb.revoked = false
-          AND (
-            (sel.badge_id IS NOT NULL
-             AND pb.badge_id = sel.badge_id
-             AND pb.badge_kind = 'platform'
-             AND LOWER(pb.wallet_address) = LOWER($1)
-             AND (pb.expires_at IS NULL OR pb.expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint))
-            OR
-            (prof.selected_badge_id IS NOT NULL
-             AND pb.badge_id = prof.selected_badge_id
-             AND COALESCE(pb.badge_kind, 'owned') = 'owned'
-             AND (pb.profile_id = prof.profile_id OR pb.profile_id = $1))
-          )
-        ORDER BY CASE WHEN pb.badge_kind = 'platform' THEN 0 ELSE 1 END, pb.time DESC
+          AND (COALESCE(pb.badge_kind, 'owned') = 'owned' OR pb.expires_at IS NULL
+               OR pb.expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+        ORDER BY CASE WHEN pb.badge_kind = 'platform' THEN 0 ELSE 1 END, pb.time DESC, pb.id DESC
         LIMIT 1
     ";
     let row = diesel::sql_query(query)
@@ -861,18 +871,32 @@ pub(crate) async fn get_resolved_selected_ecosystem_badge_id(
                 SELECT pb.badge_id FROM profile_badges pb, sel, prof
                 WHERE sel.ecosystem_badge_id IS NOT NULL
                   AND pb.badge_id = sel.ecosystem_badge_id
-                  AND pb.revoked = false
                   AND COALESCE(pb.badge_kind, 'owned') = 'owned'
                   AND (pb.profile_id = prof.profile_id OR pb.profile_id = $1)
+                  AND NOT EXISTS (
+                    SELECT 1 FROM profile_badges newer
+                    WHERE newer.badge_id = pb.badge_id
+                      AND COALESCE(newer.badge_kind, 'owned') = COALESCE(pb.badge_kind, 'owned')
+                      AND (newer.profile_id = prof.profile_id OR newer.profile_id = $1)
+                      AND (newer.time, newer.id) > (pb.time, pb.id)
+                  )
+                  AND pb.revoked = false
                 LIMIT 1
             ),
             (
                 SELECT pb.badge_id FROM profile_badges pb, prof
                 WHERE prof.selected_ecosystem_badge_id IS NOT NULL
                   AND pb.badge_id = prof.selected_ecosystem_badge_id
-                  AND pb.revoked = false
                   AND COALESCE(pb.badge_kind, 'owned') = 'owned'
                   AND (pb.profile_id = prof.profile_id OR pb.profile_id = $1)
+                  AND NOT EXISTS (
+                    SELECT 1 FROM profile_badges newer
+                    WHERE newer.badge_id = pb.badge_id
+                      AND COALESCE(newer.badge_kind, 'owned') = COALESCE(pb.badge_kind, 'owned')
+                      AND (newer.profile_id = prof.profile_id OR newer.profile_id = $1)
+                      AND (newer.time, newer.id) > (pb.time, pb.id)
+                  )
+                  AND pb.revoked = false
                 LIMIT 1
             )
         ) AS badge_id

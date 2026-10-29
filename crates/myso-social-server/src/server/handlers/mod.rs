@@ -28,20 +28,21 @@ mod upgrade;
 mod vesting;
 
 pub use agent_task::{
-    get_agent_reputation, get_principal_reputation, get_task, get_task_config, get_task_stats,
-    list_agent_receipts, list_tasks, list_top_agents,
+    get_agent_reputation, get_principal_reputation, get_task, get_task_config, get_task_receipt,
+    get_task_room, get_task_stats, list_agent_receipts, list_task_history, list_tasks,
+    list_top_agents,
 };
 pub use ai_credit::{
     get_ai_credit_config, get_ai_spend_reservation, get_profile_ai_credit_balance,
     ingest_usage_line_internal, list_ai_credit_usage_history, list_ai_spend_reservations,
 };
 pub use enterprise::{
-    get_org_control_internal, get_org_summary_internal, ingest_approval_internal,
-    ingest_audit_logs_internal, ingest_memory_access_request_internal,
+    check_org_access_internal, get_org_control_internal, get_org_summary_internal,
+    get_account_memory_usage, ingest_approval_internal, ingest_audit_logs_internal, ingest_memory_access_request_internal,
     ingest_memory_usage_stats_internal, list_org_audit_logs, list_org_invitations,
     list_org_memory_permissions, list_org_memory_permissions_internal, list_org_role_assignments,
     list_org_roles, list_org_spend_approvals, list_org_spend_breakdown, list_profile_audit_logs,
-    list_profile_spend_approvals,
+    list_profile_org_invitations, list_profile_spend_approvals,
 };
 pub use governance::{
     get_governance_anonymous_voting_trends, get_governance_delegate,
@@ -69,18 +70,19 @@ pub use memory::{
     list_sub_agent_children,
 };
 pub use messaging::{
-    get_agent_groups, get_message_history, get_messaging_config, get_messaging_revenue_summary,
-    get_paid_message_history, list_agent_rooms, list_group_digests, list_organization_rooms,
+    get_agent_groups, get_agent_room_by_group, get_message_history, get_messaging_config,
+    get_messaging_revenue_summary, get_paid_message_history, list_agent_rooms, list_group_digests,
+    list_organization_rooms,
 };
 pub use mydata::{
     get_creator_mydata, get_mydata_access_analytics, get_mydata_access_logs, get_mydata_by_id,
     get_mydata_configuration, get_mydata_distribution_round, get_mydata_has_access,
-    get_mydata_merkle_root, get_mydata_purchases, get_mydata_revenue, get_mydata_revenue_timeline,
-    get_mydata_snapshot_anchor, get_mydata_snapshot_escrow, get_mydata_stats,
-    get_mydata_subscriptions, get_popular_mydata, list_mydata, list_mydata_broad_pools,
-    list_mydata_claims_for_snapshot, list_mydata_distribution_rounds,
-    list_mydata_listings_for_sub_pool, list_mydata_sub_pools_for_broad_pool,
-    list_mydata_sub_pools_for_mydata_listing,
+    get_mydata_merkle_root, get_mydata_purchases, get_mydata_purchases_by_buyer,
+    get_mydata_revenue, get_mydata_revenue_timeline, get_mydata_snapshot_anchor,
+    get_mydata_snapshot_escrow, get_mydata_stats, get_mydata_subscriptions, get_popular_mydata,
+    list_mydata, list_mydata_broad_pools, list_mydata_claims_for_snapshot,
+    list_mydata_distribution_rounds, list_mydata_listings_for_sub_pool,
+    list_mydata_sub_pools_for_broad_pool, list_mydata_sub_pools_for_mydata_listing,
 };
 pub use organization::{
     get_agentic_organization, get_organization_leaderboard, get_organization_statistics,

@@ -32,6 +32,7 @@ pub struct ProfileSubscriptionService {
     pub updated_at: Option<i64>,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub payment_recipient: String,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -47,6 +48,7 @@ pub struct NewProfileSubscriptionService {
     pub updated_at: Option<i64>,
     pub time: chrono::DateTime<chrono::Utc>,
     pub transaction_id: String,
+    pub payment_recipient: String,
 }
 
 #[derive(Debug, Clone, AsChangeset)]
@@ -56,6 +58,7 @@ pub struct UpdateProfileSubscriptionService {
     pub active: Option<bool>,
     pub subscriber_count: Option<i64>,
     pub updated_at: Option<i64>,
+    pub payment_recipient: Option<String>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]

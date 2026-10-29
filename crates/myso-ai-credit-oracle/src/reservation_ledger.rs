@@ -8,7 +8,12 @@
 //! claimed with leases and `SKIP LOCKED`, so only one replica submits a given
 //! reserve, capture, or cancel action at a time.
 
+use aes_gcm::{
+    aead::{Aead, KeyInit, Payload},
+    Aes256Gcm, Nonce,
+};
 use anyhow::{Context, Result};
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{postgres::PgPoolOptions, FromRow, PgPool};
@@ -84,6 +89,7 @@ pub struct ReservationRecord {
 
 #[derive(Debug, FromRow)]
 struct ReservationRow {
+    idempotency_scope: String,
     idempotency_key: String,
     owner_address: String,
     balance_id: String,
@@ -123,57 +129,115 @@ fn to_i64(value: u64, field: &str) -> Result<i64> {
     i64::try_from(value).with_context(|| format!("{field} exceeds PostgreSQL BIGINT"))
 }
 
-impl TryFrom<ReservationRow> for ReservationRecord {
-    type Error = anyhow::Error;
-
-    fn try_from(row: ReservationRow) -> Result<Self> {
-        Ok(Self {
-            idempotency_key: row.idempotency_key,
-            owner: row.owner_address,
-            balance_id: row.balance_id,
-            memory_account_id: row.memory_account_id,
-            agent_object_id: row.agent_object_id,
-            model_id: row.model_id,
-            reservation_nonce: to_u64(row.reservation_nonce, "reservation_nonce")?,
-            max_amount_mist: to_u64(row.max_amount_mist, "max_amount_mist")?,
-            provider_envelope_hash_hex: row.provider_envelope_hash_hex,
-            request_hash_hex: row.request_hash_hex,
-            fx_quote_id_hex: row.fx_quote_id_hex,
-            myso_usd_e8: to_u64(row.myso_usd_e8, "myso_usd_e8")?,
-            markup_bps: to_u64(row.markup_bps, "markup_bps")?,
-            capture_deadline_ms: to_u64(row.capture_deadline_ms, "capture_deadline_ms")?,
-            hard_expiry_ms: to_u64(row.hard_expiry_ms, "hard_expiry_ms")?,
-            status: ReservationStatus::parse(&row.status)?,
-            reserve_digest: row.reserve_digest,
-            capture_digest: row.capture_digest,
-            cancel_digest: row.cancel_digest,
-            amount_mist: row
+impl ReservationRow {
+    fn into_record(self, encryption_key: Option<&[u8; 32]>) -> Result<ReservationRecord> {
+        let content = self
+            .content
+            .map(|content| decrypt_content(&content, &self.idempotency_scope, encryption_key))
+            .transpose()?;
+        Ok(ReservationRecord {
+            idempotency_key: self.idempotency_key,
+            owner: self.owner_address,
+            balance_id: self.balance_id,
+            memory_account_id: self.memory_account_id,
+            agent_object_id: self.agent_object_id,
+            model_id: self.model_id,
+            reservation_nonce: to_u64(self.reservation_nonce, "reservation_nonce")?,
+            max_amount_mist: to_u64(self.max_amount_mist, "max_amount_mist")?,
+            provider_envelope_hash_hex: self.provider_envelope_hash_hex,
+            request_hash_hex: self.request_hash_hex,
+            fx_quote_id_hex: self.fx_quote_id_hex,
+            myso_usd_e8: to_u64(self.myso_usd_e8, "myso_usd_e8")?,
+            markup_bps: to_u64(self.markup_bps, "markup_bps")?,
+            capture_deadline_ms: to_u64(self.capture_deadline_ms, "capture_deadline_ms")?,
+            hard_expiry_ms: to_u64(self.hard_expiry_ms, "hard_expiry_ms")?,
+            status: ReservationStatus::parse(&self.status)?,
+            reserve_digest: self.reserve_digest,
+            capture_digest: self.capture_digest,
+            cancel_digest: self.cancel_digest,
+            amount_mist: self
                 .amount_mist
                 .map(|v| to_u64(v, "amount_mist"))
                 .transpose()?,
-            provider_cost_usd_micros: row
+            provider_cost_usd_micros: self
                 .provider_cost_usd_micros
                 .map(|v| to_u64(v, "provider_cost_usd_micros"))
                 .transpose()?,
-            upstream_cost_usd_micros: row
+            upstream_cost_usd_micros: self
                 .upstream_cost_usd_micros
                 .map(|v| to_u64(v, "upstream_cost_usd_micros"))
                 .transpose()?,
-            provider_generation_id: row.provider_generation_id,
-            content: row.content,
-            tokens_in: row.tokens_in.map(|v| to_u64(v, "tokens_in")).transpose()?,
-            tokens_out: row
+            provider_generation_id: self.provider_generation_id,
+            content,
+            tokens_in: self.tokens_in.map(|v| to_u64(v, "tokens_in")).transpose()?,
+            tokens_out: self
                 .tokens_out
                 .map(|v| to_u64(v, "tokens_out"))
                 .transpose()?,
-            created_at_ms: to_u64(row.created_at_ms, "created_at_ms")?,
-            updated_at_ms: to_u64(row.updated_at_ms, "updated_at_ms")?,
-            last_error: row.last_error,
+            created_at_ms: to_u64(self.created_at_ms, "created_at_ms")?,
+            updated_at_ms: to_u64(self.updated_at_ms, "updated_at_ms")?,
+            last_error: self.last_error,
         })
     }
 }
 
-const SELECT_COLUMNS: &str = "idempotency_key, owner_address, balance_id, memory_account_id, agent_object_id, model_id, reservation_nonce, max_amount_mist, provider_envelope_hash_hex, request_hash_hex, fx_quote_id_hex, myso_usd_e8, markup_bps, capture_deadline_ms, hard_expiry_ms, status, reserve_digest, capture_digest, cancel_digest, amount_mist, provider_cost_usd_micros, upstream_cost_usd_micros, provider_generation_id, content, tokens_in, tokens_out, created_at_ms, updated_at_ms, last_error";
+const SELECT_COLUMNS: &str = "idempotency_scope, idempotency_key, owner_address, balance_id, memory_account_id, agent_object_id, model_id, reservation_nonce, max_amount_mist, provider_envelope_hash_hex, request_hash_hex, fx_quote_id_hex, myso_usd_e8, markup_bps, capture_deadline_ms, hard_expiry_ms, status, reserve_digest, capture_digest, cancel_digest, amount_mist, provider_cost_usd_micros, upstream_cost_usd_micros, provider_generation_id, content, tokens_in, tokens_out, created_at_ms, updated_at_ms, last_error";
+
+fn encrypt_content(
+    content: &str,
+    scope: &str,
+    encryption_key: Option<&[u8; 32]>,
+) -> Result<String> {
+    let key = encryption_key
+        .context("response encryption key is required to persist inference content")?;
+    let cipher = Aes256Gcm::new_from_slice(key).context("initialize response encryption")?;
+    let mut nonce = [0u8; 12];
+    rand::thread_rng().fill_bytes(&mut nonce);
+    let ciphertext = cipher
+        .encrypt(
+            Nonce::from_slice(&nonce),
+            Payload {
+                msg: content.as_bytes(),
+                aad: scope.as_bytes(),
+            },
+        )
+        .map_err(|_| anyhow::anyhow!("encrypt inference response"))?;
+    let mut encoded = Vec::with_capacity(nonce.len() + ciphertext.len());
+    encoded.extend_from_slice(&nonce);
+    encoded.extend_from_slice(&ciphertext);
+    Ok(format!("v1:{}", hex::encode(encoded)))
+}
+
+fn decrypt_content(
+    encoded: &str,
+    scope: &str,
+    encryption_key: Option<&[u8; 32]>,
+) -> Result<String> {
+    let key =
+        encryption_key.context("response encryption key is required to read inference content")?;
+    let encoded = encoded
+        .strip_prefix("v1:")
+        .context("unsupported or plaintext inference response in ledger")?;
+    let ciphertext = hex::decode(encoded).context("decode encrypted inference response")?;
+    anyhow::ensure!(
+        ciphertext.len() >= 12 + 16,
+        "encrypted inference response is truncated"
+    );
+    let (nonce, ciphertext) = ciphertext.split_at(12);
+    let cipher = Aes256Gcm::new_from_slice(key).context("initialize response decryption")?;
+    let plaintext = cipher
+        .decrypt(
+            Nonce::from_slice(nonce),
+            Payload {
+                msg: ciphertext,
+                aad: scope.as_bytes(),
+            },
+        )
+        .map_err(|_| {
+            anyhow::anyhow!("decrypt inference response; key or ledger data is invalid")
+        })?;
+    String::from_utf8(plaintext).context("inference response is not valid UTF-8")
+}
 
 #[derive(Debug, Clone)]
 pub struct ClaimedOutboxAction {
@@ -192,6 +256,7 @@ pub struct ReservationLedger {
     pool: PgPool,
     worker_id: String,
     lease_secs: u64,
+    encryption_key: Option<[u8; 32]>,
 }
 
 impl ReservationLedger {
@@ -199,7 +264,21 @@ impl ReservationLedger {
         database_url: &str,
         max_connections: u32,
         lease_secs: u64,
+        encryption_key_hex: Option<&str>,
     ) -> Result<Self> {
+        let encryption_key = encryption_key_hex
+            .map(|encoded| {
+                let decoded =
+                    hex::decode(encoded).context("decode AI credit response encryption key")?;
+                anyhow::ensure!(
+                    decoded.len() == 32,
+                    "AI credit response encryption key must contain 32 bytes"
+                );
+                let mut key = [0u8; 32];
+                key.copy_from_slice(&decoded);
+                Ok::<_, anyhow::Error>(key)
+            })
+            .transpose()?;
         let pool = PgPoolOptions::new()
             .max_connections(max_connections)
             .connect(database_url)
@@ -213,6 +292,7 @@ impl ReservationLedger {
             pool,
             worker_id: uuid::Uuid::new_v4().to_string(),
             lease_secs,
+            encryption_key,
         })
     }
 
@@ -244,7 +324,7 @@ impl ReservationLedger {
             .fetch_optional(&self.pool)
             .await
             .context("read inference reservation")?
-            .map(TryInto::try_into)
+            .map(|row| row.into_record(self.encryption_key.as_ref()))
             .transpose()
     }
 
@@ -267,7 +347,9 @@ impl ReservationLedger {
             .await?
         {
             tx.commit().await?;
-            return Ok(BeginReservation::Existing(existing.try_into()?));
+            return Ok(BeginReservation::Existing(
+                existing.into_record(self.encryption_key.as_ref())?,
+            ));
         }
         let database_nonce: i64 = sqlx::query_scalar("SELECT COALESCE(MAX(reservation_nonce), 0) FROM ai_inference_reservations WHERE balance_id=$1")
             .bind(&record.balance_id)
@@ -311,12 +393,12 @@ impl ReservationLedger {
             .bind(idempotency_key)
             .fetch_one(&mut *tx)
             .await?;
-        let mut record: ReservationRecord = row.try_into()?;
+        let mut record = row.into_record(self.encryption_key.as_ref())?;
         let old_status = record.status;
         update(&mut record);
         record.updated_at_ms = chrono::Utc::now().timestamp_millis() as u64;
         let scope = idempotency_scope(&record);
-        save_record(&mut tx, &scope, &record).await?;
+        save_record(&mut tx, &scope, &record, self.encryption_key.as_ref()).await?;
         if old_status != ReservationStatus::ProviderSucceeded
             && record.status == ReservationStatus::ProviderSucceeded
         {
@@ -354,11 +436,11 @@ impl ReservationLedger {
             .bind(idempotency_key)
             .fetch_one(&mut *tx)
             .await?;
-        let mut record: ReservationRecord = row.try_into()?;
+        let mut record = row.into_record(self.encryption_key.as_ref())?;
         update(&mut record);
         record.updated_at_ms = chrono::Utc::now().timestamp_millis() as u64;
         let scope = idempotency_scope(&record);
-        save_record(&mut tx, &scope, &record).await?;
+        save_record(&mut tx, &scope, &record, self.encryption_key.as_ref()).await?;
         let delivered = sqlx::query("UPDATE ai_inference_outbox SET state='delivered',delivered_digest=$3,lease_owner=NULL,lease_expires_at=NULL,last_error=NULL,updated_at=NOW() WHERE idempotency_scope=$1 AND action=$2 AND state <> 'delivered'")
             .bind(&scope).bind(action).bind(digest).execute(&mut *tx).await?;
         anyhow::ensure!(
@@ -391,7 +473,7 @@ impl ReservationLedger {
                 .await?;
             claimed.push(ClaimedOutboxAction {
                 action,
-                record: row.try_into()?,
+                record: row.into_record(self.encryption_key.as_ref())?,
             });
         }
         tx.commit().await?;
@@ -409,13 +491,19 @@ async fn save_record(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     scope: &str,
     record: &ReservationRecord,
+    encryption_key: Option<&[u8; 32]>,
 ) -> Result<()> {
+    let encrypted_content = record
+        .content
+        .as_deref()
+        .map(|content| encrypt_content(content, scope, encryption_key))
+        .transpose()?;
     sqlx::query("UPDATE ai_inference_reservations SET status=$2,reserve_digest=$3,capture_digest=$4,cancel_digest=$5,amount_mist=$6,provider_cost_usd_micros=$7,upstream_cost_usd_micros=$8,provider_generation_id=$9,content=$10,tokens_in=$11,tokens_out=$12,updated_at_ms=$13,last_error=$14 WHERE idempotency_scope=$1")
         .bind(scope).bind(record.status.as_str()).bind(&record.reserve_digest).bind(&record.capture_digest).bind(&record.cancel_digest)
         .bind(record.amount_mist.map(|v| to_i64(v, "amount_mist")).transpose()?)
         .bind(record.provider_cost_usd_micros.map(|v| to_i64(v, "provider_cost_usd_micros")).transpose()?)
         .bind(record.upstream_cost_usd_micros.map(|v| to_i64(v, "upstream_cost_usd_micros")).transpose()?)
-        .bind(&record.provider_generation_id).bind(&record.content)
+        .bind(&record.provider_generation_id).bind(&encrypted_content)
         .bind(record.tokens_in.map(|v| to_i64(v, "tokens_in")).transpose()?)
         .bind(record.tokens_out.map(|v| to_i64(v, "tokens_out")).transpose()?)
         .bind(to_i64(record.updated_at_ms, "updated_at_ms")?).bind(&record.last_error)

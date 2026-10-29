@@ -3727,6 +3727,19 @@ module social_contracts::social_proof_tokens {
         assert!(matched, EUnexpectedBeneficiaryVault);
     }
 
+    /// Public PTB adapter for agents and third-party trading clients. The settlement
+    /// stays linear and must still be consumed by `finish_creator_fee_settlement` in
+    /// the same transaction; this only exposes the package settlement step.
+    public fun settle_creator_fee_vault_public(
+        settlement: &mut CreatorFeeSettlement,
+        min_deposit: u64,
+        vault: &mut PoCBeneficiaryVault,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        settle_creator_fee_vault(settlement, min_deposit, vault, clock, ctx)
+    }
+
     /// Mandatory final step. Even a zero-fee trade must consume its receipt.
     public fun finish_creator_fee_settlement(settlement: CreatorFeeSettlement) {
         let CreatorFeeSettlement {
@@ -4494,6 +4507,26 @@ module social_contracts::social_proof_tokens {
         ctx: &mut TxContext
     ): CreatorFeeSettlement {
         let creator_payment = sell_tokens_impl(_registry, pool, config, treasury, profile_registry, _block_list_registry, social_token, amount, ctx);
+        begin_creator_fee_settlement(pool, creator_payment, ctx)
+    }
+
+    /// Slippage-protected vault-aware sell. `min_receive` is the minimum net MYSO
+    /// returned after trading fees; callers still settle creator vault payouts and
+    /// finish the linear receipt in the same programmable transaction.
+    public fun sell_tokens_with_vault_routing_min(
+        _registry: &TokenRegistry,
+        pool: &mut TokenPool,
+        config: &SocialProofTokensConfig,
+        treasury: &EcosystemTreasury,
+        profile_registry: &UsernameRegistry,
+        block_list_registry: &BlockListRegistry,
+        social_token: SocialToken,
+        amount: u64,
+        min_receive: u64,
+        ctx: &mut TxContext
+    ): CreatorFeeSettlement {
+        let creator_payment = sell_tokens_impl(_registry, pool, config, treasury, profile_registry, block_list_registry, social_token, amount, ctx);
+        assert!(coin::value(&creator_payment) >= min_receive, ESlippageExceeded);
         begin_creator_fee_settlement(pool, creator_payment, ctx)
     }
 

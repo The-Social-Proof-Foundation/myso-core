@@ -28,6 +28,7 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
 
     const ADMIN: address = @0xA0;
     const CREATOR: address = @0xC1;
+    const RECIPIENT: address = @0xC2;
     const REFERRER: address = @0xF1;
     const USERNAME: vector<u8> = b"offplatform";
     const X_HANDLE: vector<u8> = b"offplatform";
@@ -77,6 +78,82 @@ module social_contracts::proof_of_creativity_username_beneficiary_tests {
             test_scenario::return_shared(vault_dir);
             test_scenario::return_shared(registry);
         };
+    }
+
+    #[test]
+    fun test_verified_identity_transfer_requires_recipient_acceptance_and_binds_claim() {
+        let mut scen = test_scenario::begin(ADMIN);
+        setup(&mut scen);
+        provision_beneficiary(&mut scen);
+
+        // The configured PoC oracle proposes for the provisioned, verified identity.
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let cfg = test_scenario::take_shared<poc::PoCConfig>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            let mut beneficiary = test_scenario::take_shared<PoCUsernameBeneficiary>(&scen);
+            poc::propose_username_beneficiary_transfer(
+                &cfg,
+                &mut beneficiary,
+                RECIPIENT,
+                b"0123456789abcdef0123456789abcdef",
+                X_HANDLE,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            test_scenario::return_shared(cfg);
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(beneficiary);
+        };
+
+        // The proposed recipient accepts with their own transaction signer.
+        test_scenario::next_tx(&mut scen, RECIPIENT);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            let mut beneficiary = test_scenario::take_shared<PoCUsernameBeneficiary>(&scen);
+            poc::accept_username_beneficiary_transfer(
+                &mut beneficiary,
+                &clock,
+                test_scenario::ctx(&mut scen),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(beneficiary);
+        };
+
+        // The oracle can now create the profile only for the wallet that accepted.
+        test_scenario::next_tx(&mut scen, ADMIN);
+        {
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            let cfg = test_scenario::take_shared<poc::PoCConfig>(&scen);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(&scen);
+            let mut directory = test_scenario::take_shared<PoCUsernameBeneficiaryDirectory>(&scen);
+            let shard_id = ub::beneficiary_shard_object_id(&directory, USERNAME);
+            let mut shard = test_scenario::take_shared_by_id<PoCUsernameBeneficiaryShard>(&scen, shard_id);
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(&scen);
+            let mut memory_registry = test_scenario::take_shared<memory::MemoryRegistry>(&scen);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(&scen);
+            let mut beneficiary = test_scenario::take_shared<PoCUsernameBeneficiary>(&scen);
+
+            poc::claim_username_beneficiary(
+                &cfg, &profile_config, &mut directory, &mut shard, &mut registry,
+                &mut memory_registry, &mut ai_credit_config, &mut beneficiary,
+                vector::empty(), X_HANDLE, b"Creator", b"bio", vector::empty(),
+                vector::empty(), RECIPIENT, &clock, test_scenario::ctx(&mut scen),
+            );
+            assert!(ub::beneficiary_status(&beneficiary) == 2);
+
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(cfg);
+            test_scenario::return_shared(profile_config);
+            test_scenario::return_shared(directory);
+            test_scenario::return_shared(shard);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(beneficiary);
+        };
+
+        test_scenario::end(scen);
     }
 
     #[test]

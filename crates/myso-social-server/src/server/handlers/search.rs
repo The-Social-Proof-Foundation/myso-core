@@ -14,6 +14,7 @@ use super::super::AppState;
 pub struct SearchQuery {
     pub q: Option<String>,
     pub limit: Option<i64>,
+    pub page: Option<i64>,
 }
 
 pub async fn search(
@@ -29,7 +30,9 @@ pub async fn search(
             "platforms_count": 0,
         })));
     }
-    let limit = params.limit.unwrap_or(20).min(100);
-    let results = state.reader.search(q, limit).await?;
+    let limit = params.limit.unwrap_or(20).clamp(1, 100);
+    let page = params.page.unwrap_or(1).clamp(1, 10_000);
+    let offset = (page - 1).saturating_mul(limit);
+    let results = state.reader.search_page(q, limit, offset).await?;
     Ok(Json(results))
 }

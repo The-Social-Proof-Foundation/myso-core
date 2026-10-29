@@ -24,6 +24,7 @@ module social_contracts::proof_of_creativity {
         clock::{Self, Clock},
         transfer,
         event,
+        dynamic_field,
         table::{Self, Table},
         coin::{Self, Coin},
         balance::{Self, Balance}
@@ -781,6 +782,35 @@ module social_contracts::proof_of_creativity {
             clock,
             ctx,
         );
+    }
+
+    /// A trusted PoC oracle records a verified identity's requested beneficiary.
+    /// The new wallet must separately accept before the oracle can complete a claim.
+    public entry fun propose_username_beneficiary_transfer(
+        config: &PoCConfig,
+        beneficiary: &mut PoCUsernameBeneficiary,
+        recipient: address,
+        evidence_hash: vector<u8>,
+        attested_x_handle: vector<u8>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_poc_config_version(config);
+        poc_username_beneficiary::assert_beneficiary_version(beneficiary);
+        assert!(is_authorized_oracle(config, tx_context::sender(ctx)), ENotOracle);
+        poc_username_beneficiary::propose_transfer(
+            beneficiary, recipient, evidence_hash, attested_x_handle, clock, ctx,
+        );
+    }
+
+    /// The proposed recipient accepts the verified identity transfer with their wallet.
+    public entry fun accept_username_beneficiary_transfer(
+        beneficiary: &mut PoCUsernameBeneficiary,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        poc_username_beneficiary::assert_beneficiary_version(beneficiary);
+        poc_username_beneficiary::accept_transfer(beneficiary, clock, ctx);
     }
 
     /// Claim vault balance for a username-beneficiary-linked creator wallet (one-time join referral on first claim).
@@ -3156,6 +3186,7 @@ module social_contracts::poc_username_beneficiary {
         clock::{Self, Clock},
         transfer,
         event,
+        dynamic_field,
         table::{Self, Table},
         hash as myso_hash,
     };
@@ -3175,6 +3206,36 @@ module social_contracts::poc_username_beneficiary {
     const IDENTITY_SOURCE_X: u8 = 1;
 
     const END_REASON_ADMIN: u8 = 1;
+
+    const EInvalidRecipient: u64 = 12;
+    const ETransferNotAccepted: u64 = 13;
+
+    public struct PendingBeneficiaryTransferKey has copy, drop, store {}
+    public struct AcceptedBeneficiaryTransferKey has copy, drop, store {}
+
+    public struct PendingBeneficiaryTransfer has store, drop {
+        recipient: address,
+        evidence_hash: vector<u8>,
+        proposed_at: u64,
+    }
+
+    public struct UsernameBeneficiaryTransferProposedEvent has copy, drop {
+        beneficiary_id: address,
+        identity_source: u8,
+        identity_hash: vector<u8>,
+        recipient: address,
+        evidence_hash: vector<u8>,
+        proposed_by: address,
+        proposed_at: u64,
+    }
+
+    public struct UsernameBeneficiaryTransferAcceptedEvent has copy, drop {
+        beneficiary_id: address,
+        identity_source: u8,
+        identity_hash: vector<u8>,
+        recipient: address,
+        accepted_at: u64,
+    }
 
     const EUnauthorized: u64 = 1;
     const EUsernameNotAvailable: u64 = 2;
@@ -3408,8 +3469,79 @@ module social_contracts::poc_username_beneficiary {
         profile::canonical_registry_username_from_bytes(handle)
     }
 
+    fun copy_bytes(bytes: &vector<u8>): vector<u8> {
+        let mut result = vector::empty<u8>();
+        let mut i = 0;
+        while (i < vector::length(bytes)) {
+            vector::push_back(&mut result, *vector::borrow(bytes, i));
+            i = i + 1;
+        };
+        result
+    }
+
     public fun beneficiary_status(beneficiary: &PoCUsernameBeneficiary): u8 {
         beneficiary.status
+    }
+
+    public(package) fun propose_transfer(
+        beneficiary: &mut PoCUsernameBeneficiary,
+        recipient: address,
+        evidence_hash: vector<u8>,
+        attested_x_handle: vector<u8>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_beneficiary_version(beneficiary);
+        assert!(beneficiary.status == STATUS_ACTIVE, EInvalidStatus);
+        assert!(recipient != @0x0 && recipient != beneficiary.beneficiary_address, EInvalidRecipient);
+        assert!(vector::length(&evidence_hash) == 32, EVerificationFailed);
+        assert!(canonical_x_handle(attested_x_handle) == beneficiary.verification.required_x_handle, EVerificationFailed);
+        assert!(
+            !dynamic_field::exists_<AcceptedBeneficiaryTransferKey>(&beneficiary.id, AcceptedBeneficiaryTransferKey {}),
+            EInvalidStatus,
+        );
+        let pending_key = PendingBeneficiaryTransferKey {};
+        if (dynamic_field::exists_<PendingBeneficiaryTransferKey>(&beneficiary.id, pending_key)) {
+            let _old = dynamic_field::remove<PendingBeneficiaryTransferKey, PendingBeneficiaryTransfer>(&mut beneficiary.id, pending_key);
+        };
+        let proposed_at = clock::timestamp_ms(clock);
+        dynamic_field::add(
+            &mut beneficiary.id,
+            pending_key,
+            PendingBeneficiaryTransfer { recipient, evidence_hash: copy_bytes(&evidence_hash), proposed_at },
+        );
+        event::emit(UsernameBeneficiaryTransferProposedEvent {
+            beneficiary_id: object::id_to_address(&object::id(beneficiary)),
+            identity_source: beneficiary.creator_identity.source,
+            identity_hash: copy_bytes(&beneficiary.creator_identity.identity_hash),
+            recipient,
+            evidence_hash,
+            proposed_by: tx_context::sender(ctx),
+            proposed_at,
+        });
+    }
+
+    public(package) fun accept_transfer(
+        beneficiary: &mut PoCUsernameBeneficiary,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_beneficiary_version(beneficiary);
+        assert!(beneficiary.status == STATUS_ACTIVE, EInvalidStatus);
+        let pending_key = PendingBeneficiaryTransferKey {};
+        assert!(dynamic_field::exists_<PendingBeneficiaryTransferKey>(&beneficiary.id, pending_key), ETransferNotAccepted);
+        let pending = dynamic_field::borrow<PendingBeneficiaryTransferKey, PendingBeneficiaryTransfer>(&beneficiary.id, pending_key);
+        let recipient = pending.recipient;
+        assert!(tx_context::sender(ctx) == recipient, EUnauthorized);
+        let _pending = dynamic_field::remove<PendingBeneficiaryTransferKey, PendingBeneficiaryTransfer>(&mut beneficiary.id, pending_key);
+        dynamic_field::add(&mut beneficiary.id, AcceptedBeneficiaryTransferKey {}, recipient);
+        event::emit(UsernameBeneficiaryTransferAcceptedEvent {
+            beneficiary_id: object::id_to_address(&object::id(beneficiary)),
+            identity_source: beneficiary.creator_identity.source,
+            identity_hash: copy_bytes(&beneficiary.creator_identity.identity_hash),
+            recipient,
+            accepted_at: clock::timestamp_ms(clock),
+        });
     }
 
     fun identity_key(source: u8, identity_hash: vector<u8>): CreatorIdentityKey {
@@ -3544,6 +3676,16 @@ module social_contracts::poc_username_beneficiary {
         assert_beneficiary_version(beneficiary);
         assert!(beneficiary.status == STATUS_ACTIVE, EInvalidStatus);
         assert_shard_matches_username(shard, &beneficiary.username);
+        let accepted_key = AcceptedBeneficiaryTransferKey {};
+        if (dynamic_field::exists_<AcceptedBeneficiaryTransferKey>(&beneficiary.id, accepted_key)) {
+            let accepted_recipient = *dynamic_field::borrow<AcceptedBeneficiaryTransferKey, address>(&beneficiary.id, accepted_key);
+            assert!(wallet == accepted_recipient, EUnauthorized);
+        } else {
+            assert!(
+                !dynamic_field::exists_<PendingBeneficiaryTransferKey>(&beneficiary.id, PendingBeneficiaryTransferKey {}),
+                ETransferNotAccepted,
+            );
+        };
         let attested = canonical_x_handle(attested_x_handle);
         assert!(
             attested == beneficiary.verification.required_x_handle,

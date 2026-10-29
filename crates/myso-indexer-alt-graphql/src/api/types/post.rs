@@ -524,6 +524,40 @@ impl Post {
         Some(rows.into_iter().map(RepostSummary::from_row).collect())
     }
 
+    /// MyData purchases that unlocked this gated post, newest first. Pass `buyer` to check one
+    /// wallet. Price and fees are on the MyData purchase.
+    async fn access_purchases(
+        &self,
+        ctx: &Context<'_>,
+        buyer: Option<MySoAddress>,
+        limit: Option<u64>,
+        offset: Option<u64>,
+    ) -> Option<Vec<PostAccessPurchase>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let buyer = buyer.map(|b| b.to_string());
+        let limit = limit.unwrap_or(20).min(100) as i64;
+        let offset = offset.unwrap_or(0) as i64;
+        let rows = reader
+            .list_post_access_purchases(&self.inner.post_id, buyer.as_deref(), limit, offset)
+            .await
+            .ok()?;
+        Some(rows.into_iter().map(PostAccessPurchase::from_row).collect())
+    }
+
+    /// How many purchases unlocked this post.
+    async fn access_purchase_count(&self, ctx: &Context<'_>) -> Option<u64> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let count = reader
+            .count_post_access_purchases(&self.inner.post_id)
+            .await
+            .ok()?;
+        u64::try_from(count).ok()
+    }
+
     /// Tips received for this post (paginated).
     async fn tips(
         &self,
@@ -1405,5 +1439,42 @@ impl PostModerationEvent {
 
     async fn transaction_id(&self) -> &str {
         &self.inner.transaction_id
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct PostAccessPurchase {
+    inner: myso_indexer_alt_social_reader::PostAccessPurchaseRow,
+}
+
+impl PostAccessPurchase {
+    pub(crate) fn from_row(inner: myso_indexer_alt_social_reader::PostAccessPurchaseRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl PostAccessPurchase {
+    async fn post_id(&self) -> &str {
+        &self.inner.post_id
+    }
+
+    /// The MyData listing that was bought.
+    async fn mydata_id(&self) -> &str {
+        &self.inner.mydata_id
+    }
+
+    async fn buyer(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.buyer)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn seller(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.seller)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn purchased_at_ms(&self) -> i64 {
+        self.inner.purchased_at_ms
     }
 }

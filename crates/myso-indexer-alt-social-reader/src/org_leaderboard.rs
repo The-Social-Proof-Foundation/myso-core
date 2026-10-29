@@ -278,7 +278,7 @@ pub async fn get_organization_leaderboard(
             ) d ON true
             WHERE o.active = true AND o.org_type = $1
             {list_eligibility}
-            ORDER BY sort_value DESC, o.created_at_ms ASC
+            ORDER BY sort_value DESC, o.created_at_ms ASC, o.organization_id ASC
             LIMIT $2 OFFSET $3
             "#
         )
@@ -318,7 +318,7 @@ pub async fn get_organization_leaderboard(
             ) windowed ON true
             WHERE o.active = true AND o.org_type = $1
             {list_eligibility}
-            ORDER BY sort_value DESC, o.created_at_ms ASC
+            ORDER BY sort_value DESC, o.created_at_ms ASC, o.organization_id ASC
             LIMIT $2 OFFSET $3
             "#
         )

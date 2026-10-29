@@ -160,6 +160,68 @@ pub(crate) async fn get_agent_rooms(
     Ok(rows)
 }
 
+/// Resolve the indexed room reference for a task. Callers must authorize the
+/// task participant before exposing this mapping; room access is still checked
+/// independently by the messaging SDK against current on-chain permissions.
+pub(crate) async fn get_task_room(
+    db: &Db,
+    task_id: &str,
+) -> Result<Option<AgentRoomInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT r.group_id, r.room_kind, r.task_id, r.creator_actor, r.creator_principal,
+               r.organization_id, g.group_name, g.group_uuid, r.created_at_ms, r.transaction_id
+        FROM agent_rooms r
+        LEFT JOIN LATERAL (
+            SELECT group_name, group_uuid
+            FROM messaging_agent_groups
+            WHERE group_id = r.group_id
+            ORDER BY time DESC
+            LIMIT 1
+        ) g ON TRUE
+        WHERE r.task_id = $1
+        ORDER BY r.created_at_ms DESC, r.group_id
+        LIMIT 1
+    ";
+    let row = diesel::sql_query(query)
+        .bind::<Text, _>(task_id)
+        .get_result::<AgentRoomInfo>(&mut conn)
+        .await
+        .optional()?;
+    Ok(row)
+}
+
+/// Resolve one indexed agent room by its exact permissioned-group object ID.
+/// This is public room metadata only; callers that disclose history must still
+/// recheck live MessagingReader permission against the configured fullnode.
+pub(crate) async fn get_agent_room_by_group(
+    db: &Db,
+    group_id: &str,
+) -> Result<Option<AgentRoomInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let query = "
+        SELECT r.group_id, r.room_kind, r.task_id, r.creator_actor, r.creator_principal,
+               r.organization_id, g.group_name, g.group_uuid, r.created_at_ms, r.transaction_id
+        FROM agent_rooms r
+        LEFT JOIN LATERAL (
+            SELECT group_name, group_uuid
+            FROM messaging_agent_groups
+            WHERE group_id = r.group_id
+            ORDER BY time DESC
+            LIMIT 1
+        ) g ON TRUE
+        WHERE r.group_id = $1
+        ORDER BY r.created_at_ms DESC, r.transaction_id DESC
+        LIMIT 1
+    ";
+    let row = diesel::sql_query(query)
+        .bind::<Text, _>(group_id)
+        .get_result::<AgentRoomInfo>(&mut conn)
+        .await
+        .optional()?;
+    Ok(row)
+}
+
 /// Message digests of one group in sequence order (the data `RoomVerifyPanel` checks).
 pub(crate) async fn get_group_digests(
     db: &Db,

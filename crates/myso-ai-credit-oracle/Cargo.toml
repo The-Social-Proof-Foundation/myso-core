@@ -11,6 +11,7 @@ anyhow.workspace = true
 axum = { version = "0.7", features = ["json"] }
 bcs.workspace = true
 blake2 = "0.10"
+aes-gcm = "0.10"
 myso-crypto.workspace = true
 myso-sdk-types.workspace = true
 chrono = { workspace = true, features = ["serde"] }

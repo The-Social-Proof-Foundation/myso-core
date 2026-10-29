@@ -50,7 +50,7 @@ module social_contracts::agent_task {
 
     use social_contracts::jury::{Self, JuryCase, JuryConfig, JurorRoster};
     use social_contracts::memory::{Self, ActingContext, MemoryAccount, MemoryConfig, ReputationParams, SubAgent};
-    use social_contracts::platform::{Self, Platform};
+    use social_contracts::platform::{Self, Platform, PlatformAdminCap};
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
 
     // ============================================================
@@ -467,6 +467,35 @@ module social_contracts::agent_task {
         overall_seller_weight_bps: u64,
         overall_buyer_weight_bps: u64,
         timestamp_ms: u64,
+    }
+
+    /// Fee recipient changes apply only to offers created after this update. Every existing
+    /// TaskEscrow retains the recipient captured in its TaskTerms.
+    public struct TaskFeeRecipientChanged has copy, drop {
+        previous_recipient: address,
+        new_recipient: address,
+        updated_by: address,
+        updated_at_ms: u64,
+    }
+
+    public entry fun update_fee_recipient(
+        _: &PlatformAdminCap,
+        config: &mut TaskConfig,
+        new_recipient: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(config.version == upgrade::current_version(), EWrongVersion);
+        assert!(new_recipient != @0x0, EInvalidTaskConfig);
+        let previous_recipient = config.ecosystem_fee_recipient;
+        assert!(previous_recipient != new_recipient, EInvalidTaskConfig);
+        config.ecosystem_fee_recipient = new_recipient;
+        event::emit(TaskFeeRecipientChanged {
+            previous_recipient,
+            new_recipient,
+            updated_by: tx_context::sender(ctx),
+            updated_at_ms: clock::timestamp_ms(clock),
+        });
     }
 
     // Dispute events. The jury module emits its own (roster, draw, votes, verdict); these carry the
@@ -2285,6 +2314,8 @@ module social_contracts::agent_task {
     public fun seller_principal(task: &TaskEscrow): address { task.seller_principal }
     public fun buyer_agent_id(task: &TaskEscrow): Option<ID> { task.buyer_agent_id }
     public fun seller_agent_id(task: &TaskEscrow): ID { task.seller_agent_id }
+    /// The messaging group pinned to this task, when task coordination uses a private room.
+    public fun room_group_id(task: &TaskEscrow): Option<ID> { task.room_group_id }
     public fun terms_digest(task: &TaskEscrow): vector<u8> { task.terms.terms_digest }
     public fun platform_fee_bps(task: &TaskEscrow): u64 { task.terms.platform_fee_bps }
     public fun ecosystem_fee_bps(task: &TaskEscrow): u64 { task.terms.ecosystem_fee_bps }

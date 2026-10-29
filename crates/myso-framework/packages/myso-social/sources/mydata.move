@@ -37,11 +37,13 @@ module social_contracts::mydata {
         coin::{Self, Coin},
         balance::{Self, Balance},
         clock::{Self, Clock},
-        event
+        event,
+        dynamic_field
     };
     use myso::myso::MYSO;
     use myso::hash;
     use myso::bcs;
+    use myso::permissioned_group::PermissionedGroup;
 
     use mydata::merkle;
 
@@ -69,6 +71,7 @@ module social_contracts::mydata {
     const DEFAULT_MAX_POOL_ASSIGNMENTS: u64 = 32;
     const DEFAULT_MAX_MERKLE_PROOF_DEPTH: u64 = 64;
     const DEFAULT_MAX_PAID_ACCESS_ENTRIES: u64 = 100_000;
+    const MAX_ORG_GRAPH_AUDIENCE_BUYERS: u64 = 256;
     const DEFAULT_CLAIM_WINDOW_MS: u64 = 2_592_000_000;
 
     /// Event/indexer tags for [`AccessConfiguration`] (not used for on-chain policy).
@@ -93,6 +96,10 @@ module social_contracts::mydata {
     const ENoAccessToRevoke: u64 = 14;
     const EInvalidConfig: u64 = 15;
     const EPlatformMismatch: u64 = 16;
+    /// A seller changed a quoted price, duration, owner, platform or ciphertext.
+    const EQuoteChanged: u64 = 17;
+    /// Ciphertext/encryption identity is immutable after a bounded purchase.
+    const EBoundedSnapshotFrozen: u64 = 18;
 
     // === Constants ===
     const MAX_TAGS: u64 = 10;
@@ -1963,6 +1970,461 @@ module social_contracts::mydata {
         });
     }
 
+    /// Bind new paid agent access to its delegation, not only its signing address.
+    /// A later key-server request must recheck this exact account/agent's live policy.
+    public struct BoundedBuyerBindingKey has copy, drop, store { buyer: address }
+    public struct BoundedBuyerBinding has copy, drop, store {
+        memory_account_id: ID,
+        agent_id: Option<ID>,
+    }
+    /// A listing with at least one bounded purchase represents an immutable
+    /// content snapshot. Sellers publish later versions as new MyData objects.
+    public struct BoundedSnapshotFrozenKey has copy, drop, store { marker: bool }
+    /// Current organization audience chosen by each bounded buyer. The separate
+    /// dynamic field preserves the existing BoundedBuyerBinding layout.
+    public struct BoundedBuyerOrgAudienceKey has copy, drop, store { buyer: address }
+    public struct BoundedBuyerOrgAudience has copy, drop, store { organization_id: ID }
+    public struct OrgGraphAudienceKey has copy, drop, store { organization_id: ID }
+    public struct OrgGraphAudienceGrant has copy, drop, store {
+        buyer: address,
+        encrypted_data_digest: vector<u8>,
+        encryption_id_digest: vector<u8>,
+    }
+
+    fun bind_bounded_buyer(mydata: &mut MyData, buyer: address, account_id: ID, agent_id: Option<ID>) {
+        freeze_bounded_snapshot(mydata);
+        let binding_key = BoundedBuyerBindingKey { buyer };
+        if (dynamic_field::exists_(&mydata.id, binding_key)) {
+            let binding = dynamic_field::borrow_mut<BoundedBuyerBindingKey, BoundedBuyerBinding>(&mut mydata.id, binding_key);
+            binding.memory_account_id = account_id;
+            binding.agent_id = agent_id;
+        } else {
+            dynamic_field::add(&mut mydata.id, binding_key, BoundedBuyerBinding {
+                memory_account_id: account_id, agent_id,
+            });
+        };
+    }
+
+    fun freeze_bounded_snapshot(mydata: &mut MyData) {
+        let legacy_graph_media_type = string::utf8(b"application/vnd.mysocial.knowledge-graph+json;version=1");
+        let graph_manifest_media_type = string::utf8(b"application/vnd.mysocial.graph-manifest+json;version=1");
+        let media_type_bytes = string::as_bytes(&mydata.media_type);
+        if (!bytes_equal_u8(media_type_bytes, string::as_bytes(&legacy_graph_media_type))
+            && !bytes_equal_u8(media_type_bytes, string::as_bytes(&graph_manifest_media_type))) return;
+        let key = BoundedSnapshotFrozenKey { marker: true };
+        if (!dynamic_field::exists_(&mydata.id, key)) {
+            dynamic_field::add(&mut mydata.id, key, true);
+        };
+    }
+
+    fun is_bounded_snapshot_frozen(mydata: &MyData): bool {
+        dynamic_field::exists_(&mydata.id, BoundedSnapshotFrozenKey { marker: true })
+    }
+
+    fun bind_org_graph_audience(
+        mydata: &mut MyData,
+        buyer: address,
+        organization_id: ID,
+        encrypted_data_digest: vector<u8>,
+        encryption_id_digest: vector<u8>,
+    ) {
+        let audience_key = OrgGraphAudienceKey { organization_id };
+        if (dynamic_field::exists_(&mydata.id, audience_key)) {
+            let grants = dynamic_field::borrow_mut<OrgGraphAudienceKey, vector<OrgGraphAudienceGrant>>(&mut mydata.id, audience_key);
+            let mut i = 0;
+            let mut updated = false;
+            while (i < vector::length(grants)) {
+                let grant = vector::borrow_mut(grants, i);
+                if (grant.buyer == buyer) {
+                    grant.encrypted_data_digest = encrypted_data_digest;
+                    grant.encryption_id_digest = encryption_id_digest;
+                    updated = true;
+                    i = vector::length(grants);
+                } else {
+                    i = i + 1;
+                };
+            };
+            if (!updated) {
+                assert!(vector::length(grants) < MAX_ORG_GRAPH_AUDIENCE_BUYERS, EInvalidInput);
+                vector::push_back(grants, OrgGraphAudienceGrant { buyer, encrypted_data_digest, encryption_id_digest });
+            };
+        } else {
+            let mut grants = vector::empty<OrgGraphAudienceGrant>();
+            vector::push_back(&mut grants, OrgGraphAudienceGrant { buyer, encrypted_data_digest, encryption_id_digest });
+            dynamic_field::add(&mut mydata.id, audience_key, grants);
+        };
+        let buyer_key = BoundedBuyerOrgAudienceKey { buyer };
+        if (dynamic_field::exists_(&mydata.id, buyer_key)) {
+            let binding = dynamic_field::borrow_mut<BoundedBuyerOrgAudienceKey, BoundedBuyerOrgAudience>(&mut mydata.id, buyer_key);
+            binding.organization_id = organization_id;
+        } else {
+            dynamic_field::add(&mut mydata.id, buyer_key, BoundedBuyerOrgAudience { organization_id });
+        };
+    }
+
+    fun clear_org_graph_audience(mydata: &mut MyData, buyer: address) {
+        let buyer_key = BoundedBuyerOrgAudienceKey { buyer };
+        if (!dynamic_field::exists_(&mydata.id, buyer_key)) return;
+        let binding = dynamic_field::remove<BoundedBuyerOrgAudienceKey, BoundedBuyerOrgAudience>(&mut mydata.id, buyer_key);
+        let audience_key = OrgGraphAudienceKey { organization_id: binding.organization_id };
+        if (!dynamic_field::exists_(&mydata.id, audience_key)) return;
+        let grants = dynamic_field::borrow_mut<OrgGraphAudienceKey, vector<OrgGraphAudienceGrant>>(&mut mydata.id, audience_key);
+        let mut i = 0;
+        while (i < vector::length(grants)) {
+            if (vector::borrow(grants, i).buyer == buyer) {
+                let _ = vector::remove(grants, i);
+                i = vector::length(grants);
+            } else {
+                i = i + 1;
+            };
+        };
+        if (vector::is_empty(grants)) {
+            let _ = dynamic_field::remove<OrgGraphAudienceKey, vector<OrgGraphAudienceGrant>>(&mut mydata.id, audience_key);
+        };
+    }
+
+    fun assert_org_audience_entitlement(
+        mydata: &MyData,
+        organization: &social_contracts::memory::AgenticOrganization,
+        reader: address,
+        clock: &Clock,
+    ) {
+        let key = OrgGraphAudienceKey { organization_id: object::id(organization) };
+        assert!(dynamic_field::exists_(&mydata.id, key), EPolicyNotEntitled);
+        let grants = dynamic_field::borrow<OrgGraphAudienceKey, vector<OrgGraphAudienceGrant>>(&mydata.id, key);
+        let data_digest = std::hash::sha2_256(mydata.encrypted_data);
+        let identity_digest = std::hash::sha2_256(mydata.encryption_id);
+        let mut authorized = false;
+        let mut i = 0;
+        while (i < vector::length(grants)) {
+            let grant = vector::borrow(grants, i);
+            if (has_access(mydata, grant.buyer, clock)
+                && grant.encrypted_data_digest == data_digest
+                && grant.encryption_id_digest == identity_digest) {
+                authorized = true;
+                i = vector::length(grants);
+            } else {
+                i = i + 1;
+            };
+        };
+        assert!(authorized, EPolicyNotEntitled);
+        assert!(reader != mydata.owner, EPolicyNotEntitled);
+    }
+
+    #[test_only]
+    public fun bind_bounded_buyer_for_testing(mydata: &mut MyData, buyer: address, account_id: ID, agent_id: Option<ID>) {
+        bind_bounded_buyer(mydata, buyer, account_id, agent_id);
+    }
+
+    fun assert_bounded_buyer_active(
+        mydata: &MyData,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        account: &social_contracts::memory::MemoryAccount,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let key = BoundedBuyerBindingKey { buyer: tx_context::sender(ctx) };
+        if (!dynamic_field::exists_(&mydata.id, key)) return;
+        let binding = dynamic_field::borrow<BoundedBuyerBindingKey, BoundedBuyerBinding>(&mydata.id, key);
+        // Human purchases retain the existing wallet entitlement semantics.
+        if (option::is_none(&binding.agent_id)) return;
+        assert!(object::id(account) == binding.memory_account_id, EPolicyNotEntitled);
+        let acting = social_contracts::memory::resolve_actor_with_cap(
+            memory_config, account, social_contracts::memory::cap_mydata_read(),
+            mydata.platform_id, 0, clock, ctx,
+        );
+        assert!(social_contracts::memory::acting_sub_agent_id(&acting) == binding.agent_id, EPolicyNotEntitled);
+    }
+
+    /// Exact terms of a bounded P2P purchase. This is evidence of the data/terms
+    /// purchased, not proof that the encrypted content is useful or truthful.
+    public struct BoundedPurchaseEvent has copy, drop {
+        mydata_id: ID,
+        buyer: address,
+        buyer_memory_account_id: ID,
+        buyer_agent_id: Option<ID>,
+        seller: address,
+        access_kind: u8,
+        price: u64,
+        duration_days: u64,
+        encrypted_data_digest: vector<u8>,
+        encryption_id_digest: vector<u8>,
+        listing_platform_id: Option<address>,
+        fee_platform_id: ID,
+        timestamp: u64,
+    }
+    /// Additional immutable identity for a signed MySocial knowledge graph
+    /// purchased through the bounded P2P path. The publication signature itself
+    /// is not stored; its digest identifies the exact seller signature accepted
+    /// by the purchase validation service.
+    public struct GraphPurchaseSnapshotEvent has copy, drop {
+        mydata_id: ID,
+        buyer: address,
+        buyer_memory_account_id: ID,
+        seller: address,
+        graph_id: String,
+        graph_version: u64,
+        manifest_hash: vector<u8>,
+        publication_signature_digest: vector<u8>,
+        organization_id: Option<ID>,
+        timestamp: u64,
+    }
+    public struct OrgGraphAudienceBoundEvent has copy, drop {
+        mydata_id: ID,
+        buyer: address,
+        organization_id: ID,
+        access_kind: u8,
+        encrypted_data_digest: vector<u8>,
+        encryption_id_digest: vector<u8>,
+        timestamp: u64,
+    }
+
+    /// Purchase only the caller's exact quoted data and terms. Agent execution
+    /// requires CAP_MYDATA_READ, active ancestry, platform scope, the existing
+    /// per-action spend limit and direct-execution approval policy. Existing P2P
+    /// fee routing and buyer-address entitlements are preserved. This path does
+    /// not depend on the broad-pool marketplace being enabled.
+    public entry fun purchase_access_bounded_with_platform(
+        config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
+        payment: &mut Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        expected_seller: address,
+        expected_access_kind: u8,
+        expected_price: u64,
+        expected_duration_days: u64,
+        expected_encryption_id: vector<u8>,
+        expected_data_digest: vector<u8>,
+        expected_listing_platform: Option<address>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        let (kind, price, duration_days) = match (&mydata.access) {
+            AccessConfiguration::MarketplaceOneTime { price, .. } => (ACCESS_KIND_ONE_TIME, *price, 0),
+            AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } =>
+                (ACCESS_KIND_RECURRING, *price, *duration_days),
+            _ => abort ENotForSale,
+        };
+        assert!(mydata.owner == expected_seller, EQuoteChanged);
+        assert!(kind == expected_access_kind, EQuoteChanged);
+        assert!(price == expected_price && duration_days == expected_duration_days, EQuoteChanged);
+        assert!(mydata.platform_id == expected_listing_platform, EQuoteChanged);
+        assert!(encryption_id_matches(mydata, &expected_encryption_id), EQuoteChanged);
+        let data_digest = std::hash::sha2_256(mydata.encrypted_data);
+        assert!(data_digest == expected_data_digest, EQuoteChanged);
+
+        let cap = social_contracts::memory::cap_mydata_read();
+        let acting = social_contracts::memory::resolve_actor_with_cap(
+            memory_config, account, cap, mydata.platform_id, price, clock, ctx,
+        );
+        social_contracts::memory::assert_direct_execution_allowed(account, cap, ctx);
+
+        if (kind == ACCESS_KIND_ONE_TIME) {
+            purchase_one_time_with_platform_internal(
+                config, block_list_registry, memory_config, mydata, treasury,
+                platform, payment, account, clock, ctx,
+            );
+        } else {
+            purchase_subscription_with_platform_internal(
+                config, block_list_registry, memory_config, mydata, treasury,
+                platform, payment, account, clock, ctx,
+            );
+        };
+        let account_id = object::id(account);
+        let agent_id = social_contracts::memory::acting_sub_agent_id(&acting);
+        bind_bounded_buyer(mydata, tx_context::sender(ctx), account_id, agent_id);
+        clear_org_graph_audience(mydata, tx_context::sender(ctx));
+        event::emit(BoundedPurchaseEvent {
+            mydata_id: object::id(mydata), buyer: tx_context::sender(ctx),
+            buyer_memory_account_id: account_id, buyer_agent_id: agent_id,
+            seller: expected_seller, access_kind: kind, price, duration_days,
+            encrypted_data_digest: data_digest,
+            encryption_id_digest: std::hash::sha2_256(expected_encryption_id),
+            listing_platform_id: expected_listing_platform,
+            fee_platform_id: object::id(platform), timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Bounded P2P purchase whose key-release audience is one active MySo
+    /// organization. The purchaser must be an organization agent with the live
+    /// OrgMemoryReader permission. Each reader is checked again by the policy
+    /// hook, and the entitlement is pinned to this ciphertext and identity.
+    public entry fun purchase_access_bounded_with_org_audience(
+        config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
+        payment: &mut Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        organization: &social_contracts::memory::AgenticOrganization,
+        group: &PermissionedGroup<social_contracts::memory::MemorySharePackage>,
+        expected_seller: address,
+        expected_access_kind: u8,
+        expected_price: u64,
+        expected_duration_days: u64,
+        expected_encryption_id: vector<u8>,
+        expected_data_digest: vector<u8>,
+        expected_listing_platform: Option<address>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(mydata.version == upgrade::current_version(), EInvalidInput);
+        let (kind, price, duration_days) = match (&mydata.access) {
+            AccessConfiguration::MarketplaceOneTime { price, .. } => (ACCESS_KIND_ONE_TIME, *price, 0),
+            AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } =>
+                (ACCESS_KIND_RECURRING, *price, *duration_days),
+            _ => abort ENotForSale,
+        };
+        assert!(mydata.owner == expected_seller, EQuoteChanged);
+        assert!(kind == expected_access_kind, EQuoteChanged);
+        assert!(price == expected_price && duration_days == expected_duration_days, EQuoteChanged);
+        assert!(mydata.platform_id == expected_listing_platform, EQuoteChanged);
+        assert!(encryption_id_matches(mydata, &expected_encryption_id), EQuoteChanged);
+        let data_digest = std::hash::sha2_256(mydata.encrypted_data);
+        assert!(data_digest == expected_data_digest, EQuoteChanged);
+
+        let sender = tx_context::sender(ctx);
+        let cap = social_contracts::memory::cap_mydata_read();
+        let acting = social_contracts::memory::resolve_actor_with_cap(
+            memory_config, account, cap, mydata.platform_id, price, clock, ctx,
+        );
+        let organization_id = object::id(organization);
+        let acting_organization = social_contracts::memory::acting_organization_id(&acting);
+        assert!(option::is_some(&acting_organization)
+            && *option::borrow(&acting_organization) == organization_id, EPolicyNotEntitled);
+        assert!(object::id_to_address(&object::id(group))
+            == social_contracts::memory::org_memory_group_address(organization), EPolicyNotEntitled);
+        social_contracts::memory::assert_org_permission<social_contracts::memory::OrgMemoryReader>(
+            organization, group, sender,
+        );
+        social_contracts::memory::assert_direct_execution_allowed(account, cap, ctx);
+
+        if (kind == ACCESS_KIND_ONE_TIME) {
+            purchase_one_time_with_platform_internal(
+                config, block_list_registry, memory_config, mydata, treasury,
+                platform, payment, account, clock, ctx,
+            );
+        } else {
+            purchase_subscription_with_platform_internal(
+                config, block_list_registry, memory_config, mydata, treasury,
+                platform, payment, account, clock, ctx,
+            );
+        };
+        let account_id = object::id(account);
+        let agent_id = social_contracts::memory::acting_sub_agent_id(&acting);
+        let encryption_id_digest = std::hash::sha2_256(expected_encryption_id);
+        bind_bounded_buyer(mydata, sender, account_id, agent_id);
+        clear_org_graph_audience(mydata, sender);
+        bind_org_graph_audience(mydata, sender, organization_id, data_digest, encryption_id_digest);
+        event::emit(BoundedPurchaseEvent {
+            mydata_id: object::id(mydata), buyer: sender,
+            buyer_memory_account_id: account_id, buyer_agent_id: agent_id,
+            seller: expected_seller, access_kind: kind, price, duration_days,
+            encrypted_data_digest: data_digest,
+            encryption_id_digest,
+            listing_platform_id: expected_listing_platform,
+            fee_platform_id: object::id(platform), timestamp: clock::timestamp_ms(clock),
+        });
+        event::emit(OrgGraphAudienceBoundEvent {
+            mydata_id: object::id(mydata), buyer: sender, organization_id,
+            access_kind: kind, encrypted_data_digest: data_digest,
+            encryption_id_digest, timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Buy a signed graph version and emit its immutable publication identity
+    /// beside the ordinary bounded purchase and audience events.
+    public entry fun purchase_graph_access_bounded_with_platform(
+        config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
+        payment: &mut Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        expected_seller: address,
+        expected_access_kind: u8,
+        expected_price: u64,
+        expected_duration_days: u64,
+        expected_encryption_id: vector<u8>,
+        expected_data_digest: vector<u8>,
+        expected_listing_platform: Option<address>,
+        graph_id: String,
+        graph_version: u64,
+        manifest_hash: vector<u8>,
+        publication_signature: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(graph_version > 0 && string::length(&graph_id) > 0, EInvalidInput);
+        assert!(vector::length(&manifest_hash) == 32 && vector::length(&publication_signature) == 64, EInvalidInput);
+        purchase_access_bounded_with_platform(
+            config, block_list_registry, memory_config, mydata, treasury, platform,
+            payment, account, expected_seller, expected_access_kind, expected_price,
+            expected_duration_days, expected_encryption_id, expected_data_digest,
+            expected_listing_platform, clock, ctx,
+        );
+        event::emit(GraphPurchaseSnapshotEvent {
+            mydata_id: object::id(mydata), buyer: tx_context::sender(ctx),
+            buyer_memory_account_id: object::id(account), seller: expected_seller,
+            graph_id, graph_version, manifest_hash,
+            publication_signature_digest: std::hash::sha2_256(publication_signature),
+            organization_id: option::none(), timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Organization-audience graph purchase with the same immutable version
+    /// evidence and the existing live OrgMemoryReader checks.
+    public entry fun purchase_graph_access_bounded_with_org_audience(
+        config: &MyDataConfig,
+        block_list_registry: &block_list::BlockListRegistry,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &mut MyData,
+        treasury: &EcosystemTreasury,
+        platform: &mut Platform,
+        payment: &mut Coin<MYSO>,
+        account: &social_contracts::memory::MemoryAccount,
+        organization: &social_contracts::memory::AgenticOrganization,
+        group: &PermissionedGroup<social_contracts::memory::MemorySharePackage>,
+        expected_seller: address,
+        expected_access_kind: u8,
+        expected_price: u64,
+        expected_duration_days: u64,
+        expected_encryption_id: vector<u8>,
+        expected_data_digest: vector<u8>,
+        expected_listing_platform: Option<address>,
+        graph_id: String,
+        graph_version: u64,
+        manifest_hash: vector<u8>,
+        publication_signature: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(graph_version > 0 && string::length(&graph_id) > 0, EInvalidInput);
+        assert!(vector::length(&manifest_hash) == 32 && vector::length(&publication_signature) == 64, EInvalidInput);
+        purchase_access_bounded_with_org_audience(
+            config, block_list_registry, memory_config, mydata, treasury, platform,
+            payment, account, organization, group, expected_seller, expected_access_kind,
+            expected_price, expected_duration_days, expected_encryption_id,
+            expected_data_digest, expected_listing_platform, clock, ctx,
+        );
+        event::emit(GraphPurchaseSnapshotEvent {
+            mydata_id: object::id(mydata), buyer: tx_context::sender(ctx),
+            buyer_memory_account_id: object::id(account), seller: expected_seller,
+            graph_id, graph_version, manifest_hash,
+            publication_signature_digest: std::hash::sha2_256(publication_signature),
+            organization_id: option::some(object::id(organization)), timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
     /// Purchase one-time access to MyData data.
     public entry fun purchase_one_time(
         config: &MyDataConfig,
@@ -2328,6 +2790,7 @@ module social_contracts::mydata {
         assert!(encrypted_data_updated || tags_updated, EInvalidInput);
 
         if (encrypted_data_updated) {
+            assert!(!is_bounded_snapshot_frozen(mydata), EBoundedSnapshotFrozen);
             let data = option::borrow(&new_encrypted_data);
             let encryption_id = option::borrow(&new_encryption_id);
             assert!(!vector::is_empty(data) && vector::length(data) <= config.max_encrypted_data_bytes, EInvalidInput);
@@ -2426,6 +2889,7 @@ module social_contracts::mydata {
         if (sender != mydata.owner) {
             block_list::assert_not_blocked(block_list_registry, sender, mydata.owner);
         };
+        assert_bounded_buyer_active(mydata, memory_config, account, clock, ctx);
         if (has_access(mydata, sender, clock)) {
             return
         };
@@ -2452,6 +2916,42 @@ module social_contracts::mydata {
             social_contracts::memory::acting_principal_owner(&acting) == mydata.owner,
             EPolicyNotEntitled,
         );
+    }
+
+    /// Key-server policy for a purchased organization audience. In addition to
+    /// the purchase binding, every fetch rechecks the reader agent's current
+    /// CAP_MYDATA_READ, active ancestry, organization identity, OrgMemoryReader
+    /// permission, buyer entitlement, ciphertext digest and encryption identity.
+    public entry fun mydata_approve_org_audience(
+        id: vector<u8>,
+        block_list_registry: &block_list::BlockListRegistry,
+        memory_config: &social_contracts::memory::MemoryConfig,
+        mydata: &MyData,
+        reader_account: &social_contracts::memory::MemoryAccount,
+        organization: &social_contracts::memory::AgenticOrganization,
+        group: &PermissionedGroup<social_contracts::memory::MemorySharePackage>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert!(encryption_id_matches(mydata, &id), EPolicyIdMismatch);
+        assert!(requires_marketplace_purchase(mydata) || requires_marketplace_subscription(mydata), EPolicyNotEntitled);
+        let sender = tx_context::sender(ctx);
+        if (sender == mydata.owner) return;
+        block_list::assert_not_blocked(block_list_registry, sender, mydata.owner);
+        assert!(object::id_to_address(&object::id(group))
+            == social_contracts::memory::org_memory_group_address(organization), EPolicyNotEntitled);
+        social_contracts::memory::assert_org_permission<social_contracts::memory::OrgMemoryReader>(
+            organization, group, sender,
+        );
+        let acting = social_contracts::memory::resolve_actor_with_cap(
+            memory_config, reader_account,
+            social_contracts::memory::cap_mydata_read(), mydata.platform_id, 0, clock, ctx,
+        );
+        assert!(option::is_some(&social_contracts::memory::acting_sub_agent_id(&acting)), EPolicyNotEntitled);
+        let acting_organization = social_contracts::memory::acting_organization_id(&acting);
+        assert!(option::is_some(&acting_organization)
+            && *option::borrow(&acting_organization) == object::id(organization), EPolicyNotEntitled);
+        assert_org_audience_entitlement(mydata, organization, sender, clock);
     }
 
     /// Key-server policy hook for profile-subscription-gated MyData linked to a post.
@@ -2646,6 +3146,7 @@ module social_contracts::mydata {
         };
 
         assert!(revoked_one_time || revoked_subscription, ENoAccessToRevoke);
+        clear_org_graph_audience(mydata, user);
 
         let access_type_str = if (revoked_one_time && revoked_subscription) {
             string::utf8(b"all")

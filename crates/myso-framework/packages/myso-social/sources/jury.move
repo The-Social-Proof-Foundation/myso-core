@@ -362,6 +362,12 @@ module social_contracts::jury {
         left_at_ms: u64,
     }
 
+    /// A keeper refreshed the public eligibility snapshot used by future jury draws.
+    public struct RosterEntryRefreshed has copy, drop {
+        agent_id: ID,
+        refreshed_at_ms: u64,
+    }
+
     public struct RosterSuspended has copy, drop {
         agent_id: ID,
         until_ms: u64,
@@ -832,6 +838,7 @@ module social_contracts::jury {
         entry.snapshot_expires_at = snap.expires_at;
         entry.ancestor_ids = snap.ancestors;
         entry.exempt = exempt;
+        event::emit(RosterEntryRefreshed { agent_id, refreshed_at_ms: now });
     }
 
     /// Removes an entry whose snapshot says the agent can no longer serve (inactive, expired, lost

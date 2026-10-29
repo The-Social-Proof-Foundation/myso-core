@@ -132,6 +132,26 @@ pub(crate) async fn list_org_invitations(
         .map_err(Into::into)
 }
 
+pub(crate) async fn list_org_invitations_for_invitee(
+    db: &Db,
+    invitee: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<OrgInvitationRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    org_invitations::table
+        .filter(org_invitations::invitee_address.eq(invitee))
+        .filter(org_invitations::status.eq("pending"))
+        .order(org_invitations::created_at_ms.desc())
+        .then_order_by(org_invitations::organization_id.asc())
+        .limit(limit.clamp(1, 100))
+        .offset(offset.max(0))
+        .select(OrgInvitationRow::as_select())
+        .load(&mut conn)
+        .await
+        .map_err(Into::into)
+}
+
 // ============================================================
 // Spend approvals
 // ============================================================
@@ -387,6 +407,21 @@ pub struct MemoryUsageStatEntry {
 #[derive(Debug, Clone, Deserialize)]
 pub struct IngestMemoryUsageStatsRequest {
     pub stats: Vec<MemoryUsageStatEntry>,
+}
+
+pub(crate) async fn list_memory_usage_for_account(
+    db: &Db,
+    account_id: &str,
+) -> Result<Vec<MemoryUsageStatsRow>, SocialError> {
+    let mut conn = db.connect().await?;
+    memory_usage_stats::table
+        .filter(memory_usage_stats::account_id.eq(account_id))
+        .order(memory_usage_stats::agent_object_id.asc())
+        .limit(500)
+        .select(MemoryUsageStatsRow::as_select())
+        .load(&mut conn)
+        .await
+        .map_err(Into::into)
 }
 
 pub(crate) async fn ingest_memory_usage_stats(

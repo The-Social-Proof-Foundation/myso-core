@@ -29,6 +29,7 @@ When the provider mapping is fully configured, the oracle also mounts:
 ```bash
 AI_CREDIT_INFERENCE_ENABLED=true
 AI_CREDIT_OPENROUTER_API_KEY=sk-or-...
+AI_CREDIT_RESPONSE_ENCRYPTION_KEY_HEX=<64 hex characters from a secret manager>
 AI_CREDIT_PROVIDER_TOKEN=local-openclaw-token
 AI_CREDIT_PROVIDER_OWNER=0x...
 AI_CREDIT_PROVIDER_BALANCE_ID=0x...
@@ -38,3 +39,5 @@ AI_CREDIT_PROVIDER_MODELS=openai/gpt-4o-mini,openai/gpt-4o
 ```
 
 These routes accept standard `Authorization: Bearer <token>` auth, translate OpenAI request bodies into the internal inference path, and return OpenAI-compatible JSON. They share `run_inference_core` with `POST /v1/ai-credit/inference` (which remains authenticated by `x-ai-credit-oracle-secret` for the Memory relayer / SDK).
+
+Completed inference results are encrypted with AES-256-GCM before they enter the PostgreSQL idempotency ledger. Set `AI_CREDIT_RESPONSE_ENCRYPTION_KEY_HEX` to a stable, randomly generated 32-byte key and keep it consistent across replicas. Store it in the deployment secret manager, rotate it only with a planned ledger migration, and do not reuse the oracle signing or settlement key. The schema migration removes response-cache text written by older versions; those historical idempotent replays return an empty cached response.

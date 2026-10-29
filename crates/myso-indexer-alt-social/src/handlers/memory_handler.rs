@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use diesel::upsert::excluded;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
@@ -21,11 +22,13 @@ use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
     NewAgentMemoryVault, NewAgenticOrganization, NewAuditLog, NewMemoryAccount, NewMemoryConfig,
     NewOrgInvitation, NewOrgMemoryPermission, NewOrgRole, NewOrgRoleAssignment,
-    NewOrganizationEvent, NewSubAgentEvent,
+    NewOrgTreasuryAccess, NewOrgTreasuryBalance, NewOrgTreasuryEvent, NewOrganizationEvent,
+    NewSubAgentEvent,
 };
 use myso_indexer_alt_social_schema::schema::{
     audit_log, memory_accounts, memory_config, org_invitations, org_memory_permissions,
-    org_role_assignments, org_roles, profiles, sub_agent_events, sub_agent_memory_vaults,
+    org_role_assignments, org_roles, org_treasury_access, org_treasury_balances,
+    org_treasury_events, profiles, sub_agent_events, sub_agent_memory_vaults,
     sub_agent_organization_events, sub_agent_organizations, sub_agents,
 };
 
@@ -44,6 +47,9 @@ const MEMORY_MODULE: &str = "memory";
 pub enum MemoryRow {
     MemoryAccount(NewMemoryAccount),
     MemoryConfig(NewMemoryConfig),
+    OrgTreasuryBalance(NewOrgTreasuryBalance),
+    OrgTreasuryAccess(NewOrgTreasuryAccess),
+    OrgTreasuryEvent(NewOrgTreasuryEvent),
     ProfileMemoryAccountLink {
         profile_id: String,
         memory_account_id: String,
@@ -122,6 +128,15 @@ impl MemoryRow {
         match row {
             crate::handlers::SocialEventRow::MemoryAccount(a) => Some(MemoryRow::MemoryAccount(a)),
             crate::handlers::SocialEventRow::MemoryConfig(c) => Some(MemoryRow::MemoryConfig(c)),
+            crate::handlers::SocialEventRow::OrgTreasuryBalance(b) => {
+                Some(MemoryRow::OrgTreasuryBalance(b))
+            }
+            crate::handlers::SocialEventRow::OrgTreasuryAccess(a) => {
+                Some(MemoryRow::OrgTreasuryAccess(a))
+            }
+            crate::handlers::SocialEventRow::OrgTreasuryEvent(e) => {
+                Some(MemoryRow::OrgTreasuryEvent(e))
+            }
             crate::handlers::SocialEventRow::ProfileMemoryAccountLink {
                 profile_id,
                 memory_account_id,
@@ -324,6 +339,50 @@ impl Handler for MemoryHandler {
                 MemoryRow::MemoryConfig(c) => {
                     total += diesel::insert_into(memory_config::table)
                         .values(c)
+                        .execute(conn)
+                        .await?;
+                }
+                MemoryRow::OrgTreasuryBalance(b) => {
+                    // The chain reports the balance after each change. Concurrent pipeline: an
+                    // older event must not overwrite a newer balance.
+                    let upsert = diesel::insert_into(org_treasury_balances::table)
+                        .values(b)
+                        .on_conflict((
+                            org_treasury_balances::organization_id,
+                            org_treasury_balances::coin_type,
+                        ))
+                        .do_update()
+                        .set(b);
+                    total += diesel::query_dsl::methods::FilterDsl::filter(
+                        upsert,
+                        org_treasury_balances::updated_at_ms
+                            .le(excluded(org_treasury_balances::updated_at_ms)),
+                    )
+                    .execute(conn)
+                    .await?;
+                }
+                MemoryRow::OrgTreasuryAccess(a) => {
+                    let upsert = diesel::insert_into(org_treasury_access::table)
+                        .values(a)
+                        .on_conflict((
+                            org_treasury_access::organization_id,
+                            org_treasury_access::recipient,
+                        ))
+                        .do_update()
+                        .set(a);
+                    total += diesel::query_dsl::methods::FilterDsl::filter(
+                        upsert,
+                        org_treasury_access::updated_at_ms
+                            .le(excluded(org_treasury_access::updated_at_ms)),
+                    )
+                    .execute(conn)
+                    .await?;
+                }
+                MemoryRow::OrgTreasuryEvent(e) => {
+                    total += diesel::insert_into(org_treasury_events::table)
+                        .values(e)
+                        .on_conflict(org_treasury_events::event_id)
+                        .do_nothing()
                         .execute(conn)
                         .await?;
                 }

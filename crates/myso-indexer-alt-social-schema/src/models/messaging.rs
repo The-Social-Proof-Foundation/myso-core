@@ -124,3 +124,13 @@ pub struct NewAgentRoom {
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
 }
+
+/// Reverse task link emitted after a task is created with this group ID.
+#[derive(Debug, Clone)]
+pub struct NewAgentRoomTaskBind {
+    pub group_id: String,
+    pub task_id: String,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}

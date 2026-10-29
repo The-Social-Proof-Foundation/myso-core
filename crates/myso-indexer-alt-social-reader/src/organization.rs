@@ -67,7 +67,10 @@ pub async fn list_agentic_organizations_by_owner(
 
     let total_count = count_query.count().get_result::<i64>(conn).await?;
     let organizations = list_query
-        .order(sub_agent_organizations::created_at_ms.desc())
+        .order((
+            sub_agent_organizations::created_at_ms.desc(),
+            sub_agent_organizations::organization_id.asc(),
+        ))
         .limit(limit)
         .offset(offset)
         .select(AgenticOrganizationRow::as_select())

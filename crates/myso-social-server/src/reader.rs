@@ -234,6 +234,15 @@ impl Reader {
         mydata::get_mydata_purchases(&self.db, mydata_id, limit, offset).await
     }
 
+    pub async fn get_mydata_purchases_by_buyer(
+        &self,
+        buyer: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<PurchaseInfo>, crate::error::SocialError> {
+        mydata::get_mydata_purchases_by_buyer(&self.db, buyer, limit, offset).await
+    }
+
     pub async fn get_mydata_subscriptions(
         &self,
         mydata_id: &str,
@@ -2063,6 +2072,15 @@ impl Reader {
             .await
     }
 
+    pub async fn list_org_invitations_for_invitee(
+        &self,
+        invitee: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<myso_indexer_alt_social_schema::models::OrgInvitationRow>, crate::error::SocialError> {
+        enterprise::list_org_invitations_for_invitee(&self.db, invitee, limit, offset).await
+    }
+
     pub async fn list_spend_approvals_by_owner(
         &self,
         owner: &str,
@@ -2170,6 +2188,13 @@ impl Reader {
         req: enterprise::IngestMemoryUsageStatsRequest,
     ) -> Result<usize, crate::error::SocialError> {
         enterprise::ingest_memory_usage_stats(&self.write_db, req).await
+    }
+
+    pub async fn list_memory_usage_for_account(
+        &self,
+        account_id: &str,
+    ) -> Result<Vec<myso_indexer_alt_social_schema::models::MemoryUsageStatsRow>, crate::error::SocialError> {
+        enterprise::list_memory_usage_for_account(&self.db, account_id).await
     }
 
     pub async fn list_sub_agent_children(
@@ -2518,6 +2543,22 @@ impl Reader {
         agent_task::get_task(&self.db, task_id).await
     }
 
+    pub async fn get_task_receipt(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<TaskReceiptInfo>, crate::error::SocialError> {
+        agent_task::get_task_receipt(&self.db, task_id).await
+    }
+
+    pub async fn list_task_history(
+        &self,
+        task_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<TaskHistoryInfo>, crate::error::SocialError> {
+        agent_task::list_task_history(&self.db, task_id, limit, offset).await
+    }
+
     pub async fn list_agent_receipts(
         &self,
         agent_object_id: &str,
@@ -2682,6 +2723,20 @@ impl Reader {
         offset: i64,
     ) -> Result<Vec<AgentRoomInfo>, crate::error::SocialError> {
         messaging::get_agent_rooms(&self.db, principal, organization_id, limit, offset).await
+    }
+
+    pub async fn get_task_room(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<AgentRoomInfo>, crate::error::SocialError> {
+        messaging::get_task_room(&self.db, task_id).await
+    }
+
+    pub async fn get_agent_room_by_group(
+        &self,
+        group_id: &str,
+    ) -> Result<Option<AgentRoomInfo>, crate::error::SocialError> {
+        messaging::get_agent_room_by_group(&self.db, group_id).await
     }
 
     pub async fn get_group_digests(
@@ -3021,7 +3076,16 @@ impl Reader {
         q: &str,
         limit: i64,
     ) -> Result<serde_json::Value, crate::error::SocialError> {
-        search::search(&self.db, q, limit).await
+        search::search(&self.db, q, limit, 0).await
+    }
+
+    pub async fn search_page(
+        &self,
+        q: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<serde_json::Value, crate::error::SocialError> {
+        search::search(&self.db, q, limit, offset).await
     }
 
     pub async fn search_profiles(

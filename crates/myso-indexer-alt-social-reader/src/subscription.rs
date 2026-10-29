@@ -54,6 +54,8 @@ pub struct ProfileSubscriptionServiceRow {
     pub created_at: i64,
     #[diesel(sql_type = Nullable<BigInt>)]
     pub updated_at: Option<i64>,
+    #[diesel(sql_type = Text)]
+    pub payment_recipient: String,
 }
 
 #[derive(Debug, Clone, QueryableByName)]
@@ -167,7 +169,7 @@ pub(crate) async fn get_profile_subscription_service(
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT service_id, profile_owner, profile_id, plan_count, active,
-               subscriber_count, created_at, updated_at
+               subscriber_count, created_at, updated_at, payment_recipient
         FROM profile_subscription_services
         WHERE service_id = $1
     ";
@@ -191,7 +193,7 @@ pub(crate) async fn list_profile_subscription_services_by_owner(
     let _guard = metrics.latency.start_timer();
     let query = "
         SELECT service_id, profile_owner, profile_id, plan_count, active,
-               subscriber_count, created_at, updated_at
+               subscriber_count, created_at, updated_at, payment_recipient
         FROM profile_subscription_services
         WHERE profile_owner = $1
         ORDER BY created_at DESC

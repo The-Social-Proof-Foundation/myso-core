@@ -6936,6 +6936,7 @@ type ProfileSubscriptionPlan {
 type ProfileSubscriptionService {
 	active: Boolean!
 	createdAt: Int!
+	paymentRecipient: String!
 	planCount: Int!
 	profileId: String!
 	profileOwner: String!

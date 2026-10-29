@@ -32,6 +32,7 @@
 module social_contracts::memory {
     use std::option::{Self, Option};
     use std::string::{Self, String};
+    use std::type_name::{Self, TypeName};
     use std::vector;
 
     use social_contracts::upgrade::{Self, UpgradeAdminCap};
@@ -40,6 +41,8 @@ module social_contracts::memory {
         object::{Self, UID, ID},
         tx_context::{Self, TxContext},
         transfer,
+        balance::{Self, Balance},
+        coin::{Self, Coin},
         table::{Self, Table},
         clock::{Self, Clock},
         dynamic_field as df,
@@ -221,6 +224,18 @@ module social_contracts::memory {
     const EDivideByZero: u64 = 64;
     const ENoAccess: u64 = 100;
     const EInvalidConfig: u64 = 101;
+    const EAgentPolicyChanged: u64 = 102;
+    const EInvalidAgentPolicyChange: u64 = 103;
+    const EOrgTreasuryUnauthorized: u64 = 104;
+    const EOrgTreasuryInvalidAmount: u64 = 105;
+    const EOrgTreasuryInsufficientBalance: u64 = 106;
+    const EOrgTreasuryRecipientNotAuthorized: u64 = 107;
+    const EOwnerRotationPending: u64 = 108;
+    const EOwnerRotationNotPending: u64 = 109;
+    const EOwnerRotationInvalidManifest: u64 = 110;
+    const EOwnerRotationReferenceNotUpdated: u64 = 111;
+    const EOwnerRotationWrongWallet: u64 = 112;
+    const EOwnerRotationNotFullyReverted: u64 = 113;
 
     const ED25519_PUBLIC_KEY_LENGTH: u64 = 32;
     /// Default bootstrap values for MemoryConfig
@@ -288,6 +303,21 @@ module social_contracts::memory {
         accounts: Table<address, ID>,
     }
 
+    /// Dynamic-field key for the account's pending two-wallet owner migration.
+    public struct MemoryOwnerRotationKey() has copy, drop, store;
+
+    /// Proposed complete set of registered objects that must change principal owner before
+    /// the account and linked profile can move to the recipient wallet.
+    public struct MemoryOwnerRotation has store {
+        old_owner: address,
+        new_owner: address,
+        agent_manifest: Table<ID, bool>,
+        organization_manifest: Table<ID, bool>,
+        updated_agents: Table<ID, bool>,
+        updated_organizations: Table<ID, bool>,
+        proposed_at_ms: u64,
+    }
+
     public struct SubAgentKey has copy, drop, store {
         derived_address: address,
     }
@@ -303,6 +333,15 @@ module social_contracts::memory {
 
     /// Derivation key for the per-organization memory share group (derived from the org UID).
     public struct OrgMemoryGroupTag() has copy, drop, store;
+
+    /// Per-coin balances are stored as dynamic fields on the organization, so this treasury
+    /// can be added to existing shared organizations without changing their object layout.
+    public struct OrgTreasuryBalanceKey<phantom T> has copy, drop, store {}
+
+    /// Explicit withdrawal allowlist managed by the organization owner or group admin.
+    public struct OrgTreasuryAccessKey has copy, drop, store {
+        recipient: address,
+    }
 
     /// Permission to read org-visible shared memory (relayer recall scope + MYDATA key release).
     public struct OrgMemoryReader() has drop;
@@ -330,6 +369,33 @@ module social_contracts::memory {
 
     /// Permission to vote on governance proposals for the organization.
     public struct OrgGovernanceVoter() has drop;
+
+    public struct OrgTreasuryAccessChanged has copy, drop {
+        organization_id: ID,
+        recipient: address,
+        has_access: bool,
+        updated_by: address,
+        timestamp: u64,
+    }
+
+    public struct OrgTreasuryFunded has copy, drop {
+        organization_id: ID,
+        amount: u64,
+        funded_by: address,
+        new_balance: u64,
+        coin_type: TypeName,
+        timestamp: u64,
+    }
+
+    public struct OrgTreasuryWithdrawn has copy, drop {
+        organization_id: ID,
+        recipient: address,
+        amount: u64,
+        withdrawn_by: address,
+        remaining_balance: u64,
+        coin_type: TypeName,
+        timestamp: u64,
+    }
 
     /// Dynamic-field key on the org UID for a pending invitation to `invitee`.
     public struct OrgInvitationKey has copy, drop, store {
@@ -611,6 +677,24 @@ module social_contracts::memory {
         created_at: u64,
     }
 
+    /// Exact owner policy delta. Existing SubAgentUpdated is also emitted for indexers.
+    public struct SubAgentOwnerPolicyChanged has copy, drop {
+        account_id: ID,
+        principal_owner: address,
+        agent_object_id: ID,
+        derived_address: address,
+        /// 1 = execution capability grant; 2 = execution capability revoke; 3 = limit raise.
+        change_kind: u8,
+        capability_mask: u64,
+        previous_capabilities: u64,
+        next_capabilities: u64,
+        delegatable_caps: u64,
+        previous_max_action_spend: Option<u64>,
+        next_max_action_spend: Option<u64>,
+        platform_scope: Option<address>,
+        timestamp_ms: u64,
+    }
+
     public struct SubAgentDeactivated has copy, drop {
         account_id: ID,
         principal_owner: address,
@@ -635,6 +719,33 @@ module social_contracts::memory {
     public struct MemoryAccountReactivated has copy, drop {
         account_id: ID,
         owner: address,
+    }
+
+    public struct MemoryAccountOwnerRotationProposed has copy, drop {
+        account_id: ID,
+        old_owner: address,
+        new_owner: address,
+        agent_count: u64,
+        organization_count: u64,
+        proposed_at_ms: u64,
+    }
+
+    public struct MemoryAccountOwnerRotated has copy, drop {
+        account_id: ID,
+        old_owner: address,
+        new_owner: address,
+        profile_id: address,
+        timestamp_ms: u64,
+    }
+
+    public struct MemoryAccountOwnerRotationReferenceUpdated has copy, drop {
+        account_id: ID,
+        reference_id: ID,
+        reference_kind: u8,
+        old_owner: address,
+        new_owner: address,
+        updated_by: address,
+        timestamp_ms: u64,
     }
 
     public struct MemoryAccountMigrated has copy, drop {
@@ -1008,6 +1119,285 @@ module social_contracts::memory {
         account_id
     }
 
+    /// The current wallet proposes a complete account-owner migration. The new wallet must
+    /// separately sign each reference update and the final profile/account acceptance.
+    public entry fun propose_owner_rotation(
+        registry: &MemoryRegistry,
+        account: &mut MemoryAccount,
+        new_owner: address,
+        agent_ids: vector<ID>,
+        organization_ids: vector<ID>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_object_version(&account.id);
+        let old_owner = tx_context::sender(ctx);
+        assert!(account.owner == old_owner, ENotOwner);
+        assert!(account.active, EAccountDeactivated);
+        assert!(old_owner != new_owner && new_owner != @0x0, EOwnerRotationInvalidManifest);
+        assert!(table::contains(&registry.accounts, old_owner), ERegistryAccountMismatch);
+        assert!(*table::borrow(&registry.accounts, old_owner) == object::id(account), ERegistryAccountMismatch);
+        assert!(!table::contains(&registry.accounts, new_owner), ENewOwnerHasMemoryAccount);
+        assert!(
+            !df::exists_<MemoryOwnerRotationKey>(&account.id, MemoryOwnerRotationKey()),
+            EOwnerRotationPending,
+        );
+        assert!(
+            vector::length(&agent_ids) == table::length(&account.agent_ids)
+                && vector::length(&organization_ids) == table::length(&account.organizations),
+            EOwnerRotationInvalidManifest,
+        );
+
+        let mut agent_manifest = table::new(ctx);
+        let mut i = 0;
+        while (i < vector::length(&agent_ids)) {
+            let agent_id = *vector::borrow(&agent_ids, i);
+            assert!(table::contains(&account.agent_ids, agent_id), EOwnerRotationInvalidManifest);
+            assert!(!table::contains(&agent_manifest, agent_id), EOwnerRotationInvalidManifest);
+            table::add(&mut agent_manifest, agent_id, true);
+            i = i + 1;
+        };
+
+        let mut organization_manifest = table::new(ctx);
+        let mut i = 0;
+        while (i < vector::length(&organization_ids)) {
+            let organization_id = *vector::borrow(&organization_ids, i);
+            assert!(table::contains(&account.organizations, organization_id), EOwnerRotationInvalidManifest);
+            assert!(!table::contains(&organization_manifest, organization_id), EOwnerRotationInvalidManifest);
+            table::add(&mut organization_manifest, organization_id, true);
+            i = i + 1;
+        };
+
+        let agent_count = table::length(&agent_manifest);
+        let organization_count = table::length(&organization_manifest);
+        let proposed_at_ms = clock::timestamp_ms(clock);
+        df::add(
+            &mut account.id,
+            MemoryOwnerRotationKey(),
+            MemoryOwnerRotation {
+                old_owner,
+                new_owner,
+                agent_manifest,
+                organization_manifest,
+                updated_agents: table::new(ctx),
+                updated_organizations: table::new(ctx),
+                proposed_at_ms,
+            },
+        );
+        event::emit(MemoryAccountOwnerRotationProposed {
+            account_id: object::id(account), old_owner, new_owner,
+            agent_count, organization_count, proposed_at_ms,
+        });
+    }
+
+    /// The recipient wallet updates one registered agent reference. The app batches all calls
+    /// and final acceptance in one PTB; if it must split for gas, pending state remains explicit
+    /// and can be completed or rolled back before cancellation.
+    public entry fun accept_agent_owner_rotation_reference(
+        account: &mut MemoryAccount,
+        agent: &mut SubAgent,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_object_version(&agent.id);
+        let sender = tx_context::sender(ctx);
+        let key = MemoryOwnerRotationKey();
+        assert!(df::exists_<MemoryOwnerRotationKey>(&account.id, key), EOwnerRotationNotPending);
+        let account_id = object::id(account);
+        let rotation = df::borrow_mut<MemoryOwnerRotationKey, MemoryOwnerRotation>(&mut account.id, key);
+        assert!(sender == rotation.new_owner, EOwnerRotationWrongWallet);
+        let agent_id = object::id(agent);
+        assert!(
+            agent.memory_account_id == account_id
+                && agent.principal_owner == rotation.old_owner
+                && table::contains(&account.agent_ids, agent_id)
+                && table::contains(&rotation.agent_manifest, agent_id)
+                && !table::contains(&rotation.updated_agents, agent_id),
+            EOwnerRotationInvalidManifest,
+        );
+        agent.principal_owner = rotation.new_owner;
+        table::add(&mut rotation.updated_agents, agent_id, true);
+        let old_owner = rotation.old_owner;
+        let new_owner = rotation.new_owner;
+        event::emit(MemoryAccountOwnerRotationReferenceUpdated {
+            account_id, reference_id: agent_id, reference_kind: 1,
+            old_owner, new_owner,
+            updated_by: sender, timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// The recipient wallet updates one registered organization reference.
+    public entry fun accept_organization_owner_rotation_reference(
+        account: &mut MemoryAccount,
+        organization: &mut AgenticOrganization,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_object_version(&organization.id);
+        let sender = tx_context::sender(ctx);
+        let key = MemoryOwnerRotationKey();
+        assert!(df::exists_<MemoryOwnerRotationKey>(&account.id, key), EOwnerRotationNotPending);
+        let account_id = object::id(account);
+        let rotation = df::borrow_mut<MemoryOwnerRotationKey, MemoryOwnerRotation>(&mut account.id, key);
+        assert!(sender == rotation.new_owner, EOwnerRotationWrongWallet);
+        let organization_id = object::id(organization);
+        assert!(
+            organization.memory_account_id == account_id
+                && organization.principal_owner == rotation.old_owner
+                && table::contains(&account.organizations, organization_id)
+                && table::contains(&rotation.organization_manifest, organization_id)
+                && !table::contains(&rotation.updated_organizations, organization_id),
+            EOwnerRotationInvalidManifest,
+        );
+        organization.principal_owner = rotation.new_owner;
+        table::add(&mut rotation.updated_organizations, organization_id, true);
+        let old_owner = rotation.old_owner;
+        let new_owner = rotation.new_owner;
+        event::emit(MemoryAccountOwnerRotationReferenceUpdated {
+            account_id, reference_id: organization_id, reference_kind: 2,
+            old_owner, new_owner,
+            updated_by: sender, timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Rolls an already updated agent back so the old wallet can safely cancel a migration.
+    public entry fun rollback_agent_owner_rotation_reference(
+        account: &mut MemoryAccount,
+        agent: &mut SubAgent,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        let sender = tx_context::sender(ctx);
+        let key = MemoryOwnerRotationKey();
+        assert!(df::exists_<MemoryOwnerRotationKey>(&account.id, key), EOwnerRotationNotPending);
+        let account_id = object::id(account);
+        let rotation = df::borrow_mut<MemoryOwnerRotationKey, MemoryOwnerRotation>(&mut account.id, key);
+        assert!(sender == rotation.old_owner || sender == rotation.new_owner, EOwnerRotationWrongWallet);
+        let agent_id = object::id(agent);
+        assert!(
+            agent.memory_account_id == account_id
+                && agent.principal_owner == rotation.new_owner
+                && table::contains(&rotation.updated_agents, agent_id),
+            EOwnerRotationInvalidManifest,
+        );
+        agent.principal_owner = rotation.old_owner;
+        let _updated = table::remove(&mut rotation.updated_agents, agent_id);
+        let old_owner = rotation.old_owner;
+        let new_owner = rotation.new_owner;
+        event::emit(MemoryAccountOwnerRotationReferenceUpdated {
+            account_id, reference_id: agent_id, reference_kind: 1,
+            old_owner: new_owner, new_owner: old_owner,
+            updated_by: sender, timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Rolls an already updated organization back so the old wallet can safely cancel.
+    public entry fun rollback_organization_owner_rotation_reference(
+        account: &mut MemoryAccount,
+        organization: &mut AgenticOrganization,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        let sender = tx_context::sender(ctx);
+        let key = MemoryOwnerRotationKey();
+        assert!(df::exists_<MemoryOwnerRotationKey>(&account.id, key), EOwnerRotationNotPending);
+        let account_id = object::id(account);
+        let rotation = df::borrow_mut<MemoryOwnerRotationKey, MemoryOwnerRotation>(&mut account.id, key);
+        assert!(sender == rotation.old_owner || sender == rotation.new_owner, EOwnerRotationWrongWallet);
+        let organization_id = object::id(organization);
+        assert!(
+            organization.memory_account_id == account_id
+                && organization.principal_owner == rotation.new_owner
+                && table::contains(&rotation.updated_organizations, organization_id),
+            EOwnerRotationInvalidManifest,
+        );
+        organization.principal_owner = rotation.old_owner;
+        let _updated = table::remove(&mut rotation.updated_organizations, organization_id);
+        let old_owner = rotation.old_owner;
+        let new_owner = rotation.new_owner;
+        event::emit(MemoryAccountOwnerRotationReferenceUpdated {
+            account_id, reference_id: organization_id, reference_kind: 2,
+            old_owner: new_owner, new_owner: old_owner,
+            updated_by: sender, timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Called by the profile module after it updates its own linked profile and owner lookup.
+    /// Registry/account ownership changes only after every manifest reference was updated.
+    public(package) fun complete_owner_rotation(
+        registry: &mut MemoryRegistry,
+        account: &mut MemoryAccount,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        let sender = tx_context::sender(ctx);
+        let key = MemoryOwnerRotationKey();
+        assert!(df::exists_<MemoryOwnerRotationKey>(&account.id, key), EOwnerRotationNotPending);
+        let rotation = df::borrow<MemoryOwnerRotationKey, MemoryOwnerRotation>(&account.id, key);
+        assert!(sender == rotation.new_owner, EOwnerRotationWrongWallet);
+        assert!(
+            table::length(&rotation.updated_agents) == table::length(&rotation.agent_manifest)
+                && table::length(&rotation.updated_organizations) == table::length(&rotation.organization_manifest),
+            EOwnerRotationReferenceNotUpdated,
+        );
+        let old_owner = rotation.old_owner;
+        let new_owner = rotation.new_owner;
+        let profile_id = account.profile_id;
+        assert!(account.owner == old_owner, ERegistryAccountMismatch);
+        assert!(table::contains(&registry.accounts, old_owner), ERegistryAccountMismatch);
+        assert!(*table::borrow(&registry.accounts, old_owner) == object::id(account), ERegistryAccountMismatch);
+        assert!(!table::contains(&registry.accounts, new_owner), ENewOwnerHasMemoryAccount);
+
+        let _old_id = table::remove(&mut registry.accounts, old_owner);
+        table::add(&mut registry.accounts, new_owner, object::id(account));
+        account.owner = new_owner;
+        let rotation = df::remove<MemoryOwnerRotationKey, MemoryOwnerRotation>(&mut account.id, key);
+        let MemoryOwnerRotation {
+            old_owner: _, new_owner: _, agent_manifest, organization_manifest,
+            updated_agents, updated_organizations, proposed_at_ms: _,
+        } = rotation;
+        table::drop(agent_manifest);
+        table::drop(organization_manifest);
+        table::drop(updated_agents);
+        table::drop(updated_organizations);
+        event::emit(MemoryAccountOwnerRotated {
+            account_id: object::id(account), old_owner, new_owner, profile_id,
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Removes an unaccepted proposal only after all previously changed references were rolled
+    /// back. This keeps partial migrations recoverable without allowing a split-brain account.
+    public entry fun cancel_owner_rotation(
+        account: &mut MemoryAccount,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        let sender = tx_context::sender(ctx);
+        let key = MemoryOwnerRotationKey();
+        assert!(df::exists_<MemoryOwnerRotationKey>(&account.id, key), EOwnerRotationNotPending);
+        let rotation = df::borrow<MemoryOwnerRotationKey, MemoryOwnerRotation>(&account.id, key);
+        assert!(sender == rotation.old_owner, ENotOwner);
+        assert!(
+            table::is_empty(&rotation.updated_agents) && table::is_empty(&rotation.updated_organizations),
+            EOwnerRotationNotFullyReverted,
+        );
+        let rotation = df::remove<MemoryOwnerRotationKey, MemoryOwnerRotation>(&mut account.id, key);
+        let MemoryOwnerRotation {
+            old_owner: _, new_owner: _, agent_manifest, organization_manifest,
+            updated_agents, updated_organizations, proposed_at_ms: _,
+        } = rotation;
+        table::drop(agent_manifest);
+        table::drop(organization_manifest);
+        table::drop(updated_agents);
+        table::drop(updated_organizations);
+    }
+
     // ============================================================
     // Agentic organization lifecycle
     // ============================================================
@@ -1206,6 +1596,136 @@ module social_contracts::memory {
     /// Whether the org's memory share group has been created.
     public fun org_memory_group_exists(org: &AgenticOrganization): bool {
         derived_object::exists(&org.id, OrgMemoryGroupTag())
+    }
+
+    /// Add or revoke a wallet's explicit organization-treasury withdrawal access. The
+    /// principal owner or a delegated permission-group administrator controls this list.
+    public entry fun grant_org_treasury_access(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+        recipient: address,
+        has_access: bool,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert!(org.active, EOrganizationNotActive);
+        assert_org_group(org, group);
+        assert_org_treasury_admin(org, group, ctx);
+        assert!(recipient != @0x0, EOrgTreasuryUnauthorized);
+
+        let key = OrgTreasuryAccessKey { recipient };
+        if (has_access) {
+            if (df::exists_with_type<OrgTreasuryAccessKey, bool>(&org.id, key)) {
+                *df::borrow_mut<OrgTreasuryAccessKey, bool>(&mut org.id, key) = true;
+            } else {
+                df::add(&mut org.id, key, true);
+            };
+        } else if (df::exists_with_type<OrgTreasuryAccessKey, bool>(&org.id, key)) {
+            let _ = df::remove<OrgTreasuryAccessKey, bool>(&mut org.id, key);
+        };
+
+        event::emit(OrgTreasuryAccessChanged {
+            organization_id: object::id(org),
+            recipient,
+            has_access,
+            updated_by: tx_context::sender(ctx),
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Fund an organization's shared MYSO-denominated or other typed treasury. Any wallet
+    /// may contribute its own coin; only an explicitly authorized org signer can withdraw.
+    public entry fun fund_org_treasury<T>(
+        org: &mut AgenticOrganization,
+        coin: &mut Coin<T>,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(org.active, EOrganizationNotActive);
+        assert!(amount > 0 && coin::value(coin) >= amount, EOrgTreasuryInvalidAmount);
+        let incoming = coin::into_balance(coin::split(coin, amount, ctx));
+        let key = OrgTreasuryBalanceKey<T> {};
+        if (df::exists_with_type<OrgTreasuryBalanceKey<T>, Balance<T>>(&org.id, key)) {
+            balance::join(df::borrow_mut<OrgTreasuryBalanceKey<T>, Balance<T>>(&mut org.id, key), incoming);
+        } else {
+            df::add(&mut org.id, key, incoming);
+        };
+        event::emit(OrgTreasuryFunded {
+            organization_id: object::id(org),
+            amount,
+            funded_by: tx_context::sender(ctx),
+            new_balance: org_treasury_balance<T>(org),
+            coin_type: type_name::with_defining_ids<T>(),
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Withdraw an exact amount to one recipient. The account owner is always authorized;
+    /// another wallet must be both an org-group admin and explicitly allowlisted. The live
+    /// balance is checked and split atomically by Move, with no delegated-agent spend cap.
+    public entry fun withdraw_from_org_treasury<T>(
+        account: &MemoryAccount,
+        org: &mut AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+        recipient: address,
+        amount: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert_organization_belongs_to_account(account, org);
+        assert_org_group(org, group);
+        assert!(recipient != @0x0 && amount > 0, EOrgTreasuryInvalidAmount);
+        let caller = tx_context::sender(ctx);
+        if (caller != account.owner) {
+            assert!(org.active, EOrganizationNotActive);
+            assert!(
+                permissioned_group::has_permission<MemorySharePackage, ExtensionPermissionsAdmin>(group, caller),
+                EOrgTreasuryUnauthorized,
+            );
+            let access_key = OrgTreasuryAccessKey { recipient: caller };
+            assert!(
+                df::exists_with_type<OrgTreasuryAccessKey, bool>(&org.id, access_key)
+                    && *df::borrow<OrgTreasuryAccessKey, bool>(&org.id, access_key),
+                EOrgTreasuryRecipientNotAuthorized,
+            );
+        };
+        let key = OrgTreasuryBalanceKey<T> {};
+        assert!(
+            df::exists_with_type<OrgTreasuryBalanceKey<T>, Balance<T>>(&org.id, key),
+            EOrgTreasuryInsufficientBalance,
+        );
+        let remaining_balance;
+        {
+            let slot: &Balance<T> = df::borrow<OrgTreasuryBalanceKey<T>, Balance<T>>(&org.id, key);
+            assert!(balance::value(slot) >= amount, EOrgTreasuryInsufficientBalance);
+        };
+        {
+            let slot: &mut Balance<T> = df::borrow_mut<OrgTreasuryBalanceKey<T>, Balance<T>>(&mut org.id, key);
+            let payout = coin::from_balance(balance::split(slot, amount), ctx);
+            remaining_balance = balance::value(slot);
+            transfer::public_transfer(payout, recipient);
+        };
+        event::emit(OrgTreasuryWithdrawn {
+            organization_id: object::id(org),
+            recipient,
+            amount,
+            withdrawn_by: caller,
+            remaining_balance,
+            coin_type: type_name::with_defining_ids<T>(),
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Read the current treasury balance for one exact coin type.
+    public fun org_treasury_balance<T>(org: &AgenticOrganization): u64 {
+        let key = OrgTreasuryBalanceKey<T> {};
+        if (!df::exists_with_type<OrgTreasuryBalanceKey<T>, Balance<T>>(&org.id, key)) { return 0 };
+        balance::value(df::borrow<OrgTreasuryBalanceKey<T>, Balance<T>>(&org.id, key))
     }
 
     /// Shared authorization helper for org-scoped permissions. Verifies the group is the
@@ -1787,6 +2307,152 @@ module social_contracts::memory {
         emit_sub_agent_updated(account, agent);
     }
 
+    /// Owner-only identity/scope guard for exact-input policy and revocation PTBs.
+    /// This does not emit a success event or mutate any policy field.
+    public fun assert_owner_agent_identity(
+        account: &MemoryAccount,
+        agent: &SubAgent,
+        expected_derived_address: address,
+        expected_platform_scope: Option<address>,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        assert!(tx_context::sender(ctx) == account.owner, ENotOwner);
+        assert_agent_belongs_to_account(account, agent);
+        assert!(agent.derived_address == expected_derived_address, EAgentPolicyChanged);
+        assert!(agent.platform_scope == expected_platform_scope, EAgentPolicyChanged);
+    }
+
+    /// Current named capability bits accepted by the granular grant operation.
+    public fun supported_agent_capabilities(): u64 {
+        CAP_MEMORY_READ | CAP_MEMORY_WRITE | CAP_MYDATA_READ | CAP_POST_PUBLISH
+            | CAP_MESSAGE_READ | CAP_MESSAGE_SEND | CAP_TRADE_MONITOR | CAP_TRADE_EXECUTE
+            | CAP_COMMENT | CAP_REACT | CAP_AGENT_REVOKE | CAP_AGENT_UPDATE | CAP_AGENT_REGISTER
+            | CAP_AI_SPEND | CAP_BUDGET_MANAGE | CAP_SOCIAL_GRAPH | CAP_TASK_TRADE | CAP_JURY
+    }
+
+    /// Grant execution capability bits. Delegation and approval masks are preserved.
+    public entry fun owner_grant_sub_agent_capabilities(
+        account: &mut MemoryAccount,
+        agent: &mut SubAgent,
+        expected_derived_address: address,
+        expected_platform_scope: Option<address>,
+        expected_capabilities: u64,
+        capability_mask: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_owner_agent_identity(account, agent, expected_derived_address, expected_platform_scope, ctx);
+        assert!(agent.capabilities == expected_capabilities, EAgentPolicyChanged);
+        assert!(capability_mask != 0, EInvalidAgentPolicyChange);
+        assert_caps_subset(capability_mask, supported_agent_capabilities());
+        assert_sub_agent_not_expired(agent, clock);
+        let next = expected_capabilities | capability_mask;
+        assert!(next != expected_capabilities, EInvalidAgentPolicyChange);
+        let previous_limit = agent.constraints.max_action_spend;
+        agent.capabilities = next;
+        sync_registry_from_agent(account, agent);
+        emit_sub_agent_updated(account, agent);
+        emit_owner_policy_changed(account, agent, 1, capability_mask, expected_capabilities, previous_limit, clock);
+    }
+
+    /// Revoke execution capability bits, including legacy unknown bits. This is
+    /// target-local; existing child grants and the separate delegation mask remain intact.
+    public entry fun owner_revoke_sub_agent_capabilities(
+        account: &mut MemoryAccount,
+        agent: &mut SubAgent,
+        expected_derived_address: address,
+        expected_platform_scope: Option<address>,
+        expected_capabilities: u64,
+        capability_mask: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_owner_agent_identity(account, agent, expected_derived_address, expected_platform_scope, ctx);
+        assert!(agent.capabilities == expected_capabilities, EAgentPolicyChanged);
+        assert!(capability_mask != 0, EInvalidAgentPolicyChange);
+        let next = expected_capabilities ^ (expected_capabilities & capability_mask);
+        assert!(next != expected_capabilities, EInvalidAgentPolicyChange);
+        let previous_limit = agent.constraints.max_action_spend;
+        agent.capabilities = next;
+        sync_registry_from_agent(account, agent);
+        emit_sub_agent_updated(account, agent);
+        emit_owner_policy_changed(account, agent, 2, capability_mask, expected_capabilities, previous_limit, clock);
+    }
+
+    /// Raise an existing finite per-action MIST ceiling. None explicitly removes
+    /// that ceiling. No cumulative allowance, AI budget or balance is changed.
+    public entry fun owner_raise_sub_agent_spending_limit(
+        account: &mut MemoryAccount,
+        agent: &mut SubAgent,
+        expected_derived_address: address,
+        expected_platform_scope: Option<address>,
+        expected_limit: u64,
+        next_limit: Option<u64>,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_owner_agent_identity(account, agent, expected_derived_address, expected_platform_scope, ctx);
+        assert!(agent.constraints.max_action_spend == option::some(expected_limit), EAgentPolicyChanged);
+        if (option::is_some(&next_limit)) {
+            assert!(*option::borrow(&next_limit) > expected_limit, EInvalidAgentPolicyChange);
+        };
+        assert_sub_agent_not_expired(agent, clock);
+        let previous_capabilities = agent.capabilities;
+        let previous_limit = agent.constraints.max_action_spend;
+        agent.constraints.max_action_spend = next_limit;
+        sync_registry_from_agent(account, agent);
+        emit_sub_agent_updated(account, agent);
+        emit_owner_policy_changed(account, agent, 3, 0, previous_capabilities, previous_limit, clock);
+    }
+
+    /// Lower an agent's per-action MIST ceiling, including replacing an
+    /// unlimited ceiling with a finite one. This never changes a cumulative
+    /// allowance or the account's balance.
+    public entry fun owner_lower_sub_agent_spending_limit(
+        account: &mut MemoryAccount,
+        agent: &mut SubAgent,
+        expected_derived_address: address,
+        expected_platform_scope: Option<address>,
+        expected_limit: Option<u64>,
+        next_limit: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_owner_agent_identity(account, agent, expected_derived_address, expected_platform_scope, ctx);
+        assert!(agent.constraints.max_action_spend == expected_limit, EAgentPolicyChanged);
+        if (option::is_some(&expected_limit)) {
+            assert!(next_limit < *option::borrow(&expected_limit), EInvalidAgentPolicyChange);
+        };
+        assert_sub_agent_not_expired(agent, clock);
+        let previous_capabilities = agent.capabilities;
+        let previous_limit = agent.constraints.max_action_spend;
+        agent.constraints.max_action_spend = option::some(next_limit);
+        sync_registry_from_agent(account, agent);
+        emit_sub_agent_updated(account, agent);
+        emit_owner_policy_changed(account, agent, 4, 0, previous_capabilities, previous_limit, clock);
+    }
+
+    fun emit_owner_policy_changed(
+        account: &MemoryAccount,
+        agent: &SubAgent,
+        change_kind: u8,
+        capability_mask: u64,
+        previous_capabilities: u64,
+        previous_limit: Option<u64>,
+        clock: &Clock,
+    ) {
+        event::emit(SubAgentOwnerPolicyChanged {
+            account_id: object::id(account), principal_owner: account.owner,
+            agent_object_id: object::id(agent), derived_address: agent.derived_address,
+            change_kind, capability_mask, previous_capabilities, next_capabilities: agent.capabilities,
+            delegatable_caps: agent.delegatable_caps,
+            previous_max_action_spend: previous_limit,
+            next_max_action_spend: agent.constraints.max_action_spend,
+            platform_scope: agent.platform_scope, timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
     public entry fun update_sub_agent_label(
         config: &MemoryConfig,
         account: &mut MemoryAccount,
@@ -2124,6 +2790,9 @@ module social_contracts::memory {
 
     public fun sub_agent_derived_address(agent: &SubAgent): address { agent.derived_address }
     public fun sub_agent_capabilities(agent: &SubAgent): u64 { agent.capabilities }
+    public fun sub_agent_delegatable_caps(agent: &SubAgent): u64 { agent.delegatable_caps }
+    public fun sub_agent_max_action_spend(agent: &SubAgent): Option<u64> { agent.constraints.max_action_spend }
+    public fun sub_agent_approval_required_caps(agent: &SubAgent): u64 { agent.constraints.approval_required_caps }
     public fun sub_agent_platform_scope(agent: &SubAgent): Option<address> { agent.platform_scope }
     public fun sub_agent_active(agent: &SubAgent): bool { agent.active }
     public fun sub_agent_depth(agent: &SubAgent): u8 { agent.depth }
@@ -3328,6 +3997,19 @@ module social_contracts::memory {
                 tx_context::sender(ctx),
             ),
             ENoAccess,
+        );
+    }
+
+    fun assert_org_treasury_admin(
+        org: &AgenticOrganization,
+        group: &PermissionedGroup<MemorySharePackage>,
+        ctx: &TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(
+            sender == org.principal_owner
+                || permissioned_group::has_permission<MemorySharePackage, ExtensionPermissionsAdmin>(group, sender),
+            EOrgTreasuryUnauthorized,
         );
     }
 

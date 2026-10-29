@@ -14,8 +14,8 @@ use super::common;
 use super::post_mydata::{self, MyDataPaywallSnapshot};
 use super::SocialEventRow;
 use myso_indexer_alt_social_schema::models::{
-    NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewPostTransfer, NewReaction,
-    NewReport, NewRepost, NewTip, NewUnifiedRevenue,
+    NewComment, NewDeletionEvent, NewModerationEvent, NewPost, NewPostAccessPurchase,
+    NewPostTransfer, NewReaction, NewReport, NewRepost, NewTip, NewUnifiedRevenue,
 };
 use myso_indexer_alt_social_schema::models::{
     CONTENT_TYPE_COMMENT, CONTENT_TYPE_POST, CURRENCY_MYSO, POST_TYPE_QUOTE_REPOST,
@@ -445,6 +445,32 @@ struct PromotionFundsWithdrawnEvent {
     timestamp: u64,
 }
 
+/// Links a MyData purchase to the gated post it unlocked. The purchase itself (price, fees) is
+/// indexed from the MyData event emitted in the same transaction.
+fn process_post_access_purchase_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let field = |key: &str| data.get(key).and_then(|v| v.as_str()).map(String::from);
+    let purchased_at_ms = common::chain_timestamp_ms(
+        data.get("timestamp").and_then(|v| v.as_i64()),
+        checkpoint_timestamp_ms,
+    );
+    Some(vec![SocialEventRow::PostAccessPurchase(
+        NewPostAccessPurchase {
+            event_id: event_id.to_string(),
+            post_id: field("post_id")?,
+            mydata_id: field("mydata_id")?,
+            buyer: field("buyer")?,
+            seller: field("seller")?,
+            purchased_at_ms,
+            transaction_id: event_id.split(':').next().unwrap_or(event_id).to_string(),
+            time: common::chain_time_from_ms(purchased_at_ms),
+        },
+    )])
+}
+
 pub fn handle_post_event(
     event_name: &str,
     data: &serde_json::Value,
@@ -467,6 +493,9 @@ pub fn handle_post_event(
         }
         "RepostEvent" | "RepostCreatedEvent" => {
             process_repost_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "PostAccessPurchaseEvent" => {
+            process_post_access_purchase_event(data, event_id, checkpoint_timestamp_ms)
         }
         "RepostRemovedEvent" => process_repost_removed_event(data, event_id),
         "TipEvent" | "TipSentEvent" | "TipCreatedEvent" => {

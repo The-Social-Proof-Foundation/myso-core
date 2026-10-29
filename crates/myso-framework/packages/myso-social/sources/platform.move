@@ -373,6 +373,15 @@ module social_contracts::platform {
         updated_at: u64,
     }
 
+    /// Emitted when the platform administrator changes the platform developer wallet.
+    public struct PlatformDeveloperChangedEvent has copy, drop {
+        platform_id: address,
+        previous_developer: address,
+        new_developer: address,
+        changed_by: address,
+        changed_at: u64,
+    }
+
     /// Emitted when one or more moderator permissions are granted
     public struct ModeratorPermissionsGrantedEvent has copy, drop {
         platform_id: address,
@@ -1524,6 +1533,29 @@ module social_contracts::platform {
             approved: new_approval,
             changed_by: tx_context::sender(ctx),
             reasoning,
+        });
+    }
+
+    /// Transfer developer control for one platform. Only the platform system administrator
+    /// capability can perform this migration; the shared Platform object remains in place.
+    public entry fun transfer_platform(
+        platform: &mut Platform,
+        _: &PlatformAdminCap,
+        new_developer: address,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(platform.version == upgrade::current_version(), EWrongVersion);
+        assert!(new_developer != @0x0, EUnauthorized);
+        let previous_developer = platform.developer;
+        assert!(previous_developer != new_developer, EUnauthorized);
+        platform.developer = new_developer;
+        event::emit(PlatformDeveloperChangedEvent {
+            platform_id: object::uid_to_address(&platform.id),
+            previous_developer,
+            new_developer,
+            changed_by: tx_context::sender(ctx),
+            changed_at: clock::timestamp_ms(clock),
         });
     }
 

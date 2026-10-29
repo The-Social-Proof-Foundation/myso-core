@@ -65,7 +65,7 @@ fun version_returns_current_version() {
 #[test]
 fun package_version_returns_constant() {
     // package_version() is a pure function — no shared objects needed
-    assert_eq!(version::package_version(), 1);
+    assert_eq!(version::package_version(), 0);
 }
 
 // === encryption_history getter tests ===

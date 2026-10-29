@@ -120,7 +120,7 @@ Settlement **never reprices** — it transfers pre-signed `amount_mist` to treas
 
 | Service | Variable |
 |---------|----------|
-| Oracle | `AI_CREDIT_ORACLE_PRIVATE_KEY_HEX`, `AI_CREDIT_SETTLEMENT_KEY_HEX`, `AI_CREDIT_CONFIG_OBJECT_ID`, `AI_CREDIT_ECOSYSTEM_MARGIN_PCT`, `AI_CREDIT_STRICT_CATALOG`, settlement trigger vars, optional `AI_CREDIT_CATALOG_SYNC_ENABLED`, `AI_CREDIT_OPENROUTER_API_KEY` |
+| Oracle | `AI_CREDIT_ORACLE_PRIVATE_KEY_HEX`, `AI_CREDIT_SETTLEMENT_KEY_HEX`, `AI_CREDIT_CONFIG_OBJECT_ID`, `AI_CREDIT_ECOSYSTEM_MARGIN_PCT`, `AI_CREDIT_STRICT_CATALOG`, settlement trigger vars, optional `AI_CREDIT_CATALOG_SYNC_ENABLED`, `AI_CREDIT_OPENROUTER_API_KEY`, and `AI_CREDIT_RESPONSE_ENCRYPTION_KEY_HEX` (32-byte secret required when inference is enabled) |
 | memory-server | `AI_CREDIT_ENABLED=1`, `AI_CREDIT_ORACLE_URL`, `DEFAULT_LLM_MODEL`, `SOCIAL_SERVER_URL` |
 | Social-server | `AI_CREDIT_USAGE_SYNC_SECRET` |
 | Chatbot | `MEMORY_KEY`, `MEMORY_ACCOUNT_ID`, `MEMORY_SERVER_URL`, `AI_CREDIT_ORACLE_URL` (catalog in model picker) |

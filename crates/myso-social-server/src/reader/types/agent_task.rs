@@ -88,6 +88,21 @@ pub struct TaskReceiptInfo {
     pub transaction_id: String,
 }
 
+/// One indexed task lifecycle event. Duplicate per-party outbox copies are collapsed by
+/// `(event_type, source_event_id)`; status is the indexed task snapshot at that transition.
+#[derive(Debug, Clone, Serialize, diesel::QueryableByName)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskHistoryInfo {
+    #[diesel(sql_type = Text)]
+    pub event_type: String,
+    #[diesel(sql_type = BigInt)]
+    pub occurred_at_ms: i64,
+    #[diesel(sql_type = Text)]
+    pub source_event_id: String,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub status: Option<i64>,
+}
+
 /// Reviews on one task (at most one per direction).
 #[derive(Debug, Serialize, Queryable, Selectable)]
 #[diesel(table_name = task_reviews)]
@@ -248,8 +263,16 @@ pub struct TaskStatsInfo {
 #[derive(Debug, Clone, Serialize, QueryableByName, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TopAgentInfo {
+    /// MemoryAccount object required when creating a task offer for this seller.
+    #[diesel(sql_type = Text)]
+    pub seller_account_id: String,
     #[diesel(sql_type = Text)]
     pub agent_object_id: String,
+    /// Indexed capability bitset; current chain state remains authoritative.
+    #[diesel(sql_type = BigInt)]
+    pub capabilities: i64,
+    #[diesel(sql_type = Nullable<BigInt>)]
+    pub expires_at_ms: Option<i64>,
     #[diesel(sql_type = Text)]
     pub label: String,
     #[diesel(sql_type = Text)]

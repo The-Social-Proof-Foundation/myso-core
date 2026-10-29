@@ -27,6 +27,10 @@ impl ProfileSubscriptionService {
         &self.inner.profile_owner
     }
 
+    async fn payment_recipient(&self) -> &str {
+        &self.inner.payment_recipient
+    }
+
     async fn profile_id(&self) -> &str {
         &self.inner.profile_id
     }

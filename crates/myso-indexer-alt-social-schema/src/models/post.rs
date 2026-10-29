@@ -5,8 +5,8 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
-    comments, posts, posts_deletion_events, posts_moderation_events, posts_reports,
-    posts_transfers, reaction_counts, reactions, reposts, tips,
+    comments, post_access_purchases, posts, posts_deletion_events, posts_moderation_events,
+    posts_reports, posts_transfers, reaction_counts, reactions, reposts, tips,
 };
 
 pub const MAX_CONTENT_LENGTH: usize = 5000;
@@ -344,4 +344,18 @@ pub struct TipRow {
     pub amount: i64,
     pub created_at: i64,
     pub organization_id: Option<String>,
+}
+
+/// `PostAccessPurchaseEvent`: the post a MyData purchase unlocked.
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = post_access_purchases)]
+pub struct NewPostAccessPurchase {
+    pub event_id: String,
+    pub post_id: String,
+    pub mydata_id: String,
+    pub buyer: String,
+    pub seller: String,
+    pub purchased_at_ms: i64,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
 }

@@ -3,7 +3,7 @@
 
 //! MyData pipeline: indexes `mydata` and `my_ip` module events (social_contracts query marketplace emits from `mydata`).
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -264,86 +264,112 @@ impl Processor for MyDataHandler {
         for tx in &checkpoint.transactions {
             let object_rows =
                 mydata_object::process_mydata_objects_from_tx(&checkpoint.object_set, tx);
-            let mut object_mydata_ids: HashSet<String> = object_rows
-                .iter()
-                .filter_map(|row| match row {
-                    MyDataRow::MyDataData(d) => Some(d.mydata_id.clone()),
-                    _ => None,
-                })
-                .collect();
-            let mut registry_mydata_ids: HashSet<String> = object_rows
-                .iter()
-                .filter_map(|row| match row {
-                    MyDataRow::MyDataRegistry(r) => Some(r.mydata_id.clone()),
-                    _ => None,
-                })
-                .collect();
+            let mut object_data: HashMap<
+                String,
+                myso_indexer_alt_social_schema::models::NewMyDataData,
+            > = HashMap::new();
+            let mut object_registry: HashMap<
+                String,
+                myso_indexer_alt_social_schema::models::NewMyDataRegistry,
+            > = HashMap::new();
+            for row in object_rows {
+                match row {
+                    MyDataRow::MyDataData(mut data) => {
+                        data.mydata_id = mydata::listing_id(&data.mydata_id);
+                        object_data.insert(data.mydata_id.clone(), data);
+                    }
+                    MyDataRow::MyDataRegistry(mut registry) => {
+                        registry.mydata_id = mydata::listing_id(&registry.mydata_id);
+                        object_registry.insert(registry.mydata_id.clone(), registry);
+                    }
+                    other => values.push(other),
+                }
+            }
+            let mut emitted_data: HashSet<String> = HashSet::new();
+            let mut emitted_registry: HashSet<String> = HashSet::new();
             let expiries = mydata_object::subscription_expiries_from_tx(&checkpoint.object_set, tx);
-            values.extend(object_rows);
             let tx_digest = tx.transaction.digest().to_string();
-            let Some(events) = &tx.events else {
-                continue;
-            };
-            for (event_seq, ev) in events.data.iter().enumerate() {
-                if !common::is_social_package_event(&ev.package_id, &ev.type_.address) {
-                    continue;
-                }
-                let module = ev.type_.module.as_str();
-                if !MYDATA_MODULES.contains(&module) {
-                    continue;
-                }
-                let event_name = ev.type_.name.as_str();
-                let event_id = format!("{}:{}", tx_digest, event_seq);
-                let event_data =
-                    match events::parse_event_contents(module, event_name, &ev.contents) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            tracing::warn!(
-                                tx_digest = %tx_digest,
-                                module,
-                                event_name,
-                                error = %e,
-                                hex_preview = %e.contents_hex_preview(48),
-                                "mydata pipeline: event contents parse failed; skipping event"
-                            );
-                            SocialMetrics::record_event_bcs_parse_failed(module, event_name);
-                            continue;
-                        }
-                    };
-                if let Some(rows) = mydata::handle_mydata_event(event_name, &event_data, &event_id)
-                {
-                    for row in rows {
-                        let skip = match &row {
-                            crate::handlers::SocialEventRow::MyDataData(d) => {
-                                object_mydata_ids.contains(&d.mydata_id)
-                            }
-                            crate::handlers::SocialEventRow::MyDataRegistry(r) => {
-                                registry_mydata_ids.contains(&r.mydata_id)
-                            }
-                            _ => false,
-                        };
-                        if skip {
-                            continue;
-                        }
-                        if let Some(mut r) = MyDataRow::from_social(row) {
-                            if let MyDataRow::MyDataSubscription(s) = &mut r {
-                                let key = (
-                                    common::normalize_hex_address(&s.mydata_id),
-                                    common::normalize_hex_address(&s.subscriber),
+            if let Some(events) = &tx.events {
+                for (event_seq, ev) in events.data.iter().enumerate() {
+                    if !common::is_social_package_event(&ev.package_id, &ev.type_.address) {
+                        continue;
+                    }
+                    let module = ev.type_.module.as_str();
+                    if !MYDATA_MODULES.contains(&module) {
+                        continue;
+                    }
+                    let event_name = ev.type_.name.as_str();
+                    let event_id = format!("{}:{}", tx_digest, event_seq);
+                    let event_data =
+                        match events::parse_event_contents(module, event_name, &ev.contents) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                tracing::warn!(
+                                    tx_digest = %tx_digest,
+                                    module,
+                                    event_name,
+                                    error = %e,
+                                    hex_preview = %e.contents_hex_preview(48),
+                                    "mydata pipeline: event contents parse failed; skipping event"
                                 );
-                                if let Some(expiry) = expiries.get(&key) {
-                                    s.subscription_end = *expiry;
+                                SocialMetrics::record_event_bcs_parse_failed(module, event_name);
+                                continue;
+                            }
+                        };
+                    if let Some(rows) =
+                        mydata::handle_mydata_event(event_name, &event_data, &event_id)
+                    {
+                        for row in rows {
+                            match row {
+                                crate::handlers::SocialEventRow::MyDataData(data) => {
+                                    let key = mydata::listing_id(&data.mydata_id);
+                                    let object = object_data.remove(&key);
+                                    let merged = mydata::one_time_listing_row(data, object);
+                                    emitted_data.insert(merged.mydata_id.clone());
+                                    values.push(MyDataRow::MyDataData(merged));
+                                }
+                                crate::handlers::SocialEventRow::MyDataRegistry(registry) => {
+                                    let key = mydata::listing_id(&registry.mydata_id);
+                                    if emitted_registry.contains(&key) {
+                                        continue;
+                                    }
+                                    let registry = object_registry.remove(&key).unwrap_or(registry);
+                                    emitted_registry.insert(key);
+                                    values.push(MyDataRow::MyDataRegistry(registry));
+                                }
+                                other => {
+                                    if let Some(mut row) = MyDataRow::from_social(other) {
+                                        if let MyDataRow::MyDataSubscription(subscription) =
+                                            &mut row
+                                        {
+                                            let key = (
+                                                common::normalize_hex_address(
+                                                    &subscription.mydata_id,
+                                                ),
+                                                common::normalize_hex_address(
+                                                    &subscription.subscriber,
+                                                ),
+                                            );
+                                            if let Some(expiry) = expiries.get(&key) {
+                                                subscription.subscription_end = *expiry;
+                                            }
+                                        }
+                                        values.push(row);
+                                    }
                                 }
                             }
-                            if let MyDataRow::MyDataData(d) = &r {
-                                object_mydata_ids.insert(d.mydata_id.clone());
-                            }
-                            if let MyDataRow::MyDataRegistry(r) = &r {
-                                registry_mydata_ids.insert(r.mydata_id.clone());
-                            }
-                            values.push(r);
                         }
                     }
+                }
+            }
+            for (id, data) in object_data {
+                if emitted_data.insert(id) {
+                    values.push(MyDataRow::MyDataData(data));
+                }
+            }
+            for (id, registry) in object_registry {
+                if emitted_registry.insert(id) {
+                    values.push(MyDataRow::MyDataRegistry(registry));
                 }
             }
         }

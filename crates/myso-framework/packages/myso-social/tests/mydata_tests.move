@@ -1349,6 +1349,95 @@ module social_contracts::mydata_tests {
         test_scenario::end(scenario);
     }
     
+    // The paid-address fast path must not bypass a bounded buyer's delegation.
+    fun check_bound_paid_agent_access(deactivate: bool) {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+        create_test_mydata(&mut scenario);
+        // init_test_environment installs a placeholder root agent; this test
+        // needs a separate organization for its bounded buyer agent.
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        memory_test_helpers::create_default_org_in_tx(&mut scenario);
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        register_mydata_agent(&mut scenario, AGENT_ADDR, b"bounded-buyer", memory::cap_mydata_read(), option::none());
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let mut data = test_scenario::take_shared<MyData>(&scenario);
+            let mut account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let mut agent = take_agent(&scenario, &account, AGENT_ADDR);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::grant_access(&config, &mut data, AGENT_ADDR, 0, option::none(), &clock, test_scenario::ctx(&mut scenario));
+            mydata::bind_bounded_buyer_for_testing(&mut data, AGENT_ADDR, object::id(&account), option::some(object::id(&agent)));
+            assert!(mydata::has_access(&data, AGENT_ADDR, &clock), 0);
+            if (deactivate) memory::deactivate_sub_agent(&mut account, &mut agent, &clock, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(data);
+            test_scenario::return_shared(account);
+            test_scenario::return_shared(agent);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::next_tx(&mut scenario, AGENT_ADDR);
+        {
+            let memory_config = test_scenario::take_shared<MemoryConfig>(&scenario);
+            let account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            let data = test_scenario::take_shared<MyData>(&scenario);
+            let block_list = test_scenario::take_shared<BlockListRegistry>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::mydata_approve(b"encryption_id", &block_list, &memory_config, &data, &account, &clock, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(memory_config);
+            test_scenario::return_shared(account);
+            test_scenario::return_shared(data);
+            test_scenario::return_shared(block_list);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    fun bound_paid_active_agent_can_request_key() { check_bound_paid_agent_access(false); }
+
+    #[test]
+    #[expected_failure(abort_code = 18, location = social_contracts::mydata)]
+    fun bounded_purchase_freezes_listing_ciphertext() {
+        let mut scenario = test_scenario::begin(CREATOR);
+        init_test_environment(&mut scenario);
+        create_test_graph_mydata(&mut scenario);
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let mut data = test_scenario::take_shared<MyData>(&scenario);
+            let account = test_scenario::take_shared<MemoryAccount>(&scenario);
+            mydata::bind_bounded_buyer_for_testing(
+                &mut data, BUYER, object::id(&account), option::none(),
+            );
+            test_scenario::return_shared(data);
+            test_scenario::return_shared(account);
+        };
+        test_scenario::next_tx(&mut scenario, CREATOR);
+        {
+            let config = test_scenario::take_shared<MyDataConfig>(&scenario);
+            let mut data = test_scenario::take_shared<MyData>(&scenario);
+            let clock = test_scenario::take_shared<Clock>(&scenario);
+            mydata::update_content(
+                &config,
+                &mut data,
+                option::some(b"replacement_ciphertext"),
+                option::some(b"replacement_identity"),
+                option::none(),
+                &clock,
+                test_scenario::ctx(&mut scenario),
+            );
+            test_scenario::return_shared(config);
+            test_scenario::return_shared(data);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 15, location = social_contracts::memory)]
+    fun bound_paid_deactivated_agent_cannot_request_key() { check_bound_paid_agent_access(true); }
+
     // Helper functions
     
     fun init_test_environment(scenario: &mut test_scenario::Scenario) {
@@ -1445,6 +1534,17 @@ module social_contracts::mydata_tests {
     }
 
     fun create_test_mydata(scenario: &mut test_scenario::Scenario) {
+        create_test_mydata_with_type(scenario, string::utf8(b"data"));
+    }
+
+    fun create_test_graph_mydata(scenario: &mut test_scenario::Scenario) {
+        create_test_mydata_with_type(
+            scenario,
+            string::utf8(b"application/vnd.mysocial.knowledge-graph+json;version=1"),
+        );
+    }
+
+    fun create_test_mydata_with_type(scenario: &mut test_scenario::Scenario, media_type: string::String) {
         test_scenario::next_tx(scenario, CREATOR);
         {
             let config = test_scenario::take_shared<MyDataConfig>(scenario);
@@ -1454,7 +1554,7 @@ module social_contracts::mydata_tests {
             mydata::create_and_share_marketplace_one_time_mydata(
                 &config,
                 &mut registry,
-                string::utf8(b"data"),
+                media_type,
                 vector[string::utf8(b"test")],
                 option::none<address>(),
                 1000,

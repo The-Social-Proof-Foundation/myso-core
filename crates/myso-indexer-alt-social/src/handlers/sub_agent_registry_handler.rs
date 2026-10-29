@@ -20,7 +20,8 @@ use myso_indexer_alt_social_schema::models::{
     NewCredibility, NewReputationAggregate, NewSubAgent, NewSubAgentEvent,
 };
 use myso_indexer_alt_social_schema::schema::{
-    credibility, memory_accounts, reputation_aggregates, sub_agent_events, sub_agents,
+    credibility, memory_accounts, reputation_aggregates, sub_agent_events, sub_agent_organizations,
+    sub_agents,
 };
 
 use super::common;
@@ -39,7 +40,15 @@ const SUB_AGENT_REGISTRY_EVENTS: &[&str] = &[
     "SubAgentsClearedOnTransfer",
     "ReputationUpdated",
     "CredibilityUpdated",
+    "SubAgentOwnerPolicyChanged",
+    "MemoryAccountOwnerRotationProposed",
+    "MemoryAccountOwnerRotationReferenceUpdated",
+    "MemoryAccountOwnerRotated",
 ];
+
+/// `MemoryAccountOwnerRotationReferenceUpdated.reference_kind` values.
+const ROTATION_REFERENCE_AGENT: i64 = 1;
+const ROTATION_REFERENCE_ORGANIZATION: i64 = 2;
 
 #[derive(Debug, Clone)]
 pub enum SubAgentRegistryRow {
@@ -62,6 +71,16 @@ pub enum SubAgentRegistryRow {
         revoked_at_ms: i64,
         event_id: String,
         transaction_id: String,
+    },
+    /// Owner rotation finished: the account now belongs to `new_owner`.
+    AccountOwnerRotated {
+        account_id: String,
+        new_owner: String,
+    },
+    /// Owner rotation moved one organization to the new owner.
+    OrganizationOwnerRotated {
+        organization_id: String,
+        new_owner: String,
     },
     Audit(NewSubAgentEvent),
     /// Aggregate after one review; later reviews carry a larger `review_count`.
@@ -208,6 +227,45 @@ fn handle_sub_agent_registry_event(
                     revoked_at_ms: now.timestamp_millis(),
                     event_id: event_id.to_string(),
                     transaction_id,
+                },
+                SubAgentRegistryRow::Audit(audit),
+            ])
+        }
+        // The agent row itself is refreshed by the SubAgentUpdated emitted alongside.
+        "SubAgentOwnerPolicyChanged" | "MemoryAccountOwnerRotationProposed" => {
+            Some(vec![SubAgentRegistryRow::Audit(
+                memory::sub_agent_audit_event(event_name, data, event_id, &transaction_id, now),
+            )])
+        }
+        "MemoryAccountOwnerRotationReferenceUpdated" => {
+            let reference_id = json_str(data, "reference_id")?;
+            let new_owner = json_str(data, "new_owner")?;
+            let mut audit =
+                memory::sub_agent_audit_event(event_name, data, event_id, &transaction_id, now);
+            let mut rows = Vec::new();
+            match i64_field(data, "reference_kind")? {
+                ROTATION_REFERENCE_AGENT => audit.agent_object_id = Some(reference_id),
+                ROTATION_REFERENCE_ORGANIZATION => {
+                    audit.organization_id = Some(reference_id.clone());
+                    rows.push(SubAgentRegistryRow::OrganizationOwnerRotated {
+                        organization_id: reference_id,
+                        new_owner,
+                    });
+                }
+                _ => {}
+            }
+            rows.push(SubAgentRegistryRow::Audit(audit));
+            Some(rows)
+        }
+        "MemoryAccountOwnerRotated" => {
+            let account_id = json_str(data, "account_id")?;
+            let new_owner = json_str(data, "new_owner")?;
+            let audit =
+                memory::sub_agent_audit_event(event_name, data, event_id, &transaction_id, now);
+            Some(vec![
+                SubAgentRegistryRow::AccountOwnerRotated {
+                    account_id,
+                    new_owner,
                 },
                 SubAgentRegistryRow::Audit(audit),
             ])
@@ -392,6 +450,29 @@ impl Handler for SubAgentRegistryHandler {
                         memory_accounts::table.filter(memory_accounts::account_id.eq(account_id)),
                     )
                     .set(memory_accounts::principal_owner.eq(new_principal_owner))
+                    .execute(conn)
+                    .await?;
+                }
+                SubAgentRegistryRow::AccountOwnerRotated {
+                    account_id,
+                    new_owner,
+                } => {
+                    total += diesel::update(
+                        memory_accounts::table.filter(memory_accounts::account_id.eq(account_id)),
+                    )
+                    .set(memory_accounts::principal_owner.eq(new_owner))
+                    .execute(conn)
+                    .await?;
+                }
+                SubAgentRegistryRow::OrganizationOwnerRotated {
+                    organization_id,
+                    new_owner,
+                } => {
+                    total += diesel::update(
+                        sub_agent_organizations::table
+                            .filter(sub_agent_organizations::organization_id.eq(organization_id)),
+                    )
+                    .set(sub_agent_organizations::principal_owner.eq(new_owner))
                     .execute(conn)
                     .await?;
                 }
@@ -647,6 +728,74 @@ mod tests {
             "updated_at_ms": 1
         });
         assert!(reputation_row(&data, "d:0", "d").is_none());
+    }
+
+    #[test]
+    fn an_organization_reference_moves_the_org_to_the_new_owner() {
+        let data = serde_json::json!({
+            "account_id": "0xaccount",
+            "reference_id": "0xorg",
+            "reference_kind": 2,
+            "previous_owner": "0xold",
+            "new_owner": "0xnew",
+            "updated_by": "0xnew",
+            "timestamp_ms": 7,
+        });
+        let rows = handle_sub_agent_registry_event(
+            "MemoryAccountOwnerRotationReferenceUpdated",
+            &data,
+            "tx-digest:4",
+        )
+        .expect("reference update should produce rows");
+        let [SubAgentRegistryRow::OrganizationOwnerRotated {
+            organization_id,
+            new_owner,
+        }, SubAgentRegistryRow::Audit(audit)] = rows.as_slice()
+        else {
+            panic!("expected OrganizationOwnerRotated then Audit, got {rows:?}");
+        };
+        assert_eq!(organization_id, "0xorg");
+        assert_eq!(new_owner, "0xnew");
+        assert_eq!(audit.organization_id.as_deref(), Some("0xorg"));
+        assert_eq!(audit.previous_owner.as_deref(), Some("0xold"));
+    }
+
+    #[test]
+    fn an_agent_reference_only_audits() {
+        let data = serde_json::json!({
+            "account_id": "0xaccount",
+            "reference_id": "0xagent",
+            "reference_kind": 1,
+            "previous_owner": "0xold",
+            "new_owner": "0xnew",
+        });
+        let rows = handle_sub_agent_registry_event(
+            "MemoryAccountOwnerRotationReferenceUpdated",
+            &data,
+            "tx-digest:5",
+        )
+        .expect("reference update should produce rows");
+        let [SubAgentRegistryRow::Audit(audit)] = rows.as_slice() else {
+            panic!("expected only an Audit row, got {rows:?}");
+        };
+        assert_eq!(audit.agent_object_id.as_deref(), Some("0xagent"));
+    }
+
+    #[test]
+    fn a_finished_rotation_moves_the_account() {
+        let data = serde_json::json!({
+            "account_id": "0xaccount",
+            "previous_owner": "0xold",
+            "new_owner": "0xnew",
+            "profile_id": "0xprofile",
+        });
+        let rows = handle_sub_agent_registry_event("MemoryAccountOwnerRotated", &data, "tx:6")
+            .expect("rotation should produce rows");
+        assert!(matches!(
+            rows.as_slice(),
+            [SubAgentRegistryRow::AccountOwnerRotated { account_id, new_owner }, SubAgentRegistryRow::Audit(_)]
+                if account_id == "0xaccount" && new_owner == "0xnew"
+        ));
     }
 
     #[test]

@@ -62,6 +62,9 @@ module social_contracts::profile {
     const EBuyerHasNoProfile: u64 = 40;
     const EUsernameLocked: u64 = 41;
     const EProfileAlreadyHasUsername: u64 = 42;
+    const EOwnerRotationWrongRecipient: u64 = 44;
+    const EOwnerRotationProfileMismatch: u64 = 45;
+    const EOwnerRotationNewWalletHasProfile: u64 = 46;
     const EUsernameProfileMismatch: u64 = 31;
     const EInvalidSchedule: u64 = 30;
     const EInvalidPieceDuration: u64 = 32;
@@ -409,6 +412,14 @@ module social_contracts::profile {
         cover_photo: Option<String>,
         owner: address,
         created_at: u64,
+    }
+
+    public struct ProfileOwnerRotatedEvent has copy, drop {
+        profile_id: address,
+        memory_account_id: ID,
+        old_owner: address,
+        new_owner: address,
+        timestamp_ms: u64,
     }
 
     /// Emitted when the owner deletes their profile. The object remains; `username` is freed.
@@ -1247,6 +1258,77 @@ module social_contracts::profile {
         let mem_id = memory::create_account_for_profile(memory_registry, profile_id, clock, ctx);
         profile.memory_account_id = option::some(mem_id);
         transfer::transfer(profile, sender);
+    }
+
+    /// The current profile owner proposes a full account-key migration. The recipient wallet
+    /// must update every manifest-bound agent/org reference before accepting the profile.
+    public entry fun propose_owner_rotation(
+        username_registry: &UsernameRegistry,
+        memory_registry: &memory::MemoryRegistry,
+        account: &mut memory::MemoryAccount,
+        profile: &Profile,
+        new_owner: address,
+        agent_ids: vector<ID>,
+        organization_ids: vector<ID>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        let profile_id = object::uid_to_address(&profile.id);
+        assert!(profile.owner == sender && memory::owner(account) == sender, EUnauthorized);
+        assert!(memory::profile_id(account) == profile_id, EOwnerRotationProfileMismatch);
+        assert!(option::is_some(&profile.memory_account_id), EOwnerRotationProfileMismatch);
+        assert!(
+            *option::borrow(&profile.memory_account_id) == object::id(account),
+            EOwnerRotationProfileMismatch,
+        );
+        assert!(table::contains(&username_registry.address_profiles, sender), EUnauthorized);
+        assert!(
+            *table::borrow(&username_registry.address_profiles, sender) == profile_id,
+            EOwnerRotationProfileMismatch,
+        );
+        assert!(!table::contains(&username_registry.address_profiles, new_owner), EOwnerRotationNewWalletHasProfile);
+        memory::propose_owner_rotation(
+            memory_registry, account, new_owner, agent_ids, organization_ids, clock, ctx,
+        );
+    }
+
+    /// The recipient wallet completes the two-wallet migration after all registered child
+    /// references have been updated. MemoryAccount and both owner indexes change atomically.
+    public entry fun accept_owner_rotation(
+        username_registry: &mut UsernameRegistry,
+        memory_registry: &mut memory::MemoryRegistry,
+        account: &mut memory::MemoryAccount,
+        profile: &mut Profile,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let new_owner = tx_context::sender(ctx);
+        let old_owner = memory::owner(account);
+        assert!(new_owner != old_owner, EOwnerRotationWrongRecipient);
+        let profile_id = object::uid_to_address(&profile.id);
+        assert!(profile.owner == old_owner, EOwnerRotationProfileMismatch);
+        assert!(memory::profile_id(account) == profile_id, EOwnerRotationProfileMismatch);
+        assert!(option::is_some(&profile.memory_account_id), EOwnerRotationProfileMismatch);
+        assert!(
+            *option::borrow(&profile.memory_account_id) == object::id(account),
+            EOwnerRotationProfileMismatch,
+        );
+        assert!(table::contains(&username_registry.address_profiles, old_owner), EUnauthorized);
+        assert!(*table::borrow(&username_registry.address_profiles, old_owner) == profile_id, EOwnerRotationProfileMismatch);
+        assert!(!table::contains(&username_registry.address_profiles, new_owner), EOwnerRotationNewWalletHasProfile);
+
+        memory::complete_owner_rotation(memory_registry, account, clock, ctx);
+        let _old_profile = table::remove(&mut username_registry.address_profiles, old_owner);
+        table::add(&mut username_registry.address_profiles, new_owner, profile_id);
+        profile.owner = new_owner;
+        event::emit(ProfileOwnerRotatedEvent {
+            profile_id,
+            memory_account_id: object::id(account),
+            old_owner,
+            new_owner,
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
     }
 
     /// Only the profile owner can update profile information

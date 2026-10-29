@@ -3,7 +3,8 @@
 
 //! Task market reads: tasks, receipts, config and reputation (scores derived from indexed sums).
 
-use diesel::sql_types::BigInt;
+use diesel::sql_types::{BigInt, Text};
+use diesel::sql_query;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::QueryDsl;
@@ -21,7 +22,7 @@ use myso_pg_db::Db;
 use crate::error::SocialError;
 use crate::reader::types::{
     AgentReputationInfo, AgentTaskInfo, CredibilityInfo, OverallScoreInfo, PrincipalReputationInfo,
-    ReputationScoreInfo, TaskConfigInfo, TaskDetailInfo, TaskDisputeInfo, TaskReceiptInfo,
+    ReputationScoreInfo, TaskConfigInfo, TaskDetailInfo, TaskDisputeInfo, TaskHistoryInfo, TaskReceiptInfo,
     TaskReviewInfo, TaskStatsInfo, TopAgentInfo,
 };
 
@@ -132,6 +133,52 @@ pub(crate) async fn get_task(
         reviews,
         dispute,
     }))
+}
+
+pub(crate) async fn get_task_receipt(
+    db: &Db,
+    task_id: &str,
+) -> Result<Option<TaskReceiptInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let receipt = task_receipts::table
+        .filter(task_receipts::task_id.eq(task_id))
+        .select(TaskReceiptInfo::as_select())
+        .first(&mut conn)
+        .await
+        .optional()?;
+    Ok(receipt)
+}
+
+/// Indexed lifecycle history from the durable task event outbox. Each transition is emitted to
+/// each relevant party, so identical `(event_type, source_event_id)` copies are collapsed here.
+pub(crate) async fn list_task_history(
+    db: &Db,
+    task_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<TaskHistoryInfo>, SocialError> {
+    let mut conn = db.connect().await?;
+    let rows = sql_query(
+        r#"SELECT event_type, occurred_at_ms, source_event_id, status
+           FROM (
+               SELECT DISTINCT ON (event_type, source_event_id)
+                      event_type,
+                      occurred_at_ms,
+                      source_event_id,
+                      NULLIF(payload->>'status', '')::BIGINT AS status
+                 FROM automation_event_outbox
+                WHERE event_family = 'task' AND payload->>'task_id' = $1
+                ORDER BY event_type, source_event_id, id ASC
+           ) history
+           ORDER BY occurred_at_ms ASC, event_type ASC, source_event_id ASC
+           LIMIT $2 OFFSET $3"#,
+    )
+    .bind::<Text, _>(task_id)
+    .bind::<BigInt, _>(limit)
+    .bind::<BigInt, _>(offset)
+    .load::<TaskHistoryInfo>(&mut conn)
+    .await?;
+    Ok(rows)
 }
 
 /// Receipts where the agent was seller or buyer, newest first.
@@ -447,22 +494,26 @@ pub(crate) async fn list_top_agents(
 ) -> Result<Vec<TopAgentInfo>, SocialError> {
     let mut conn = db.connect().await?;
     let query = format!(
-        "SELECT s.agent_object_id AS agent_object_id,
+        "SELECT s.account_id AS seller_account_id,
+                s.agent_object_id AS agent_object_id,
+                s.capabilities AS capabilities,
+                s.expires_at_ms AS expires_at_ms,
                 s.label AS label,
                 m.principal_owner AS principal,
                 s.organization_id AS organization_id,
-                r.review_count AS review_count,
-                r.bayesian_score_milli AS score_milli,
-                (r.bayesian_score_milli::DOUBLE PRECISION / 1000.0) AS score,
-                r.confidence_bps AS confidence_bps,
+                COALESCE(r.review_count, 0) AS review_count,
+                COALESCE(r.bayesian_score_milli, 0) AS score_milli,
+                (COALESCE(r.bayesian_score_milli, 0)::DOUBLE PRECISION / 1000.0) AS score,
+                COALESCE(r.confidence_bps, 0) AS confidence_bps,
                 COALESCE(c.settled_count, 0) AS settled_count,
                 COALESCE(c.volume_mist, '0') AS volume_mist,
                 COALESCE(c.credibility_bps, 0) AS credibility_bps
-           FROM reputation_aggregates r
-           JOIN sub_agents s ON s.agent_object_id = r.subject_id
+           FROM sub_agents s
            JOIN memory_accounts m ON m.account_id = s.account_id
+           LEFT JOIN reputation_aggregates r
+             ON r.subject_id = s.agent_object_id AND r.role = 1
            LEFT JOIN credibility c ON c.account_id = s.account_id
-          WHERE r.role = 1 AND s.active = TRUE AND r.review_count >= $1
+          WHERE s.active = TRUE AND COALESCE(r.review_count, 0) >= $1
           ORDER BY {}, s.agent_object_id
           LIMIT $2 OFFSET $3",
         sort.order_by()

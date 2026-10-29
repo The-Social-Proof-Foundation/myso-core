@@ -484,7 +484,7 @@ pub(crate) async fn get_top_performing_promotions(
     b.push(WITHDRAWAL_AGGREGATE_JOIN);
     let limit = b.bigint(query.limit());
     b.push(&format!(
-        " ORDER BY COALESCE(agg.views, 0) DESC, pp.created_at DESC LIMIT {}",
+        " ORDER BY COALESCE(agg.views, 0) DESC, pp.created_at DESC, pp.promotion_id ASC LIMIT {}",
         limit
     ));
 

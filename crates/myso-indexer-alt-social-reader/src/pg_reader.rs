@@ -654,6 +654,48 @@ impl SocialPgReader {
         crate::enterprise::list_org_roles(&mut conn, organization_id, &self.metrics).await
     }
 
+    pub async fn list_org_treasury_balances(
+        &self,
+        organization_id: &str,
+    ) -> anyhow::Result<Vec<crate::org_treasury::OrgTreasuryBalanceRow>> {
+        let mut conn = self.connect().await?;
+        crate::org_treasury::list_org_treasury_balances(&mut conn, organization_id, &self.metrics)
+            .await
+    }
+
+    pub async fn list_org_treasury_access(
+        &self,
+        organization_id: &str,
+    ) -> anyhow::Result<Vec<crate::org_treasury::OrgTreasuryAccessRow>> {
+        let mut conn = self.connect().await?;
+        crate::org_treasury::list_org_treasury_access(&mut conn, organization_id, &self.metrics)
+            .await
+    }
+
+    pub async fn list_post_access_purchases(
+        &self,
+        post_id: &str,
+        buyer: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<crate::post_access::PostAccessPurchaseRow>> {
+        let mut conn = self.connect().await?;
+        crate::post_access::list_post_access_purchases(
+            &mut conn,
+            post_id,
+            buyer,
+            limit,
+            offset,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn count_post_access_purchases(&self, post_id: &str) -> anyhow::Result<i64> {
+        let mut conn = self.connect().await?;
+        crate::post_access::count_post_access_purchases(&mut conn, post_id, &self.metrics).await
+    }
+
     pub async fn list_org_invitations(
         &self,
         organization_id: &str,
@@ -666,6 +708,23 @@ impl SocialPgReader {
             organization_id,
             invitee,
             status,
+            &self.metrics,
+        )
+        .await
+    }
+
+    pub async fn list_org_invitations_for_invitee(
+        &self,
+        invitee: &str,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<myso_indexer_alt_social_schema::models::OrgInvitationRow>> {
+        let mut conn = self.connect().await?;
+        crate::enterprise::list_org_invitations_for_invitee(
+            &mut conn,
+            invitee,
+            limit,
+            offset,
             &self.metrics,
         )
         .await

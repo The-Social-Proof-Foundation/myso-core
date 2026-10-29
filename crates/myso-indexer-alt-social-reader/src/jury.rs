@@ -84,6 +84,9 @@ pub struct JuryCaseSummaryRow {
     pub per_juror_fee_mist: Option<i64>,
     pub created_at_ms: i64,
     pub finalized_at_ms: Option<i64>,
+    /// Set once the unclaimed juror fees were swept (`JuryCaseRemainderSweptEvent`).
+    pub remainder_recipient: Option<String>,
+    pub remainder_swept_mist: Option<i64>,
 }
 
 pub(crate) async fn get_proposal_jury_reviews(

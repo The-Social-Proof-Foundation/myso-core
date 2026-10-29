@@ -272,4 +272,19 @@ mod tests {
             .unwrap()
             .starts_with("0x"));
     }
+
+    #[test]
+    fn marketplace_one_time_object_sets_price() {
+        let mut mydata = sample_bcs_mydata();
+        mydata.access = BcsAccessConfiguration::MarketplaceOneTime {
+            price: 2_000_000_000,
+            purchasers: Table::default(),
+        };
+        let bytes = bcs::to_bytes(&mydata).unwrap();
+        let decoded = parse_mydata_object_contents(&bytes).expect("one-time object bcs");
+        let row = bcs_mydata_to_new_row(&decoded, "0xabc".to_string(), "digest".to_string());
+        assert_eq!(row.access_configuration_kind.as_deref(), Some("one_time"));
+        assert_eq!(row.one_time_price, Some(2_000_000_000));
+        assert_eq!(row.subscription_price, None);
+    }
 }

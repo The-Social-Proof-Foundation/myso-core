@@ -35,6 +35,57 @@ pub struct AppState {
     pub(crate) wallet_auth_ttl_seconds: i64,
 }
 
+/// AI-credit reads are owner-private. The Memory service may use the existing
+/// service credential after it has bound the request to its authenticated
+/// owner; direct callers must pass the normal wallet-signature middleware.
+async fn ai_credit_read_auth_middleware(
+    axum::extract::State(state): axum::extract::State<Arc<AppState>>,
+    request: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let expected = std::env::var("INTERNAL_SYNC_SECRET").ok();
+    let supplied = request
+        .headers()
+        .get("x-internal-sync-secret")
+        .and_then(|value| value.to_str().ok());
+    if expected.as_deref().is_some_and(|secret| !secret.is_empty() && supplied == Some(secret)) {
+        return next.run(request).await;
+    }
+    wallet_auth_middleware(axum::extract::State(state), request, next).await
+}
+
+fn ai_credit_read_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    use handlers::{
+        get_account_memory_usage, get_ai_spend_reservation, get_profile_ai_credit_balance,
+        list_ai_credit_usage_history, list_ai_spend_reservations,
+        list_profile_spend_approvals,
+    };
+
+    Router::new()
+        .route("/memory-accounts/:accountId/usage-stats", get(get_account_memory_usage))
+        .route("/profiles/:address/ai-credit", get(get_profile_ai_credit_balance))
+        .route(
+            "/profiles/:address/ai-credit/approvals",
+            get(list_profile_spend_approvals),
+        )
+        .route(
+            "/ai-credit/:balance_id/usage-history",
+            get(list_ai_credit_usage_history),
+        )
+        .route(
+            "/ai-credit/:balance_id/reservations",
+            get(list_ai_spend_reservations),
+        )
+        .route(
+            "/ai-credit/:balance_id/reservations/:reservation_nonce",
+            get(get_ai_spend_reservation),
+        )
+        .route_layer(middleware::from_fn_with_state(
+            state,
+            ai_credit_read_auth_middleware,
+        ))
+}
+
 fn wallet_auth_ttl_seconds() -> i64 {
     std::env::var("WALLET_AUTH_TTL_SECONDS")
         .ok()
@@ -425,11 +476,12 @@ pub async fn run_server(
 
 fn enterprise_dashboard_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     use handlers::{
-        list_org_invitations, list_org_memory_permissions, list_org_role_assignments,
+        get_organization_statistics, list_org_invitations, list_org_memory_permissions, list_org_role_assignments,
         list_org_roles, list_org_spend_approvals, list_org_spend_breakdown,
     };
 
     Router::new()
+        .route("/organizations/:id/statistics", get(get_organization_statistics))
         .route(
             "/organizations/:id/memory-permissions",
             get(list_org_memory_permissions),
@@ -478,6 +530,7 @@ fn make_router(state: Arc<AppState>) -> Router {
 
     let enterprise_dashboard = enterprise_dashboard_routes(state.clone());
     let enterprise_auditor = enterprise_auditor_routes(state.clone());
+    let ai_credit_reads = ai_credit_read_routes(state.clone());
 
     let cors = CorsLayer::new()
         .allow_methods(AllowMethods::list(vec![
@@ -519,30 +572,10 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_profile_memory_account),
         )
         .route(
-            "/profiles/:address/ai-credit",
-            get(get_profile_ai_credit_balance),
-        )
-        .route(
-            "/profiles/:address/ai-credit/approvals",
-            get(list_profile_spend_approvals),
-        )
-        .route(
             "/profiles/:address/audit-logs",
             get(list_profile_audit_logs),
         )
         .route("/ai-credit/config", get(get_ai_credit_config))
-        .route(
-            "/ai-credit/:balance_id/usage-history",
-            get(list_ai_credit_usage_history),
-        )
-        .route(
-            "/ai-credit/:balance_id/reservations",
-            get(list_ai_spend_reservations),
-        )
-        .route(
-            "/ai-credit/:balance_id/reservations/:reservation_nonce",
-            get(get_ai_spend_reservation),
-        )
         .route(
             "/internal/ai-credit/usage-lines",
             post(ingest_usage_line_internal),
@@ -566,6 +599,10 @@ fn make_router(state: Arc<AppState>) -> Router {
         .route(
             "/internal/organizations/:id/memory-permissions",
             get(list_org_memory_permissions_internal),
+        )
+        .route(
+            "/internal/organizations/:id/access",
+            get(check_org_access_internal),
         )
         .route(
             "/internal/organizations/:id/control",
@@ -594,15 +631,16 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_organization_leaderboard),
         )
         .route("/organizations/:id", get(get_agentic_organization))
-        .route(
-            "/organizations/:id/statistics",
-            get(get_organization_statistics),
-        )
         .merge(enterprise_dashboard)
         .merge(enterprise_auditor)
+        .merge(ai_credit_reads)
         .route(
             "/profiles/:address/organizations",
             get(list_profile_organizations),
+        )
+        .route(
+            "/profiles/:address/organization-invitations",
+            get(handlers::list_profile_org_invitations),
         )
         .route("/profiles/:address/events", get(get_profile_events))
         .route(
@@ -895,6 +933,10 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(get_mydata_has_access),
         )
         .route("/mydata/:id/purchases", get(get_mydata_purchases))
+        .route(
+            "/mydata/buyer/:address/purchases",
+            get(get_mydata_purchases_by_buyer),
+        )
         .route("/mydata/:id/subscriptions", get(get_mydata_subscriptions))
         .route("/mydata/:id/revenue", get(get_mydata_revenue))
         .route("/mydata/:id/access-logs", get(get_mydata_access_logs))
@@ -1027,6 +1069,9 @@ fn make_router(state: Arc<AppState>) -> Router {
         )
         .route("/tasks", get(list_tasks))
         .route("/tasks/:task_id", get(get_task))
+        .route("/tasks/:task_id/room", get(get_task_room))
+        .route("/tasks/:task_id/history", get(list_task_history))
+        .route("/tasks/:task_id/receipt", get(get_task_receipt))
         .route("/tasks/:task_id/dispute", get(get_task_dispute))
         .route("/task/config", get(get_task_config))
         .route("/task/stats", get(get_task_stats))
@@ -1056,6 +1101,7 @@ fn make_router(state: Arc<AppState>) -> Router {
             get(list_organization_rooms),
         )
         .route("/groups/:group_id/digests", get(list_group_digests))
+        .route("/groups/:group_id/room", get(get_agent_room_by_group))
         .route("/spt/reservation-pools", get(list_spt_reservation_pools))
         .route("/spt/reservation-pools/:id", get(get_spt_reservation_pool))
         .route(

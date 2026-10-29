@@ -54,6 +54,7 @@ pub const AGENT_TASK_EVENTS: &[&str] = &[
     "TaskReceiptSettled",
     "TaskReviewSubmitted",
     "TaskConfigUpdated",
+    "TaskFeeRecipientChanged",
     "TaskDisputed",
     "TaskDisputeFeePaid",
     "TaskDisputeCancelled",
@@ -65,6 +66,32 @@ pub const AGENT_TASK_EVENTS: &[&str] = &[
 ];
 
 const REVIEW_ROLE_BUYER: i16 = 1;
+
+/// Copies the latest config with the new recipient. Binds: updated_by, recipient, timestamp_ms,
+/// event_id, transaction_id, time.
+const FEE_RECIPIENT_CHANGED_SQL: &str = "
+    INSERT INTO task_config_history (
+        updated_by, platform_fee_bps, ecosystem_fee_bps, ecosystem_fee_recipient, min_escrow_mist,
+        accept_window_min_ms, accept_window_default_ms, accept_window_max_ms,
+        delivery_window_min_ms, delivery_window_max_ms, settle_window_min_ms, settle_window_max_ms,
+        release_grace_ms, review_window_ms, max_title_bytes, max_uri_bytes, active,
+        prior_mean_milli, prior_weight_bps, value_ref_mist, min_value_weight_bps,
+        max_value_weight_bps, cred_base_bps, cred_step_bps, cred_cap_n, cred_max_bps,
+        overall_seller_weight_bps, overall_buyer_weight_bps, timestamp_ms, event_id,
+        transaction_id, time
+    )
+    SELECT
+        $1, platform_fee_bps, ecosystem_fee_bps, $2, min_escrow_mist,
+        accept_window_min_ms, accept_window_default_ms, accept_window_max_ms,
+        delivery_window_min_ms, delivery_window_max_ms, settle_window_min_ms, settle_window_max_ms,
+        release_grace_ms, review_window_ms, max_title_bytes, max_uri_bytes, active,
+        prior_mean_milli, prior_weight_bps, value_ref_mist, min_value_weight_bps,
+        max_value_weight_bps, cred_base_bps, cred_step_bps, cred_cap_n, cred_max_bps,
+        overall_seller_weight_bps, overall_buyer_weight_bps, $3, $4, $5, $6
+    FROM task_config_history
+    ORDER BY timestamp_ms DESC, id DESC
+    LIMIT 1
+    ON CONFLICT (event_id) DO NOTHING";
 
 #[derive(Debug, Clone)]
 pub enum TaskMarketRow {
@@ -127,6 +154,15 @@ pub enum TaskMarketRow {
     },
     Review(NewTaskReview),
     Config(NewTaskConfig),
+    /// Only the ecosystem fee recipient changed. Committed as a copy of the latest config row so
+    /// `task_config_history` keeps one full snapshot per change.
+    FeeRecipientChanged {
+        new_recipient: String,
+        updated_by: String,
+        timestamp_ms: i64,
+        event_id: String,
+        transaction_id: String,
+    },
     Disputed(NewTaskDispute),
     DisputeFeePaid {
         task_id: String,
@@ -385,6 +421,13 @@ pub fn task_market_rows(
                 time: common::chain_time_from_ms(timestamp_ms),
             })])
         }
+        "TaskFeeRecipientChanged" => Some(vec![TaskMarketRow::FeeRecipientChanged {
+            new_recipient: str_field(data, "new_recipient")?,
+            updated_by: str_field(data, "updated_by")?,
+            timestamp_ms: i64_field(data, "updated_at_ms")?,
+            event_id,
+            transaction_id,
+        }]),
         "TaskDisputed" => {
             let opened_at_ms = i64_field(data, "opened_at_ms")?;
             let opened_by_role = i64_field(data, "opened_by_role")? as i16;
@@ -1091,6 +1134,32 @@ impl Handler for TaskMarketHandler {
                         .do_nothing()
                         .execute(conn)
                         .await?;
+                }
+                TaskMarketRow::FeeRecipientChanged {
+                    new_recipient,
+                    updated_by,
+                    timestamp_ms,
+                    event_id,
+                    transaction_id,
+                } => {
+                    let inserted = diesel::sql_query(FEE_RECIPIENT_CHANGED_SQL)
+                        .bind::<diesel::sql_types::Text, _>(updated_by)
+                        .bind::<diesel::sql_types::Text, _>(new_recipient)
+                        .bind::<diesel::sql_types::Int8, _>(*timestamp_ms)
+                        .bind::<diesel::sql_types::Text, _>(event_id)
+                        .bind::<diesel::sql_types::Text, _>(transaction_id)
+                        .bind::<diesel::sql_types::Timestamptz, _>(common::chain_time_from_ms(
+                            *timestamp_ms,
+                        ))
+                        .execute(conn)
+                        .await?;
+                    if inserted == 0 {
+                        tracing::warn!(
+                            event_id = %event_id,
+                            "TaskFeeRecipientChanged: no earlier task_config_history row to copy"
+                        );
+                    }
+                    total += inserted;
                 }
             }
         }

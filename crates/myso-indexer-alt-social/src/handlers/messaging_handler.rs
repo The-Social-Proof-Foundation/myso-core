@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::ExpressionMethods;
+use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -16,8 +16,8 @@ use myso_indexer_alt_framework::postgres::Connection;
 use myso_indexer_alt_framework::types::full_checkpoint_content::Checkpoint;
 use myso_indexer_alt_framework::FieldCount;
 use myso_indexer_alt_social_schema::models::{
-    NewAgentRoom, NewMessageDigest, NewMessagingAgentGroup, NewMessagingConfig,
-    NewPaidMessageEscrow, NewUnifiedRevenue, NewWalletMessagingPolicy,
+    NewAgentRoom, NewAgentRoomTaskBind, NewMessageDigest, NewMessagingAgentGroup,
+    NewMessagingConfig, NewPaidMessageEscrow, NewUnifiedRevenue, NewWalletMessagingPolicy,
 };
 use myso_indexer_alt_social_schema::schema::{
     agent_rooms, message_digests, messaging_agent_groups, messaging_config, paid_message_escrows,
@@ -46,6 +46,7 @@ pub enum MessagingRow {
     MessageDigest(NewMessageDigest),
     MessagingAgentGroup(NewMessagingAgentGroup),
     AgentRoom(NewAgentRoom),
+    AgentRoomTaskBind(NewAgentRoomTaskBind),
     UnifiedRevenue(NewUnifiedRevenue),
     OrgOutboundSpend {
         payer: String,
@@ -203,6 +204,7 @@ fn convert_social_event_row(row: SocialEventRow) -> Vec<MessagingRow> {
         SocialEventRow::MessageDigest(e) => vec![MessagingRow::MessageDigest(e)],
         SocialEventRow::MessagingAgentGroup(g) => vec![MessagingRow::MessagingAgentGroup(g)],
         SocialEventRow::AgentRoom(r) => vec![MessagingRow::AgentRoom(r)],
+        SocialEventRow::AgentRoomTaskBind(r) => vec![MessagingRow::AgentRoomTaskBind(r)],
         SocialEventRow::UnifiedRevenue(r) => vec![MessagingRow::UnifiedRevenue(r)],
         SocialEventRow::MessagingOrgOutboundSpend {
             payer,
@@ -291,6 +293,23 @@ impl Handler for MessagingHandler {
                         .do_nothing()
                         .execute(conn)
                         .await?;
+                }
+                MessagingRow::AgentRoomTaskBind(r) => {
+                    // Only fill a previously empty reverse link; do not let stale or
+                    // conflicting event replay overwrite an already-bound room.
+                    total += diesel::update(
+                        agent_rooms::table
+                            .filter(agent_rooms::group_id.eq(&r.group_id))
+                            .filter(agent_rooms::task_id.is_null()),
+                    )
+                    .set((
+                        agent_rooms::task_id.eq(Some(&r.task_id)),
+                        agent_rooms::event_id.eq(&r.event_id),
+                        agent_rooms::transaction_id.eq(&r.transaction_id),
+                        agent_rooms::time.eq(r.time),
+                    ))
+                    .execute(conn)
+                    .await?;
                 }
                 MessagingRow::UnifiedRevenue(r) => {
                     total += diesel::insert_into(unified_revenue::table)

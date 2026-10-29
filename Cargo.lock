@@ -10534,6 +10534,7 @@ dependencies = [
 name = "myso-ai-credit-oracle"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm",
  "anyhow",
  "axum 0.7.9",
  "bcs",

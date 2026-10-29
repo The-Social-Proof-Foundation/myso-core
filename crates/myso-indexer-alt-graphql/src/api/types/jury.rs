@@ -395,4 +395,18 @@ impl JuryCase {
     async fn finalized_at_ms(&self) -> Option<i64> {
         self.inner.finalized_at_ms
     }
+
+    /// Where the fees the jurors did not claim were sent. Null until the case is swept.
+    async fn remainder_recipient(&self) -> Option<MySoAddress> {
+        self.inner
+            .remainder_recipient
+            .as_deref()
+            .and_then(|a| MySoAddress::from_str(a).ok())
+    }
+
+    /// MIST swept back to `remainderRecipient`. Null until the case is swept; 0 when nothing was
+    /// left.
+    async fn remainder_swept_mist(&self) -> Option<i64> {
+        self.inner.remainder_swept_mist
+    }
 }

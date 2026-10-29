@@ -1,7 +1,10 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::str::FromStr;
+
 use crate::api::scalars::date_time::DateTime as GqlDateTime;
+use crate::api::scalars::myso_address::MySoAddress;
 use async_graphql::{Context, Enum, Object, SimpleObject};
 use chrono::Utc;
 use myso_indexer_alt_social_reader::{
@@ -221,6 +224,30 @@ impl AgenticOrganization {
                     .map(AgentSpendBreakdown::from_entry)
                     .collect()
             })
+    }
+
+    /// Treasury balance per coin type, as of the latest fund or withdrawal.
+    async fn treasury_balances(&self, ctx: &Context<'_>) -> Option<Vec<OrgTreasuryBalance>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_org_treasury_balances(&self.inner.organization_id)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(OrgTreasuryBalance::from_row).collect())
+    }
+
+    /// Wallets currently allowed to withdraw from the treasury.
+    async fn treasury_access(&self, ctx: &Context<'_>) -> Option<Vec<OrgTreasuryAccess>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader
+            .list_org_treasury_access(&self.inner.organization_id)
+            .await
+            .ok()
+            .map(|rows| rows.into_iter().map(OrgTreasuryAccess::from_row).collect())
     }
 
     async fn roles(&self, ctx: &Context<'_>) -> Option<Vec<OrgRole>> {
@@ -531,5 +558,59 @@ impl From<OrganizationCategoryInfo> for OrganizationCategory {
             slug: info.slug,
             display_name: info.display_name,
         }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct OrgTreasuryBalance {
+    inner: myso_indexer_alt_social_reader::OrgTreasuryBalanceRow,
+}
+
+impl OrgTreasuryBalance {
+    fn from_row(inner: myso_indexer_alt_social_reader::OrgTreasuryBalanceRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl OrgTreasuryBalance {
+    async fn coin_type(&self) -> &str {
+        &self.inner.coin_type
+    }
+
+    async fn balance(&self) -> BigInt {
+        BigInt::from(self.inner.balance)
+    }
+
+    async fn updated_at_ms(&self) -> i64 {
+        self.inner.updated_at_ms
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct OrgTreasuryAccess {
+    inner: myso_indexer_alt_social_reader::OrgTreasuryAccessRow,
+}
+
+impl OrgTreasuryAccess {
+    fn from_row(inner: myso_indexer_alt_social_reader::OrgTreasuryAccessRow) -> Self {
+        Self { inner }
+    }
+}
+
+#[Object]
+impl OrgTreasuryAccess {
+    async fn recipient(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.recipient)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn granted_by(&self) -> MySoAddress {
+        MySoAddress::from_str(&self.inner.updated_by)
+            .unwrap_or_else(|_| MySoAddress::from(myso_types::base_types::MySoAddress::ZERO))
+    }
+
+    async fn granted_at_ms(&self) -> i64 {
+        self.inner.updated_at_ms
     }
 }

@@ -204,9 +204,9 @@ pub(crate) async fn list_mydata(
     let _guard = metrics.latency.start_timer();
 
     let sort_clause = match sort_by {
-        Some("price") => " ORDER BY COALESCE(one_time_price, subscription_price) DESC",
-        Some("updated") => " ORDER BY last_updated DESC",
-        _ => " ORDER BY created_at DESC",
+        Some("price") => " ORDER BY COALESCE(one_time_price, subscription_price) DESC, mydata_id ASC",
+        Some("updated") => " ORDER BY last_updated DESC, mydata_id ASC",
+        _ => " ORDER BY created_at DESC, mydata_id ASC",
     };
 
     let query = format!(
@@ -255,7 +255,7 @@ pub(crate) async fn get_popular_mydata(
             access_configuration_kind
         FROM mydata_popular_30_days p
         INNER JOIN mydata_data d ON d.mydata_id = p.mydata_id
-        ORDER BY p.unique_purchasers DESC, p.total_revenue DESC NULLS LAST, d.created_at DESC
+        ORDER BY p.unique_purchasers DESC, p.total_revenue DESC NULLS LAST, d.created_at DESC, d.mydata_id ASC
         LIMIT $1 OFFSET $2
     ";
 
@@ -489,7 +489,7 @@ pub(crate) async fn list_mydata_broad_pools(
     let query = "
         SELECT pool_id, name, platform_address, created_at_ms, event_id, transaction_id, time
         FROM mydata_broad_pools
-        ORDER BY created_at_ms DESC
+        ORDER BY created_at_ms DESC, pool_id ASC
         LIMIT $1 OFFSET $2
     ";
     let results = diesel::sql_query(query)
@@ -514,7 +514,7 @@ pub(crate) async fn list_mydata_sub_pools_for_broad_pool(
         SELECT sub_pool_id, broad_pool_id, name, created_at_ms, event_id, transaction_id, time
         FROM mydata_sub_pools
         WHERE broad_pool_id = $1
-        ORDER BY created_at_ms DESC
+        ORDER BY created_at_ms DESC, sub_pool_id ASC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -541,7 +541,7 @@ pub(crate) async fn list_mydata_sub_pools_for_listing(
         FROM mydata_listing_sub_pools j
         INNER JOIN mydata_sub_pools s ON s.sub_pool_id = j.sub_pool_id
         WHERE j.listing_id = $1
-        ORDER BY j.assigned_at_ms DESC
+        ORDER BY j.assigned_at_ms DESC, s.sub_pool_id ASC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
@@ -567,7 +567,7 @@ pub(crate) async fn list_mydata_listings_for_sub_pool(
         SELECT listing_id, sub_pool_id, assigned_at_ms, event_id, transaction_id, time
         FROM mydata_listing_sub_pools
         WHERE sub_pool_id = $1
-        ORDER BY assigned_at_ms DESC
+        ORDER BY assigned_at_ms DESC, listing_id ASC
         LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)

@@ -61,7 +61,7 @@ const LIST_PROPOSALS_SQL: &str = "
           AND ($2::smallint IS NULL OR proposal_type = $2)
           AND ($3::text IS NULL OR submitter = $3)
           AND ($6::text IS NULL OR governance_registry_id IS NOT DISTINCT FROM $6)
-        ORDER BY submission_time DESC
+        ORDER BY submission_time DESC, id ASC
         LIMIT $4 OFFSET $5
     ";
 

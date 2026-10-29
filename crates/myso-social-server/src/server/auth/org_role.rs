@@ -7,6 +7,7 @@
 //!
 //! | Route | Required permission (Move type) | DB bit |
 //! |-------|----------------------------------|--------|
+//! | `GET /organizations/:id/statistics` | `OrgDashboardViewer` | `ORG_PERM_DASHBOARD_VIEWER` (32) |
 //! | `GET /organizations/:id/audit-logs` | `OrgAuditor` | `ORG_PERM_AUDITOR` (64) |
 //! | `GET /organizations/:id/spend-breakdown` | `OrgDashboardViewer` | `ORG_PERM_DASHBOARD_VIEWER` (32) |
 //! | `GET /organizations/:id/approvals` | `OrgDashboardViewer` | 32 |

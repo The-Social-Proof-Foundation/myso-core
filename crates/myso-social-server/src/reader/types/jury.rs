@@ -42,6 +42,8 @@ pub struct JuryCaseRow {
     pub finalized_at_ms: Option<i64>,
     pub cancelled_at_ms: Option<i64>,
     pub transaction_id: String,
+    pub remainder_recipient: Option<String>,
+    pub remainder_swept_mist: Option<i64>,
 }
 
 /// `state`: 1 evidence, 2 awaiting draw, 3 selecting, 4 voting, 5 tallied, 6 final, 7 failed,
@@ -74,6 +76,8 @@ pub struct JuryCaseInfo {
     pub finalized_at_ms: Option<i64>,
     pub cancelled_at_ms: Option<i64>,
     pub transaction_id: String,
+    pub remainder_recipient: Option<String>,
+    pub remainder_swept_mist: Option<i64>,
 }
 
 impl From<JuryCaseRow> for JuryCaseInfo {
@@ -104,6 +108,8 @@ impl From<JuryCaseRow> for JuryCaseInfo {
             finalized_at_ms: r.finalized_at_ms,
             cancelled_at_ms: r.cancelled_at_ms,
             transaction_id: r.transaction_id,
+            remainder_recipient: r.remainder_recipient,
+            remainder_swept_mist: r.remainder_swept_mist,
         }
     }
 }
@@ -264,6 +270,8 @@ pub struct JurorRosterInfo {
     pub strikes: i64,
     pub joined_at_ms: i64,
     pub left_at_ms: Option<i64>,
+    /// Last time the eligibility snapshot was retaken (`RosterEntryRefreshed`).
+    pub refreshed_at_ms: Option<i64>,
 }
 
 /// One duty a juror holds. `dutyKind` is what the juror must do next (`accept`, `commit` or

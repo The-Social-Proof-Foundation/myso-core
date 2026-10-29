@@ -2115,6 +2115,45 @@ module social_contracts::post {
         );
     }
 
+    /// Purchase the exact one-time MyData record bound to this gated post.
+    /// The current post object is checked in Move before the bounded MyData
+    /// entry executes, so an off-chain lookup cannot redirect the purchase.
+    public entry fun purchase_post_access_bounded_with_platform(
+        target_post: &Post,
+        mydata_config: &mydata::MyDataConfig,
+        block_list_registry: &BlockListRegistry,
+        memory_config: &MemoryConfig,
+        listing: &mut mydata::MyData,
+        treasury: &EcosystemTreasury,
+        target_platform: &mut platform::Platform,
+        payment: &mut Coin<MYSO>,
+        memory_account: &MemoryAccount,
+        expected_seller: address,
+        expected_price: u64,
+        expected_encryption_id: vector<u8>,
+        expected_data_digest: vector<u8>,
+        expected_listing_platform: Option<address>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(requires_marketplace_purchase(target_post), ENoEncryptedContent);
+        assert!(mydata::requires_marketplace_purchase(listing), ENoEncryptedContent);
+        let linked_id = linked_mydata(target_post);
+        assert!(option::is_some(&linked_id), ENoEncryptedContent);
+        assert!(*option::borrow(&linked_id) == object::id(listing), EMyDataOwnerMismatch);
+        mydata::purchase_access_bounded_with_platform(
+            mydata_config, block_list_registry, memory_config, listing,
+            treasury, target_platform, payment, memory_account,
+            expected_seller, 2, expected_price, 0, expected_encryption_id,
+            expected_data_digest, expected_listing_platform, clock, ctx,
+        );
+        event::emit(PostAccessPurchaseEvent {
+            post_id: object::uid_to_address(get_post_id(target_post)), mydata_id: object::id(listing),
+            buyer: tx_context::sender(ctx), seller: expected_seller,
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
     /// Create a comment on a post or a reply to another comment
     /// Returns the ID of the created comment
     public fun create_comment(
@@ -5721,6 +5760,15 @@ module social_contracts::post {
         service_id: ID,
         subscription_id: ID,
         subscriber: address,
+        timestamp: u64,
+    }
+
+    /// Same-transaction receipt binding a MyData purchase to the gated post.
+    public struct PostAccessPurchaseEvent has copy, drop {
+        post_id: address,
+        mydata_id: ID,
+        buyer: address,
+        seller: address,
         timestamp: u64,
     }
 

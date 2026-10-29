@@ -7,9 +7,10 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use diesel::sql_types::{BigInt, Nullable, Text};
+use diesel::sql_types::{BigInt, Bool, Nullable, Text};
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
+use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use myso_indexer_alt_framework::pipeline::Processor;
 use myso_indexer_alt_framework::postgres::handler::Handler;
@@ -82,6 +83,15 @@ pub enum SubscriptionRow {
     ProfileSubscriptionRenewalBalanceUpdate {
         subscription_id: String,
         new_balance: i64,
+    },
+    ProfileSubscriptionServicePaymentRecipientUpdate {
+        service_id: String,
+        payment_recipient: String,
+        updated_at: i64,
+    },
+    ProfileSubscriptionAutoRenewUpdate {
+        subscription_id: String,
+        auto_renew: bool,
     },
     ProfileSubscriptionServiceDeactivate {
         service_id: String,
@@ -216,6 +226,24 @@ impl SubscriptionRow {
                 subscription_id,
                 new_balance,
             }),
+            crate::handlers::SocialEventRow::ProfileSubscriptionServicePaymentRecipientUpdate {
+                service_id,
+                payment_recipient,
+                updated_at,
+            } => Some(
+                SubscriptionRow::ProfileSubscriptionServicePaymentRecipientUpdate {
+                    service_id,
+                    payment_recipient,
+                    updated_at,
+                },
+            ),
+            crate::handlers::SocialEventRow::ProfileSubscriptionAutoRenewUpdate {
+                subscription_id,
+                auto_renew,
+            } => Some(SubscriptionRow::ProfileSubscriptionAutoRenewUpdate {
+                subscription_id,
+                auto_renew,
+            }),
             crate::handlers::SocialEventRow::ProfileSubscriptionServiceDeactivate {
                 service_id,
                 updated_at,
@@ -304,6 +332,24 @@ impl SubscriptionRow {
 
 impl FieldCount for SubscriptionRow {
     const FIELD_COUNT: usize = 40;
+}
+
+#[derive(QueryableByName)]
+struct ServicePayoutAddress {
+    #[diesel(sql_type = Text)]
+    to_address: String,
+}
+
+async fn service_payout_address(conn: &mut Connection<'_>, service_id: &str) -> Option<String> {
+    diesel::sql_query(
+        "SELECT COALESCE(payment_recipient, profile_owner) AS to_address \
+         FROM profile_subscription_services WHERE service_id = $1",
+    )
+    .bind::<Text, _>(service_id)
+    .get_result::<ServicePayoutAddress>(conn)
+    .await
+    .ok()
+    .map(|row| row.to_address)
 }
 
 pub struct SubscriptionHandler;
@@ -612,6 +658,32 @@ impl Handler for SubscriptionHandler {
                         .execute(conn)
                         .await?;
                 }
+                SubscriptionRow::ProfileSubscriptionServicePaymentRecipientUpdate {
+                    service_id,
+                    payment_recipient,
+                    updated_at,
+                } => {
+                    total += diesel::update(profile_subscription_services::table)
+                        .filter(profile_subscription_services::service_id.eq(service_id))
+                        .set((
+                            profile_subscription_services::payment_recipient.eq(payment_recipient),
+                            profile_subscription_services::updated_at.eq(Some(updated_at)),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                SubscriptionRow::ProfileSubscriptionAutoRenewUpdate {
+                    subscription_id,
+                    auto_renew,
+                } => {
+                    let update_sql = "UPDATE profile_subscriptions SET auto_renew = $1 \
+                        WHERE subscription_id = $2 AND time = (SELECT time FROM profile_subscriptions WHERE subscription_id = $2 ORDER BY time DESC LIMIT 1)";
+                    total += diesel::sql_query(update_sql)
+                        .bind::<Bool, _>(auto_renew)
+                        .bind::<Text, _>(subscription_id)
+                        .execute(conn)
+                        .await?;
+                }
                 SubscriptionRow::ProfileSubscriptionServiceDeactivate {
                     service_id,
                     updated_at,
@@ -652,13 +724,8 @@ impl Handler for SubscriptionHandler {
                     payment_time,
                     transaction_id,
                 } => {
-                    let profile_owner: Option<String> = profile_subscription_services::table
-                        .filter(profile_subscription_services::service_id.eq(service_id))
-                        .select(profile_subscription_services::profile_owner)
-                        .first(conn)
-                        .await
-                        .ok();
-                    if let Some(to_address) = profile_owner {
+                    let to_address = service_payout_address(conn, service_id).await;
+                    if let Some(to_address) = to_address {
                         let creator_net = if *creator_amount > 0 {
                             *creator_amount
                         } else {
@@ -779,13 +846,8 @@ impl Handler for SubscriptionHandler {
                         .await
                         .ok();
                     if let Some((service_id, _)) = sub_row {
-                        let profile_owner: Option<String> = profile_subscription_services::table
-                            .filter(profile_subscription_services::service_id.eq(&service_id))
-                            .select(profile_subscription_services::profile_owner)
-                            .first(conn)
-                            .await
-                            .ok();
-                        if let Some(to_address) = profile_owner {
+                        let to_address = service_payout_address(conn, &service_id).await;
+                        if let Some(to_address) = to_address {
                             let revenue_type = if *auto_renewed {
                                 "auto_renewal"
                             } else {

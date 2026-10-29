@@ -18,6 +18,10 @@ pub struct OracleArgs {
     #[arg(long, env = "AI_CREDIT_DATABASE_URL")]
     pub database_url: String,
 
+    /// Dedicated 32-byte AES-256-GCM key used to encrypt inference results at rest.
+    #[arg(long, env = "AI_CREDIT_RESPONSE_ENCRYPTION_KEY_HEX")]
+    pub response_encryption_key_hex: Option<String>,
+
     #[arg(long, env = "AI_CREDIT_DATABASE_MAX_CONNECTIONS", default_value = "10")]
     pub database_max_connections: u32,
 
@@ -373,6 +377,13 @@ impl OracleArgs {
             );
         }
         if self.inference_enabled {
+            let response_key = self
+                .response_encryption_key_hex
+                .as_deref()
+                .unwrap_or_default();
+            if hex::decode(response_key).map_or(true, |key| key.len() != 32) {
+                anyhow::bail!("AI_CREDIT_RESPONSE_ENCRYPTION_KEY_HEX must be a 32-byte hex key when inference is enabled");
+            }
             if self
                 .openrouter_api_key
                 .as_deref()
@@ -445,6 +456,7 @@ mod tests {
         OracleArgs {
             listen_addr: "0.0.0.0:8095".into(),
             database_url: "postgres://localhost/test".into(),
+            response_encryption_key_hex: None,
             database_max_connections: 10,
             outbox_lease_secs: 60,
             replica_count: 1,

@@ -5,6 +5,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::{
+    org_treasury_access, org_treasury_balances, org_treasury_events,
     sub_agent_organization_counterparties, sub_agent_organization_events,
     sub_agent_organization_stats, sub_agent_organization_stats_daily, sub_agent_organizations,
 };
@@ -239,4 +240,53 @@ pub struct OrganizationCounterpartyRow {
     pub first_interaction_at_ms: i64,
     pub last_interaction_at_ms: i64,
     pub interaction_count: i64,
+}
+
+pub const ORG_TREASURY_EVENT_FUNDED: &str = "funded";
+pub const ORG_TREASURY_EVENT_WITHDRAWN: &str = "withdrawn";
+pub const ORG_TREASURY_EVENT_ACCESS_CHANGED: &str = "access_changed";
+
+/// Balance per organization and coin type after `OrgTreasuryFunded` / `OrgTreasuryWithdrawn`.
+#[derive(Debug, Clone, Insertable, AsChangeset, Serialize, Deserialize)]
+#[diesel(table_name = org_treasury_balances)]
+pub struct NewOrgTreasuryBalance {
+    pub organization_id: String,
+    pub coin_type: String,
+    pub balance: i64,
+    pub updated_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+/// Withdrawal access from `OrgTreasuryAccessChanged`.
+#[derive(Debug, Clone, Insertable, AsChangeset, Serialize, Deserialize)]
+#[diesel(table_name = org_treasury_access)]
+pub struct NewOrgTreasuryAccess {
+    pub organization_id: String,
+    pub recipient: String,
+    pub has_access: bool,
+    pub updated_by: String,
+    pub updated_at_ms: i64,
+    pub event_id: String,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
+}
+
+/// One row per treasury event (history).
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = org_treasury_events)]
+pub struct NewOrgTreasuryEvent {
+    pub event_id: String,
+    pub organization_id: String,
+    pub event_type: String,
+    pub coin_type: Option<String>,
+    pub amount: Option<i64>,
+    pub balance_after: Option<i64>,
+    pub actor: String,
+    pub recipient: Option<String>,
+    pub has_access: Option<bool>,
+    pub timestamp_ms: i64,
+    pub transaction_id: String,
+    pub time: chrono::DateTime<chrono::Utc>,
 }
