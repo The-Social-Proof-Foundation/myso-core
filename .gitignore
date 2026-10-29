@@ -94,3 +94,7 @@ genesis/*
 
 .sparse
 docs/content/documentation.json
+
+# Generated Python caches from bridge tooling.
+scripts/lib/__pycache__/
+scripts/tests/__pycache__/

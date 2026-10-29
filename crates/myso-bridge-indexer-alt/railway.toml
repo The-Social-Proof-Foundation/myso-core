@@ -25,6 +25,6 @@ REMOTE_STORE_URL = "https://checkpoints-archive.t3.tigrisfiles.io"
 # gRPC streaming (optional, for faster ingestion)
 STREAMING_URL = "https://fullnode.testnet.mysocial.network:443"
 
-# Start near chain head to avoid "Outside buffer size" delay. Update periodically.
-# For bridge genesis backfill use 43917829; for catch-up use current head minus ~5000.
-FIRST_CHECKPOINT = "43917829"
+# Fresh genesis: backfill from checkpoint zero on a fresh database.
+# Existing database watermarks must belong to this same genesis.
+FIRST_CHECKPOINT = "0"

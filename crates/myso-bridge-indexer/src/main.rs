@@ -146,70 +146,46 @@ async fn start_watchdog(
         lbtc_address,
     ) = get_eth_contract_addresses(eth_bridge_proxy_address, eth_provider.clone()).await?;
 
-    let eth_vault_balance = EthereumVaultBalance::new(
-        eth_provider.clone(),
-        vault_address,
-        weth_address,
-        VaultAsset::WETH,
-        watchdog_metrics.eth_vault_balance.clone(),
-    )
-    .await
-    .unwrap_or_else(|e| panic!("Failed to create eth vault balance: {}", e));
-
-    let usdt_vault_balance = EthereumVaultBalance::new(
-        eth_provider.clone(),
-        vault_address,
-        usdt_address,
-        VaultAsset::USDT,
-        watchdog_metrics.usdt_vault_balance.clone(),
-    )
-    .await
-    .unwrap_or_else(|e| panic!("Failed to create usdt vault balance: {}", e));
-
-    let wbtc_vault_balance = EthereumVaultBalance::new(
-        eth_provider.clone(),
-        vault_address,
-        wbtc_address,
-        VaultAsset::WBTC,
-        watchdog_metrics.wbtc_vault_balance.clone(),
-    )
-    .await
-    .unwrap_or_else(|e| panic!("Failed to create wbtc vault balance: {}", e));
-
-    let lbtc_vault_balance = if !lbtc_address.is_zero() {
-        Some(
-            EthereumVaultBalance::new(
-                eth_provider.clone(),
-                vault_address,
-                lbtc_address,
-                VaultAsset::LBTC,
-                watchdog_metrics.lbtc_vault_balance.clone(),
-            )
-            .await
-            .unwrap_or_else(|e| panic!("Failed to create lbtc vault balance: {}", e)),
-        )
-    } else {
-        None
-    };
-
     let eth_bridge_status = EthBridgeStatus::new(
-        eth_provider,
+        eth_provider.clone(),
         eth_bridge_proxy_address,
         watchdog_metrics.eth_bridge_paused.clone(),
     );
-
     let myso_bridge_status =
         MySoBridgeStatus::new(myso_client, watchdog_metrics.myso_bridge_paused.clone());
-    let mut observables: Vec<Box<dyn Observable + Send + Sync>> = vec![
-        Box::new(eth_vault_balance),
-        Box::new(usdt_vault_balance),
-        Box::new(wbtc_vault_balance),
-        Box::new(eth_bridge_status),
-        Box::new(myso_bridge_status),
-    ];
+    let mut observables: Vec<Box<dyn Observable + Send + Sync>> =
+        vec![Box::new(eth_bridge_status), Box::new(myso_bridge_status)];
 
-    // Add lbtc_vault_balance if it's available
-    if let Some(balance) = lbtc_vault_balance {
+    // A native-MYSO-only registry has no USDT/WBTC/LBTC vault assets.
+    // Querying ERC20 decimals at address zero prevents the indexer from starting.
+    for (token, asset, metric) in [
+        (
+            weth_address,
+            VaultAsset::WETH,
+            watchdog_metrics.eth_vault_balance.clone(),
+        ),
+        (
+            usdt_address,
+            VaultAsset::USDT,
+            watchdog_metrics.usdt_vault_balance.clone(),
+        ),
+        (
+            wbtc_address,
+            VaultAsset::WBTC,
+            watchdog_metrics.wbtc_vault_balance.clone(),
+        ),
+        (
+            lbtc_address,
+            VaultAsset::LBTC,
+            watchdog_metrics.lbtc_vault_balance.clone(),
+        ),
+    ] {
+        if token.is_zero() {
+            continue;
+        }
+        let balance =
+            EthereumVaultBalance::new(eth_provider.clone(), vault_address, token, asset, metric)
+                .await?;
         observables.push(Box::new(balance));
     }
 

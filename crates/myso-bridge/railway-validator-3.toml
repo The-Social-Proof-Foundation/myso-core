@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "crates/myso-bridge/Dockerfile"
 
 [deploy]
-startCommand = "sh -c 'echo \"$BRIDGE_AUTHORITY_KEY\" > /tmp/bridge_key_validator_3 && envsubst \"\\$ETH_RPC_URL \\$ETH_BRIDGE_PROXY_ADDRESS\" < /app/bridge-config-validator-3.yaml > /tmp/bridge-config-validator-3.yaml && /work/target/release/myso-bridge-node --config-path /tmp/bridge-config-validator-3.yaml'"
+startCommand = "sh -c 'set -eu; umask 077; : \"${BRIDGE_AUTHORITY_KEY:?Set the matching authority secret}\"; export BRIDGE_AUTHORITY_KEY_PATH=/tmp/bridge_key_validator_3; export MYSO_RPC_URL=\"${MYSO_RPC_URL:-https://fullnode.testnet.mysocial.network:443}\"; export ETH_RPC_URL=\"${ETH_RPC_URL:-https://sepolia.base.org}\"; export BRIDGE_DB_PATH=\"${BRIDGE_DB_PATH:-/data/bridge-4a7fb537-f2e79b37/client-db}\"; printf '\"'\"'%s'\"'\"' \"$BRIDGE_AUTHORITY_KEY\" > \"$BRIDGE_AUTHORITY_KEY_PATH\"; chmod 600 \"$BRIDGE_AUTHORITY_KEY_PATH\"; envsubst '\"'\"'$ETH_RPC_URL $MYSO_RPC_URL $BRIDGE_RELAYER_PRIVATE_KEY $BRIDGE_AUTHORITY_KEY_PATH $BRIDGE_DB_PATH'\"'\"' < /app/bridge-config-validator-3.yaml > /tmp/testnet-bridge-node.yaml; chmod 600 /tmp/testnet-bridge-node.yaml; exec /work/target/release/myso-bridge-node --config-path /tmp/testnet-bridge-node.yaml'"
 healthcheckPath = "/ping"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -27,7 +27,7 @@ RUST_LOG = "info,myso_bridge=debug"
 # ETH_RPC_URL must be set (contains API keys - do not commit to Git)
 ETH_RPC_URL = ""
 # ETH_BRIDGE_PROXY_ADDRESS must be set (UPDATED to new deployment)
-ETH_BRIDGE_PROXY_ADDRESS = "0x02D265E77590025660a4eff50E7227136762b0d2"
+ETH_BRIDGE_PROXY_ADDRESS = "0xf2e79b37c734f38a87daf204eb81b1ec81e636bb"
 
 # Optional: Override other config values
 # MYSO_RPC_URL = "https://fullnode.testnet.mysocial.network:443"
@@ -37,10 +37,10 @@ BRIDGE_NODE_PORT = "8080"
 BRIDGE_METRICS_PORT = "9090"
 
 # Contract Addresses (Base Sepolia) - UPDATED to new deployment
-BRIDGE_COMMITTEE_ADDRESS = "0x1d7d41ccfbc5203e95231d01B066Eb11B33669c4"
-BRIDGE_CONFIG_ADDRESS = "0x4c1b2B56b8bE63f430D25bFC551146Ae58aA03A0"
-BRIDGE_LIMITER_ADDRESS = "0x502D256645560869427a8Ae46bB560Cc8e33baC2"
-BRIDGE_VAULT_ADDRESS = "0xaF12A0Af2A325518cc8655a787aab6DC34EFc95E"
+BRIDGE_COMMITTEE_ADDRESS = "0x1d9cd4c02d93400903c4d976b07aad81da2910d3"
+BRIDGE_CONFIG_ADDRESS = "0xe2e5b7df4113367833dd671d64bb5a8628111c53"
+BRIDGE_LIMITER_ADDRESS = "0xe425ba13b84a5bb55fdb43052a5d1b9136e83163"
+BRIDGE_VAULT_ADDRESS = "0x927436935cb64ebb1fe0628528e21b06528d54f2"
 
 # Bridge Authority Configuration
 BRIDGE_COMMITTEE_MEMBER = "true"

@@ -11,3 +11,6 @@ lcov.info
 broadcast/**/31337
 
 dependencies
+
+# Testnet script receipts/logs are operational state, never repository source.
+broadcast/deploy_native_testnet.s.sol/

@@ -13,7 +13,7 @@ fi
 
 if [ -z "$ETH_RPC_URL" ]; then
   echo "ERROR: ETH_RPC_URL environment variable is not set"
-  echo "Expected: ETH_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
+  echo "Expected: ETH_RPC_URL=https://base-sepolia.g.alchemy.com/v2/YOUR_KEY"
   exit 1
 fi
 
@@ -25,7 +25,7 @@ fi
 
 if [ -z "$ETH_MYSO_BRIDGE_CONTRACT_ADDRESS" ]; then
   echo "ERROR: ETH_MYSO_BRIDGE_CONTRACT_ADDRESS environment variable is not set"
-  echo "Expected (testnet): ETH_MYSO_BRIDGE_CONTRACT_ADDRESS=0xAE68F87938439afEEDd6552B0E83D2CbC2473623"
+  echo "Expected (testnet): ETH_MYSO_BRIDGE_CONTRACT_ADDRESS=0xf2e79b37c734f38a87daf204eb81b1ec81e636bb"
   exit 1
 fi
 
@@ -33,8 +33,8 @@ REMOTE_STORE_URL="${REMOTE_STORE_URL:-https://storage.googleapis.com/mysocial-te
 ETH_WS_URL="${ETH_WS_URL:-$(echo "$ETH_RPC_URL" | sed 's|^https://|wss://|;s|^http://|ws://|')}"
 METRIC_PORT="${PORT:-${METRIC_PORT:-9184}}"
 CONCURRENCY="${CONCURRENCY:-500}"
-MYSO_BRIDGE_GENESIS_CHECKPOINT="${MYSO_BRIDGE_GENESIS_CHECKPOINT:-43917829}"
-ETH_BRIDGE_GENESIS_BLOCK="${ETH_BRIDGE_GENESIS_BLOCK:-5997013}"
+MYSO_BRIDGE_GENESIS_CHECKPOINT="${MYSO_BRIDGE_GENESIS_CHECKPOINT:-0}"
+ETH_BRIDGE_GENESIS_BLOCK="${ETH_BRIDGE_GENESIS_BLOCK:-51899869}"
 
 CONFIG_PATH="/myso/config.yaml"
 mkdir -p "$(dirname "$CONFIG_PATH")"
@@ -68,9 +68,6 @@ echo "ETH_BRIDGE_GENESIS_BLOCK: $ETH_BRIDGE_GENESIS_BLOCK"
 echo "ETH_MYSO_BRIDGE_CONTRACT_ADDRESS: $ETH_MYSO_BRIDGE_CONTRACT_ADDRESS"
 echo "METRIC_PORT: $METRIC_PORT"
 echo ""
-echo "=== Generated config.yaml ==="
-cat "$CONFIG_PATH"
-echo "============================="
 echo ""
 echo "Starting: bridge-indexer --config-path $CONFIG_PATH"
 echo ""
