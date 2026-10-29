@@ -85,6 +85,18 @@ impl Reader {
         profile::get_profile_count(&self.db).await
     }
 
+    pub async fn get_platform_post_count(
+        &self,
+        address: &str,
+        platform: &str,
+    ) -> Result<i32, crate::error::SocialError> {
+        let mut conn = self.db.connect().await?;
+        Ok(myso_indexer_alt_social_reader::profile::get_platform_post_count(
+            &mut conn, address, platform,
+        )
+        .await?)
+    }
+
     pub async fn get_profile_by_address(
         &self,
         address: &str,

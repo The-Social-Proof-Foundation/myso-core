@@ -207,6 +207,15 @@ impl SocialPgReader {
         get_profile_by_address(&mut conn, address, &self.metrics).await
     }
 
+    pub async fn get_platform_post_count(
+        &self,
+        address: &str,
+        platform: &str,
+    ) -> anyhow::Result<i32> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_platform_post_count(&mut conn, address, platform).await
+    }
+
     /// Get profile by address, or wallet-only data when no profile exists.
     pub async fn get_profile_or_wallet_by_address(
         &self,

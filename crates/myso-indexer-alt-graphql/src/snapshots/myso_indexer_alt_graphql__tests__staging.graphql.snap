@@ -6655,7 +6655,7 @@ type Profile implements Node {
 	"""
 	Number of posts.
 	"""
-	postCount: Int!
+	postCount(platform: MySoAddress): Int!
 	"""
 	Posts by this profile (paginated, newest first). Matches REST `GET /profiles/:address/posts`
 	scope: `posts.owner` is this profile's wallet **or** `posts.profile_id` is this profile's object id.
@@ -6998,7 +6998,7 @@ type ProfileSummary {
 	"""
 	Number of posts. Present for both profile and wallet-only addresses.
 	"""
-	postCount: Int
+	postCount(platform: MySoAddress): Int
 	"""
 	Profile photo URL.
 	"""

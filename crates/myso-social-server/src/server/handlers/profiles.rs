@@ -1,8 +1,8 @@
 // Copyright (c) The Social Proof Foundation, LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-use axum::extract::{Path, Query, State};
 use axum::Json;
+use axum::extract::{Path, Query, State};
 use myso_indexer_alt_social_reader::{ProfilePnLWindow, ProfilePnLWindowResult};
 use myso_indexer_alt_social_schema::models::Profile;
 use serde::Deserialize;
@@ -47,26 +47,46 @@ pub async fn latest_profiles(
     })))
 }
 
+/// Optional scope keeps existing global-count consumers compatible.
+#[derive(Deserialize)]
+pub struct ProfileCountScope {
+    pub platform_id: Option<String>,
+}
+
 pub async fn get_profile_by_address(
     State(state): State<Arc<AppState>>,
     Path(address): Path<String>,
+    Query(scope): Query<ProfileCountScope>,
 ) -> Result<Json<ProfileByAddressResponse>, SocialError> {
-    let result = state
+    let mut result = state
         .reader
         .get_profile_or_wallet_by_address(&address)
         .await?;
+    if let Some(platform) = scope.platform_id {
+        result.post_count = state
+            .reader
+            .get_platform_post_count(&result.owner_address, &platform)
+            .await?;
+    }
     Ok(Json(result))
 }
 
 pub async fn get_profile_by_username(
     State(state): State<Arc<AppState>>,
     Path(username): Path<String>,
+    Query(scope): Query<ProfileCountScope>,
 ) -> Result<Json<Profile>, SocialError> {
-    let profile = state
+    let mut profile = state
         .reader
         .get_profile_by_username(&username)
         .await?
         .ok_or_else(|| SocialError::not_found(format!("Profile for username '{}'", username)))?;
+    if let Some(platform) = scope.platform_id {
+        profile.post_count = state
+            .reader
+            .get_platform_post_count(&profile.owner_address, &platform)
+            .await?;
+    }
     Ok(Json(profile))
 }
 

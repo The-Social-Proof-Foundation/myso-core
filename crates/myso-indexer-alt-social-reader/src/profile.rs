@@ -1005,3 +1005,101 @@ pub(crate) async fn get_ecosystem_treasury(
     metrics.requests_succeeded.inc();
     Ok(result)
 }
+
+/// Count current, visible posts for one platform. Select the newest version before
+/// filtering deletion/platform state so historical rows cannot resurrect posts.
+pub async fn get_platform_post_count(
+    conn: &mut Connection<'_>,
+    address: &str,
+    platform: &str,
+) -> anyhow::Result<i32> {
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = BigInt)]
+        count: i64,
+    }
+    let row = diesel::sql_query(PLATFORM_POST_COUNT_SQL)
+        .bind::<Text, _>(address)
+        .bind::<Text, _>(platform)
+        .get_result::<CountRow>(conn)
+        .await?;
+    Ok(i32::try_from(row.count).unwrap_or(i32::MAX))
+}
+
+const PLATFORM_POST_COUNT_SQL: &str = "
+    SELECT COUNT(*)::bigint AS count
+    FROM (
+        SELECT DISTINCT ON (post_id) * FROM posts
+        WHERE post_id IN (
+            SELECT post_id FROM posts
+            WHERE LOWER(owner) = LOWER($1) OR profile_id IN (
+                SELECT profile_id FROM profiles WHERE LOWER(owner_address) = LOWER($1)
+            )
+        )
+        ORDER BY post_id, time DESC
+    ) current_posts
+    WHERE (LOWER(owner) = LOWER($1) OR profile_id IN (
+        SELECT profile_id FROM profiles WHERE LOWER(owner_address) = LOWER($1)
+    ))
+      AND LOWER(platform_id) = LOWER($2)
+      AND deleted_at IS NULL
+      AND NOT COALESCE(removed_from_platform, false)
+";
+
+#[cfg(test)]
+mod platform_post_count_tests {
+    use super::*;
+    use diesel_async::{AsyncConnection, AsyncPgConnection, SimpleAsyncConnection};
+
+    #[tokio::test]
+    #[ignore = "requires TEST_DATABASE_URL; creates connection-local temporary tables"]
+    async fn counts_latest_live_posts_for_only_the_requested_platform() {
+        let mut conn = AsyncPgConnection::establish(&std::env::var("TEST_DATABASE_URL").unwrap())
+            .await
+            .unwrap();
+        conn.batch_execute(
+            "
+            CREATE TEMP TABLE profiles (owner_address text, profile_id text);
+            CREATE TEMP TABLE posts (
+                post_id text, time integer, owner text, profile_id text,
+                platform_id text, deleted_at bigint, removed_from_platform boolean
+            );
+            INSERT INTO profiles VALUES ('0xalice', 'profile-alice');
+            INSERT INTO posts VALUES
+                ('live', 1, '0xalice', '', '0xdrip', NULL, false),
+                ('live', 2, '0xalice', '', '0xdrip', NULL, false),
+                ('profile-authored', 1, 'legacy-owner', 'profile-alice', '0xdrip', NULL, NULL),
+                ('foreign', 1, '0xalice', '', '0xother', NULL, false),
+                ('unscoped', 1, '0xalice', '', NULL, NULL, false),
+                ('deleted', 1, '0xalice', '', '0xdrip', NULL, false),
+                ('deleted', 2, '0xalice', '', '0xdrip', 10, false),
+                ('removed', 1, '0xalice', '', '0xdrip', NULL, true),
+                ('other-author', 1, '0xbob', '', '0xdrip', NULL, false),
+                ('moved', 1, '0xalice', '', '0xdrip', NULL, false),
+                ('moved', 2, '0xalice', '', '0xother', NULL, false);
+        ",
+        )
+        .await
+        .unwrap();
+        #[derive(QueryableByName)]
+        struct Row {
+            #[diesel(sql_type = BigInt)]
+            count: i64,
+        }
+        for (wallet, platform, expected) in [
+            ("0xALICE", "0xDRIP", 2),
+            ("0xalice", "0xother", 2),
+            ("0xbob", "0xdrip", 1),
+            ("0xnobody", "0xdrip", 0),
+            ("0xalice", "", 0),
+        ] {
+            let row = diesel::sql_query(PLATFORM_POST_COUNT_SQL)
+                .bind::<Text, _>(wallet)
+                .bind::<Text, _>(platform)
+                .get_result::<Row>(&mut conn)
+                .await
+                .unwrap();
+            assert_eq!(row.count, expected, "{wallet}/{platform}");
+        }
+    }
+}

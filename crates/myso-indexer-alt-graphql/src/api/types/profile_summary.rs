@@ -97,8 +97,25 @@ impl ProfileSummary {
     }
 
     /// Number of posts. Present for both profile and wallet-only addresses.
-    async fn post_count(&self) -> Option<i32> {
-        self.inner.post_count
+    async fn post_count(
+        &self,
+        ctx: &Context<'_>,
+        platform: Option<MySoAddress>,
+    ) -> async_graphql::Result<Option<i32>> {
+        let Some(platform) = platform else {
+            return Ok(self.inner.post_count);
+        };
+        let reader_opt =
+            ctx.data::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt
+            .as_ref()
+            .as_ref()
+            .ok_or_else(|| async_graphql::Error::new("Social database unavailable"))?;
+        let count = reader
+            .get_platform_post_count(&self.inner.owner_address, &platform.to_string())
+            .await
+            .map_err(|e| async_graphql::Error::new(e.to_string()))?;
+        Ok(Some(count))
     }
 
     /// Number of blocked accounts. Present for both profile and wallet-only addresses.
