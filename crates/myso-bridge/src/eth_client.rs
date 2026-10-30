@@ -134,9 +134,11 @@ impl EthClient {
     }
 
     pub async fn get_last_finalized_block_id(&self) -> BridgeResult<u64> {
+        // Use OP-stack `safe` (not `finalized`) so Eth→MySo pickup is not blocked
+        // by Base's multi-minute finalized lag while remaining reorg-resistant.
         let block: Option<Block> = self
             .provider
-            .raw_request("eth_getBlockByNumber".into(), ("finalized", false))
+            .raw_request("eth_getBlockByNumber".into(), ("safe", false))
             .await?;
         let block = block.ok_or(BridgeError::TransientProviderError(
             "Provider fails to return last finalized block".into(),

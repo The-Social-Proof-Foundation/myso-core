@@ -177,7 +177,7 @@ pub fn mock_last_finalized_block(mock_service: &EthMockService, block_number: u6
     });
     let block = Block::<TxHash>::empty(block_header);
     mock_service
-        .add_response("eth_getBlockByNumber", ("finalized", false), block)
+        .add_response("eth_getBlockByNumber", ("safe", false), block)
         .unwrap();
 }
 
