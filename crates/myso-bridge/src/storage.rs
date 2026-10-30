@@ -952,6 +952,52 @@ impl BridgeOrchestratorTables {
         Ok(Some(order))
     }
 
+    /// Mark an inbound order completed after Eth→MySo claim on MySo.
+    /// Also recovers orders that were falsely completed before claim (empty bridge_tx_digest).
+    pub(crate) fn complete_in_bridge_order(
+        &self,
+        myso_wallet: &str,
+        token_id: Option<u8>,
+        bridge_tx_digest: String,
+        myso_adjusted_amount: Option<String>,
+    ) -> BridgeResult<Option<BridgeOrderRecord>> {
+        let wallet = myso_wallet.trim().to_ascii_lowercase();
+        let Some(mut order) = self
+            .list_bridge_orders_for_wallet(myso_wallet)?
+            .into_iter()
+            .find(|order| {
+                order.direction == BridgeOrderDirection::In
+                    && (matches!(
+                        order.status,
+                        BridgeOrderStatus::Bridging | BridgeOrderStatus::DepositReceived
+                    ) || (order.status == BridgeOrderStatus::Completed
+                        && order.bridge_tx_digest.as_ref().map_or(true, |d| d.is_empty())))
+                    && order.myso_wallet.trim().to_ascii_lowercase() == wallet
+                    && match (token_id, order.token_id) {
+                        (Some(want), Some(have)) => want == have,
+                        _ => true,
+                    }
+            })
+        else {
+            return Ok(None);
+        };
+        order.status = BridgeOrderStatus::Completed;
+        order.updated_at = now_ms();
+        order.bridge_tx_digest = Some(bridge_tx_digest);
+        if let Some(amount) = myso_adjusted_amount {
+            order.amount = Some(amount);
+        }
+        if order.token_id.is_none() {
+            order.token_id = token_id;
+        }
+        self.bridge_orders
+            .insert(&order.order_id, &order)
+            .map_err(|e| {
+                BridgeError::StorageError(format!("Failed to complete in bridge order: {:?}", e))
+            })?;
+        Ok(Some(order))
+    }
+
     // ========== EVM Deposit Monitor Cursor ==========
 
     pub(crate) fn get_evm_deposit_monitor_cursor(
@@ -1513,5 +1559,90 @@ mod tests {
             bcs::from_bytes(&bcs::to_bytes(&current).unwrap()).unwrap();
         assert_eq!(roundtrip.token_id, Some(2));
         assert_eq!(roundtrip.evm_token_address.as_deref(), Some("0x38a0"));
+    }
+
+    #[tokio::test]
+    async fn test_complete_in_bridge_order_matches_bridging() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let store = BridgeOrchestratorTables::new(temp_dir.path());
+        let wallet = "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8";
+        store
+            .upsert_bridge_order(BridgeOrderRecord {
+                order_id: "brg_in".to_string(),
+                direction: BridgeOrderDirection::In,
+                status: BridgeOrderStatus::Bridging,
+                myso_wallet: wallet.to_string(),
+                deposit_address: "0xdep".to_string(),
+                destination_chain: "mysocial".to_string(),
+                destination_address: wallet.to_string(),
+                amount: Some("2250000000".to_string()),
+                deposit_tx_digest: Some("0xdep_tx".to_string()),
+                bridge_tx_digest: None,
+                evm_tx_hash: Some("0xevm".to_string()),
+                created_at: 1,
+                updated_at: 1,
+                callback_url: None,
+                callback_api_key: None,
+                token_id: Some(0),
+                evm_token_address: None,
+                myso_token_type: None,
+            })
+            .unwrap();
+
+        let completed = store
+            .complete_in_bridge_order(wallet, Some(0), "claim_digest".to_string(), Some("2250000000".to_string()))
+            .unwrap()
+            .unwrap();
+        assert_eq!(completed.order_id, "brg_in");
+        assert_eq!(completed.status, BridgeOrderStatus::Completed);
+        assert_eq!(completed.bridge_tx_digest.as_deref(), Some("claim_digest"));
+        assert_eq!(completed.amount.as_deref(), Some("2250000000"));
+
+        assert!(store
+            .complete_in_bridge_order(
+                "0x0000000000000000000000000000000000000000000000000000000000000001",
+                Some(0),
+                "other".to_string(),
+                None,
+            )
+            .unwrap()
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn test_complete_in_bridge_order_recovers_false_completed() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let store = BridgeOrchestratorTables::new(temp_dir.path());
+        let wallet = "0x2458950181e415250823d6ce1d55f2b3427826a111939e0d6d38e9a1397411d8";
+        store
+            .upsert_bridge_order(BridgeOrderRecord {
+                order_id: "brg_false".to_string(),
+                direction: BridgeOrderDirection::In,
+                status: BridgeOrderStatus::Completed,
+                myso_wallet: wallet.to_string(),
+                deposit_address: "0xdep".to_string(),
+                destination_chain: "mysocial".to_string(),
+                destination_address: wallet.to_string(),
+                amount: Some("1".to_string()),
+                deposit_tx_digest: Some("0xdep_tx".to_string()),
+                bridge_tx_digest: None,
+                evm_tx_hash: Some("0xevm".to_string()),
+                created_at: 1,
+                updated_at: 1,
+                callback_url: None,
+                callback_api_key: None,
+                token_id: Some(0),
+                evm_token_address: None,
+                myso_token_type: None,
+            })
+            .unwrap();
+
+        let recovered = store
+            .complete_in_bridge_order(wallet, Some(0), "real_claim".to_string(), Some("2250000000".to_string()))
+            .unwrap()
+            .unwrap();
+        assert_eq!(recovered.order_id, "brg_false");
+        assert_eq!(recovered.bridge_tx_digest.as_deref(), Some("real_claim"));
+        assert_eq!(recovered.amount.as_deref(), Some("2250000000"));
     }
 }

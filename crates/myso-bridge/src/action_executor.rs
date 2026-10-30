@@ -731,6 +731,41 @@ where
                         }
                     }
                 });
+                let claimed = relevant_events.iter().any(|e| {
+                    e.type_ == *TokenTransferClaimed.get().unwrap()
+                        || e.type_ == *TokenTransferAlreadyClaimed.get().unwrap()
+                });
+                if claimed {
+                    if let Some((wallet, token_id, amount)) = eth_to_myso_in_parts(action) {
+                        match store.complete_in_bridge_order(
+                            &wallet,
+                            Some(token_id),
+                            tx_digest.to_string(),
+                            Some(amount.to_string()),
+                        ) {
+                            Ok(Some(order)) => {
+                                info!(
+                                    order_id = %order.order_id,
+                                    ?tx_digest,
+                                    "Completed in bridge order after MySo claim"
+                                );
+                            }
+                            Ok(None) => {
+                                warn!(
+                                    ?tx_digest,
+                                    "No in-flight in order to complete after MySo claim"
+                                );
+                            }
+                            Err(err) => {
+                                warn!(
+                                    ?err,
+                                    ?tx_digest,
+                                    "Failed to complete in bridge order"
+                                );
+                            }
+                        }
+                    }
+                }
                 let approved = relevant_events.iter().any(|e| {
                     e.type_ == *TokenTransferApproved.get().unwrap()
                         || e.type_ == *TokenTransferAlreadyApproved.get().unwrap()
@@ -963,6 +998,22 @@ fn myso_to_eth_out_parts(action: &BridgeAction) -> Option<(String, String, u8)> 
             action.myso_bridge_event.myso_address.to_string(),
             format!("0x{:x}", action.myso_bridge_event.eth_address),
             action.myso_bridge_event.token_id,
+        )),
+        _ => None,
+    }
+}
+
+fn eth_to_myso_in_parts(action: &BridgeAction) -> Option<(String, u8, u64)> {
+    match action {
+        BridgeAction::EthToMySoBridgeAction(action) => Some((
+            action.eth_bridge_event.myso_address.to_string(),
+            action.eth_bridge_event.token_id,
+            action.eth_bridge_event.myso_adjusted_amount,
+        )),
+        BridgeAction::EthToMySoTokenTransferV2(action) => Some((
+            action.eth_bridge_event.myso_address.to_string(),
+            action.eth_bridge_event.token_id,
+            action.eth_bridge_event.myso_adjusted_amount,
         )),
         _ => None,
     }
@@ -1910,5 +1961,20 @@ mod tests {
             myso_token_type_tags,
             bridge_pause_tx,
         )
+    }
+
+    #[test]
+    fn test_eth_to_myso_in_parts_extracts_recipient() {
+        let action = get_test_eth_to_myso_bridge_action(
+            Some(7),
+            Some(2_250_000_000),
+            None,
+            Some(0),
+        );
+        let (wallet, token_id, amount) = eth_to_myso_in_parts(&action).unwrap();
+        assert_eq!(token_id, 0);
+        assert_eq!(amount, 2_250_000_000);
+        assert!(wallet.starts_with("0x"));
+        assert!(myso_to_eth_out_parts(&action).is_none());
     }
 }

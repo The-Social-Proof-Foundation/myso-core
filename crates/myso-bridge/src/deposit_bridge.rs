@@ -310,10 +310,10 @@ impl DepositBridgeHandler {
             amount_to_bridge.to_string(),
         )?;
 
-        info!(?tx_hash, "EVM deposit bridged successfully");
+        info!(?tx_hash, "EVM deposit submitted to bridge; awaiting committee claim");
         self.notify_lifecycle(
             &deposit_address_key,
-            BridgeOrderStatus::Completed,
+            BridgeOrderStatus::Bridging,
             BridgeOrderPatch {
                 amount: Some(amount_to_bridge.to_string()),
                 deposit_tx_digest: Some(format!("{:?}", event.tx_hash)),
@@ -524,10 +524,10 @@ impl DepositBridgeHandler {
                     tx_digest.to_string(),
                     event.amount.to_string(),
                 )?;
-                info!(?tx_digest, "MySo→EVM deposit bridged successfully");
+                info!(?tx_digest, "MySo→EVM deposit submitted; awaiting vault release");
                 self.notify_lifecycle(
                     &deposit_address_key,
-                    BridgeOrderStatus::Completed,
+                    BridgeOrderStatus::Bridging,
                     BridgeOrderPatch {
                         amount: Some(event.amount.to_string()),
                         deposit_tx_digest: Some(event.tx_digest.to_string()),
