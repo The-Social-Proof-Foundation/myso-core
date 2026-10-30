@@ -215,6 +215,18 @@ async fn generate_for_myso_user(
                     )
                 })?;
 
+            let stored_address = MySoAddress::from_bytes(&existing_reg.deposit_address)
+                .map_err(|e| to_status_error_json(BridgeError::Generic(e.to_string())))?;
+            if !state
+                .address_manager
+                .verify_myso_deposit_address(&stored_address, existing_reg.hd_index)
+                .map_err(to_status_error_json)?
+            {
+                return Err((StatusCode::CONFLICT, Json(ErrorResponse {
+                    error: "Legacy MySo deposit address requires migration; do not send funds to it".into(),
+                })));
+            }
+
             info!(
                 ?myso_address,
                 ?existing_deposit_addr,
@@ -847,4 +859,63 @@ fn to_status_error_json(err: BridgeError) -> (StatusCode, Json<ErrorResponse>) {
             error: format!("{:?}", err),
         }),
     )
+}
+
+#[cfg(test)]
+mod deposit_service_tests {
+    use super::*;
+    use crate::server::order_api::{ListBridgeOrdersQuery, list_bridge_orders};
+    use axum::extract::Query;
+    use fastcrypto::secp256k1::Secp256k1KeyPair;
+    use myso_types::crypto::get_key_pair;
+
+    #[tokio::test]
+    async fn deposit_generation_reuses_address_and_exposes_wallet_history() {
+        let (_, key): (_, Secp256k1KeyPair) = get_key_pair();
+        let dir = tempfile::tempdir().unwrap();
+        let storage = BridgeOrchestratorTables::new(dir.path());
+        let state = Arc::new(DepositApiState {
+            address_manager: Arc::new(DepositAddressManager::new(key, storage.clone())),
+            storage,
+            myso_chain_id: 2,
+            eth_chain_id: 12,
+            callback_host_allowlist: vec![],
+        });
+        let wallet = format!("0x{}", "12".repeat(32));
+        let request = || {
+            serde_json::from_value(serde_json::json!({
+                "authType": "ethereum",
+                "message": {"action": "generate", "destinationChain": "mysocial",
+                    "destinationAddress": wallet, "timestamp": 1}
+            }))
+            .unwrap()
+        };
+        let first = generate_deposit_address(State(state.clone()), Json(request()))
+            .await
+            .unwrap()
+            .0;
+        let again = generate_deposit_address(State(state.clone()), Json(request()))
+            .await
+            .unwrap()
+            .0;
+        assert_eq!(first.deposit_address, again.deposit_address);
+        assert_eq!(first.destination_address, wallet);
+        let history = list_bridge_orders(State(state), Query(ListBridgeOrdersQuery { wallet }))
+            .await
+            .unwrap()
+            .0;
+        assert!(!history.orders.is_empty());
+        assert!(
+            history
+                .orders
+                .iter()
+                .any(|order| Some(&order.order_id) == first.order_id.as_ref())
+        );
+        assert!(
+            history
+                .orders
+                .iter()
+                .all(|order| order.deposit_address == first.deposit_address)
+        );
+    }
 }

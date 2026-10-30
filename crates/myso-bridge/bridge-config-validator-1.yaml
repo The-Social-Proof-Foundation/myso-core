@@ -19,9 +19,14 @@
   },
   "db-path": "${BRIDGE_DB_PATH}",
   "deposits": {
-    "enabled": false,
-    "auto-fund-gas": false,
-    "relayer-eth-private-key": "${BRIDGE_RELAYER_PRIVATE_KEY}"
+    "enabled": true,
+    "auto-fund-gas": true,
+    "relayer-eth-private-key": "${BRIDGE_RELAYER_PRIVATE_KEY}",
+    "supported-tokens": [
+      "0x8a9e9Ad05010aD980a1d24b61bC2a099B13D42a2"
+    ],
+    "poll-interval-secs": 5,
+    "evm-confirmation-blocks": 12
   }
 }
 

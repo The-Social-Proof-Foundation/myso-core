@@ -21,6 +21,14 @@ use alloy::sol;
 use alloy::sol_types::SolEventInterface;
 use myso_types::base_types::MySoAddress;
 use myso_types::bridge::BridgeChainId;
+
+sol! {
+    #[sol(rpc)]
+    interface NativeBridgeAssets {
+        function nativeToken() external view returns (address);
+        function nativeAdapter() external view returns (address);
+    }
+}
 use serde::{Deserialize, Serialize};
 
 macro_rules! gen_eth_events {

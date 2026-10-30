@@ -67,7 +67,9 @@ impl DepositAddressManager {
         index: u32,
     ) -> BridgeResult<(MySoAddress, MySoKeyPair)> {
         let mut derivation_data = Vec::new();
-        derivation_data.extend_from_slice(self.master_key.public().as_bytes());
+        // Child signing keys must depend on secret material, never the public
+        // committee key. Domain separation also keeps EVM/MySo children distinct.
+        derivation_data.extend_from_slice(self.master_key.copy().private().as_bytes());
         derivation_data.extend_from_slice(b"myso_deposit");
         derivation_data.extend_from_slice(&index.to_be_bytes());
 
@@ -137,8 +139,8 @@ mod tests {
     use super::*;
     use myso_types::crypto::get_key_pair;
 
-    #[test]
-    fn test_evm_derivation_deterministic() {
+    #[tokio::test]
+    async fn test_evm_derivation_deterministic() {
         let (_, master_key): (_, Secp256k1KeyPair) = get_key_pair();
         let temp_dir = tempfile::tempdir().unwrap();
         let store = BridgeOrchestratorTables::new(temp_dir.path());
@@ -153,8 +155,8 @@ mod tests {
         assert_ne!(addr1, addr3);
     }
 
-    #[test]
-    fn test_myso_derivation_deterministic() {
+    #[tokio::test]
+    async fn test_myso_derivation_deterministic() {
         let (_, master_key): (_, Secp256k1KeyPair) = get_key_pair();
         let temp_dir = tempfile::tempdir().unwrap();
         let store = BridgeOrchestratorTables::new(temp_dir.path());
@@ -167,10 +169,18 @@ mod tests {
 
         let (addr3, _) = manager.derive_myso_deposit_address(1).unwrap();
         assert_ne!(addr1, addr3);
+
+        let mut public_derivation = manager.master_key.public().as_bytes().to_vec();
+        public_derivation.extend_from_slice(b"myso_deposit");
+        public_derivation.extend_from_slice(&0u32.to_be_bytes());
+        let public_hash = Keccak256::digest(&public_derivation);
+        let public_key =
+            Secp256k1KeyPair::from(Secp256k1PrivateKey::from_bytes(&public_hash.digest).unwrap());
+        assert_ne!(addr1, MySoAddress::from(public_key.public()));
     }
 
-    #[test]
-    fn test_index_allocation() {
+    #[tokio::test]
+    async fn test_index_allocation() {
         let (_, master_key): (_, Secp256k1KeyPair) = get_key_pair();
         let temp_dir = tempfile::tempdir().unwrap();
         let store = BridgeOrchestratorTables::new(temp_dir.path());

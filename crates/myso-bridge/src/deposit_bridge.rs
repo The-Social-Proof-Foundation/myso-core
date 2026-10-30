@@ -6,7 +6,7 @@
 //! Handles deposits to our addresses and automatically calls bridge contracts
 //! Supports both EVM→MySo and MySo→EVM flows.
 
-use crate::abi::{EthBridgeConfig, EthERC20, EthMySoBridge};
+use crate::abi::{EthBridgeConfig, EthERC20, EthMySoBridge, NativeBridgeAssets};
 use crate::deposit_addresses::DepositAddressManager;
 use crate::deposit_callback::spawn_status_webhook;
 use crate::deposit_gas_manager::DepositGasManager;
@@ -369,6 +369,14 @@ impl DepositBridgeHandler {
             .try_into()
             .map_err(|_| BridgeError::Generic("Invalid destination address length".to_string()))?;
         let hd_index = recipient_info.hd_index;
+        if !self
+            .address_manager
+            .verify_myso_deposit_address(&event.recipient, hd_index)?
+        {
+            return Err(BridgeError::Generic(
+                "Legacy MySo deposit address requires migration".into(),
+            ));
+        }
 
         let coin_type_tag = parse_myso_type_tag(&event.coin_type).map_err(|e| {
             BridgeError::Generic(format!("Invalid coin type '{}': {:?}", event.coin_type, e))
@@ -694,6 +702,16 @@ impl DepositBridgeHandler {
     }
 
     async fn evm_address_for_token_id(&self, token_id: u8) -> Option<String> {
+        if token_id == TOKEN_ID_MYSO
+            && let Some(token) = native_deposit_token(
+                self.eth_provider.clone(),
+                self.eth_bridge_address,
+                self.eth_bridge_config_address,
+            )
+            .await
+        {
+            return Some(format!("{token:?}"));
+        }
         let config =
             EthBridgeConfig::new(self.eth_bridge_config_address, self.eth_provider.clone());
         config
@@ -710,6 +728,25 @@ impl DepositBridgeHandler {
             if let Some(&token_id) = cache.get(&token_address) {
                 return Ok(token_id);
             }
+        }
+
+        // The native bridge registers its metadata adapter, while ERC20 Transfer
+        // logs and approvals use the underlying token. Validate both getters
+        // against the registry before accepting that token as id zero.
+        if !token_address.is_zero()
+            && native_deposit_token(
+                self.eth_provider.clone(),
+                self.eth_bridge_address,
+                self.eth_bridge_config_address,
+            )
+            .await
+                == Some(token_address)
+        {
+            self.token_address_to_id
+                .write()
+                .await
+                .insert(token_address, TOKEN_ID_MYSO);
+            return Ok(TOKEN_ID_MYSO);
         }
 
         let config =
@@ -737,6 +774,22 @@ impl DepositBridgeHandler {
     }
 }
 
+async fn native_deposit_token(
+    provider: EthProvider,
+    bridge_address: EthAddress,
+    config_address: EthAddress,
+) -> Option<EthAddress> {
+    let bridge = NativeBridgeAssets::new(bridge_address, provider.clone());
+    let token = bridge.nativeToken().call().await.ok()?;
+    let adapter = bridge.nativeAdapter().call().await.ok()?;
+    let registered = EthBridgeConfig::new(config_address, provider)
+        .tokenAddressOf(TOKEN_ID_MYSO)
+        .call()
+        .await
+        .ok()?;
+    (!token.is_zero() && !adapter.is_zero() && adapter == registered).then_some(token)
+}
+
 fn token_id_for_myso_type(
     map: &HashMap<u8, TypeTag>,
     ty: &TypeTag,
@@ -748,4 +801,60 @@ fn token_id_for_myso_type(
     map.iter()
         .find(|(_, mapped)| *mapped == ty)
         .map(|(id, _)| *id)
+}
+
+#[cfg(test)]
+mod native_deposit_asset_tests {
+    use super::*;
+    use crate::eth_mock_provider::EthMockService;
+    use alloy::primitives::Bytes;
+    use alloy::sol_types::SolValue;
+
+    #[tokio::test]
+    async fn native_deposit_token_requires_matching_registered_adapter() {
+        let mock = EthMockService::new();
+        let provider = mock.as_provider();
+        let bridge_address = EthAddress::repeat_byte(1);
+        let config_address = EthAddress::repeat_byte(2);
+        let adapter = EthAddress::repeat_byte(3);
+        let underlying = EthAddress::repeat_byte(4);
+        let bridge = NativeBridgeAssets::new(bridge_address, provider.clone());
+        let token_call = bridge.nativeToken().into_transaction_request();
+        let adapter_call = bridge.nativeAdapter().into_transaction_request();
+        let registry_call = EthBridgeConfig::new(config_address, provider.clone())
+            .tokenAddressOf(TOKEN_ID_MYSO)
+            .into_transaction_request();
+        mock.add_response::<_, Bytes, _>(
+            "eth_call",
+            (token_call, "latest"),
+            Bytes::from(underlying.abi_encode()),
+        )
+        .unwrap();
+        mock.add_response::<_, Bytes, _>(
+            "eth_call",
+            (adapter_call, "latest"),
+            Bytes::from(adapter.abi_encode()),
+        )
+        .unwrap();
+        mock.add_response::<_, Bytes, _>(
+            "eth_call",
+            (registry_call.clone(), "latest"),
+            Bytes::from(adapter.abi_encode()),
+        )
+        .unwrap();
+        assert_eq!(
+            native_deposit_token(provider.clone(), bridge_address, config_address).await,
+            Some(underlying)
+        );
+        mock.add_response::<_, Bytes, _>(
+            "eth_call",
+            (registry_call, "latest"),
+            Bytes::from(EthAddress::repeat_byte(5).abi_encode()),
+        )
+        .unwrap();
+        assert_eq!(
+            native_deposit_token(provider, bridge_address, config_address).await,
+            None
+        );
+    }
 }
