@@ -10,7 +10,7 @@ use myso_types::base_types::{MySoAddress, ObjectRef};
 use myso_types::bridge::{
     BRIDGE_CREATE_ADD_TOKEN_ON_MYSO_MESSAGE_FUNCTION_NAME,
     BRIDGE_EXECUTE_SYSTEM_MESSAGE_FUNCTION_NAME, BRIDGE_MESSAGE_MODULE_NAME, BRIDGE_MODULE_NAME,
-    TOKEN_ID_USDC,
+    TOKEN_ID_MYSO, TOKEN_ID_USDC,
 };
 use myso_types::programmable_transaction_builder::ProgrammableTransactionBuilder;
 use myso_types::transaction::CallArg;
@@ -363,17 +363,29 @@ fn build_token_bridge_approve_transaction(
     );
 
     if claim {
-        let token_tag = myso_token_type_tags
-            .get(&token_type)
-            .ok_or(BridgeError::UnknownTokenId(token_type))?
-            .clone();
-        builder.programmable_move_call(
-            BRIDGE_PACKAGE_ID,
-            myso_types::bridge::BRIDGE_MODULE_NAME.to_owned(),
-            ident_str!("claim_and_transfer_token").to_owned(),
-            vec![token_tag],
-            vec![arg_bridge, arg_clock, source_chain, seq_num],
-        );
+        // Native MySo (id 0) must use claim_and_transfer_myso_token; claim_and_transfer_token
+        // routes to claim_token_internal which aborts with EMustUseClaimMySoToken (21).
+        if token_type == TOKEN_ID_MYSO {
+            builder.programmable_move_call(
+                BRIDGE_PACKAGE_ID,
+                myso_types::bridge::BRIDGE_MODULE_NAME.to_owned(),
+                ident_str!("claim_and_transfer_myso_token").to_owned(),
+                vec![],
+                vec![arg_bridge, arg_clock, source_chain, seq_num],
+            );
+        } else {
+            let token_tag = myso_token_type_tags
+                .get(&token_type)
+                .ok_or(BridgeError::UnknownTokenId(token_type))?
+                .clone();
+            builder.programmable_move_call(
+                BRIDGE_PACKAGE_ID,
+                myso_types::bridge::BRIDGE_MODULE_NAME.to_owned(),
+                ident_str!("claim_and_transfer_token").to_owned(),
+                vec![token_tag],
+                vec![arg_bridge, arg_clock, source_chain, seq_num],
+            );
+        }
     }
 
     let pt = builder.finish();
