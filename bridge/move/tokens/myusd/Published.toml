@@ -10,3 +10,12 @@ version = 1
 toolchain-version = "0.0.1"
 build-config = { flavor = "myso", edition = "2024" }
 upgrade-capability = "0x84128b2cd6ca34dfe6ba33fd22d3b1c796ded22fa40343bd5d8eb68922615830"
+
+[published.testnet]
+chain-id = "4a7fb537"
+published-at = "0xf862bc40fe05aa0b6779ff7894f0c46a6bed19d179f68116119b9d222a32fb19"
+original-id = "0xf862bc40fe05aa0b6779ff7894f0c46a6bed19d179f68116119b9d222a32fb19"
+version = 1
+toolchain-version = "0.0.1"
+build-config = { flavor = "myso", edition = "2024" }
+upgrade-capability = "0x2da0b44a0d007b8eba788e6aac0e531a606a49bc070a43dd8c96e7984b58281d"
