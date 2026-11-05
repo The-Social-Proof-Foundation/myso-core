@@ -4,6 +4,11 @@ title: Module `social_contracts::poc_username_beneficiary`
 
 
 
+-  [Struct `PendingBeneficiaryTransferKey`](#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey)
+-  [Struct `AcceptedBeneficiaryTransferKey`](#social_contracts_poc_username_beneficiary_AcceptedBeneficiaryTransferKey)
+-  [Struct `PendingBeneficiaryTransfer`](#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransfer)
+-  [Struct `UsernameBeneficiaryTransferProposedEvent`](#social_contracts_poc_username_beneficiary_UsernameBeneficiaryTransferProposedEvent)
+-  [Struct `UsernameBeneficiaryTransferAcceptedEvent`](#social_contracts_poc_username_beneficiary_UsernameBeneficiaryTransferAcceptedEvent)
 -  [Struct `PoCBeneficiaryAdminCap`](#social_contracts_poc_username_beneficiary_PoCBeneficiaryAdminCap)
 -  [Struct `CreatorIdentityKey`](#social_contracts_poc_username_beneficiary_CreatorIdentityKey)
 -  [Struct `VerificationRequirements`](#social_contracts_poc_username_beneficiary_VerificationRequirements)
@@ -12,6 +17,8 @@ title: Module `social_contracts::poc_username_beneficiary`
 -  [Struct `PoCUsernameBeneficiary`](#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary)
 -  [Struct `UsernameBeneficiaryProvisionedEvent`](#social_contracts_poc_username_beneficiary_UsernameBeneficiaryProvisionedEvent)
 -  [Struct `UsernameBeneficiaryClaimedEvent`](#social_contracts_poc_username_beneficiary_UsernameBeneficiaryClaimedEvent)
+-  [Struct `ReservedUsernameAdoptedEvent`](#social_contracts_poc_username_beneficiary_ReservedUsernameAdoptedEvent)
+-  [Struct `ReservedUsernameReleasedEvent`](#social_contracts_poc_username_beneficiary_ReservedUsernameReleasedEvent)
 -  [Struct `UsernameBeneficiaryEndedEvent`](#social_contracts_poc_username_beneficiary_UsernameBeneficiaryEndedEvent)
 -  [Struct `UsernameBeneficiaryConflictEvent`](#social_contracts_poc_username_beneficiary_UsernameBeneficiaryConflictEvent)
 -  [Struct `CreatorIdentityWalletLinkedEvent`](#social_contracts_poc_username_beneficiary_CreatorIdentityWalletLinkedEvent)
@@ -33,11 +40,20 @@ title: Module `social_contracts::poc_username_beneficiary`
 -  [Function `username_beneficiary_username`](#social_contracts_poc_username_beneficiary_username_beneficiary_username)
 -  [Function `canonical_username`](#social_contracts_poc_username_beneficiary_canonical_username)
 -  [Function `canonical_x_handle`](#social_contracts_poc_username_beneficiary_canonical_x_handle)
+-  [Function `copy_bytes`](#social_contracts_poc_username_beneficiary_copy_bytes)
 -  [Function `beneficiary_status`](#social_contracts_poc_username_beneficiary_beneficiary_status)
+-  [Function `propose_transfer`](#social_contracts_poc_username_beneficiary_propose_transfer)
+-  [Function `accept_transfer`](#social_contracts_poc_username_beneficiary_accept_transfer)
 -  [Function `identity_key`](#social_contracts_poc_username_beneficiary_identity_key)
 -  [Function `emit_username_conflict`](#social_contracts_poc_username_beneficiary_emit_username_conflict)
 -  [Function `create_username_beneficiary`](#social_contracts_poc_username_beneficiary_create_username_beneficiary)
 -  [Function `claim_username_beneficiary`](#social_contracts_poc_username_beneficiary_claim_username_beneficiary)
+-  [Function `adopt_reserved_username`](#social_contracts_poc_username_beneficiary_adopt_reserved_username)
+-  [Function `release_reserved_username`](#social_contracts_poc_username_beneficiary_release_reserved_username)
+-  [Function `assert_reserved_for`](#social_contracts_poc_username_beneficiary_assert_reserved_for)
+-  [Function `linked_wallet`](#social_contracts_poc_username_beneficiary_linked_wallet)
+-  [Function `reserved_for`](#social_contracts_poc_username_beneficiary_reserved_for)
+-  [Function `claimed_profile_id`](#social_contracts_poc_username_beneficiary_claimed_profile_id)
 -  [Function `claim_username_beneficiary_vault_balance`](#social_contracts_poc_username_beneficiary_claim_username_beneficiary_vault_balance)
 -  [Function `end_username_beneficiary`](#social_contracts_poc_username_beneficiary_end_username_beneficiary)
 -  [Function `migrate_poc_username_beneficiary_directory`](#social_contracts_poc_username_beneficiary_migrate_poc_username_beneficiary_directory)
@@ -100,6 +116,186 @@ title: Module `social_contracts::poc_username_beneficiary`
 </code></pre>
 
 
+
+<a name="social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey"></a>
+
+## Struct `PendingBeneficiaryTransferKey`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_AcceptedBeneficiaryTransferKey"></a>
+
+## Struct `AcceptedBeneficiaryTransferKey`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_AcceptedBeneficiaryTransferKey">AcceptedBeneficiaryTransferKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_PendingBeneficiaryTransfer"></a>
+
+## Struct `PendingBeneficiaryTransfer`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransfer">PendingBeneficiaryTransfer</a> <b>has</b> drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>evidence_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposed_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_UsernameBeneficiaryTransferProposedEvent"></a>
+
+## Struct `UsernameBeneficiaryTransferProposedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_UsernameBeneficiaryTransferProposedEvent">UsernameBeneficiaryTransferProposedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>beneficiary_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>identity_source: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>identity_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>evidence_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposed_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposed_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_UsernameBeneficiaryTransferAcceptedEvent"></a>
+
+## Struct `UsernameBeneficiaryTransferAcceptedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_UsernameBeneficiaryTransferAcceptedEvent">UsernameBeneficiaryTransferAcceptedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>beneficiary_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>identity_source: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>identity_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>accepted_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
 
 <a name="social_contracts_poc_username_beneficiary_PoCBeneficiaryAdminCap"></a>
 
@@ -319,7 +515,7 @@ Admin capability for username beneficiary provisioning lifecycle.
 <dd>
 </dd>
 <dt>
-<code>claimed_profile_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+<code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_claimed_profile_id">claimed_profile_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -382,6 +578,21 @@ Admin capability for username beneficiary provisioning lifecycle.
 <code>join_referral_paid_at: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
 </dt>
 <dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+ The creator's recipient wallet, set at claim (the <code>wallet</code> argument, i.e. the accepted
+ transfer recipient when one exists). Never cleared — vault access keys off it.
+ Distinct from <code>claimed_by</code>, which is the oracle that sent the claim.
+</dd>
+<dt>
+<code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+ Set when the claim found an existing profile on <code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a></code>: the username stays
+ locked for that wallet until it calls <code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_adopt_reserved_username">adopt_reserved_username</a></code> or <code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_release_reserved_username">release_reserved_username</a></code>.
 </dd>
 <dt>
 <code>version: u64</code>
@@ -463,6 +674,8 @@ Admin capability for username beneficiary provisioning lifecycle.
 
 ## Struct `UsernameBeneficiaryClaimedEvent`
 
+<code>profile_id</code> is set when the claim created the creator's profile; <code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a></code> is set
+instead when <code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a></code> already had a profile and the username is held for it.
 
 
 <pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_UsernameBeneficiaryClaimedEvent">UsernameBeneficiaryClaimedEvent</a> <b>has</b> <b>copy</b>, drop
@@ -486,7 +699,7 @@ Admin capability for username beneficiary provisioning lifecycle.
 <dd>
 </dd>
 <dt>
-<code>profile_id: <b>address</b></code>
+<code>profile_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -496,7 +709,12 @@ Admin capability for username beneficiary provisioning lifecycle.
 <dd>
 </dd>
 <dt>
-<code>wallet: <b>address</b></code>
+<code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -507,6 +725,98 @@ Admin capability for username beneficiary provisioning lifecycle.
 </dd>
 <dt>
 <code>claimed_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_ReservedUsernameAdoptedEvent"></a>
+
+## Struct `ReservedUsernameAdoptedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_ReservedUsernameAdoptedEvent">ReservedUsernameAdoptedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>beneficiary_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>old_username: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>profile_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>wallet: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>adopted_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_ReservedUsernameReleasedEvent"></a>
+
+## Struct `ReservedUsernameReleasedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_ReservedUsernameReleasedEvent">ReservedUsernameReleasedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>beneficiary_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>username: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>wallet: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>released_at: u64</code>
 </dt>
 <dd>
 </dd>
@@ -703,6 +1013,33 @@ Admin capability for username beneficiary provisioning lifecycle.
 
 
 <pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_END_REASON_ADMIN">END_REASON_ADMIN</a>: u8 = 1;
+</code></pre>
+
+
+
+<a name="social_contracts_poc_username_beneficiary_EInvalidRecipient"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidRecipient">EInvalidRecipient</a>: u64 = 12;
+</code></pre>
+
+
+
+<a name="social_contracts_poc_username_beneficiary_ETransferNotAccepted"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_ETransferNotAccepted">ETransferNotAccepted</a>: u64 = 13;
+</code></pre>
+
+
+
+<a name="social_contracts_poc_username_beneficiary_ENotReservedForSender"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_ENotReservedForSender">ENotReservedForSender</a>: u64 = 14;
 </code></pre>
 
 
@@ -1269,6 +1606,36 @@ Admin capability for username beneficiary provisioning lifecycle.
 
 </details>
 
+<a name="social_contracts_poc_username_beneficiary_copy_bytes"></a>
+
+## Function `copy_bytes`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_copy_bytes">copy_bytes</a>(bytes: &vector&lt;u8&gt;): vector&lt;u8&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_copy_bytes">copy_bytes</a>(bytes: &vector&lt;u8&gt;): vector&lt;u8&gt; {
+    <b>let</b> <b>mut</b> result = vector::empty&lt;u8&gt;();
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; vector::length(bytes)) {
+        vector::push_back(&<b>mut</b> result, *vector::borrow(bytes, i));
+        i = i + 1;
+    };
+    result
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_poc_username_beneficiary_beneficiary_status"></a>
 
 ## Function `beneficiary_status`
@@ -1286,6 +1653,107 @@ Admin capability for username beneficiary provisioning lifecycle.
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_beneficiary_status">beneficiary_status</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>): u8 {
     beneficiary.status
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_propose_transfer"></a>
+
+## Function `propose_transfer`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_propose_transfer">propose_transfer</a>(beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>, recipient: <b>address</b>, evidence_hash: vector&lt;u8&gt;, attested_x_handle: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_propose_transfer">propose_transfer</a>(
+    beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>,
+    recipient: <b>address</b>,
+    evidence_hash: vector&lt;u8&gt;,
+    attested_x_handle: vector&lt;u8&gt;,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary);
+    <b>assert</b>!(beneficiary.status == <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidStatus">EInvalidStatus</a>);
+    <b>assert</b>!(recipient != @0x0 && recipient != beneficiary.beneficiary_address, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidRecipient">EInvalidRecipient</a>);
+    <b>assert</b>!(vector::length(&evidence_hash) == 32, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EVerificationFailed">EVerificationFailed</a>);
+    <b>assert</b>!(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_canonical_x_handle">canonical_x_handle</a>(attested_x_handle) == beneficiary.verification.required_x_handle, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EVerificationFailed">EVerificationFailed</a>);
+    <b>assert</b>!(
+        !dynamic_field::exists_&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_AcceptedBeneficiaryTransferKey">AcceptedBeneficiaryTransferKey</a>&gt;(&beneficiary.id, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_AcceptedBeneficiaryTransferKey">AcceptedBeneficiaryTransferKey</a> {}),
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidStatus">EInvalidStatus</a>,
+    );
+    <b>let</b> pending_key = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a> {};
+    <b>if</b> (dynamic_field::exists_&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a>&gt;(&beneficiary.id, pending_key)) {
+        <b>let</b> _old = dynamic_field::remove&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransfer">PendingBeneficiaryTransfer</a>&gt;(&<b>mut</b> beneficiary.id, pending_key);
+    };
+    <b>let</b> proposed_at = clock::timestamp_ms(clock);
+    dynamic_field::add(
+        &<b>mut</b> beneficiary.id,
+        pending_key,
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransfer">PendingBeneficiaryTransfer</a> { recipient, evidence_hash: <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_copy_bytes">copy_bytes</a>(&evidence_hash), proposed_at },
+    );
+    event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_UsernameBeneficiaryTransferProposedEvent">UsernameBeneficiaryTransferProposedEvent</a> {
+        beneficiary_id: object::id_to_address(&object::id(beneficiary)),
+        identity_source: beneficiary.creator_identity.source,
+        identity_hash: <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_copy_bytes">copy_bytes</a>(&beneficiary.creator_identity.identity_hash),
+        recipient,
+        evidence_hash,
+        proposed_by: tx_context::sender(ctx),
+        proposed_at,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_accept_transfer"></a>
+
+## Function `accept_transfer`
+
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_accept_transfer">accept_transfer</a>(beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_accept_transfer">accept_transfer</a>(
+    beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary);
+    <b>assert</b>!(beneficiary.status == <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidStatus">EInvalidStatus</a>);
+    <b>let</b> pending_key = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a> {};
+    <b>assert</b>!(dynamic_field::exists_&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a>&gt;(&beneficiary.id, pending_key), <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_ETransferNotAccepted">ETransferNotAccepted</a>);
+    <b>let</b> pending = dynamic_field::borrow&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransfer">PendingBeneficiaryTransfer</a>&gt;(&beneficiary.id, pending_key);
+    <b>let</b> recipient = pending.recipient;
+    <b>assert</b>!(tx_context::sender(ctx) == recipient, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> _pending = dynamic_field::remove&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransfer">PendingBeneficiaryTransfer</a>&gt;(&<b>mut</b> beneficiary.id, pending_key);
+    dynamic_field::add(&<b>mut</b> beneficiary.id, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_AcceptedBeneficiaryTransferKey">AcceptedBeneficiaryTransferKey</a> {}, recipient);
+    event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_UsernameBeneficiaryTransferAcceptedEvent">UsernameBeneficiaryTransferAcceptedEvent</a> {
+        beneficiary_id: object::id_to_address(&object::id(beneficiary)),
+        identity_source: beneficiary.creator_identity.source,
+        identity_hash: <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_copy_bytes">copy_bytes</a>(&beneficiary.creator_identity.identity_hash),
+        recipient,
+        accepted_at: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 
@@ -1417,7 +1885,7 @@ Admin capability for username beneficiary provisioning lifecycle.
         verification: <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_VerificationRequirements">VerificationRequirements</a> { required_x_handle },
         provisioned_at: now,
         status: <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_ACTIVE">STATUS_ACTIVE</a>,
-        claimed_profile_id: option::none(),
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_claimed_profile_id">claimed_profile_id</a>: option::none(),
         claimed_by: option::none(),
         claimed_at: option::none(),
         ended_at: option::none(),
@@ -1430,6 +1898,8 @@ Admin capability for username beneficiary provisioning lifecycle.
         join_referral_paid: <b>false</b>,
         join_referrer: option::none(),
         join_referral_paid_at: option::none(),
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>: option::none(),
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>: option::none(),
         version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
     };
     <b>let</b> beneficiary_id = object::id(&beneficiary);
@@ -1494,6 +1964,16 @@ Admin capability for username beneficiary provisioning lifecycle.
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary);
     <b>assert</b>!(beneficiary.status == <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_ACTIVE">STATUS_ACTIVE</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidStatus">EInvalidStatus</a>);
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_matches_username">assert_shard_matches_username</a>(shard, &beneficiary.username);
+    <b>let</b> accepted_key = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_AcceptedBeneficiaryTransferKey">AcceptedBeneficiaryTransferKey</a> {};
+    <b>if</b> (dynamic_field::exists_&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_AcceptedBeneficiaryTransferKey">AcceptedBeneficiaryTransferKey</a>&gt;(&beneficiary.id, accepted_key)) {
+        <b>let</b> accepted_recipient = *dynamic_field::borrow&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_AcceptedBeneficiaryTransferKey">AcceptedBeneficiaryTransferKey</a>, <b>address</b>&gt;(&beneficiary.id, accepted_key);
+        <b>assert</b>!(wallet == accepted_recipient, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EUnauthorized">EUnauthorized</a>);
+    } <b>else</b> {
+        <b>assert</b>!(
+            !dynamic_field::exists_&lt;<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a>&gt;(&beneficiary.id, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PendingBeneficiaryTransferKey">PendingBeneficiaryTransferKey</a> {}),
+            <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_ETransferNotAccepted">ETransferNotAccepted</a>,
+        );
+    };
     <b>let</b> attested = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_canonical_x_handle">canonical_x_handle</a>(attested_x_handle);
     <b>assert</b>!(
         attested == beneficiary.verification.required_x_handle,
@@ -1503,31 +1983,44 @@ Admin capability for username beneficiary provisioning lifecycle.
         !table::contains(&directory.wallet_by_identity, beneficiary.creator_identity),
         <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWalletAlreadyLinked">EWalletAlreadyLinked</a>
     );
-    <b>let</b> profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_from_beneficiary_claim">profile::create_profile_from_beneficiary_claim</a>(
-        username_registry,
-        profile_config,
-        memory_registry,
-        ai_credit_config,
-        display_name,
-        beneficiary.username,
-        bio,
-        profile_picture_url,
-        cover_photo_url,
-        wallet,
-        clock,
-        ctx,
-    );
+    // A wallet that already <b>has</b> a <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> keeps it: the identity + vault link still happens and
+    // the username stays locked <b>for</b> that wallet (adopt or release later, owner-signed).
+    <b>let</b> has_profile = option::is_some(&<a href="../social_contracts/profile.md#social_contracts_profile_lookup_profile_by_owner">profile::lookup_profile_by_owner</a>(username_registry, wallet));
+    <b>let</b> (profile_id, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>) = <b>if</b> (has_profile) {
+        (option::none&lt;<b>address</b>&gt;(), option::some(wallet))
+    } <b>else</b> {
+        <b>let</b> created = <a href="../social_contracts/profile.md#social_contracts_profile_create_profile_from_beneficiary_claim">profile::create_profile_from_beneficiary_claim</a>(
+            username_registry,
+            profile_config,
+            memory_registry,
+            ai_credit_config,
+            display_name,
+            beneficiary.username,
+            bio,
+            profile_picture_url,
+            cover_photo_url,
+            wallet,
+            clock,
+            ctx,
+        );
+        (option::some(created), option::none&lt;<b>address</b>&gt;())
+    };
     <b>let</b> now = clock::timestamp_ms(clock);
     beneficiary.status = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_CLAIMED">STATUS_CLAIMED</a>;
-    beneficiary.claimed_profile_id = option::some(profile_id);
+    beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_claimed_profile_id">claimed_profile_id</a> = profile_id;
     beneficiary.claimed_by = option::some(tx_context::sender(ctx));
     beneficiary.claimed_at = option::some(now);
     beneficiary.oracle_evidence_hash = evidence_hash;
+    beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a> = option::some(wallet);
+    beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a> = <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>;
     table::add(&<b>mut</b> directory.wallet_by_identity, beneficiary.creator_identity, wallet);
-    <b>if</b> (table::contains(&shard.username_to_beneficiary, beneficiary.username)) {
-        table::remove(&<b>mut</b> shard.username_to_beneficiary, beneficiary.username);
+    <b>if</b> (!has_profile) {
+        // The <a href="../social_contracts/profile.md#social_contracts_profile">profile</a> now owns the username; no reservation remains.
+        <b>if</b> (table::contains(&shard.username_to_beneficiary, beneficiary.username)) {
+            table::remove(&<b>mut</b> shard.username_to_beneficiary, beneficiary.username);
+        };
+        <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_for_beneficiary">profile::unlock_username_for_beneficiary</a>(username_registry, beneficiary.username);
     };
-    <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_for_beneficiary">profile::unlock_username_for_beneficiary</a>(username_registry, beneficiary.username);
     <b>let</b> beneficiary_id = object::id_to_address(&object::id(beneficiary));
     event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_CreatorIdentityWalletLinkedEvent">CreatorIdentityWalletLinkedEvent</a> {
         creator_identity_source: beneficiary.creator_identity.source,
@@ -1541,10 +2034,216 @@ Admin capability for username beneficiary provisioning lifecycle.
         username: beneficiary.username,
         profile_id,
         claimed_by: tx_context::sender(ctx),
-        wallet,
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>: wallet,
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>,
         oracle_evidence_hash: beneficiary.oracle_evidence_hash,
         claimed_at: now,
     });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_adopt_reserved_username"></a>
+
+## Function `adopt_reserved_username`
+
+The reserved wallet takes the beneficiary username onto its existing profile
+(its current username, if any, is freed). Owner-signed; no oracle needed.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_adopt_reserved_username">adopt_reserved_username</a>(shard: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryShard</a>, username_registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_adopt_reserved_username">adopt_reserved_username</a>(
+    shard: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">PoCUsernameBeneficiaryShard</a>,
+    username_registry: &<b>mut</b> UsernameRegistry,
+    beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_version">assert_shard_version</a>(shard);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary);
+    <b>assert</b>!(beneficiary.status == <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_CLAIMED">STATUS_CLAIMED</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidStatus">EInvalidStatus</a>);
+    <b>let</b> wallet = tx_context::sender(ctx);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_reserved_for">assert_reserved_for</a>(beneficiary, wallet);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_matches_username">assert_shard_matches_username</a>(shard, &beneficiary.username);
+    <b>let</b> profile_id = <a href="../social_contracts/profile.md#social_contracts_profile_profile_id_for_owner">profile::profile_id_for_owner</a>(username_registry, wallet);
+    <b>let</b> old_username = <a href="../social_contracts/profile.md#social_contracts_profile_reassign_username_for_beneficiary">profile::reassign_username_for_beneficiary</a>(
+        username_registry,
+        profile_id,
+        beneficiary.username,
+        wallet,
+    );
+    beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_claimed_profile_id">claimed_profile_id</a> = option::some(profile_id);
+    beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a> = option::none();
+    <b>if</b> (table::contains(&shard.username_to_beneficiary, beneficiary.username)) {
+        table::remove(&<b>mut</b> shard.username_to_beneficiary, beneficiary.username);
+    };
+    event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_ReservedUsernameAdoptedEvent">ReservedUsernameAdoptedEvent</a> {
+        beneficiary_id: object::id_to_address(&object::id(beneficiary)),
+        username: beneficiary.username,
+        old_username,
+        profile_id,
+        wallet,
+        adopted_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_release_reserved_username"></a>
+
+## Function `release_reserved_username`
+
+The reserved wallet declines the username: the lock is released for anyone to claim.
+The identity/vault link (<code><a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a></code>) is unaffected.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_release_reserved_username">release_reserved_username</a>(shard: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiaryShard</a>, username_registry: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_release_reserved_username">release_reserved_username</a>(
+    shard: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiaryShard">PoCUsernameBeneficiaryShard</a>,
+    username_registry: &<b>mut</b> UsernameRegistry,
+    beneficiary: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_version">assert_shard_version</a>(shard);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_beneficiary_version">assert_beneficiary_version</a>(beneficiary);
+    <b>assert</b>!(beneficiary.status == <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_STATUS_CLAIMED">STATUS_CLAIMED</a>, <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EInvalidStatus">EInvalidStatus</a>);
+    <b>let</b> wallet = tx_context::sender(ctx);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_reserved_for">assert_reserved_for</a>(beneficiary, wallet);
+    <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_shard_matches_username">assert_shard_matches_username</a>(shard, &beneficiary.username);
+    <a href="../social_contracts/profile.md#social_contracts_profile_unlock_username_for_beneficiary">profile::unlock_username_for_beneficiary</a>(username_registry, beneficiary.username);
+    beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a> = option::none();
+    <b>if</b> (table::contains(&shard.username_to_beneficiary, beneficiary.username)) {
+        table::remove(&<b>mut</b> shard.username_to_beneficiary, beneficiary.username);
+    };
+    event::emit(<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_ReservedUsernameReleasedEvent">ReservedUsernameReleasedEvent</a> {
+        beneficiary_id: object::id_to_address(&object::id(beneficiary)),
+        username: beneficiary.username,
+        wallet,
+        released_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_assert_reserved_for"></a>
+
+## Function `assert_reserved_for`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_reserved_for">assert_reserved_for</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>, wallet: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_assert_reserved_for">assert_reserved_for</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>, wallet: <b>address</b>) {
+    <b>assert</b>!(
+        option::is_some(&beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>)
+            && *option::borrow(&beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>) == wallet,
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_ENotReservedForSender">ENotReservedForSender</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_linked_wallet"></a>
+
+## Function `linked_wallet`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>): Option&lt;<b>address</b>&gt; {
+    beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_reserved_for"></a>
+
+## Function `reserved_for`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>): Option&lt;<b>address</b>&gt; {
+    beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_reserved_for">reserved_for</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_poc_username_beneficiary_claimed_profile_id"></a>
+
+## Function `claimed_profile_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_claimed_profile_id">claimed_profile_id</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">social_contracts::poc_username_beneficiary::PoCUsernameBeneficiary</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_claimed_profile_id">claimed_profile_id</a>(beneficiary: &<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_PoCUsernameBeneficiary">PoCUsernameBeneficiary</a>): Option&lt;<b>address</b>&gt; {
+    beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_claimed_profile_id">claimed_profile_id</a>
 }
 </code></pre>
 
@@ -1586,9 +2285,16 @@ Admin capability for username beneficiary provisioning lifecycle.
         table::contains(&directory.wallet_by_identity, beneficiary.creator_identity),
         <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWalletNotLinked">EWalletNotLinked</a>
     );
-    <b>let</b> linked_wallet = *table::borrow(
+    <b>let</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a> = *table::borrow(
         &directory.wallet_by_identity,
         beneficiary.creator_identity,
+    );
+    // Vault access keys off the recipient wallet recorded at claim, never the username,
+    // so it is unaffected by adopting or releasing a reserved username.
+    <b>assert</b>!(
+        option::is_some(&beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>)
+            && *option::borrow(&beneficiary.<a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>) == <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>,
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_EWalletNotLinked">EWalletNotLinked</a>
     );
     <b>assert</b>!(
         <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_vault_routes_to_beneficiary">poc_vault::vault_routes_to_beneficiary</a>(vault, beneficiary.beneficiary_address),
@@ -1600,7 +2306,7 @@ Admin capability for username beneficiary provisioning lifecycle.
     };
     <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_claim_vault_balance_for_linked_wallet">poc_vault::claim_vault_balance_for_linked_wallet</a>&lt;T&gt;(
         vault,
-        linked_wallet,
+        <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_username_beneficiary_linked_wallet">linked_wallet</a>,
         treasury,
         treasury_fee_bps,
         join_referral_bps,

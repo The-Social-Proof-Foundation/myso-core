@@ -103,6 +103,10 @@ pub struct NewProfileBadge {
     pub badge_type: i16,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+    /// `platform::EcosystemBadge` object id (ecosystem badges only).
+    pub badge_object_id: Option<String>,
+    /// Canonical X handle for the Verified X ecosystem badge.
+    pub badge_subject: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

@@ -364,6 +364,15 @@ impl SocialPgReader {
         crate::poc_username_beneficiary::get_by_id(&mut conn, beneficiary_id, &self.metrics).await
     }
 
+    pub async fn list_poc_username_beneficiaries_by_wallet(
+        &self,
+        wallet: &str,
+    ) -> anyhow::Result<Vec<crate::PocUsernameBeneficiaryRow>> {
+        let mut conn = self.connect().await?;
+        crate::poc_username_beneficiary::list_by_linked_wallet(&mut conn, wallet, &self.metrics)
+            .await
+    }
+
     pub async fn list_poc_username_beneficiaries(
         &self,
         status: Option<i16>,
@@ -980,6 +989,20 @@ impl SocialPgReader {
     ) -> anyhow::Result<Vec<crate::profile::ProfileBadgeRow>> {
         let mut conn = self.connect().await?;
         get_profile_badges(&mut conn, address, limit, offset, &self.metrics).await
+    }
+
+    pub async fn get_owner_addresses_by_x_usernames(
+        &self,
+        usernames: &[String],
+    ) -> anyhow::Result<Vec<String>> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_owner_addresses_by_x_usernames(&mut conn, usernames, &self.metrics)
+            .await
+    }
+
+    pub async fn get_wallet_x_username(&self, wallet: &str) -> anyhow::Result<Option<String>> {
+        let mut conn = self.connect().await?;
+        crate::profile::get_wallet_x_username(&mut conn, wallet, &self.metrics).await
     }
 
     pub async fn get_wallet_platform_badges(

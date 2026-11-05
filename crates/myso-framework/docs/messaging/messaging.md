@@ -53,6 +53,7 @@ Messaging-specific:
 -  [Struct `MessagingNamespace`](#messaging_messaging_MessagingNamespace)
 -  [Struct `AgentGroupCreated`](#messaging_messaging_AgentGroupCreated)
 -  [Struct `AgentRoomBound`](#messaging_messaging_AgentRoomBound)
+-  [Struct `AgentRoomTaskBound`](#messaging_messaging_AgentRoomTaskBound)
 -  [Constants](#@Constants_2)
 -  [Function `init`](#messaging_messaging_init)
 -  [Function `create_genesis_objects`](#messaging_messaging_create_genesis_objects)
@@ -63,6 +64,8 @@ Messaging-specific:
     -  [Note](#@Note_5)
     -  [Aborts](#@Aborts_6)
 -  [Function `create_group_inner`](#messaging_messaging_create_group_inner)
+-  [Function `bind_agent_room_to_task`](#messaging_messaging_bind_agent_room_to_task)
+-  [Function `acting_is_task_party`](#messaging_messaging_acting_is_task_party)
 -  [Function `create_and_share_group`](#messaging_messaging_create_and_share_group)
     -  [Parameters](#@Parameters_7)
     -  [Note](#@Note_8)
@@ -551,6 +554,59 @@ Emitted right after [<code><a href="../messaging/messaging.md#messaging_messagin
 
 </details>
 
+<a name="messaging_messaging_AgentRoomTaskBound"></a>
+
+## Struct `AgentRoomTaskBound`
+
+Emitted when a task that already points at an agent room is linked back from the room.
+This is separate from <code><a href="../messaging/messaging.md#messaging_messaging_AgentRoomBound">AgentRoomBound</a></code>, which records room creation.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../messaging/messaging.md#messaging_messaging_AgentRoomTaskBound">AgentRoomTaskBound</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>group_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>task_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>binder_actor: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>binder_principal: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>bound_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_2"></a>
 
 ## Constants
@@ -665,6 +721,16 @@ Registered sub-agents must use <code><a href="../messaging/messaging.md#messagin
 
 
 <pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_EUnknownRoomKind">EUnknownRoomKind</a>: u64 = 10;
+</code></pre>
+
+
+
+<a name="messaging_messaging_EInvalidTaskRoomBinding"></a>
+
+The caller, task, or group does not satisfy the private task-room binding rules.
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_EInvalidTaskRoomBinding">EInvalidTaskRoomBinding</a>: u64 = 11;
 </code></pre>
 
 
@@ -1038,6 +1104,133 @@ members list.
     );
     <b>let</b> <a href="../messaging/message_log.md#messaging_message_log">message_log</a> = <a href="../messaging/message_log.md#messaging_message_log_new">message_log::new</a>(&<b>mut</b> namespace.id, uuid, object::id(&group), ctx);
     (group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, <a href="../messaging/message_log.md#messaging_message_log">message_log</a>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_bind_agent_room_to_task"></a>
+
+## Function `bind_agent_room_to_task`
+
+Completes the reverse side of a task-room link after task creation. The task must already
+point at this exact room, the caller must act for a task party, and both task principals
+must be able to read the room. Repeating the same bind is safe; rebinding is rejected.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_bind_agent_room_to_task">bind_agent_room_to_task</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, group: &<b>mut</b> <a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, task: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskEscrow">social_contracts::agent_task::TaskEscrow</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_bind_agent_room_to_task">bind_agent_room_to_task</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    group: &<b>mut</b> PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;,
+    task: &TaskEscrow,
+    block_list: &BlockListRegistry,
+    platform: &Platform,
+    memory_config: &MemoryConfig,
+    memory_account: &MemoryAccount,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../messaging/version.md#messaging_version">version</a>.validate_version();
+    <a href="../messaging/messaging.md#messaging_messaging_assert_group_not_archived">assert_group_not_archived</a>(group);
+    <b>let</b> group_id = object::id(group);
+    <b>let</b> task_room_id = agent_task::room_group_id(task);
+    <b>assert</b>!(option::contains(&task_room_id, &group_id), <a href="../messaging/messaging.md#messaging_messaging_EInvalidTaskRoomBinding">EInvalidTaskRoomBinding</a>);
+    <b>let</b> task_status = agent_task::status(task);
+    <b>assert</b>!(
+        task_status == agent_task::status_offered()
+            || task_status == agent_task::status_accepted(),
+        <a href="../messaging/messaging.md#messaging_messaging_EInvalidTaskRoomBinding">EInvalidTaskRoomBinding</a>,
+    );
+    <b>let</b> acting = <a href="../messaging/messaging.md#messaging_messaging_resolve_messaging_actor">resolve_messaging_actor</a>(
+        memory_config,
+        memory_account,
+        platform,
+        block_list,
+        memory::cap_message_send(),
+        0,
+        clock,
+        ctx,
+    );
+    <b>let</b> actor_address = memory::acting_actor_address(&acting);
+    <b>let</b> principal = memory::acting_principal_owner(&acting);
+    <b>assert</b>!(actor_address == ctx.sender(), <a href="../messaging/messaging.md#messaging_messaging_EAgentSenderMismatch">EAgentSenderMismatch</a>);
+    <b>assert</b>!(
+        <a href="../messaging/messaging.md#messaging_messaging_acting_is_task_party">acting_is_task_party</a>(task, &acting)
+            && group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MetadataAdmin">MetadataAdmin</a>&gt;(principal)
+            && group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(actor_address)
+            && group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(agent_task::buyer_principal(task))
+            && group.has_permission&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>, <a href="../messaging/messaging.md#messaging_messaging_MessagingReader">MessagingReader</a>&gt;(agent_task::seller_principal(task)),
+        <a href="../messaging/messaging.md#messaging_messaging_EInvalidTaskRoomBinding">EInvalidTaskRoomBinding</a>,
+    );
+    <b>let</b> kind = <a href="../messaging/messaging.md#messaging_messaging_group_data">group_data</a>(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, group, string::utf8(<a href="../messaging/messaging.md#messaging_messaging_ROOM_KIND_KEY">ROOM_KIND_KEY</a>));
+    <b>assert</b>!(
+        option::is_some(&kind)
+            && *option::borrow(&kind) == string::utf8(<a href="../messaging/messaging.md#messaging_messaging_ROOM_KIND_AGENT_ROOM_LABEL">ROOM_KIND_AGENT_ROOM_LABEL</a>),
+        <a href="../messaging/messaging.md#messaging_messaging_EInvalidTaskRoomBinding">EInvalidTaskRoomBinding</a>,
+    );
+    <b>let</b> task_id = object::id(task);
+    <b>let</b> encoded_task_id = <a href="../messaging/messaging.md#messaging_messaging_id_to_metadata_string">id_to_metadata_string</a>(task_id);
+    <b>let</b> current_task_id = <a href="../messaging/messaging.md#messaging_messaging_group_data">group_data</a>(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, group, string::utf8(<a href="../messaging/messaging.md#messaging_messaging_ROOM_TASK_ID_KEY">ROOM_TASK_ID_KEY</a>));
+    <b>if</b> (option::is_some(&current_task_id)) {
+        <b>assert</b>!(*option::borrow(&current_task_id) == encoded_task_id, <a href="../messaging/messaging.md#messaging_messaging_EInvalidTaskRoomBinding">EInvalidTaskRoomBinding</a>);
+    } <b>else</b> {
+        <b>let</b> <a href="../messaging/metadata.md#messaging_metadata">metadata</a> = <a href="../messaging/group_manager.md#messaging_group_manager_borrow_metadata_mut">group_manager::borrow_metadata_mut</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, group);
+        <a href="../messaging/metadata.md#messaging_metadata">metadata</a>.insert_data(string::utf8(<a href="../messaging/messaging.md#messaging_messaging_ROOM_TASK_ID_KEY">ROOM_TASK_ID_KEY</a>), encoded_task_id);
+        event::emit(<a href="../messaging/messaging.md#messaging_messaging_AgentRoomTaskBound">AgentRoomTaskBound</a> {
+            group_id,
+            task_id,
+            binder_actor: actor_address,
+            binder_principal: principal,
+            organization_id: memory::acting_organization_id(&acting),
+            bound_at_ms: clock::timestamp_ms(clock),
+        });
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_acting_is_task_party"></a>
+
+## Function `acting_is_task_party`
+
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_acting_is_task_party">acting_is_task_party</a>(task: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskEscrow">social_contracts::agent_task::TaskEscrow</a>, acting: &<a href="../social_contracts/memory.md#social_contracts_memory_ActingContext">social_contracts::memory::ActingContext</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_acting_is_task_party">acting_is_task_party</a>(task: &TaskEscrow, acting: &ActingContext): bool {
+    <b>let</b> principal = memory::acting_principal_owner(acting);
+    <b>let</b> acting_agent_id = memory::acting_sub_agent_id(acting);
+    <b>if</b> (principal == agent_task::buyer_principal(task)) {
+        <b>let</b> expected_agent_id = agent_task::buyer_agent_id(task);
+        option::is_none(&acting_agent_id)
+            || option::contains(&expected_agent_id, option::borrow(&acting_agent_id))
+    } <b>else</b> <b>if</b> (principal == agent_task::seller_principal(task)) {
+        option::is_none(&acting_agent_id)
+            || *option::borrow(&acting_agent_id) == agent_task::seller_agent_id(task)
+    } <b>else</b> {
+        <b>false</b>
+    }
 }
 </code></pre>
 

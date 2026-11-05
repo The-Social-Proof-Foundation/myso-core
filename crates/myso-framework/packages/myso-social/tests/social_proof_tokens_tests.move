@@ -2698,6 +2698,7 @@ CREATOR,
             let block_list_registry = test_scenario::take_shared<BlockListRegistry>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            let platform_balance_before = platform::treasury_balance<MYSO>(&platform_obj);
             social_proof_tokens::reserve_towards_profile_with_platform(
                 &mut registry,
                 &config,
@@ -2710,6 +2711,11 @@ CREATOR,
                 gross,
                 &clock,
                 test_scenario::ctx(&mut scenario)
+            );
+            // Platform fees accrue inside the shared Platform, not as a wallet transfer.
+            assert!(
+                platform::treasury_balance<MYSO>(&platform_obj) == platform_balance_before + gross * 25 / 10000,
+                990
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);
@@ -2876,6 +2882,7 @@ CREATOR,
             let mut poc_vault_obj = test_scenario::take_shared<PoCBeneficiaryVault>(&scenario);
             let mut coin = test_scenario::take_from_sender<Coin<MYSO>>(&scenario);
             let pay = coin::split(&mut coin, gross + fee, test_scenario::ctx(&mut scenario));
+            let platform_balance_before = platform::treasury_balance<MYSO>(&platform_obj);
             social_proof_tokens::reserve_towards_post_with_platform_simple(
                 &mut registry,
                 &config,
@@ -2889,6 +2896,11 @@ CREATOR,
                 gross,
                 &clock,
                 test_scenario::ctx(&mut scenario)
+            );
+            // Platform fees accrue inside the shared Platform, not as a wallet transfer.
+            assert!(
+                platform::treasury_balance<MYSO>(&platform_obj) == platform_balance_before + gross * 25 / 10000,
+                990
             );
             test_scenario::return_shared(registry);
             test_scenario::return_shared(config);

@@ -48,6 +48,7 @@ never changes a pending or accepted task. Reviews feed <code><a href="../social_
 -  [Struct `TaskReceiptSettled`](#social_contracts_agent_task_TaskReceiptSettled)
 -  [Struct `TaskReviewSubmitted`](#social_contracts_agent_task_TaskReviewSubmitted)
 -  [Struct `TaskConfigUpdated`](#social_contracts_agent_task_TaskConfigUpdated)
+-  [Struct `TaskFeeRecipientChanged`](#social_contracts_agent_task_TaskFeeRecipientChanged)
 -  [Struct `TaskDisputed`](#social_contracts_agent_task_TaskDisputed)
 -  [Struct `TaskDisputeFeePaid`](#social_contracts_agent_task_TaskDisputeFeePaid)
 -  [Struct `TaskDisputeCancelled`](#social_contracts_agent_task_TaskDisputeCancelled)
@@ -57,6 +58,7 @@ never changes a pending or accepted task. Reviews feed <code><a href="../social_
 -  [Struct `TaskDisputeResolved`](#social_contracts_agent_task_TaskDisputeResolved)
 -  [Struct `TaskDisputeFeesSettled`](#social_contracts_agent_task_TaskDisputeFeesSettled)
 -  [Constants](#@Constants_0)
+-  [Function `update_fee_recipient`](#social_contracts_agent_task_update_fee_recipient)
 -  [Function `bootstrap_init`](#social_contracts_agent_task_bootstrap_init)
 -  [Function `create_task_market_cap`](#social_contracts_agent_task_create_task_market_cap)
 -  [Function `set_task_config`](#social_contracts_agent_task_set_task_config)
@@ -140,6 +142,7 @@ never changes a pending or accepted task. Reviews feed <code><a href="../social_
 -  [Function `seller_principal`](#social_contracts_agent_task_seller_principal)
 -  [Function `buyer_agent_id`](#social_contracts_agent_task_buyer_agent_id)
 -  [Function `seller_agent_id`](#social_contracts_agent_task_seller_agent_id)
+-  [Function `room_group_id`](#social_contracts_agent_task_room_group_id)
 -  [Function `terms_digest`](#social_contracts_agent_task_terms_digest)
 -  [Function `platform_fee_bps`](#social_contracts_agent_task_platform_fee_bps)
 -  [Function `ecosystem_fee_bps`](#social_contracts_agent_task_ecosystem_fee_bps)
@@ -578,7 +581,7 @@ One escrowed task. Shared; the rarely-touched groups live in the nested structs 
  Acting organization of the buyer, for reporting only.
 </dd>
 <dt>
-<code>room_group_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+<code><a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -855,7 +858,7 @@ is already at the verifier's 32-field limit. Never removed, so a task is dispute
 <dd>
 </dd>
 <dt>
-<code>room_group_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+<code><a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1243,7 +1246,7 @@ is already at the verifier's 32-field limit. Never removed, so a task is dispute
 <dd>
 </dd>
 <dt>
-<code>room_group_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+<code><a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
 </dt>
 <dd>
 </dd>
@@ -1562,6 +1565,49 @@ is already at the verifier's 32-field limit. Never removed, so a task is dispute
 </dd>
 <dt>
 <code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_agent_task_TaskFeeRecipientChanged"></a>
+
+## Struct `TaskFeeRecipientChanged`
+
+Fee recipient changes apply only to offers created after this update. Every existing
+TaskEscrow retains the recipient captured in its TaskTerms.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskFeeRecipientChanged">TaskFeeRecipientChanged</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>previous_recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -2918,6 +2964,46 @@ distinct owners for a larger one (each round needs fresh owners).
 
 
 
+<a name="social_contracts_agent_task_update_fee_recipient"></a>
+
+## Function `update_fee_recipient`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_update_fee_recipient">update_fee_recipient</a>(_: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, config: &<b>mut</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskConfig">social_contracts::agent_task::TaskConfig</a>, new_recipient: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_update_fee_recipient">update_fee_recipient</a>(
+    _: &PlatformAdminCap,
+    config: &<b>mut</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskConfig">TaskConfig</a>,
+    new_recipient: <b>address</b>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(config.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/agent_task.md#social_contracts_agent_task_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(new_recipient != @0x0, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_EInvalidTaskConfig">EInvalidTaskConfig</a>);
+    <b>let</b> previous_recipient = config.ecosystem_fee_recipient;
+    <b>assert</b>!(previous_recipient != new_recipient, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_EInvalidTaskConfig">EInvalidTaskConfig</a>);
+    config.ecosystem_fee_recipient = new_recipient;
+    event::emit(<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskFeeRecipientChanged">TaskFeeRecipientChanged</a> {
+        previous_recipient,
+        new_recipient,
+        updated_by: tx_context::sender(ctx),
+        updated_at_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_agent_task_bootstrap_init"></a>
 
 ## Function `bootstrap_init`
@@ -3229,7 +3315,7 @@ The buyer is resolved with <code>CAP_TASK_TRADE</code> and the spend cap (<code>
 agent's per-action limit and approval-required caps apply to funding an offer.
 
 
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_create_task">create_task</a>(config: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskConfig">social_contracts::agent_task::TaskConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, buyer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, seller_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, seller_agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, escrow_amount: u64, scope_digest: vector&lt;u8&gt;, title: <a href="../std/string.md#std_string_String">std::string::String</a>, accept_window_ms: u64, delivery_window_ms: u64, settle_window_ms: u64, room_group_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_create_task">create_task</a>(config: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskConfig">social_contracts::agent_task::TaskConfig</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, buyer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, seller_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, seller_agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, escrow_amount: u64, scope_digest: vector&lt;u8&gt;, title: <a href="../std/string.md#std_string_String">std::string::String</a>, accept_window_ms: u64, delivery_window_ms: u64, settle_window_ms: u64, <a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -3251,7 +3337,7 @@ agent's per-action limit and approval-required caps apply to funding an offer.
     accept_window_ms: u64,
     delivery_window_ms: u64,
     settle_window_ms: u64,
-    room_group_id: Option&lt;ID&gt;,
+    <a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>: Option&lt;ID&gt;,
     platform_id: Option&lt;<b>address</b>&gt;,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext,
@@ -3334,7 +3420,7 @@ agent's per-action limit and approval-required caps apply to funding an offer.
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_agent_id">seller_agent_id</a>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_principal">seller_principal</a>,
         organization_id: <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">memory::acting_organization_id</a>(&acting),
-        room_group_id,
+        <a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>,
         platform_id,
         title,
         scope_digest,
@@ -3381,7 +3467,7 @@ agent's per-action limit and approval-required caps apply to funding an offer.
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_agent_id">seller_agent_id</a>,
         seller_memory_account_id: task.seller_memory_account_id,
         organization_id: task.organization_id,
-        room_group_id,
+        <a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>,
         platform_id,
         title: task.title,
         scope_digest: task.scope_digest,
@@ -3770,7 +3856,7 @@ refund proposals are pending. Produces a receipt both parties may review.
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_principal">seller_principal</a>: task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_principal">seller_principal</a>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_agent_id">seller_agent_id</a>: task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_agent_id">seller_agent_id</a>,
         organization_id: task.organization_id,
-        room_group_id: task.room_group_id,
+        <a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>: task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_settlement_kind">settlement_kind</a>: kind,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_amount_mist">amount_mist</a>: task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_amount_mist">amount_mist</a>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_platform_fee_mist">platform_fee_mist</a>: task.payout.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_platform_fee_mist">platform_fee_mist</a>,
@@ -4653,7 +4739,7 @@ and with the review window closed (<code><a href="../social_contracts/agent_task
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_principal">seller_principal</a>: task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_principal">seller_principal</a>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_agent_id">seller_agent_id</a>: task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_agent_id">seller_agent_id</a>,
         organization_id: task.organization_id,
-        room_group_id: task.room_group_id,
+        <a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>: task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_settlement_kind">settlement_kind</a>: kind,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_amount_mist">amount_mist</a>: task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_amount_mist">amount_mist</a>,
         <a href="../social_contracts/agent_task.md#social_contracts_agent_task_platform_fee_mist">platform_fee_mist</a>: task.payout.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_platform_fee_mist">platform_fee_mist</a>,
@@ -6276,6 +6362,29 @@ platform fee bps, ecosystem fee bps, ecosystem recipient, platform id.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_agent_id">seller_agent_id</a>(task: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskEscrow">TaskEscrow</a>): ID { task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_seller_agent_id">seller_agent_id</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_agent_task_room_group_id"></a>
+
+## Function `room_group_id`
+
+The messaging group pinned to this task, when task coordination uses a private room.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>(task: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskEscrow">social_contracts::agent_task::TaskEscrow</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a>(task: &<a href="../social_contracts/agent_task.md#social_contracts_agent_task_TaskEscrow">TaskEscrow</a>): Option&lt;ID&gt; { task.<a href="../social_contracts/agent_task.md#social_contracts_agent_task_room_group_id">room_group_id</a> }
 </code></pre>
 
 

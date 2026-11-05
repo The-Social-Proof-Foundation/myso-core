@@ -254,6 +254,14 @@ type AgenticOrganization {
 	rootAgent: SubAgent
 	spendApprovals(status: String, agent: String, limit: Int! = 20): [SpendApproval!]
 	statistics(window: OrganizationStatsWindow): GraphOrganizationStatistics
+	"""
+	Wallets currently allowed to withdraw from the treasury.
+	"""
+	treasuryAccess: [OrgTreasuryAccess!]
+	"""
+	Treasury balance per coin type, as of the latest fund or withdrawal.
+	"""
+	treasuryBalances: [OrgTreasuryBalance!]
 }
 
 type AgenticOrganizationLeaderboardEntry {
@@ -2894,6 +2902,15 @@ type JuryCase {
 	"""
 	perJurorFeeMist: Int
 	"""
+	Where the fees the jurors did not claim were sent. Null until the case is swept.
+	"""
+	remainderRecipient: MySoAddress
+	"""
+	MIST swept back to `remainderRecipient`. Null until the case is swept; 0 when nothing was
+	left.
+	"""
+	remainderSweptMist: Int
+	"""
 	For a proposal, the step the case decides.
 	"""
 	stage: JuryStage!
@@ -5192,6 +5209,18 @@ type OrgRoleAssignment {
 	roleName: String!
 }
 
+type OrgTreasuryAccess {
+	grantedAtMs: Int!
+	grantedBy: MySoAddress!
+	recipient: MySoAddress!
+}
+
+type OrgTreasuryBalance {
+	balance: BigInt!
+	coinType: String!
+	updatedAtMs: Int!
+}
+
 type OrganizationCategory {
 	displayName: String!
 	slug: String!
@@ -6125,6 +6154,9 @@ type PocUsernameBeneficiary {
 	beneficiaryAddress: String!
 	beneficiaryId: String!
 	claimedAtMs: Int
+	"""
+	The PoC oracle that sent the claim transaction (not the creator).
+	"""
 	claimedBy: String
 	claimedProfileId: String
 	creatorIdentityHash: String!
@@ -6135,11 +6167,20 @@ type PocUsernameBeneficiary {
 	joinReferralPaid: Boolean!
 	joinReferralPaidAtMs: Int
 	joinReferrer: String
+	"""
+	The creator's recipient wallet recorded at claim. Vault access keys off this.
+	"""
+	linkedWallet: String
 	oracleEvidenceHash: String!
 	pocBeneficiaryVault: PocBeneficiaryVault
 	provisionedAtMs: Int!
 	provisionedBy: String!
 	requiredXHandle: String!
+	"""
+	Wallet the username is reserved for (claim found an existing profile) until it
+	adopts or releases it.
+	"""
+	reservedFor: String
 	"""
 	1=active, 2=claimed, 3=ended.
 	"""
@@ -6201,6 +6242,15 @@ type Post implements Node {
 	Content access model for this post.
 	"""
 	access: PostAccess!
+	"""
+	How many purchases unlocked this post.
+	"""
+	accessPurchaseCount: Int
+	"""
+	MyData purchases that unlocked this gated post, newest first. Pass `buyer` to check one
+	wallet. Price and fees are on the MyData purchase.
+	"""
+	accessPurchases(buyer: MySoAddress, limit: Int, offset: Int): [PostAccessPurchase!]
 	"""
 	Actor vs principal attribution for delegated sub-agent actions.
 	"""
@@ -6512,6 +6562,17 @@ enum PostAccessKind {
 	PUBLIC
 	PROFILE_SUBSCRIPTION
 	MARKETPLACE_ONE_TIME
+}
+
+type PostAccessPurchase {
+	buyer: MySoAddress!
+	"""
+	The MyData listing that was bought.
+	"""
+	mydataId: String!
+	postId: String!
+	purchasedAtMs: Int!
+	seller: MySoAddress!
 }
 
 """
@@ -6990,7 +7051,7 @@ type ProfileBadge {
 	"""
 	badgeId: String!
 	"""
-	owned | platform
+	ecosystem (soulbound object in the wallet) | platform (platform ledger grant)
 	"""
 	badgeKind: String!
 	"""
@@ -7001,6 +7062,11 @@ type ProfileBadge {
 	Badge name.
 	"""
 	badgeName: String!
+	"""
+	`platform::EcosystemBadge` object id — pass it to `select_ecosystem_badge_on_profile`
+	or `burn_ecosystem_badge`. Null for platform ledger badges.
+	"""
+	badgeObjectId: String
 	"""
 	Badge type.
 	"""
@@ -8065,6 +8131,11 @@ type Query {
 	"""
 	pocUsernameBeneficiaries(status: Int, limit: Int, offset: Int): [PocUsernameBeneficiary!]
 	"""
+	PoC username beneficiaries claimed to `wallet` (the creator's `linkedWallet`). Unaffected
+	by adopting or releasing a reserved username.
+	"""
+	pocUsernameBeneficiariesByWallet(wallet: MySoAddress!): [PocUsernameBeneficiary!]
+	"""
 	PoC username beneficiary provision by on-chain beneficiary object id.
 	"""
 	pocUsernameBeneficiaryById(id: ID!): PocUsernameBeneficiary
@@ -8124,6 +8195,11 @@ type Query {
 	List social profiles with pagination. Returns empty when social DB not configured.
 	"""
 	profiles(limit: Int, offset: Int): [Profile!]
+	"""
+	Profiles whose wallet holds a soulbound Verified X badge for one of `usernames`
+	(case-insensitive, leading `@` ignored). At most 100 usernames.
+	"""
+	profilesByXUsernames(usernames: [String!]!): [Profile!]
 	"""
 	List promoted posts (paginated, optionally filtered by platform). Returns empty when social DB not configured.
 	"""
@@ -10922,6 +10998,10 @@ type Wallet {
 	selectedEcosystemBadge: SelectedBadge
 	selectedEcosystemBadgeId: String
 	subscriptions(serviceId: ID, limit: Int, offset: Int): [ProfileSubscription!]
+	"""
+	Verified X handle from the wallet's soulbound Verified X badge.
+	"""
+	xUsername: String
 }
 
 """

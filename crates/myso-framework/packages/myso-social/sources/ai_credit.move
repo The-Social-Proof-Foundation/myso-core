@@ -2513,4 +2513,14 @@ module social_contracts::ai_credit {
             );
         }
     }
+
+    /// Owner rotation: move payout/approval ownership with the profile (called by
+    /// `profile::complete_owner_rotation` in the same transaction as the MemoryAccount move).
+    public(package) fun set_principal_owner(balance: &mut AiCreditBalance, new_owner: address) {
+        balance.principal_owner = new_owner;
+    }
+
+    public fun balance_principal_owner(balance: &AiCreditBalance): address { balance.principal_owner }
+    public fun balance_profile_id(balance: &AiCreditBalance): address { balance.profile_id }
+    public fun balance_memory_account_id(balance: &AiCreditBalance): ID { balance.memory_account_id }
 }

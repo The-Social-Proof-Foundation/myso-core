@@ -784,6 +784,33 @@ module social_contracts::proof_of_creativity {
         );
     }
 
+    /// The creator wallet the username was reserved for (claim found an existing profile)
+    /// moves it onto that profile. Signed by the creator; no oracle involvement.
+    public entry fun adopt_reserved_username(
+        shard: &mut PoCUsernameBeneficiaryShard,
+        username_registry: &mut UsernameRegistry,
+        beneficiary: &mut PoCUsernameBeneficiary,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        poc_username_beneficiary::adopt_reserved_username(
+            shard, username_registry, beneficiary, clock, ctx,
+        );
+    }
+
+    /// The reserved creator wallet keeps its current username and frees the reserved one.
+    public entry fun release_reserved_username(
+        shard: &mut PoCUsernameBeneficiaryShard,
+        username_registry: &mut UsernameRegistry,
+        beneficiary: &mut PoCUsernameBeneficiary,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        poc_username_beneficiary::release_reserved_username(
+            shard, username_registry, beneficiary, clock, ctx,
+        );
+    }
+
     /// A trusted PoC oracle records a verified identity's requested beneficiary.
     /// The new wallet must separately accept before the oracle can complete a claim.
     public entry fun propose_username_beneficiary_transfer(
@@ -3209,6 +3236,7 @@ module social_contracts::poc_username_beneficiary {
 
     const EInvalidRecipient: u64 = 12;
     const ETransferNotAccepted: u64 = 13;
+    const ENotReservedForSender: u64 = 14;
 
     public struct PendingBeneficiaryTransferKey has copy, drop, store {}
     public struct AcceptedBeneficiaryTransferKey has copy, drop, store {}
@@ -3310,6 +3338,13 @@ module social_contracts::poc_username_beneficiary {
         join_referral_paid: bool,
         join_referrer: Option<address>,
         join_referral_paid_at: Option<u64>,
+        /// The creator's recipient wallet, set at claim (the `wallet` argument, i.e. the accepted
+        /// transfer recipient when one exists). Never cleared — vault access keys off it.
+        /// Distinct from `claimed_by`, which is the oracle that sent the claim.
+        linked_wallet: Option<address>,
+        /// Set when the claim found an existing profile on `linked_wallet`: the username stays
+        /// locked for that wallet until it calls `adopt_reserved_username` or `release_reserved_username`.
+        reserved_for: Option<address>,
         version: u64,
     }
 
@@ -3325,14 +3360,33 @@ module social_contracts::poc_username_beneficiary {
         provisioned_at: u64,
     }
 
+    /// `profile_id` is set when the claim created the creator's profile; `reserved_for` is set
+    /// instead when `linked_wallet` already had a profile and the username is held for it.
     public struct UsernameBeneficiaryClaimedEvent has copy, drop {
         beneficiary_id: address,
         username: String,
-        profile_id: address,
+        profile_id: Option<address>,
         claimed_by: address,
-        wallet: address,
+        linked_wallet: address,
+        reserved_for: Option<address>,
         oracle_evidence_hash: vector<u8>,
         claimed_at: u64,
+    }
+
+    public struct ReservedUsernameAdoptedEvent has copy, drop {
+        beneficiary_id: address,
+        username: String,
+        old_username: Option<String>,
+        profile_id: address,
+        wallet: address,
+        adopted_at: u64,
+    }
+
+    public struct ReservedUsernameReleasedEvent has copy, drop {
+        beneficiary_id: address,
+        username: String,
+        wallet: address,
+        released_at: u64,
     }
 
     public struct UsernameBeneficiaryEndedEvent has copy, drop {
@@ -3629,6 +3683,8 @@ module social_contracts::poc_username_beneficiary {
             join_referral_paid: false,
             join_referrer: option::none(),
             join_referral_paid_at: option::none(),
+            linked_wallet: option::none(),
+            reserved_for: option::none(),
             version: upgrade::current_version(),
         };
         let beneficiary_id = object::id(&beneficiary);
@@ -3696,34 +3752,47 @@ module social_contracts::poc_username_beneficiary {
             EWalletAlreadyLinked
         );
 
-        let profile_id = profile::create_profile_from_beneficiary_claim(
-            username_registry,
-            profile_config,
-            memory_registry,
-            ai_credit_config,
-            display_name,
-            beneficiary.username,
-            bio,
-            profile_picture_url,
-            cover_photo_url,
-            wallet,
-            clock,
-            ctx,
-        );
+        // A wallet that already has a profile keeps it: the identity + vault link still happens and
+        // the username stays locked for that wallet (adopt or release later, owner-signed).
+        let has_profile = option::is_some(&profile::lookup_profile_by_owner(username_registry, wallet));
+        let (profile_id, reserved_for) = if (has_profile) {
+            (option::none<address>(), option::some(wallet))
+        } else {
+            let created = profile::create_profile_from_beneficiary_claim(
+                username_registry,
+                profile_config,
+                memory_registry,
+                ai_credit_config,
+                display_name,
+                beneficiary.username,
+                bio,
+                profile_picture_url,
+                cover_photo_url,
+                wallet,
+                clock,
+                ctx,
+            );
+            (option::some(created), option::none<address>())
+        };
 
         let now = clock::timestamp_ms(clock);
         beneficiary.status = STATUS_CLAIMED;
-        beneficiary.claimed_profile_id = option::some(profile_id);
+        beneficiary.claimed_profile_id = profile_id;
         beneficiary.claimed_by = option::some(tx_context::sender(ctx));
         beneficiary.claimed_at = option::some(now);
         beneficiary.oracle_evidence_hash = evidence_hash;
+        beneficiary.linked_wallet = option::some(wallet);
+        beneficiary.reserved_for = reserved_for;
 
         table::add(&mut directory.wallet_by_identity, beneficiary.creator_identity, wallet);
 
-        if (table::contains(&shard.username_to_beneficiary, beneficiary.username)) {
-            table::remove(&mut shard.username_to_beneficiary, beneficiary.username);
+        if (!has_profile) {
+            // The profile now owns the username; no reservation remains.
+            if (table::contains(&shard.username_to_beneficiary, beneficiary.username)) {
+                table::remove(&mut shard.username_to_beneficiary, beneficiary.username);
+            };
+            profile::unlock_username_for_beneficiary(username_registry, beneficiary.username);
         };
-        profile::unlock_username_for_beneficiary(username_registry, beneficiary.username);
 
         let beneficiary_id = object::id_to_address(&object::id(beneficiary));
         event::emit(CreatorIdentityWalletLinkedEvent {
@@ -3738,10 +3807,100 @@ module social_contracts::poc_username_beneficiary {
             username: beneficiary.username,
             profile_id,
             claimed_by: tx_context::sender(ctx),
-            wallet,
+            linked_wallet: wallet,
+            reserved_for,
             oracle_evidence_hash: beneficiary.oracle_evidence_hash,
             claimed_at: now,
         });
+    }
+
+    /// The reserved wallet takes the beneficiary username onto its existing profile
+    /// (its current username, if any, is freed). Owner-signed; no oracle needed.
+    public(package) fun adopt_reserved_username(
+        shard: &mut PoCUsernameBeneficiaryShard,
+        username_registry: &mut UsernameRegistry,
+        beneficiary: &mut PoCUsernameBeneficiary,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_shard_version(shard);
+        assert_beneficiary_version(beneficiary);
+        assert!(beneficiary.status == STATUS_CLAIMED, EInvalidStatus);
+        let wallet = tx_context::sender(ctx);
+        assert_reserved_for(beneficiary, wallet);
+        assert_shard_matches_username(shard, &beneficiary.username);
+
+        let profile_id = profile::profile_id_for_owner(username_registry, wallet);
+        let old_username = profile::reassign_username_for_beneficiary(
+            username_registry,
+            profile_id,
+            beneficiary.username,
+            wallet,
+        );
+        beneficiary.claimed_profile_id = option::some(profile_id);
+        beneficiary.reserved_for = option::none();
+        if (table::contains(&shard.username_to_beneficiary, beneficiary.username)) {
+            table::remove(&mut shard.username_to_beneficiary, beneficiary.username);
+        };
+
+        event::emit(ReservedUsernameAdoptedEvent {
+            beneficiary_id: object::id_to_address(&object::id(beneficiary)),
+            username: beneficiary.username,
+            old_username,
+            profile_id,
+            wallet,
+            adopted_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// The reserved wallet declines the username: the lock is released for anyone to claim.
+    /// The identity/vault link (`linked_wallet`) is unaffected.
+    public(package) fun release_reserved_username(
+        shard: &mut PoCUsernameBeneficiaryShard,
+        username_registry: &mut UsernameRegistry,
+        beneficiary: &mut PoCUsernameBeneficiary,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_shard_version(shard);
+        assert_beneficiary_version(beneficiary);
+        assert!(beneficiary.status == STATUS_CLAIMED, EInvalidStatus);
+        let wallet = tx_context::sender(ctx);
+        assert_reserved_for(beneficiary, wallet);
+        assert_shard_matches_username(shard, &beneficiary.username);
+
+        profile::unlock_username_for_beneficiary(username_registry, beneficiary.username);
+        beneficiary.reserved_for = option::none();
+        if (table::contains(&shard.username_to_beneficiary, beneficiary.username)) {
+            table::remove(&mut shard.username_to_beneficiary, beneficiary.username);
+        };
+
+        event::emit(ReservedUsernameReleasedEvent {
+            beneficiary_id: object::id_to_address(&object::id(beneficiary)),
+            username: beneficiary.username,
+            wallet,
+            released_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    fun assert_reserved_for(beneficiary: &PoCUsernameBeneficiary, wallet: address) {
+        assert!(
+            option::is_some(&beneficiary.reserved_for)
+                && *option::borrow(&beneficiary.reserved_for) == wallet,
+            ENotReservedForSender,
+        );
+    }
+
+    public fun linked_wallet(beneficiary: &PoCUsernameBeneficiary): Option<address> {
+        beneficiary.linked_wallet
+    }
+
+    public fun reserved_for(beneficiary: &PoCUsernameBeneficiary): Option<address> {
+        beneficiary.reserved_for
+    }
+
+    public fun claimed_profile_id(beneficiary: &PoCUsernameBeneficiary): Option<address> {
+        beneficiary.claimed_profile_id
     }
 
     public(package) fun claim_username_beneficiary_vault_balance<T>(
@@ -3766,6 +3925,13 @@ module social_contracts::poc_username_beneficiary {
         let linked_wallet = *table::borrow(
             &directory.wallet_by_identity,
             beneficiary.creator_identity,
+        );
+        // Vault access keys off the recipient wallet recorded at claim, never the username,
+        // so it is unaffected by adopting or releasing a reserved username.
+        assert!(
+            option::is_some(&beneficiary.linked_wallet)
+                && *option::borrow(&beneficiary.linked_wallet) == linked_wallet,
+            EWalletNotLinked
         );
         assert!(
             poc_vault::vault_routes_to_beneficiary(vault, beneficiary.beneficiary_address),

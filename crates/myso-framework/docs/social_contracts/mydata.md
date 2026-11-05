@@ -55,6 +55,16 @@ not row-level dataset membership.
 -  [Struct `MyDataRegisteredEvent`](#social_contracts_mydata_MyDataRegisteredEvent)
 -  [Struct `MyDataUnregisteredEvent`](#social_contracts_mydata_MyDataUnregisteredEvent)
 -  [Struct `MyDataConfigUpdatedEvent`](#social_contracts_mydata_MyDataConfigUpdatedEvent)
+-  [Struct `BoundedBuyerBindingKey`](#social_contracts_mydata_BoundedBuyerBindingKey)
+-  [Struct `BoundedBuyerBinding`](#social_contracts_mydata_BoundedBuyerBinding)
+-  [Struct `BoundedSnapshotFrozenKey`](#social_contracts_mydata_BoundedSnapshotFrozenKey)
+-  [Struct `BoundedBuyerOrgAudienceKey`](#social_contracts_mydata_BoundedBuyerOrgAudienceKey)
+-  [Struct `BoundedBuyerOrgAudience`](#social_contracts_mydata_BoundedBuyerOrgAudience)
+-  [Struct `OrgGraphAudienceKey`](#social_contracts_mydata_OrgGraphAudienceKey)
+-  [Struct `OrgGraphAudienceGrant`](#social_contracts_mydata_OrgGraphAudienceGrant)
+-  [Struct `BoundedPurchaseEvent`](#social_contracts_mydata_BoundedPurchaseEvent)
+-  [Struct `GraphPurchaseSnapshotEvent`](#social_contracts_mydata_GraphPurchaseSnapshotEvent)
+-  [Struct `OrgGraphAudienceBoundEvent`](#social_contracts_mydata_OrgGraphAudienceBoundEvent)
 -  [Enum `AccessConfiguration`](#social_contracts_mydata_AccessConfiguration)
 -  [Constants](#@Constants_0)
 -  [Function `validate_fee_config`](#social_contracts_mydata_validate_fee_config)
@@ -122,6 +132,17 @@ not row-level dataset membership.
 -  [Function `create_and_share_marketplace_recurring_mydata`](#social_contracts_mydata_create_and_share_marketplace_recurring_mydata)
 -  [Function `purchase_one_time_no_platform`](#social_contracts_mydata_purchase_one_time_no_platform)
 -  [Function `purchase_one_time_with_platform_internal`](#social_contracts_mydata_purchase_one_time_with_platform_internal)
+-  [Function `bind_bounded_buyer`](#social_contracts_mydata_bind_bounded_buyer)
+-  [Function `freeze_bounded_snapshot`](#social_contracts_mydata_freeze_bounded_snapshot)
+-  [Function `is_bounded_snapshot_frozen`](#social_contracts_mydata_is_bounded_snapshot_frozen)
+-  [Function `bind_org_graph_audience`](#social_contracts_mydata_bind_org_graph_audience)
+-  [Function `clear_org_graph_audience`](#social_contracts_mydata_clear_org_graph_audience)
+-  [Function `assert_org_audience_entitlement`](#social_contracts_mydata_assert_org_audience_entitlement)
+-  [Function `assert_bounded_buyer_active`](#social_contracts_mydata_assert_bounded_buyer_active)
+-  [Function `purchase_access_bounded_with_platform`](#social_contracts_mydata_purchase_access_bounded_with_platform)
+-  [Function `purchase_access_bounded_with_org_audience`](#social_contracts_mydata_purchase_access_bounded_with_org_audience)
+-  [Function `purchase_graph_access_bounded_with_platform`](#social_contracts_mydata_purchase_graph_access_bounded_with_platform)
+-  [Function `purchase_graph_access_bounded_with_org_audience`](#social_contracts_mydata_purchase_graph_access_bounded_with_org_audience)
 -  [Function `purchase_one_time`](#social_contracts_mydata_purchase_one_time)
 -  [Function `purchase_one_time_with_platform`](#social_contracts_mydata_purchase_one_time_with_platform)
 -  [Function `purchase_subscription_no_platform`](#social_contracts_mydata_purchase_subscription_no_platform)
@@ -135,6 +156,7 @@ not row-level dataset membership.
 -  [Function `has_access`](#social_contracts_mydata_has_access)
 -  [Function `encryption_id_matches`](#social_contracts_mydata_encryption_id_matches)
 -  [Function `mydata_approve`](#social_contracts_mydata_mydata_approve)
+-  [Function `mydata_approve_org_audience`](#social_contracts_mydata_mydata_approve_org_audience)
 -  [Function `mydata_approve_profile_subscription`](#social_contracts_mydata_mydata_approve_profile_subscription)
 -  [Function `bytes_equal_u8`](#social_contracts_mydata_bytes_equal_u8)
 -  [Function `grant_access`](#social_contracts_mydata_grant_access)
@@ -1965,6 +1987,428 @@ Registry for tracking MyData ownership
 
 </details>
 
+<a name="social_contracts_mydata_BoundedBuyerBindingKey"></a>
+
+## Struct `BoundedBuyerBindingKey`
+
+Bind new paid agent access to its delegation, not only its signing address.
+A later key-server request must recheck this exact account/agent's live policy.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerBindingKey">BoundedBuyerBindingKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_BoundedBuyerBinding"></a>
+
+## Struct `BoundedBuyerBinding`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerBinding">BoundedBuyerBinding</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>memory_account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_BoundedSnapshotFrozenKey"></a>
+
+## Struct `BoundedSnapshotFrozenKey`
+
+A listing with at least one bounded purchase represents an immutable
+content snapshot. Sellers publish later versions as new MyData objects.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedSnapshotFrozenKey">BoundedSnapshotFrozenKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>marker: bool</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_BoundedBuyerOrgAudienceKey"></a>
+
+## Struct `BoundedBuyerOrgAudienceKey`
+
+Current organization audience chosen by each bounded buyer. The separate
+dynamic field preserves the existing BoundedBuyerBinding layout.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerOrgAudienceKey">BoundedBuyerOrgAudienceKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_BoundedBuyerOrgAudience"></a>
+
+## Struct `BoundedBuyerOrgAudience`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerOrgAudience">BoundedBuyerOrgAudience</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>organization_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_OrgGraphAudienceKey"></a>
+
+## Struct `OrgGraphAudienceKey`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceKey">OrgGraphAudienceKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>organization_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_OrgGraphAudienceGrant"></a>
+
+## Struct `OrgGraphAudienceGrant`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceGrant">OrgGraphAudienceGrant</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>encrypted_data_digest: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>encryption_id_digest: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_BoundedPurchaseEvent"></a>
+
+## Struct `BoundedPurchaseEvent`
+
+Exact terms of a bounded P2P purchase. This is evidence of the data/terms
+purchased, not proof that the encrypted content is useful or truthful.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedPurchaseEvent">BoundedPurchaseEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>mydata_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_memory_account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>access_kind: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>price: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>duration_days: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>encrypted_data_digest: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>encryption_id_digest: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>listing_platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>fee_platform_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_GraphPurchaseSnapshotEvent"></a>
+
+## Struct `GraphPurchaseSnapshotEvent`
+
+Additional immutable identity for a signed MySocial knowledge graph
+purchased through the bounded P2P path. The publication signature itself
+is not stored; its digest identifies the exact seller signature accepted
+by the purchase validation service.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_GraphPurchaseSnapshotEvent">GraphPurchaseSnapshotEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>mydata_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer_memory_account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>graph_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>graph_version: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>manifest_hash: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>publication_signature_digest: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>organization_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_mydata_OrgGraphAudienceBoundEvent"></a>
+
+## Struct `OrgGraphAudienceBoundEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceBoundEvent">OrgGraphAudienceBoundEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>mydata_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>organization_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>access_kind: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>encrypted_data_digest: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>encryption_id_digest: vector&lt;u8&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_mydata_AccessConfiguration"></a>
 
 ## Enum `AccessConfiguration`
@@ -2192,6 +2636,15 @@ Direct profile-gated, one-time, and recurring MyData access remain available ind
 
 
 
+<a name="social_contracts_mydata_MAX_ORG_GRAPH_AUDIENCE_BUYERS"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_ORG_GRAPH_AUDIENCE_BUYERS">MAX_ORG_GRAPH_AUDIENCE_BUYERS</a>: u64 = 256;
+</code></pre>
+
+
+
 <a name="social_contracts_mydata_DEFAULT_CLAIM_WINDOW_MS"></a>
 
 
@@ -2369,6 +2822,26 @@ Event/indexer tags for [<code><a href="../social_contracts/mydata.md#social_cont
 
 
 <pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EPlatformMismatch">EPlatformMismatch</a>: u64 = 16;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_EQuoteChanged"></a>
+
+A seller changed a quoted price, duration, owner, platform or ciphertext.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>: u64 = 17;
+</code></pre>
+
+
+
+<a name="social_contracts_mydata_EBoundedSnapshotFrozen"></a>
+
+Ciphertext/encryption identity is immutable after a bounded purchase.
+
+
+<pre><code><b>const</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_EBoundedSnapshotFrozen">EBoundedSnapshotFrozen</a>: u64 = 18;
 </code></pre>
 
 
@@ -5293,6 +5766,608 @@ Create and share marketplace recurring subscription MyData.
 
 </details>
 
+<a name="social_contracts_mydata_bind_bounded_buyer"></a>
+
+## Function `bind_bounded_buyer`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bind_bounded_buyer">bind_bounded_buyer</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, buyer: <b>address</b>, account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, agent_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bind_bounded_buyer">bind_bounded_buyer</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>, buyer: <b>address</b>, account_id: ID, agent_id: Option&lt;ID&gt;) {
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_freeze_bounded_snapshot">freeze_bounded_snapshot</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>);
+    <b>let</b> binding_key = <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerBindingKey">BoundedBuyerBindingKey</a> { buyer };
+    <b>if</b> (dynamic_field::exists_(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, binding_key)) {
+        <b>let</b> binding = dynamic_field::borrow_mut&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerBindingKey">BoundedBuyerBindingKey</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerBinding">BoundedBuyerBinding</a>&gt;(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, binding_key);
+        binding.memory_account_id = account_id;
+        binding.agent_id = agent_id;
+    } <b>else</b> {
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, binding_key, <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerBinding">BoundedBuyerBinding</a> {
+            memory_account_id: account_id, agent_id,
+        });
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_freeze_bounded_snapshot"></a>
+
+## Function `freeze_bounded_snapshot`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_freeze_bounded_snapshot">freeze_bounded_snapshot</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_freeze_bounded_snapshot">freeze_bounded_snapshot</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>) {
+    <b>let</b> legacy_graph_media_type = string::utf8(b"application/vnd.mysocial.knowledge-graph+json;<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>=1");
+    <b>let</b> graph_manifest_media_type = string::utf8(b"application/vnd.mysocial.graph-manifest+json;<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a>=1");
+    <b>let</b> media_type_bytes = string::as_bytes(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_media_type">media_type</a>);
+    <b>if</b> (!<a href="../social_contracts/mydata.md#social_contracts_mydata_bytes_equal_u8">bytes_equal_u8</a>(media_type_bytes, string::as_bytes(&legacy_graph_media_type))
+        && !<a href="../social_contracts/mydata.md#social_contracts_mydata_bytes_equal_u8">bytes_equal_u8</a>(media_type_bytes, string::as_bytes(&graph_manifest_media_type))) <b>return</b>;
+    <b>let</b> key = <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedSnapshotFrozenKey">BoundedSnapshotFrozenKey</a> { marker: <b>true</b> };
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, key)) {
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, key, <b>true</b>);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_is_bounded_snapshot_frozen"></a>
+
+## Function `is_bounded_snapshot_frozen`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_is_bounded_snapshot_frozen">is_bounded_snapshot_frozen</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_is_bounded_snapshot_frozen">is_bounded_snapshot_frozen</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>): bool {
+    dynamic_field::exists_(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedSnapshotFrozenKey">BoundedSnapshotFrozenKey</a> { marker: <b>true</b> })
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_bind_org_graph_audience"></a>
+
+## Function `bind_org_graph_audience`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bind_org_graph_audience">bind_org_graph_audience</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, buyer: <b>address</b>, organization_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, encrypted_data_digest: vector&lt;u8&gt;, encryption_id_digest: vector&lt;u8&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_bind_org_graph_audience">bind_org_graph_audience</a>(
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    buyer: <b>address</b>,
+    organization_id: ID,
+    encrypted_data_digest: vector&lt;u8&gt;,
+    encryption_id_digest: vector&lt;u8&gt;,
+) {
+    <b>let</b> audience_key = <a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceKey">OrgGraphAudienceKey</a> { organization_id };
+    <b>if</b> (dynamic_field::exists_(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, audience_key)) {
+        <b>let</b> grants = dynamic_field::borrow_mut&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceKey">OrgGraphAudienceKey</a>, vector&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceGrant">OrgGraphAudienceGrant</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, audience_key);
+        <b>let</b> <b>mut</b> i = 0;
+        <b>let</b> <b>mut</b> updated = <b>false</b>;
+        <b>while</b> (i &lt; vector::length(grants)) {
+            <b>let</b> grant = vector::borrow_mut(grants, i);
+            <b>if</b> (grant.buyer == buyer) {
+                grant.encrypted_data_digest = encrypted_data_digest;
+                grant.encryption_id_digest = encryption_id_digest;
+                updated = <b>true</b>;
+                i = vector::length(grants);
+            } <b>else</b> {
+                i = i + 1;
+            };
+        };
+        <b>if</b> (!updated) {
+            <b>assert</b>!(vector::length(grants) &lt; <a href="../social_contracts/mydata.md#social_contracts_mydata_MAX_ORG_GRAPH_AUDIENCE_BUYERS">MAX_ORG_GRAPH_AUDIENCE_BUYERS</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+            vector::push_back(grants, <a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceGrant">OrgGraphAudienceGrant</a> { buyer, encrypted_data_digest, encryption_id_digest });
+        };
+    } <b>else</b> {
+        <b>let</b> <b>mut</b> grants = vector::empty&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceGrant">OrgGraphAudienceGrant</a>&gt;();
+        vector::push_back(&<b>mut</b> grants, <a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceGrant">OrgGraphAudienceGrant</a> { buyer, encrypted_data_digest, encryption_id_digest });
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, audience_key, grants);
+    };
+    <b>let</b> buyer_key = <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerOrgAudienceKey">BoundedBuyerOrgAudienceKey</a> { buyer };
+    <b>if</b> (dynamic_field::exists_(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, buyer_key)) {
+        <b>let</b> binding = dynamic_field::borrow_mut&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerOrgAudienceKey">BoundedBuyerOrgAudienceKey</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerOrgAudience">BoundedBuyerOrgAudience</a>&gt;(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, buyer_key);
+        binding.organization_id = organization_id;
+    } <b>else</b> {
+        dynamic_field::add(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, buyer_key, <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerOrgAudience">BoundedBuyerOrgAudience</a> { organization_id });
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_clear_org_graph_audience"></a>
+
+## Function `clear_org_graph_audience`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_clear_org_graph_audience">clear_org_graph_audience</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, buyer: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_clear_org_graph_audience">clear_org_graph_audience</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>, buyer: <b>address</b>) {
+    <b>let</b> buyer_key = <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerOrgAudienceKey">BoundedBuyerOrgAudienceKey</a> { buyer };
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, buyer_key)) <b>return</b>;
+    <b>let</b> binding = dynamic_field::remove&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerOrgAudienceKey">BoundedBuyerOrgAudienceKey</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerOrgAudience">BoundedBuyerOrgAudience</a>&gt;(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, buyer_key);
+    <b>let</b> audience_key = <a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceKey">OrgGraphAudienceKey</a> { organization_id: binding.organization_id };
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, audience_key)) <b>return</b>;
+    <b>let</b> grants = dynamic_field::borrow_mut&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceKey">OrgGraphAudienceKey</a>, vector&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceGrant">OrgGraphAudienceGrant</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, audience_key);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; vector::length(grants)) {
+        <b>if</b> (vector::borrow(grants, i).buyer == buyer) {
+            <b>let</b> _ = vector::remove(grants, i);
+            i = vector::length(grants);
+        } <b>else</b> {
+            i = i + 1;
+        };
+    };
+    <b>if</b> (vector::is_empty(grants)) {
+        <b>let</b> _ = dynamic_field::remove&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceKey">OrgGraphAudienceKey</a>, vector&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceGrant">OrgGraphAudienceGrant</a>&gt;&gt;(&<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, audience_key);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_assert_org_audience_entitlement"></a>
+
+## Function `assert_org_audience_entitlement`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_org_audience_entitlement">assert_org_audience_entitlement</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, organization: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, reader: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_org_audience_entitlement">assert_org_audience_entitlement</a>(
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    organization: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>,
+    reader: <b>address</b>,
+    clock: &Clock,
+) {
+    <b>let</b> key = <a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceKey">OrgGraphAudienceKey</a> { organization_id: object::id(organization) };
+    <b>assert</b>!(dynamic_field::exists_(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, key), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <b>let</b> grants = dynamic_field::borrow&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceKey">OrgGraphAudienceKey</a>, vector&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceGrant">OrgGraphAudienceGrant</a>&gt;&gt;(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, key);
+    <b>let</b> data_digest = <a href="../std/hash.md#std_hash_sha2_256">std::hash::sha2_256</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.encrypted_data);
+    <b>let</b> identity_digest = <a href="../std/hash.md#std_hash_sha2_256">std::hash::sha2_256</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.encryption_id);
+    <b>let</b> <b>mut</b> authorized = <b>false</b>;
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; vector::length(grants)) {
+        <b>let</b> grant = vector::borrow(grants, i);
+        <b>if</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, grant.buyer, clock)
+            && grant.encrypted_data_digest == data_digest
+            && grant.encryption_id_digest == identity_digest) {
+            authorized = <b>true</b>;
+            i = vector::length(grants);
+        } <b>else</b> {
+            i = i + 1;
+        };
+    };
+    <b>assert</b>!(authorized, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <b>assert</b>!(reader != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_assert_bounded_buyer_active"></a>
+
+## Function `assert_bounded_buyer_active`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_bounded_buyer_active">assert_bounded_buyer_active</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_bounded_buyer_active">assert_bounded_buyer_active</a>(
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <b>let</b> key = <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerBindingKey">BoundedBuyerBindingKey</a> { buyer: tx_context::sender(ctx) };
+    <b>if</b> (!dynamic_field::exists_(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, key)) <b>return</b>;
+    <b>let</b> binding = dynamic_field::borrow&lt;<a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerBindingKey">BoundedBuyerBindingKey</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedBuyerBinding">BoundedBuyerBinding</a>&gt;(&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.id, key);
+    // Human purchases retain the existing wallet entitlement semantics.
+    <b>if</b> (option::is_none(&binding.agent_id)) <b>return</b>;
+    <b>assert</b>!(object::id(account) == binding.memory_account_id, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+        memory_config, account, <a href="../social_contracts/memory.md#social_contracts_memory_cap_mydata_read">social_contracts::memory::cap_mydata_read</a>(),
+        <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>, 0, clock, ctx,
+    );
+    <b>assert</b>!(<a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting) == binding.agent_id, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_access_bounded_with_platform"></a>
+
+## Function `purchase_access_bounded_with_platform`
+
+Purchase only the caller's exact quoted data and terms. Agent execution
+requires CAP_MYDATA_READ, active ancestry, platform scope, the existing
+per-action spend limit and direct-execution approval policy. Existing P2P
+fee routing and buyer-address entitlements are preserved. This path does
+not depend on the broad-pool marketplace being enabled.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_access_bounded_with_platform">purchase_access_bounded_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, expected_seller: <b>address</b>, expected_access_kind: u8, expected_price: u64, expected_duration_days: u64, expected_encryption_id: vector&lt;u8&gt;, expected_data_digest: vector&lt;u8&gt;, expected_listing_platform: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_access_bounded_with_platform">purchase_access_bounded_with_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    expected_seller: <b>address</b>,
+    expected_access_kind: u8,
+    expected_price: u64,
+    expected_duration_days: u64,
+    expected_encryption_id: vector&lt;u8&gt;,
+    expected_data_digest: vector&lt;u8&gt;,
+    expected_listing_platform: Option&lt;<b>address</b>&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> (kind, price, duration_days) = match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceOneTime { price, .. } =&gt; (<a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_ONE_TIME">ACCESS_KIND_ONE_TIME</a>, *price, 0),
+        AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } =&gt;
+            (<a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_RECURRING">ACCESS_KIND_RECURRING</a>, *price, *duration_days),
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a> == expected_seller, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>assert</b>!(kind == expected_access_kind, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>assert</b>!(price == expected_price && duration_days == expected_duration_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a> == expected_listing_platform, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_id_matches">encryption_id_matches</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, &expected_encryption_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>let</b> data_digest = <a href="../std/hash.md#std_hash_sha2_256">std::hash::sha2_256</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.encrypted_data);
+    <b>assert</b>!(data_digest == expected_data_digest, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>let</b> cap = <a href="../social_contracts/memory.md#social_contracts_memory_cap_mydata_read">social_contracts::memory::cap_mydata_read</a>();
+    <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+        memory_config, account, cap, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>, price, clock, ctx,
+    );
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_direct_execution_allowed">social_contracts::memory::assert_direct_execution_allowed</a>(account, cap, ctx);
+    <b>if</b> (kind == <a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_ONE_TIME">ACCESS_KIND_ONE_TIME</a>) {
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(
+            config, block_list_registry, memory_config, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, treasury,
+            <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, payment, account, clock, ctx,
+        );
+    } <b>else</b> {
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(
+            config, block_list_registry, memory_config, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, treasury,
+            <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, payment, account, clock, ctx,
+        );
+    };
+    <b>let</b> account_id = object::id(account);
+    <b>let</b> agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_bind_bounded_buyer">bind_bounded_buyer</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, tx_context::sender(ctx), account_id, agent_id);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_clear_org_graph_audience">clear_org_graph_audience</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, tx_context::sender(ctx));
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedPurchaseEvent">BoundedPurchaseEvent</a> {
+        mydata_id: object::id(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), buyer: tx_context::sender(ctx),
+        buyer_memory_account_id: account_id, buyer_agent_id: agent_id,
+        seller: expected_seller, access_kind: kind, price, duration_days,
+        encrypted_data_digest: data_digest,
+        encryption_id_digest: <a href="../std/hash.md#std_hash_sha2_256">std::hash::sha2_256</a>(expected_encryption_id),
+        listing_platform_id: expected_listing_platform,
+        fee_platform_id: object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>), timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_access_bounded_with_org_audience"></a>
+
+## Function `purchase_access_bounded_with_org_audience`
+
+Bounded P2P purchase whose key-release audience is one active MySo
+organization. The purchaser must be an organization agent with the live
+OrgMemoryReader permission. Each reader is checked again by the policy
+hook, and the entitlement is pinned to this ciphertext and identity.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_access_bounded_with_org_audience">purchase_access_bounded_with_org_audience</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, organization: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, expected_seller: <b>address</b>, expected_access_kind: u8, expected_price: u64, expected_duration_days: u64, expected_encryption_id: vector&lt;u8&gt;, expected_data_digest: vector&lt;u8&gt;, expected_listing_platform: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_access_bounded_with_org_audience">purchase_access_bounded_with_org_audience</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    organization: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;,
+    expected_seller: <b>address</b>,
+    expected_access_kind: u8,
+    expected_price: u64,
+    expected_duration_days: u64,
+    expected_encryption_id: vector&lt;u8&gt;,
+    expected_data_digest: vector&lt;u8&gt;,
+    expected_listing_platform: Option&lt;<b>address</b>&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_version">version</a> == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> (kind, price, duration_days) = match (&<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.access) {
+        AccessConfiguration::MarketplaceOneTime { price, .. } =&gt; (<a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_ONE_TIME">ACCESS_KIND_ONE_TIME</a>, *price, 0),
+        AccessConfiguration::MarketplaceRecurring { price, duration_days, .. } =&gt;
+            (<a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_RECURRING">ACCESS_KIND_RECURRING</a>, *price, *duration_days),
+        _ =&gt; <b>abort</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_ENotForSale">ENotForSale</a>,
+    };
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a> == expected_seller, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>assert</b>!(kind == expected_access_kind, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>assert</b>!(price == expected_price && duration_days == expected_duration_days, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a> == expected_listing_platform, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_id_matches">encryption_id_matches</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, &expected_encryption_id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>let</b> data_digest = <a href="../std/hash.md#std_hash_sha2_256">std::hash::sha2_256</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.encrypted_data);
+    <b>assert</b>!(data_digest == expected_data_digest, <a href="../social_contracts/mydata.md#social_contracts_mydata_EQuoteChanged">EQuoteChanged</a>);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> cap = <a href="../social_contracts/memory.md#social_contracts_memory_cap_mydata_read">social_contracts::memory::cap_mydata_read</a>();
+    <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+        memory_config, account, cap, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>, price, clock, ctx,
+    );
+    <b>let</b> organization_id = object::id(organization);
+    <b>let</b> acting_organization = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
+    <b>assert</b>!(option::is_some(&acting_organization)
+        && *option::borrow(&acting_organization) == organization_id, <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <b>assert</b>!(object::id_to_address(&object::id(group))
+        == <a href="../social_contracts/memory.md#social_contracts_memory_org_memory_group_address">social_contracts::memory::org_memory_group_address</a>(organization), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission">social_contracts::memory::assert_org_permission</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">social_contracts::memory::OrgMemoryReader</a>&gt;(
+        organization, group, sender,
+    );
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_direct_execution_allowed">social_contracts::memory::assert_direct_execution_allowed</a>(account, cap, ctx);
+    <b>if</b> (kind == <a href="../social_contracts/mydata.md#social_contracts_mydata_ACCESS_KIND_ONE_TIME">ACCESS_KIND_ONE_TIME</a>) {
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_one_time_with_platform_internal">purchase_one_time_with_platform_internal</a>(
+            config, block_list_registry, memory_config, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, treasury,
+            <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, payment, account, clock, ctx,
+        );
+    } <b>else</b> {
+        <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_subscription_with_platform_internal">purchase_subscription_with_platform_internal</a>(
+            config, block_list_registry, memory_config, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, treasury,
+            <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, payment, account, clock, ctx,
+        );
+    };
+    <b>let</b> account_id = object::id(account);
+    <b>let</b> agent_id = <a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting);
+    <b>let</b> encryption_id_digest = <a href="../std/hash.md#std_hash_sha2_256">std::hash::sha2_256</a>(expected_encryption_id);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_bind_bounded_buyer">bind_bounded_buyer</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, sender, account_id, agent_id);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_clear_org_graph_audience">clear_org_graph_audience</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, sender);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_bind_org_graph_audience">bind_org_graph_audience</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, sender, organization_id, data_digest, encryption_id_digest);
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_BoundedPurchaseEvent">BoundedPurchaseEvent</a> {
+        mydata_id: object::id(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), buyer: sender,
+        buyer_memory_account_id: account_id, buyer_agent_id: agent_id,
+        seller: expected_seller, access_kind: kind, price, duration_days,
+        encrypted_data_digest: data_digest,
+        encryption_id_digest,
+        listing_platform_id: expected_listing_platform,
+        fee_platform_id: object::id(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>), timestamp: clock::timestamp_ms(clock),
+    });
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_OrgGraphAudienceBoundEvent">OrgGraphAudienceBoundEvent</a> {
+        mydata_id: object::id(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), buyer: sender, organization_id,
+        access_kind: kind, encrypted_data_digest: data_digest,
+        encryption_id_digest, timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_graph_access_bounded_with_platform"></a>
+
+## Function `purchase_graph_access_bounded_with_platform`
+
+Buy a signed graph version and emit its immutable publication identity
+beside the ordinary bounded purchase and audience events.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_graph_access_bounded_with_platform">purchase_graph_access_bounded_with_platform</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, expected_seller: <b>address</b>, expected_access_kind: u8, expected_price: u64, expected_duration_days: u64, expected_encryption_id: vector&lt;u8&gt;, expected_data_digest: vector&lt;u8&gt;, expected_listing_platform: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, graph_id: <a href="../std/string.md#std_string_String">std::string::String</a>, graph_version: u64, manifest_hash: vector&lt;u8&gt;, publication_signature: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_graph_access_bounded_with_platform">purchase_graph_access_bounded_with_platform</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    expected_seller: <b>address</b>,
+    expected_access_kind: u8,
+    expected_price: u64,
+    expected_duration_days: u64,
+    expected_encryption_id: vector&lt;u8&gt;,
+    expected_data_digest: vector&lt;u8&gt;,
+    expected_listing_platform: Option&lt;<b>address</b>&gt;,
+    graph_id: String,
+    graph_version: u64,
+    manifest_hash: vector&lt;u8&gt;,
+    publication_signature: vector&lt;u8&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(graph_version &gt; 0 && string::length(&graph_id) &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(vector::length(&manifest_hash) == 32 && vector::length(&publication_signature) == 64, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_access_bounded_with_platform">purchase_access_bounded_with_platform</a>(
+        config, block_list_registry, memory_config, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, treasury, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        payment, account, expected_seller, expected_access_kind, expected_price,
+        expected_duration_days, expected_encryption_id, expected_data_digest,
+        expected_listing_platform, clock, ctx,
+    );
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_GraphPurchaseSnapshotEvent">GraphPurchaseSnapshotEvent</a> {
+        mydata_id: object::id(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), buyer: tx_context::sender(ctx),
+        buyer_memory_account_id: object::id(account), seller: expected_seller,
+        graph_id, graph_version, manifest_hash,
+        publication_signature_digest: <a href="../std/hash.md#std_hash_sha2_256">std::hash::sha2_256</a>(publication_signature),
+        organization_id: option::none(), timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_purchase_graph_access_bounded_with_org_audience"></a>
+
+## Function `purchase_graph_access_bounded_with_org_audience`
+
+Organization-audience graph purchase with the same immutable version
+evidence and the existing live OrgMemoryReader checks.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_graph_access_bounded_with_org_audience">purchase_graph_access_bounded_with_org_audience</a>(config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, organization: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, expected_seller: <b>address</b>, expected_access_kind: u8, expected_price: u64, expected_duration_days: u64, expected_encryption_id: vector&lt;u8&gt;, expected_data_digest: vector&lt;u8&gt;, expected_listing_platform: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, graph_id: <a href="../std/string.md#std_string_String">std::string::String</a>, graph_version: u64, manifest_hash: vector&lt;u8&gt;, publication_signature: vector&lt;u8&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_graph_access_bounded_with_org_audience">purchase_graph_access_bounded_with_org_audience</a>(
+    config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">MyDataConfig</a>,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    treasury: &EcosystemTreasury,
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> Platform,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    organization: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;,
+    expected_seller: <b>address</b>,
+    expected_access_kind: u8,
+    expected_price: u64,
+    expected_duration_days: u64,
+    expected_encryption_id: vector&lt;u8&gt;,
+    expected_data_digest: vector&lt;u8&gt;,
+    expected_listing_platform: Option&lt;<b>address</b>&gt;,
+    graph_id: String,
+    graph_version: u64,
+    manifest_hash: vector&lt;u8&gt;,
+    publication_signature: vector&lt;u8&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(graph_version &gt; 0 && string::length(&graph_id) &gt; 0, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <b>assert</b>!(vector::length(&manifest_hash) == 32 && vector::length(&publication_signature) == 64, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_purchase_access_bounded_with_org_audience">purchase_access_bounded_with_org_audience</a>(
+        config, block_list_registry, memory_config, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, treasury, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
+        payment, account, organization, group, expected_seller, expected_access_kind,
+        expected_price, expected_duration_days, expected_encryption_id,
+        expected_data_digest, expected_listing_platform, clock, ctx,
+    );
+    event::emit(<a href="../social_contracts/mydata.md#social_contracts_mydata_GraphPurchaseSnapshotEvent">GraphPurchaseSnapshotEvent</a> {
+        mydata_id: object::id(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), buyer: tx_context::sender(ctx),
+        buyer_memory_account_id: object::id(account), seller: expected_seller,
+        graph_id, graph_version, manifest_hash,
+        publication_signature_digest: <a href="../std/hash.md#std_hash_sha2_256">std::hash::sha2_256</a>(publication_signature),
+        organization_id: option::some(object::id(organization)), timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_mydata_purchase_one_time"></a>
 
 ## Function `purchase_one_time`
@@ -5795,6 +6870,7 @@ Update MyData content and metadata (owner only)
     <b>assert</b>!(encrypted_data_updated == encryption_id_updated, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>assert</b>!(encrypted_data_updated || tags_updated, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
     <b>if</b> (encrypted_data_updated) {
+        <b>assert</b>!(!<a href="../social_contracts/mydata.md#social_contracts_mydata_is_bounded_snapshot_frozen">is_bounded_snapshot_frozen</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_EBoundedSnapshotFrozen">EBoundedSnapshotFrozen</a>);
         <b>let</b> data = option::borrow(&new_encrypted_data);
         <b>let</b> encryption_id = option::borrow(&new_encryption_id);
         <b>assert</b>!(!vector::is_empty(data) && vector::length(data) &lt;= config.max_encrypted_data_bytes, <a href="../social_contracts/mydata.md#social_contracts_mydata_EInvalidInput">EInvalidInput</a>);
@@ -5988,6 +7064,7 @@ Key-server policy hook for <code>fetch_key</code>: marketplace listings only.
     <b>if</b> (sender != <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>) {
         <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, sender, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
     };
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_bounded_buyer_active">assert_bounded_buyer_active</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, memory_config, account, clock, ctx);
     <b>if</b> (<a href="../social_contracts/mydata.md#social_contracts_mydata_has_access">has_access</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, sender, clock)) {
         <b>return</b>
     };
@@ -6011,6 +7088,62 @@ Key-server policy hook for <code>fetch_key</code>: marketplace listings only.
         <a href="../social_contracts/memory.md#social_contracts_memory_acting_principal_owner">social_contracts::memory::acting_principal_owner</a>(&acting) == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>,
         <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>,
     );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_mydata_mydata_approve_org_audience"></a>
+
+## Function `mydata_approve_org_audience`
+
+Key-server policy for a purchased organization audience. In addition to
+the purchase binding, every fetch rechecks the reader agent's current
+CAP_MYDATA_READ, active ancestry, organization identity, OrgMemoryReader
+permission, buyer entitlement, ciphertext digest and encryption identity.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve_org_audience">mydata_approve_org_audience</a>(id: vector&lt;u8&gt;, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, reader_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, organization: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_mydata_approve_org_audience">mydata_approve_org_audience</a>(
+    id: vector&lt;u8&gt;,
+    block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">block_list::BlockListRegistry</a>,
+    memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>,
+    <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">MyData</a>,
+    reader_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>,
+    organization: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_encryption_id_matches">encryption_id_matches</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, &id), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyIdMismatch">EPolicyIdMismatch</a>);
+    <b>assert</b>!(<a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_purchase">requires_marketplace_purchase</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>) || <a href="../social_contracts/mydata.md#social_contracts_mydata_requires_marketplace_subscription">requires_marketplace_subscription</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>if</b> (sender == <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>) <b>return</b>;
+    <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(block_list_registry, sender, <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_owner">owner</a>);
+    <b>assert</b>!(object::id_to_address(&object::id(group))
+        == <a href="../social_contracts/memory.md#social_contracts_memory_org_memory_group_address">social_contracts::memory::org_memory_group_address</a>(organization), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_permission">social_contracts::memory::assert_org_permission</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryReader">social_contracts::memory::OrgMemoryReader</a>&gt;(
+        organization, group, sender,
+    );
+    <b>let</b> acting = <a href="../social_contracts/memory.md#social_contracts_memory_resolve_actor_with_cap">social_contracts::memory::resolve_actor_with_cap</a>(
+        memory_config, reader_account,
+        <a href="../social_contracts/memory.md#social_contracts_memory_cap_mydata_read">social_contracts::memory::cap_mydata_read</a>(), <a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>.<a href="../social_contracts/mydata.md#social_contracts_mydata_platform_id">platform_id</a>, 0, clock, ctx,
+    );
+    <b>assert</b>!(option::is_some(&<a href="../social_contracts/memory.md#social_contracts_memory_acting_sub_agent_id">social_contracts::memory::acting_sub_agent_id</a>(&acting)), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <b>let</b> acting_organization = <a href="../social_contracts/memory.md#social_contracts_memory_acting_organization_id">social_contracts::memory::acting_organization_id</a>(&acting);
+    <b>assert</b>!(option::is_some(&acting_organization)
+        && *option::borrow(&acting_organization) == object::id(organization), <a href="../social_contracts/mydata.md#social_contracts_mydata_EPolicyNotEntitled">EPolicyNotEntitled</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_assert_org_audience_entitlement">assert_org_audience_entitlement</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, organization, sender, clock);
 }
 </code></pre>
 
@@ -6269,6 +7402,7 @@ Revoke a buyer's access (owner only). Removes the user from marketplace access t
         };
     };
     <b>assert</b>!(revoked_one_time || revoked_subscription, <a href="../social_contracts/mydata.md#social_contracts_mydata_ENoAccessToRevoke">ENoAccessToRevoke</a>);
+    <a href="../social_contracts/mydata.md#social_contracts_mydata_clear_org_graph_audience">clear_org_graph_audience</a>(<a href="../social_contracts/mydata.md#social_contracts_mydata">mydata</a>, user);
     <b>let</b> access_type_str = <b>if</b> (revoked_one_time && revoked_subscription) {
         string::utf8(b"all")
     } <b>else</b> <b>if</b> (revoked_one_time) {

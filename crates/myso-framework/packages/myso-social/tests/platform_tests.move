@@ -18,14 +18,14 @@ module social_contracts::platform_tests {
     use myso::permissioned_group::PermissionedGroup;
     
     use social_contracts::profile::{Self, Profile, UsernameRegistry,
-        ProfileConfig};
-    use social_contracts::memory::{MemoryRegistry, MemoryAccount};
-    use social_contracts::ai_credit::{AiCreditBalance, AiCreditConfig};
+        ProfileConfig, EcosystemBadgeAdminCap};
+    use social_contracts::memory::{Self, MemoryRegistry, MemoryAccount};
+    use social_contracts::ai_credit::{Self, AiCreditBalance, AiCreditConfig};
     use social_contracts::block_list::{Self, BlockListRegistry};
     use social_contracts::social_graph::{Self, SocialGraph};
     use social_contracts::platform::{
         Self, Platform, PlatformRegistry, PlatformPackage, PlatformBlockAdmin, PlatformBadgeAdmin,
-        PlatformConfig, PlatformBadgeLedger};
+        PlatformConfig, PlatformBadgeLedger, EcosystemBadge, EcosystemBadgeRegistry};
     
     const ADMIN: address = @0xAD;
     const USER1: address = @0x1;
@@ -295,495 +295,12 @@ module social_contracts::platform_tests {
         };
     }
 
-    #[test]
-    fun test_platform_admin_assigns_badge() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        
-        // Initialize the clock first
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            // Create test clock
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            clock::share_for_testing(clock);
-        };
-        
-        // Create platform and profile
-        create_test_platform(&mut scenario);
-        create_test_profile(&mut scenario, PLATFORM_USER, string::utf8(b"platform_user"));
-        
-        // Platform admin assigns a badge to the user's profile
-        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
-        {
-
-let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
-            let platform = test_scenario::take_shared<Platform>(&scenario);
-            let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
-            
-            let badge_name = string::utf8(b"VIP");
-            
-            // Assign badge
-            platform::assign_badge(
-                &registry,
-                &platform_config,
-                                &platform,
-                &group,
-                &mut user_profile,
-                badge_name,
-                string::utf8(b"Very Important Person"),
-                string::utf8(b"https://example.com/vip_badge.png"),
-                string::utf8(b"https://example.com/vip_badge_icon.png"),
-                10,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Verify badge was assigned
-            let badges = profile::get_profile_badges(&user_profile);
-            assert!(vector::length(&badges) == 1, 1);
-            
-            // Verify badge count
-            assert!(profile::badge_count(&user_profile) == 1, 2);
-            
-            // Verify badge details - get badge data and extract badge_id
-            let badge_data = *vector::borrow(&badges, 0);
-            let badge_id = profile::badge_data_id(&badge_data);
-            assert!(profile::has_badge(&user_profile, &badge_id), 3);
-            
-            let badge_opt = profile::get_badge(&user_profile, &badge_id);
-            assert!(option::is_some(&badge_opt), 4);
-            
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(group);
-            test_scenario::return_shared(platform);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
-
-            test_scenario::return_shared(clock);
-        test_scenario::return_shared(platform_config);
-        };
-        
-        test_scenario::end(scenario);
-    }
     
-    #[test]
-    fun test_platform_mod_assigns_and_revokes_badge() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        
-        // Initialize the clock first
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            // Create test clock
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            clock::share_for_testing(clock);
-        };
-        
-        // Create platform and profile
-        create_test_platform(&mut scenario);
-        create_test_profile(&mut scenario, PLATFORM_USER, string::utf8(b"platform_user2"));
-        
-        // Platform moderator assigns a badge to the user's profile
-        test_scenario::next_tx(&mut scenario, PLATFORM_MOD);
-        {
-
-let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
-            let platform = test_scenario::take_shared<Platform>(&scenario);
-            let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
-            
-            let badge_name = string::utf8(b"Contributor");
-            
-            // Assign badge
-            platform::assign_badge(
-                &registry,
-                &platform_config,
-                                &platform,
-                &group,
-                &mut user_profile,
-                badge_name,
-                string::utf8(b"Active Contributor"),
-                string::utf8(b"https://example.com/contributor_badge.png"),
-                string::utf8(b"https://example.com/contributor_badge_icon.png"),
-                5,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Verify badge was assigned and get the actual badge ID
-            assert!(profile::badge_count(&user_profile) == 1, 1);
-            let badges = profile::get_profile_badges(&user_profile);
-            let badge_data = *vector::borrow(&badges, 0);
-            let badge_id = profile::badge_data_id(&badge_data);
-            assert!(profile::has_badge(&user_profile, &badge_id), 2);
-            
-            // Now revoke the badge
-            platform::revoke_badge(
-                &registry,
-                &platform,
-                &group,
-                &mut user_profile,
-                badge_id,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Verify badge was revoked
-            assert!(profile::badge_count(&user_profile) == 0, 3);
-            assert!(!profile::has_badge(&user_profile, &badge_id), 4);
-            
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(group);
-            test_scenario::return_shared(platform);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
-
-            test_scenario::return_shared(clock);
-        test_scenario::return_shared(platform_config);
-        };
-        
-        test_scenario::end(scenario);
-    }
     
-    #[test]
-    fun test_multiple_badges_from_platform() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        
-        // Initialize the clock first
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            // Create test clock
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            clock::share_for_testing(clock);
-        };
-        
-        // Create platform and profile
-        create_test_platform(&mut scenario);
-        create_test_profile(&mut scenario, PLATFORM_USER, string::utf8(b"platform_user3"));
-        
-        // Platform admin assigns multiple badges to the user's profile
-        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
-        {
-
-let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
-            let platform = test_scenario::take_shared<Platform>(&scenario);
-            let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
-            
-            // Create the platform ID for later comparisons
-            let platform_id = object::uid_to_address(platform::id(&platform));
-            
-            // Assign first badge
-            platform::assign_badge(
-                &registry,
-                &platform_config,
-                                &platform,
-                &group,
-                &mut user_profile,
-                string::utf8(b"VIP"),
-                string::utf8(b"Very Important Person"),
-                string::utf8(b"https://example.com/vip_badge.png"),
-                string::utf8(b"https://example.com/vip_badge_icon.png"),
-                10,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Assign second badge
-            platform::assign_badge(
-                &registry,
-                &platform_config,
-                                &platform,
-                &group,
-                &mut user_profile,
-                string::utf8(b"Moderator"),
-                string::utf8(b"Community Moderator"),
-                string::utf8(b"https://example.com/mod_badge.png"),
-                string::utf8(b"https://example.com/mod_badge_icon.png"),
-                20,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Verify total badge count
-            assert!(profile::badge_count(&user_profile) == 2, 1);
-            
-            // Verify all badges are from the same platform
-            let platform_badges = profile::get_platform_badges(&user_profile, platform_id);
-            assert!(vector::length(&platform_badges) == 2, 2);
-            
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(group);
-            test_scenario::return_shared(platform);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
-
-            test_scenario::return_shared(clock);
-        test_scenario::return_shared(platform_config);
-        };
-        
-        test_scenario::end(scenario);
-    }
     
-    #[test]
-    #[expected_failure(abort_code = platform::EUnauthorized)]
-    fun test_unauthorized_badge_assignment() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        
-        // Initialize the clock first
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            // Create test clock
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            clock::share_for_testing(clock);
-        };
-        
-        // Create platform and profile
-        create_test_platform(&mut scenario);
-        create_test_profile(&mut scenario, PLATFORM_USER, string::utf8(b"platform_user4"));
-        
-        // Normal user attempts to assign a badge (should fail)
-        test_scenario::next_tx(&mut scenario, USER1);
-        {
-
-let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
-            let platform = test_scenario::take_shared<Platform>(&scenario);
-            let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
-            
-            // This should fail with EUnauthorized since USER1 is neither platform admin nor moderator
-            platform::assign_badge(
-                &registry,
-                &platform_config,
-                                &platform,
-                &group,
-                &mut user_profile,
-                string::utf8(b"Fake"),
-                string::utf8(b"Fake Badge"),
-                string::utf8(b"https://example.com/fake.png"),
-                string::utf8(b"https://example.com/fake_icon.png"),
-                1,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(group);
-            test_scenario::return_shared(platform);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
-
-            test_scenario::return_shared(clock);
-        test_scenario::return_shared(platform_config);
-        };
-        
-        test_scenario::end(scenario);
-    }
     
-    #[test]
-    #[expected_failure(abort_code = profile::EBadgeAlreadyExists)]
-    fun test_duplicate_badge_prevention() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        
-        // Initialize the clock first
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            // Create test clock
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            clock::share_for_testing(clock);
-        };
-        
-        // Create platform and profile
-        create_test_platform(&mut scenario);
-        create_test_profile(&mut scenario, PLATFORM_USER, string::utf8(b"platform_user5"));
-        
-        // Platform admin assigns a badge, then tries to assign the same badge again
-        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
-        {
-
-let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
-            let platform = test_scenario::take_shared<Platform>(&scenario);
-            let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
-            
-            let badge_name = string::utf8(b"VIP");
-            
-            // Assign badge first time - should succeed
-            platform::assign_badge(
-                &registry,
-                &platform_config,
-                                &platform,
-                &group,
-                &mut user_profile,
-                badge_name,
-                string::utf8(b"Very Important Person"),
-                string::utf8(b"https://example.com/vip_badge.png"),
-                string::utf8(b"https://example.com/vip_badge_icon.png"),
-                10,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Try to assign the same badge again - should fail
-            platform::assign_badge(
-                &registry,
-                &platform_config,
-                                &platform,
-                &group,
-                &mut user_profile,
-                badge_name,
-                string::utf8(b"Very Important Person"),
-                string::utf8(b"https://example.com/vip_badge.png"),
-                string::utf8(b"https://example.com/vip_badge_icon.png"),
-                10,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Not reached due to expected failure
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(group);
-            test_scenario::return_shared(platform);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
-
-            test_scenario::return_shared(clock);
-        test_scenario::return_shared(platform_config);
-        };
-        
-        test_scenario::end(scenario);
-    }
     
-    #[test]
-    #[expected_failure(abort_code = profile::EBadgeNotFound)]
-    fun test_revoke_nonexistent_badge() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        
-        // Initialize the clock first
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            // Create test clock
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            clock::share_for_testing(clock);
-        };
-        
-        // Create platform and profile
-        create_test_platform(&mut scenario);
-        create_test_profile(&mut scenario, PLATFORM_USER, string::utf8(b"platform_user6"));
-        
-        // Platform admin tries to revoke a nonexistent badge
-        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
-        {
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
-            let platform = test_scenario::take_shared<Platform>(&scenario);
-            let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
-            
-            // Try to revoke a nonexistent badge - should fail
-            // Note: badge ID format changed to include platform ID bytes, but we're testing with a fake ID
-            platform::revoke_badge(
-                &registry,
-                &platform,
-                &group,
-                &mut user_profile,
-                string::utf8(b"badge_NonexistentBadge"),
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Not reached due to expected failure
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(group);
-            test_scenario::return_shared(platform);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
-
-            test_scenario::return_shared(clock);
-        };
-        
-        test_scenario::end(scenario);
-    }
     
-    #[test]
-    fun test_badges_persist_on_profile() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        
-        // Initialize the clock first
-        test_scenario::next_tx(&mut scenario, ADMIN);
-        {
-            // Create test clock
-            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
-            clock::share_for_testing(clock);
-        };
-        
-        // Create platform and profile
-        create_test_platform(&mut scenario);
-        create_test_profile(&mut scenario, PLATFORM_USER, string::utf8(b"platform_user7"));
-        
-        // Platform admin assigns a badge to the user's profile
-        test_scenario::next_tx(&mut scenario, PLATFORM_ADMIN);
-        {
-
-let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
-
-            let clock = test_scenario::take_shared<Clock>(&scenario);
-            let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
-            let platform = test_scenario::take_shared<Platform>(&scenario);
-            let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
-            
-            // Assign badge
-            platform::assign_badge(
-                &registry,
-                &platform_config,
-                                &platform,
-                &group,
-                &mut user_profile,
-                string::utf8(b"VIP"),
-                string::utf8(b"Very Important Person"),
-                string::utf8(b"https://example.com/vip_badge.png"),
-                string::utf8(b"https://example.com/vip_badge_icon.png"),
-                10,
-                &clock,
-                test_scenario::ctx(&mut scenario)
-            );
-            
-            // Verify badge was assigned
-            assert!(profile::badge_count(&user_profile) == 1, 1);
-            
-            test_scenario::return_shared(registry);
-            test_scenario::return_shared(group);
-            test_scenario::return_shared(platform);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
-
-            test_scenario::return_shared(clock);
-        test_scenario::return_shared(platform_config);
-        };
-
-        test_scenario::next_tx(&mut scenario, PLATFORM_USER);
-        {
-            let user_profile = test_scenario::take_from_sender<Profile>(&scenario);
-            assert!(profile::badge_count(&user_profile) == 1, 2);
-            let badges = profile::get_profile_badges(&user_profile);
-            let badge_data = *vector::borrow(&badges, 0);
-            let badge_id = profile::badge_data_id(&badge_data);
-            assert!(profile::has_badge(&user_profile, &badge_id), 3);
-            test_scenario::return_to_sender(&scenario, user_profile);
-        };
-
-        test_scenario::end(scenario);
-    }
-
     #[test]
     fun test_create_platform_with_media_fields() {
         let mut scenario = test_scenario::begin(ADMIN);
@@ -1092,28 +609,34 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
             let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
+            let mut ledger = test_scenario::take_shared<PlatformBadgeLedger>(&scenario);
 
-            platform::assign_badge(
+            platform::assign_shared_badge(
                 &registry,
                 &platform_config,
-                                &platform,
+                &platform,
                 &group,
-                &mut user_profile,
+                &mut ledger,
+                PLATFORM_USER,
                 string::utf8(b"ModBadge"),
                 string::utf8(b"Moderator badge"),
                 string::utf8(b"https://example.com/mod.png"),
                 string::utf8(b"https://example.com/mod_icon.png"),
                 1,
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
-            assert!(profile::badge_count(&user_profile) == 1, 0);
+            let platform_id = object::uid_to_address(platform::id(&platform));
+            let mut badge_id = string::utf8(b"badge_");
+            string::append(&mut badge_id, myso::address::to_string(platform_id));
+            string::append(&mut badge_id, string::utf8(b"_ModBadge"));
+            assert!(platform::has_active_platform_badge(&ledger, PLATFORM_USER, &badge_id, &clock), 0);
 
+            test_scenario::return_shared(ledger);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(group);
             test_scenario::return_shared(platform);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
         test_scenario::return_shared(platform_config);
@@ -1152,28 +675,34 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
             let registry = test_scenario::take_shared<PlatformRegistry>(&scenario);
             let platform = test_scenario::take_shared<Platform>(&scenario);
             let group = test_scenario::take_shared<PermissionedGroup<PlatformPackage>>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
+            let mut ledger = test_scenario::take_shared<PlatformBadgeLedger>(&scenario);
 
-            platform::assign_badge(
+            platform::assign_shared_badge(
                 &registry,
                 &platform_config,
-                                &platform,
+                &platform,
                 &group,
-                &mut user_profile,
+                &mut ledger,
+                PLATFORM_USER,
                 string::utf8(b"BadgeOnly"),
-                string::utf8(b"Badge only mod"),
-                string::utf8(b"https://example.com/b.png"),
-                string::utf8(b"https://example.com/b_icon.png"),
+                string::utf8(b"Moderator badge"),
+                string::utf8(b"https://example.com/mod.png"),
+                string::utf8(b"https://example.com/mod_icon.png"),
                 1,
+                option::none(),
                 &clock,
                 test_scenario::ctx(&mut scenario),
             );
-            assert!(profile::badge_count(&user_profile) == 1, 0);
+            let platform_id = object::uid_to_address(platform::id(&platform));
+            let mut badge_id = string::utf8(b"badge_");
+            string::append(&mut badge_id, myso::address::to_string(platform_id));
+            string::append(&mut badge_id, string::utf8(b"_BadgeOnly"));
+            assert!(platform::has_active_platform_badge(&ledger, PLATFORM_USER, &badge_id, &clock), 0);
 
+            test_scenario::return_shared(ledger);
             test_scenario::return_shared(registry);
             test_scenario::return_shared(group);
             test_scenario::return_shared(platform);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
 
             test_scenario::return_shared(clock);
         test_scenario::return_shared(platform_config);
@@ -1648,12 +1177,18 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
 
         test_scenario::next_tx(&mut scenario, ADMIN);
         {
+            platform::init_ecosystem_badge_registry_for_testing(test_scenario::ctx(&mut scenario));
+        };
+
+        test_scenario::next_tx(&mut scenario, ADMIN);
+        {
             let clock = test_scenario::take_shared<Clock>(&scenario);
-            let mut user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
+            let mut badge_registry = test_scenario::take_shared<EcosystemBadgeRegistry>(&scenario);
             let cap = profile::create_ecosystem_badge_admin_cap(test_scenario::ctx(&mut scenario));
-            profile::assign_ecosystem_badge(
+            platform::mint_ecosystem_badge(
                 &cap,
-                &mut user_profile,
+                &mut badge_registry,
+                PLATFORM_USER,
                 string::utf8(b"Verified"),
                 string::utf8(b"Ecosystem verified"),
                 string::utf8(b"https://example.com/eco.png"),
@@ -1663,29 +1198,26 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
                 test_scenario::ctx(&mut scenario)
             );
             transfer::public_transfer(cap, ADMIN);
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
+            test_scenario::return_shared(badge_registry);
             test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(&mut scenario, PLATFORM_USER);
         {
             let clock = test_scenario::take_shared<Clock>(&scenario);
-            let user_profile = test_scenario::take_from_address<Profile>(&scenario, PLATFORM_USER);
+            let badge = test_scenario::take_from_sender<EcosystemBadge>(&scenario);
             let mut ledger = test_scenario::take_shared<PlatformBadgeLedger>(&scenario);
-            let selected = profile::get_selected_ecosystem_badge_id(&user_profile);
-            assert!(option::is_some(&selected), 0);
-            let badge_id = *option::borrow(&selected);
 
             platform::select_ecosystem_badge(
                 &mut ledger,
-                &user_profile,
-                badge_id,
+                &badge,
                 &clock,
                 test_scenario::ctx(&mut scenario)
             );
-            assert!(option::is_some(&platform::selected_ecosystem_badge_id(&ledger, PLATFORM_USER)), 1);
+            let selected = platform::selected_ecosystem_badge_id(&ledger, PLATFORM_USER);
+            assert!(selected == option::some(string::utf8(b"ecosystem_badge_Verified")), 1);
 
-            test_scenario::return_to_address(PLATFORM_USER, user_profile);
+            test_scenario::return_to_sender(&scenario, badge);
             test_scenario::return_shared(clock);
             test_scenario::return_shared(ledger);
         };
@@ -1814,5 +1346,412 @@ let platform_config = test_scenario::take_shared<PlatformConfig>(&scenario);
         };
 
         test_scenario::end(scenario);
+    }
+
+    // =====================================================================
+    // Soulbound ecosystem badges + owned-profile owner rotation
+    // =====================================================================
+
+    fun eb_setup(scenario: &mut test_scenario::Scenario) {
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            profile::init_for_testing(&clock, test_scenario::ctx(scenario));
+            platform::init_ecosystem_badge_registry_for_testing(test_scenario::ctx(scenario));
+            let cap = profile::create_ecosystem_badge_admin_cap(test_scenario::ctx(scenario));
+            transfer::public_transfer(cap, ADMIN);
+            clock::share_for_testing(clock);
+        };
+    }
+
+    fun eb_create_profile_for(scenario: &mut test_scenario::Scenario, owner: address, username: vector<u8>) {
+        test_scenario::next_tx(scenario, owner);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let profile_config = test_scenario::take_shared<ProfileConfig>(scenario);
+            let mut ai_credit_config = test_scenario::take_shared<AiCreditConfig>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            profile::create_profile(
+                &mut registry,
+                &profile_config,
+                &mut memory_registry,
+                &mut ai_credit_config,
+                string::utf8(b"User"),
+                string::utf8(username),
+                string::utf8(b"bio"),
+                vector::empty(),
+                vector::empty(),
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(ai_credit_config);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(registry);
+            test_scenario::return_shared(profile_config);
+        };
+    }
+
+    fun eb_mint_badge(scenario: &mut test_scenario::Scenario, recipient: address, name: vector<u8>) {
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(scenario);
+            let mut registry = test_scenario::take_shared<EcosystemBadgeRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            platform::mint_ecosystem_badge(
+                &cap,
+                &mut registry,
+                recipient,
+                string::utf8(name),
+                string::utf8(b"desc"),
+                string::utf8(b"https://example.com/m.png"),
+                string::utf8(b"https://example.com/i.png"),
+                2,
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(scenario, cap);
+        };
+    }
+
+    fun eb_mint_verified_x(scenario: &mut test_scenario::Scenario, recipient: address, handle: vector<u8>) {
+        test_scenario::next_tx(scenario, ADMIN);
+        {
+            let cap = test_scenario::take_from_sender<EcosystemBadgeAdminCap>(scenario);
+            let mut registry = test_scenario::take_shared<EcosystemBadgeRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            platform::mint_verified_x_badge(
+                &cap,
+                &mut registry,
+                recipient,
+                string::utf8(handle),
+                string::utf8(b"verified_x_account"),
+                string::utf8(b"Verified X account"),
+                string::utf8(b"https://example.com/x.png"),
+                string::utf8(b"https://example.com/x_icon.png"),
+                1,
+                &clock,
+                test_scenario::ctx(scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(scenario, cap);
+        };
+    }
+
+    fun eb_burn_from(scenario: &mut test_scenario::Scenario, holder: address) {
+        test_scenario::next_tx(scenario, holder);
+        {
+            let mut registry = test_scenario::take_shared<EcosystemBadgeRegistry>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            let badge = test_scenario::take_from_sender<EcosystemBadge>(scenario);
+            platform::burn_ecosystem_badge(&mut registry, badge, &clock, test_scenario::ctx(scenario));
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(registry);
+        };
+    }
+
+    #[test]
+    fun test_eco_badge_mint_to_wallet_without_profile() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_mint_badge(&mut scen, USER1, b"early_adopter");
+
+        test_scenario::next_tx(&mut scen, USER1);
+        {
+            let badge = test_scenario::take_from_sender<EcosystemBadge>(&scen);
+            let registry = test_scenario::take_shared<EcosystemBadgeRegistry>(&scen);
+            assert!(platform::ecosystem_badge_id(&badge) == string::utf8(b"ecosystem_badge_early_adopter"), 0);
+            assert!(platform::ecosystem_badge_name(&badge) == string::utf8(b"early_adopter"), 1);
+            assert!(platform::ecosystem_badge_issued_by(&badge) == ADMIN, 2);
+            assert!(option::is_none(&platform::ecosystem_badge_subject(&badge)), 3);
+            assert!(platform::has_ecosystem_badge(&registry, USER1, string::utf8(b"ecosystem_badge_early_adopter")), 4);
+            assert!(!platform::has_ecosystem_badge(&registry, USER2, string::utf8(b"ecosystem_badge_early_adopter")), 5);
+            test_scenario::return_to_sender(&scen, badge);
+            test_scenario::return_shared(registry);
+        };
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = platform::EEcosystemBadgeAlreadyIssued, location = social_contracts::platform)]
+    fun test_eco_badge_duplicate_mint_aborts() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_mint_badge(&mut scen, USER1, b"ambassador");
+        eb_mint_badge(&mut scen, USER1, b"ambassador");
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    fun test_eco_badge_same_badge_for_different_wallets() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_mint_badge(&mut scen, USER1, b"ambassador");
+        eb_mint_badge(&mut scen, USER2, b"ambassador");
+        test_scenario::next_tx(&mut scen, USER2);
+        {
+            assert!(test_scenario::has_most_recent_for_sender<EcosystemBadge>(&scen), 0);
+        };
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    fun test_eco_badge_verified_x_binds_canonical_handle() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_mint_verified_x(&mut scen, USER1, b"@Alice_X");
+
+        test_scenario::next_tx(&mut scen, USER1);
+        {
+            let badge = test_scenario::take_from_sender<EcosystemBadge>(&scen);
+            let registry = test_scenario::take_shared<EcosystemBadgeRegistry>(&scen);
+            assert!(platform::ecosystem_badge_subject(&badge) == option::some(string::utf8(b"alice_x")), 0);
+            assert!(platform::x_handle_of(&registry, USER1) == option::some(string::utf8(b"alice_x")), 1);
+            assert!(platform::wallet_of_x_handle(&registry, string::utf8(b"ALICE_X")) == option::some(USER1), 2);
+            test_scenario::return_to_sender(&scen, badge);
+            test_scenario::return_shared(registry);
+        };
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = platform::EXHandleTaken, location = social_contracts::platform)]
+    fun test_eco_badge_x_handle_taken_by_other_wallet_aborts() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_mint_verified_x(&mut scen, USER1, b"alice");
+        eb_mint_verified_x(&mut scen, USER2, b"Alice");
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = platform::EWalletHasXHandle, location = social_contracts::platform)]
+    fun test_eco_badge_wallet_cannot_verify_second_handle() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_mint_verified_x(&mut scen, USER1, b"alice");
+        eb_mint_verified_x(&mut scen, USER1, b"bob");
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    fun test_eco_badge_burn_frees_badge_and_handle_for_reissue() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_mint_verified_x(&mut scen, USER1, b"alice");
+        eb_burn_from(&mut scen, USER1);
+
+        test_scenario::next_tx(&mut scen, USER1);
+        {
+            let registry = test_scenario::take_shared<EcosystemBadgeRegistry>(&scen);
+            assert!(!platform::has_ecosystem_badge(&registry, USER1, string::utf8(b"ecosystem_badge_verified_x_account")), 0);
+            assert!(option::is_none(&platform::wallet_of_x_handle(&registry, string::utf8(b"alice"))), 1);
+            assert!(!test_scenario::has_most_recent_for_sender<EcosystemBadge>(&scen), 2);
+            test_scenario::return_shared(registry);
+        };
+
+        // The handle can now be verified by another wallet, and USER1 can re-link.
+        eb_mint_verified_x(&mut scen, USER2, b"alice");
+        eb_mint_verified_x(&mut scen, USER1, b"newhandle");
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    fun test_eco_badge_select_on_profile() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_create_profile_for(&mut scen, USER1, b"user_one");
+        eb_mint_verified_x(&mut scen, USER1, b"alice");
+
+        test_scenario::next_tx(&mut scen, USER1);
+        {
+            let mut p = test_scenario::take_from_sender<Profile>(&scen);
+            let badge = test_scenario::take_from_sender<EcosystemBadge>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            platform::select_ecosystem_badge_on_profile(&mut p, &badge, &clock, test_scenario::ctx(&mut scen));
+            assert!(
+                profile::get_selected_ecosystem_badge_id(&p)
+                    == option::some(string::utf8(b"ecosystem_badge_verified_x_account")),
+                0,
+            );
+            profile::clear_selected_ecosystem_badge(&mut p, &clock, test_scenario::ctx(&mut scen));
+            assert!(option::is_none(&profile::get_selected_ecosystem_badge_id(&p)), 1);
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scen, badge);
+            test_scenario::return_to_sender(&scen, p);
+        };
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = profile::EUnauthorized, location = social_contracts::profile)]
+    fun test_eco_badge_select_on_someone_elses_profile_aborts() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_create_profile_for(&mut scen, USER1, b"user_one");
+        eb_mint_badge(&mut scen, USER2, b"ambassador");
+
+        test_scenario::next_tx(&mut scen, USER2);
+        {
+            let mut p = test_scenario::take_from_address<Profile>(&scen, USER1);
+            let badge = test_scenario::take_from_sender<EcosystemBadge>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            platform::select_ecosystem_badge_on_profile(&mut p, &badge, &clock, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scen, badge);
+            test_scenario::return_to_address(USER1, p);
+        };
+        test_scenario::end(scen);
+    }
+
+    // === Profile owner rotation (owned profile handed over by value) ===
+
+    fun eb_propose_rotation(scenario: &mut test_scenario::Scenario, from: address, to: address) {
+        test_scenario::next_tx(scenario, from);
+        {
+            let registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let mut account = test_scenario::take_shared<MemoryAccount>(scenario);
+            let p = test_scenario::take_from_sender<Profile>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            profile::propose_owner_rotation(
+                &registry, &memory_registry, &mut account, &p, to,
+                vector::empty(), vector::empty(), &clock, test_scenario::ctx(scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(scenario, p);
+            test_scenario::return_shared(account);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(registry);
+        };
+    }
+
+    fun eb_accept_rotation(scenario: &mut test_scenario::Scenario, recipient: address) {
+        test_scenario::next_tx(scenario, recipient);
+        {
+            let mut account = test_scenario::take_shared<MemoryAccount>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            memory::accept_owner_rotation(&mut account, &clock, test_scenario::ctx(scenario));
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(account);
+        };
+    }
+
+    fun eb_complete_rotation(scenario: &mut test_scenario::Scenario, from: address) {
+        test_scenario::next_tx(scenario, from);
+        {
+            let mut registry = test_scenario::take_shared<UsernameRegistry>(scenario);
+            let mut memory_registry = test_scenario::take_shared<MemoryRegistry>(scenario);
+            let mut account = test_scenario::take_shared<MemoryAccount>(scenario);
+            let mut balance = test_scenario::take_shared<AiCreditBalance>(scenario);
+            let p = test_scenario::take_from_sender<Profile>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            profile::complete_owner_rotation(
+                &mut registry, &mut memory_registry, &mut account, &mut balance, p,
+                &clock, test_scenario::ctx(scenario),
+            );
+            test_scenario::return_shared(clock);
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(account);
+            test_scenario::return_shared(memory_registry);
+            test_scenario::return_shared(registry);
+        };
+    }
+
+    #[test]
+    fun test_eco_badge_owner_rotation_moves_profile_and_all_ownership_atomically() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_create_profile_for(&mut scen, USER1, b"user_one");
+        eb_mint_badge(&mut scen, USER1, b"ambassador");
+
+        // Display the badge so we can check the selection is cleared on rotation.
+        test_scenario::next_tx(&mut scen, USER1);
+        {
+            let mut p = test_scenario::take_from_sender<Profile>(&scen);
+            let badge = test_scenario::take_from_sender<EcosystemBadge>(&scen);
+            let clock = test_scenario::take_shared<Clock>(&scen);
+            platform::select_ecosystem_badge_on_profile(&mut p, &badge, &clock, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(&scen, badge);
+            test_scenario::return_to_sender(&scen, p);
+        };
+
+        eb_propose_rotation(&mut scen, USER1, USER2);
+        eb_accept_rotation(&mut scen, USER2);
+        eb_complete_rotation(&mut scen, USER1);
+
+        test_scenario::next_tx(&mut scen, USER2);
+        {
+            let p = test_scenario::take_from_sender<Profile>(&scen);
+            let registry = test_scenario::take_shared<UsernameRegistry>(&scen);
+            let account = test_scenario::take_shared<MemoryAccount>(&scen);
+            let balance = test_scenario::take_shared<AiCreditBalance>(&scen);
+            let pid = object::uid_to_address(profile::id(&p));
+
+            assert!(profile::owner(&p) == USER2, 0);
+            assert!(profile::lookup_profile_by_owner(&registry, USER2) == option::some(pid), 1);
+            assert!(option::is_none(&profile::lookup_profile_by_owner(&registry, USER1)), 2);
+            assert!(memory::owner(&account) == USER2, 3);
+            assert!(ai_credit::balance_principal_owner(&balance) == USER2, 4);
+            assert!(option::is_none(&profile::get_selected_ecosystem_badge_id(&p)), 5);
+            assert!(profile::lookup_profile_by_username(&registry, string::utf8(b"user_one")) == option::some(pid), 6);
+
+            test_scenario::return_shared(balance);
+            test_scenario::return_shared(account);
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(&scen, p);
+        };
+
+        // Soulbound: the badge stayed with the old wallet.
+        test_scenario::next_tx(&mut scen, USER1);
+        {
+            assert!(test_scenario::has_most_recent_for_sender<EcosystemBadge>(&scen), 7);
+            assert!(!test_scenario::has_most_recent_for_sender<Profile>(&scen), 8);
+        };
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = memory::EOwnerRotationNotAccepted, location = social_contracts::memory)]
+    fun test_eco_badge_owner_rotation_requires_recipient_acceptance() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_create_profile_for(&mut scen, USER1, b"user_one");
+        eb_propose_rotation(&mut scen, USER1, USER2);
+        eb_complete_rotation(&mut scen, USER1);
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = memory::EOwnerRotationWrongWallet, location = social_contracts::memory)]
+    fun test_eco_badge_owner_rotation_accept_by_wrong_wallet_aborts() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_create_profile_for(&mut scen, USER1, b"user_one");
+        eb_propose_rotation(&mut scen, USER1, USER2);
+        eb_accept_rotation(&mut scen, ADMIN);
+        test_scenario::end(scen);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = memory::EOwnerRotationNotPending, location = social_contracts::memory)]
+    fun test_eco_badge_cancelled_owner_rotation_cannot_complete() {
+        let mut scen = test_scenario::begin(ADMIN);
+        eb_setup(&mut scen);
+        eb_create_profile_for(&mut scen, USER1, b"user_one");
+        eb_propose_rotation(&mut scen, USER1, USER2);
+        test_scenario::next_tx(&mut scen, USER1);
+        {
+            let mut account = test_scenario::take_shared<MemoryAccount>(&scen);
+            memory::cancel_owner_rotation(&mut account, test_scenario::ctx(&mut scen));
+            test_scenario::return_shared(account);
+        };
+        eb_complete_rotation(&mut scen, USER1);
+        test_scenario::end(scen);
     }
 }

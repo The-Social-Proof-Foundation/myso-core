@@ -27,6 +27,7 @@ use myso_indexer_alt_social_schema::models::{
     NewPocUsernameBeneficiaryEvent, NewTip, NewUnifiedRevenue, CONTENT_TYPE_POST, CURRENCY_MYSO,
     DISPUTE_STATUS_VOTING, EVENT_TYPE_CLAIMED, EVENT_TYPE_CONFLICT,
     EVENT_TYPE_CREATOR_IDENTITY_WALLET_LINKED, EVENT_TYPE_ENDED, EVENT_TYPE_PROVISIONED,
+    EVENT_TYPE_RESERVED_USERNAME_ADOPTED, EVENT_TYPE_RESERVED_USERNAME_RELEASED,
     REVENUE_TYPE_TIPS_POST, USERNAME_BENEFICIARY_STATUS_ACTIVE, VAULT_CLAIM_KIND_JOIN_REFERRAL,
     VAULT_CLAIM_KIND_STANDARD,
 };
@@ -338,6 +339,12 @@ pub fn handle_poc_event(
         }
         "CreatorIdentityWalletLinkedEvent" => {
             process_creator_identity_wallet_linked_event(data, event_id, &tx_id)
+        }
+        "ReservedUsernameAdoptedEvent" => {
+            process_reserved_username_adopted_event(data, event_id, &tx_id)
+        }
+        "ReservedUsernameReleasedEvent" => {
+            process_reserved_username_released_event(data, event_id, &tx_id)
         }
         "MediaAssetRightsDisputeProposedEvent"
         | "MediaAssetGovernanceProposalLinkedEvent"
@@ -892,6 +899,8 @@ fn process_username_beneficiary_provisioned_event(
         join_referral_paid_at_ms: None,
         transaction_id: tx_id.to_string(),
         time: chrono::Utc::now(),
+        linked_wallet: None,
+        reserved_for: None,
     };
     Some(vec![
         SocialEventRow::PocUsernameBeneficiary(row),
@@ -910,9 +919,12 @@ fn process_username_beneficiary_provisioned_event(
 struct UsernameBeneficiaryClaimedEvent {
     beneficiary_id: String,
     username: String,
-    profile_id: String,
+    #[serde(default)]
+    profile_id: Option<String>,
     claimed_by: String,
-    wallet: String,
+    linked_wallet: String,
+    #[serde(default)]
+    reserved_for: Option<String>,
     oracle_evidence_hash: String,
     #[serde(deserialize_with = "deserialize_u64")]
     claimed_at: u64,
@@ -930,22 +942,94 @@ fn process_username_beneficiary_claimed_event(
         data,
         "poc_username_beneficiary UsernameBeneficiaryClaimedEvent JSON did not match",
     )?;
-    if ev.beneficiary_id.is_empty() || ev.profile_id.is_empty() {
+    // A claim on a wallet that already has a profile has no `profile_id` (username reserved instead).
+    if ev.beneficiary_id.is_empty() || ev.linked_wallet.is_empty() {
         return None;
     }
     Some(vec![
         SocialEventRow::PocUsernameBeneficiaryClaimed {
             beneficiary_id: ev.beneficiary_id.clone(),
             username: ev.username.clone(),
-            profile_id: ev.profile_id,
+            profile_id: ev.profile_id.filter(|p| !p.is_empty()),
             claimed_by: ev.claimed_by,
-            wallet: ev.wallet,
+            linked_wallet: ev.linked_wallet,
+            reserved_for: ev.reserved_for.filter(|w| !w.is_empty()),
             oracle_evidence_hash: ev.oracle_evidence_hash,
             claimed_at_ms: ev.claimed_at as i64,
             transaction_id: tx_id.to_string(),
         },
         username_beneficiary_audit_row(
             EVENT_TYPE_CLAIMED,
+            Some(ev.beneficiary_id),
+            Some(ev.username),
+            data.clone(),
+            tx_id,
+            event_id,
+        ),
+    ])
+}
+
+#[derive(Debug, Deserialize)]
+struct ReservedUsernameAdoptedEvent {
+    beneficiary_id: String,
+    username: String,
+    profile_id: String,
+}
+
+fn process_reserved_username_adopted_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    tx_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ReservedUsernameAdoptedEvent = common::deserialize_social_event_json(
+        "poc_username_beneficiary",
+        "ReservedUsernameAdoptedEvent",
+        event_id,
+        data,
+        "poc_username_beneficiary ReservedUsernameAdoptedEvent JSON did not match",
+    )?;
+    Some(vec![
+        SocialEventRow::PocReservedUsernameAdopted {
+            beneficiary_id: ev.beneficiary_id.clone(),
+            profile_id: ev.profile_id,
+            transaction_id: tx_id.to_string(),
+        },
+        username_beneficiary_audit_row(
+            EVENT_TYPE_RESERVED_USERNAME_ADOPTED,
+            Some(ev.beneficiary_id),
+            Some(ev.username),
+            data.clone(),
+            tx_id,
+            event_id,
+        ),
+    ])
+}
+
+#[derive(Debug, Deserialize)]
+struct ReservedUsernameReleasedEvent {
+    beneficiary_id: String,
+    username: String,
+}
+
+fn process_reserved_username_released_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    tx_id: &str,
+) -> Option<Vec<SocialEventRow>> {
+    let ev: ReservedUsernameReleasedEvent = common::deserialize_social_event_json(
+        "poc_username_beneficiary",
+        "ReservedUsernameReleasedEvent",
+        event_id,
+        data,
+        "poc_username_beneficiary ReservedUsernameReleasedEvent JSON did not match",
+    )?;
+    Some(vec![
+        SocialEventRow::PocReservedUsernameReleased {
+            beneficiary_id: ev.beneficiary_id.clone(),
+            transaction_id: tx_id.to_string(),
+        },
+        username_beneficiary_audit_row(
+            EVENT_TYPE_RESERVED_USERNAME_RELEASED,
             Some(ev.beneficiary_id),
             Some(ev.username),
             data.clone(),
@@ -1142,6 +1226,66 @@ mod tests {
         assert!(matches!(
             rows[1],
             SocialEventRow::PocUsernameBeneficiaryEvent(_)
+        ));
+    }
+
+    #[test]
+    fn username_beneficiary_claim_with_existing_profile_reserves_username() {
+        let data = json!({
+            "beneficiary_id": "0xbe",
+            "username": "creator",
+            "profile_id": serde_json::Value::Null,
+            "claimed_by": "0x0racle",
+            "linked_wallet": "0xc1",
+            "reserved_for": "0xc1",
+            "oracle_evidence_hash": "0x",
+            "claimed_at": 7
+        });
+        let rows = handle_poc_event("UsernameBeneficiaryClaimedEvent", &data, "tx:9", None)
+            .expect("claim without profile must not be dropped");
+        match &rows[0] {
+            SocialEventRow::PocUsernameBeneficiaryClaimed {
+                profile_id,
+                linked_wallet,
+                reserved_for,
+                claimed_by,
+                ..
+            } => {
+                assert!(profile_id.is_none());
+                assert_eq!(linked_wallet, "0xc1");
+                assert_eq!(reserved_for.as_deref(), Some("0xc1"));
+                assert_eq!(claimed_by, "0x0racle");
+            }
+            _ => panic!("expected PocUsernameBeneficiaryClaimed"),
+        }
+    }
+
+    #[test]
+    fn reserved_username_adopt_and_release_rows() {
+        let adopted = handle_poc_event(
+            "ReservedUsernameAdoptedEvent",
+            &json!({
+                "beneficiary_id": "0xbe", "username": "creator", "old_username": "mainname",
+                "profile_id": "0xp1", "wallet": "0xc1", "adopted_at": 8
+            }),
+            "tx:10",
+            None,
+        )
+        .expect("adopt rows");
+        assert!(matches!(
+            &adopted[0],
+            SocialEventRow::PocReservedUsernameAdopted { profile_id, .. } if profile_id == "0xp1"
+        ));
+        let released = handle_poc_event(
+            "ReservedUsernameReleasedEvent",
+            &json!({ "beneficiary_id": "0xbe", "username": "creator", "wallet": "0xc1", "released_at": 9 }),
+            "tx:11",
+            None,
+        )
+        .expect("release rows");
+        assert!(matches!(
+            &released[0],
+            SocialEventRow::PocReservedUsernameReleased { .. }
         ));
     }
 

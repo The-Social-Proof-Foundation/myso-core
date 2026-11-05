@@ -66,11 +66,15 @@ pub(crate) async fn enrich_users_with_universal_data(
             rp.status as reservation_status
         FROM latest_profiles p
         LEFT JOIN LATERAL (
+            -- Badges are wallet-keyed: the wallet's platform ledger selection.
             SELECT badge.*
             FROM profile_badges badge
-            WHERE p.selected_badge_id IS NOT NULL
-              AND badge.badge_id = p.selected_badge_id
-              AND badge.profile_id = p.profile_id
+            JOIN wallet_badge_selections sel
+              ON LOWER(sel.wallet_address) = LOWER(p.owner_address)
+             AND sel.badge_id IS NOT NULL
+             AND badge.badge_id = sel.badge_id
+            WHERE badge.badge_kind = 'platform'
+              AND LOWER(badge.wallet_address) = LOWER(p.owner_address)
             ORDER BY badge.time DESC, badge.id DESC
             LIMIT 1
         ) pb ON pb.revoked = false
@@ -738,14 +742,7 @@ pub(crate) async fn get_profile_badges(
     offset: i64,
 ) -> Result<Vec<ProfileBadgeRow>, SocialError> {
     let mut conn = db.connect().await?;
-    let profile_id_opt: Option<String> = profiles::table
-        .filter(profiles::owner_address.eq(address))
-        .select(profiles::profile_id)
-        .first::<Option<String>>(&mut conn)
-        .await
-        .optional()?
-        .flatten();
-    let id2 = profile_id_opt.as_deref().unwrap_or(address).to_string();
+    // Soulbound ecosystem badges + platform ledger grants, keyed by wallet.
     let query = "
         SELECT pb.badge_id, pb.badge_name, pb.badge_description, pb.badge_media_url,
                pb.badge_icon_url, pb.platform_id, pb.assigned_by, pb.assigned_at,
@@ -753,16 +750,17 @@ pub(crate) async fn get_profile_badges(
         FROM (
             SELECT DISTINCT ON (badge_id) *
             FROM profile_badges
-            WHERE profile_id = $1 OR profile_id = $2
+            WHERE badge_kind IN ('ecosystem', 'platform')
+              AND LOWER(wallet_address) = LOWER($1)
             ORDER BY badge_id, time DESC, id DESC
         ) pb
         WHERE pb.revoked = false
+          AND (pb.expires_at IS NULL OR pb.expires_at > (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
         ORDER BY pb.assigned_at DESC, pb.badge_id COLLATE \"C\" ASC
-        LIMIT $3 OFFSET $4
+        LIMIT $2 OFFSET $3
     ";
     let results = diesel::sql_query(query)
         .bind::<Text, _>(address)
-        .bind::<Text, _>(&id2)
         .bind::<BigInt, _>(limit)
         .bind::<BigInt, _>(offset)
         .load::<ProfileBadgeRow>(&mut conn)

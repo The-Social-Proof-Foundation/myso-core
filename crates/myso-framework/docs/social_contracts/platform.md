@@ -29,6 +29,7 @@ Manages social media platforms and their timelines
 -  [Struct `SharedBadgeSelectedEvent`](#social_contracts_platform_SharedBadgeSelectedEvent)
 -  [Struct `EcosystemBadgeLedgerSelectedEvent`](#social_contracts_platform_EcosystemBadgeLedgerSelectedEvent)
 -  [Struct `PlatformUpdatedEvent`](#social_contracts_platform_PlatformUpdatedEvent)
+-  [Struct `PlatformDeveloperChangedEvent`](#social_contracts_platform_PlatformDeveloperChangedEvent)
 -  [Struct `ModeratorPermissionsGrantedEvent`](#social_contracts_platform_ModeratorPermissionsGrantedEvent)
 -  [Struct `ModeratorPermissionsRevokedEvent`](#social_contracts_platform_ModeratorPermissionsRevokedEvent)
 -  [Struct `ModeratorRemovedEvent`](#social_contracts_platform_ModeratorRemovedEvent)
@@ -38,6 +39,12 @@ Manages social media platforms and their timelines
 -  [Struct `UserLeftPlatformEvent`](#social_contracts_platform_UserLeftPlatformEvent)
 -  [Struct `PlatformTreasuryWithdrawalEvent`](#social_contracts_platform_PlatformTreasuryWithdrawalEvent)
 -  [Struct `PlatformTreasuryFundedEvent`](#social_contracts_platform_PlatformTreasuryFundedEvent)
+-  [Struct `EcosystemBadge`](#social_contracts_platform_EcosystemBadge)
+-  [Struct `EcosystemBadgeIssuedKey`](#social_contracts_platform_EcosystemBadgeIssuedKey)
+-  [Struct `EcosystemBadgeRegistry`](#social_contracts_platform_EcosystemBadgeRegistry)
+-  [Struct `EcosystemBadgeRegistryCreatedEvent`](#social_contracts_platform_EcosystemBadgeRegistryCreatedEvent)
+-  [Struct `EcosystemBadgeMintedEvent`](#social_contracts_platform_EcosystemBadgeMintedEvent)
+-  [Struct `EcosystemBadgeBurnedEvent`](#social_contracts_platform_EcosystemBadgeBurnedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `bootstrap_init`](#social_contracts_platform_bootstrap_init)
 -  [Function `create_platform`](#social_contracts_platform_create_platform)
@@ -72,6 +79,7 @@ Manages social media platforms and their timelines
 -  [Function `assert_block_wallet_permission`](#social_contracts_platform_assert_block_wallet_permission)
 -  [Function `unblock_wallet`](#social_contracts_platform_unblock_wallet)
 -  [Function `toggle_platform_approval`](#social_contracts_platform_toggle_platform_approval)
+-  [Function `transfer_platform`](#social_contracts_platform_transfer_platform)
 -  [Function `delete_platform`](#social_contracts_platform_delete_platform)
 -  [Function `new_status`](#social_contracts_platform_new_status)
 -  [Function `status_value`](#social_contracts_platform_status_value)
@@ -147,8 +155,29 @@ Manages social media platforms and their timelines
 -  [Function `clear_shared_badge_selection`](#social_contracts_platform_clear_shared_badge_selection)
 -  [Function `select_ecosystem_badge`](#social_contracts_platform_select_ecosystem_badge)
 -  [Function `clear_ecosystem_badge_selection`](#social_contracts_platform_clear_ecosystem_badge_selection)
--  [Function `assign_badge`](#social_contracts_platform_assign_badge)
--  [Function `revoke_badge`](#social_contracts_platform_revoke_badge)
+-  [Function `create_ecosystem_badge_registry`](#social_contracts_platform_create_ecosystem_badge_registry)
+-  [Function `share_new_ecosystem_badge_registry`](#social_contracts_platform_share_new_ecosystem_badge_registry)
+-  [Function `mint_ecosystem_badge`](#social_contracts_platform_mint_ecosystem_badge)
+-  [Function `mint_verified_x_badge`](#social_contracts_platform_mint_verified_x_badge)
+-  [Function `mint_ecosystem_badge_internal`](#social_contracts_platform_mint_ecosystem_badge_internal)
+-  [Function `burn_ecosystem_badge`](#social_contracts_platform_burn_ecosystem_badge)
+-  [Function `select_ecosystem_badge_on_profile`](#social_contracts_platform_select_ecosystem_badge_on_profile)
+-  [Function `has_ecosystem_badge`](#social_contracts_platform_has_ecosystem_badge)
+-  [Function `x_handle_of`](#social_contracts_platform_x_handle_of)
+-  [Function `wallet_of_x_handle`](#social_contracts_platform_wallet_of_x_handle)
+-  [Function `ecosystem_badge_id_for_name`](#social_contracts_platform_ecosystem_badge_id_for_name)
+-  [Function `ecosystem_badge_id`](#social_contracts_platform_ecosystem_badge_id)
+-  [Function `ecosystem_badge_type`](#social_contracts_platform_ecosystem_badge_type)
+-  [Function `ecosystem_badge_name`](#social_contracts_platform_ecosystem_badge_name)
+-  [Function `ecosystem_badge_description`](#social_contracts_platform_ecosystem_badge_description)
+-  [Function `ecosystem_badge_media_url`](#social_contracts_platform_ecosystem_badge_media_url)
+-  [Function `ecosystem_badge_icon_url`](#social_contracts_platform_ecosystem_badge_icon_url)
+-  [Function `ecosystem_badge_subject`](#social_contracts_platform_ecosystem_badge_subject)
+-  [Function `ecosystem_badge_issued_by`](#social_contracts_platform_ecosystem_badge_issued_by)
+-  [Function `ecosystem_badge_issued_at`](#social_contracts_platform_ecosystem_badge_issued_at)
+-  [Function `assert_ecosystem_badge_registry_version`](#social_contracts_platform_assert_ecosystem_badge_registry_version)
+-  [Function `canonical_x_handle`](#social_contracts_platform_canonical_x_handle)
+-  [Function `migrate_ecosystem_badge_registry`](#social_contracts_platform_migrate_ecosystem_badge_registry)
 -  [Function `add_moderator_register`](#social_contracts_platform_add_moderator_register)
 -  [Function `remove_moderator_unregister`](#social_contracts_platform_remove_moderator_unregister)
 -  [Function `update_platform_config`](#social_contracts_platform_update_platform_config)
@@ -1478,6 +1507,53 @@ Platform updated event
 
 </details>
 
+<a name="social_contracts_platform_PlatformDeveloperChangedEvent"></a>
+
+## Struct `PlatformDeveloperChangedEvent`
+
+Emitted when the platform administrator changes the platform developer wallet.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformDeveloperChangedEvent">PlatformDeveloperChangedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>platform_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>previous_developer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_developer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>changed_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>changed_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_platform_ModeratorPermissionsGrantedEvent"></a>
 
 ## Struct `ModeratorPermissionsGrantedEvent`
@@ -1891,6 +1967,313 @@ Event emitted when tokens are deposited into the platform treasury
 
 </details>
 
+<a name="social_contracts_platform_EcosystemBadge"></a>
+
+## Struct `EcosystemBadge`
+
+Soulbound ecosystem badge (Verified X, Early Adopter, Ambassador, ...).
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a> <b>has</b> key
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+ Stable identifier <code>ecosystem_badge_&lt;<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>&gt;</code> (one per wallet).
+</dd>
+<dt>
+<code>badge_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>media_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>icon_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>subject: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+ What the badge attests to, e.g. the canonical X handle for Verified X.
+</dd>
+<dt>
+<code>issued_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>issued_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_EcosystemBadgeIssuedKey"></a>
+
+## Struct `EcosystemBadgeIssuedKey`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeIssuedKey">EcosystemBadgeIssuedKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_EcosystemBadgeRegistry"></a>
+
+## Struct `EcosystemBadgeRegistry`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a> <b>has</b> key
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: <a href="../myso/object.md#myso_object_UID">myso::object::UID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>issued: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeIssuedKey">social_contracts::platform::EcosystemBadgeIssuedKey</a>, <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;</code>
+</dt>
+<dd>
+ (wallet, badge_id) → badge object id
+</dd>
+<dt>
+<code>x_handle_owner: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>, <b>address</b>&gt;</code>
+</dt>
+<dd>
+ canonical X handle → wallet holding the Verified X badge for it
+</dd>
+<dt>
+<code>wallet_x_handle: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<b>address</b>, <a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+ wallet → canonical X handle it verified
+</dd>
+<dt>
+<code>version: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_EcosystemBadgeRegistryCreatedEvent"></a>
+
+## Struct `EcosystemBadgeRegistryCreatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistryCreatedEvent">EcosystemBadgeRegistryCreatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>registry_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>created_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_EcosystemBadgeMintedEvent"></a>
+
+## Struct `EcosystemBadgeMintedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeMintedEvent">EcosystemBadgeMintedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>badge_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>media_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>icon_url: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_type: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>subject: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>issued_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>issued_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_platform_EcosystemBadgeBurnedEvent"></a>
+
+## Struct `EcosystemBadgeBurnedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeBurnedEvent">EcosystemBadgeBurnedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>badge_object_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>badge_id: <a href="../std/string.md#std_string_String">std::string::String</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>subject: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>burned_at: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="@Constants_0"></a>
 
 ## Constants
@@ -2104,11 +2487,38 @@ Error codes
 
 
 
-<a name="social_contracts_platform_ENotEcosystemBadge"></a>
+<a name="social_contracts_platform_EEcosystemBadgeAlreadyIssued"></a>
 
 
 
-<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ENotEcosystemBadge">ENotEcosystemBadge</a>: u64 = 23;
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EEcosystemBadgeAlreadyIssued">EEcosystemBadgeAlreadyIssued</a>: u64 = 23;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EXHandleTaken"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EXHandleTaken">EXHandleTaken</a>: u64 = 24;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EWalletHasXHandle"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EWalletHasXHandle">EWalletHasXHandle</a>: u64 = 25;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_EInvalidXHandle"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidXHandle">EInvalidXHandle</a>: u64 = 26;
 </code></pre>
 
 
@@ -2146,6 +2556,24 @@ Maximum lengths for badge fields
 
 
 <pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>: u64 = 2048;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_MAX_X_HANDLE_LENGTH"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_MAX_X_HANDLE_LENGTH">MAX_X_HANDLE_LENGTH</a>: u64 = 50;
+</code></pre>
+
+
+
+<a name="social_contracts_platform_ECOSYSTEM_BADGE_ID_PREFIX"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/platform.md#social_contracts_platform_ECOSYSTEM_BADGE_ID_PREFIX">ECOSYSTEM_BADGE_ID_PREFIX</a>: vector&lt;u8&gt; = vector[101, 99, 111, 115, 121, 115, 116, 101, 109, 95, 98, 97, 100, 103, 101, 95];
 </code></pre>
 
 
@@ -2568,6 +2996,7 @@ Bootstrap initialization function - creates the platform registry and config
 
 
 <pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a>(clock: &Clock, ctx: &<b>mut</b> TxContext) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_share_new_ecosystem_badge_registry">share_new_ecosystem_badge_registry</a>(ctx);
     <b>let</b> admin = tx_context::sender(ctx);
     <b>let</b> ver = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
     <b>let</b> config = <a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">PlatformConfig</a> {
@@ -4226,6 +4655,49 @@ Optional reasoning can be provided to explain the decision
         approved: new_approval,
         changed_by: tx_context::sender(ctx),
         reasoning,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_transfer_platform"></a>
+
+## Function `transfer_platform`
+
+Transfer developer control for one platform. Only the platform system administrator
+capability can perform this migration; the shared Platform object remains in place.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_transfer_platform">transfer_platform</a>(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">social_contracts::platform::PlatformAdminCap</a>, new_developer: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_transfer_platform">transfer_platform</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
+    _: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformAdminCap">PlatformAdminCap</a>,
+    new_developer: <b>address</b>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(new_developer != @0x0, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <b>let</b> previous_developer = <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a>;
+    <b>assert</b>!(previous_developer != new_developer, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_developer">developer</a> = new_developer;
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_PlatformDeveloperChangedEvent">PlatformDeveloperChangedEvent</a> {
+        platform_id: object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>),
+        previous_developer,
+        new_developer,
+        changed_by: tx_context::sender(ctx),
+        changed_at: clock::timestamp_ms(clock),
     });
 }
 </code></pre>
@@ -6638,9 +7110,11 @@ Assign a wallet-keyed platform badge. No Profile required.
 
 ## Function `select_ecosystem_badge`
 
+Pick which soulbound ecosystem badge to show on this platform. Passing the owned
+<code><a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a></code> proves the sender holds it.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_select_ecosystem_badge">select_ecosystem_badge</a>(ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_select_ecosystem_badge">select_ecosystem_badge</a>(ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">social_contracts::platform::PlatformBadgeLedger</a>, badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6651,16 +7125,13 @@ Assign a wallet-keyed platform badge. No Profile required.
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_select_ecosystem_badge">select_ecosystem_badge</a>(
     ledger: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeLedger">PlatformBadgeLedger</a>,
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
-    badge_id: String,
+    badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>,
     clock: &Clock,
     ctx: &<b>mut</b> TxContext
 ) {
     <b>assert</b>!(ledger.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
     <b>let</b> owner = tx_context::sender(ctx);
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_get_owner">profile::get_owner</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>) == owner, <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_is_ecosystem_badge_id">profile::is_ecosystem_badge_id</a>(&badge_id), <a href="../social_contracts/platform.md#social_contracts_platform_ENotEcosystemBadge">ENotEcosystemBadge</a>);
-    <b>assert</b>!(<a href="../social_contracts/profile.md#social_contracts_profile_has_badge">profile::has_badge</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>, &badge_id), <a href="../social_contracts/platform.md#social_contracts_platform_EGrantNotFound">EGrantNotFound</a>);
+    <b>let</b> badge_id = badge.badge_id;
     <b>if</b> (table::contains(&ledger.ecosystem_selections, owner)) {
         *table::borrow_mut(&<b>mut</b> ledger.ecosystem_selections, owner) = badge_id;
     } <b>else</b> {
@@ -6715,15 +7186,15 @@ Assign a wallet-keyed platform badge. No Profile required.
 
 </details>
 
-<a name="social_contracts_platform_assign_badge"></a>
+<a name="social_contracts_platform_create_ecosystem_badge_registry"></a>
 
-## Function `assign_badge`
+## Function `create_ecosystem_badge_registry`
 
-Assign a badge to a profile - can only be called by platform admin/moderator
-This is the primary entry point for badge assignment
+One-time creation by the badge admin on a network whose bootstrap already ran.
+Record the id as <code>ECOSYSTEM_BADGE_REGISTRY_ID</code> for off-chain services.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, config: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">social_contracts::platform::PlatformConfig</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_name: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_description: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_ecosystem_badge_registry">create_ecosystem_badge_registry</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6732,54 +7203,85 @@ This is the primary entry point for badge assignment
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assign_badge">assign_badge</a>(
-    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
-    config: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformConfig">PlatformConfig</a>,
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
-    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
-    badge_name: String,
-    badge_description: String,
-    badge_media_url: String,
-    badge_icon_url: String,
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_ecosystem_badge_registry">create_ecosystem_badge_registry</a>(
+    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">profile::EcosystemBadgeAdminCap</a>,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_share_new_ecosystem_badge_registry">share_new_ecosystem_badge_registry</a>(ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_share_new_ecosystem_badge_registry"></a>
+
+## Function `share_new_ecosystem_badge_registry`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_share_new_ecosystem_badge_registry">share_new_ecosystem_badge_registry</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_share_new_ecosystem_badge_registry">share_new_ecosystem_badge_registry</a>(ctx: &<b>mut</b> TxContext) {
+    <b>let</b> registry = <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a> {
+        <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: object::new(ctx),
+        issued: table::new(ctx),
+        x_handle_owner: table::new(ctx),
+        wallet_x_handle: table::new(ctx),
+        version: <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(),
+    };
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistryCreatedEvent">EcosystemBadgeRegistryCreatedEvent</a> {
+        registry_id: object::id(&registry),
+        created_by: tx_context::sender(ctx),
+    });
+    transfer::share_object(registry);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_mint_ecosystem_badge"></a>
+
+## Function `mint_ecosystem_badge`
+
+Mint a soulbound badge into <code>recipient</code>'s wallet. Aborts with
+<code><a href="../social_contracts/platform.md#social_contracts_platform_EEcosystemBadgeAlreadyIssued">EEcosystemBadgeAlreadyIssued</a></code> when that wallet already holds a badge with this name.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_mint_ecosystem_badge">mint_ecosystem_badge</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">social_contracts::platform::EcosystemBadgeRegistry</a>, recipient: <b>address</b>, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_mint_ecosystem_badge">mint_ecosystem_badge</a>(
+    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">profile::EcosystemBadgeAdminCap</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>,
+    recipient: <b>address</b>,
+    <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: String,
+    <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: String,
+    media_url: String,
+    icon_url: String,
     badge_type: u8,
     clock: &Clock,
-    ctx: &<b>mut</b> TxContext
+    ctx: &<b>mut</b> TxContext,
 ) {
-    // Check version compatibility
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    <b>let</b> caller = tx_context::sender(ctx);
-    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
-    // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
-    <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Validate badge type (1-100 <b>as</b> documented)
-    <b>assert</b>!(badge_type &gt;= 1 && badge_type &lt;= 100, <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidBadgeType">EInvalidBadgeType</a>);
-    // Validate badge field lengths
-    <b>assert</b>!(string::length(&badge_name) &gt; 0 && string::length(&badge_name) &lt;= config.max_badge_name_length, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeNameTooLong">EBadgeNameTooLong</a>);
-    <b>assert</b>!(string::length(&badge_description) &lt;= config.max_badge_description_length, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeDescriptionTooLong">EBadgeDescriptionTooLong</a>);
-    <a href="../social_contracts/platform.md#social_contracts_platform_validate_badge_urls">validate_badge_urls</a>(&badge_media_url, &badge_icon_url);
-    // Get current time
-    <b>let</b> now = clock::timestamp_ms(clock);
-    // Create a unique badge ID by including <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to prevent collisions
-    <b>let</b> <b>mut</b> badge_id = string::utf8(b"badge_");
-    // Convert <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> ID to hex string and append to ensure uniqueness
-    <b>let</b> platform_id_str = <a href="../myso/address.md#myso_address_to_string">myso::address::to_string</a>(platform_id);
-    string::append(&<b>mut</b> badge_id, platform_id_str);
-    string::append(&<b>mut</b> badge_id, string::utf8(b"_"));
-    string::append(&<b>mut</b> badge_id, badge_name);
-    // Add the badge directly to the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
-    <a href="../social_contracts/profile.md#social_contracts_profile_add_badge_to_profile">profile::add_badge_to_profile</a>(
-        <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>,
-        badge_id,
-        badge_name,
-        badge_description,
-        badge_media_url,
-        badge_icon_url,
-        platform_id,
-        now,
-        caller,
-        badge_type
+    <a href="../social_contracts/platform.md#social_contracts_platform_mint_ecosystem_badge_internal">mint_ecosystem_badge_internal</a>(
+        registry, recipient, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>, media_url, icon_url, badge_type,
+        option::none(), clock, ctx,
     );
 }
 </code></pre>
@@ -6788,15 +7290,16 @@ This is the primary entry point for badge assignment
 
 </details>
 
-<a name="social_contracts_platform_revoke_badge"></a>
+<a name="social_contracts_platform_mint_verified_x_badge"></a>
 
-## Function `revoke_badge`
+## Function `mint_verified_x_badge`
 
-Revoke a badge from a profile - can only be called by platform admin/moderator
-This is the primary entry point for badge revocation
+Mint the Verified X badge and bind <code>x_handle</code> to <code>recipient</code>. Aborts with <code><a href="../social_contracts/platform.md#social_contracts_platform_EXHandleTaken">EXHandleTaken</a></code>
+when another wallet verified this handle, <code><a href="../social_contracts/platform.md#social_contracts_platform_EWalletHasXHandle">EWalletHasXHandle</a></code> when this wallet verified a
+different handle, and <code><a href="../social_contracts/platform.md#social_contracts_platform_EEcosystemBadgeAlreadyIssued">EEcosystemBadgeAlreadyIssued</a></code> when the badge already exists.
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">social_contracts::platform::PlatformRegistry</a>, <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">social_contracts::platform::PlatformPackage</a>&gt;, <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_mint_verified_x_badge">mint_verified_x_badge</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">social_contracts::platform::EcosystemBadgeRegistry</a>, recipient: <b>address</b>, x_handle: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
 </code></pre>
 
 
@@ -6805,31 +7308,609 @@ This is the primary entry point for badge revocation
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_revoke_badge">revoke_badge</a>(
-    platform_registry: &<a href="../social_contracts/platform.md#social_contracts_platform_PlatformRegistry">PlatformRegistry</a>,
-    <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">Platform</a>,
-    group: &PermissionedGroup&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformPackage">PlatformPackage</a>&gt;,
-    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
-    badge_id: String,
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_mint_verified_x_badge">mint_verified_x_badge</a>(
+    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">profile::EcosystemBadgeAdminCap</a>,
+    registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>,
+    recipient: <b>address</b>,
+    x_handle: String,
+    <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: String,
+    <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: String,
+    media_url: String,
+    icon_url: String,
+    badge_type: u8,
     clock: &Clock,
-    ctx: &<b>mut</b> TxContext
+    ctx: &<b>mut</b> TxContext,
 ) {
-    // Check version compatibility
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
-    <b>let</b> caller = tx_context::sender(ctx);
-    <a href="../social_contracts/platform.md#social_contracts_platform_assert_moderator_permission">assert_moderator_permission</a>&lt;<a href="../social_contracts/platform.md#social_contracts_platform_PlatformBadgeAdmin">PlatformBadgeAdmin</a>&gt;(<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>, group, caller);
-    // Verify <a href="../social_contracts/platform.md#social_contracts_platform">platform</a> is approved
-    <b>let</b> platform_id = object::uid_to_address(&<a href="../social_contracts/platform.md#social_contracts_platform">platform</a>.<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
-    <b>assert</b>!(<a href="../social_contracts/platform.md#social_contracts_platform_is_approved">is_approved</a>(platform_registry, platform_id), <a href="../social_contracts/platform.md#social_contracts_platform_EUnauthorized">EUnauthorized</a>);
-    // Get current time
-    <b>let</b> now = clock::timestamp_ms(clock);
-    // Remove the badge directly from the <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>
-    <a href="../social_contracts/profile.md#social_contracts_profile_remove_badge_from_profile">profile::remove_badge_from_profile</a>(
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_ecosystem_badge_registry_version">assert_ecosystem_badge_registry_version</a>(registry);
+    <b>let</b> handle = <a href="../social_contracts/platform.md#social_contracts_platform_canonical_x_handle">canonical_x_handle</a>(&x_handle);
+    <b>if</b> (table::contains(&registry.x_handle_owner, handle)) {
+        <b>assert</b>!(*table::borrow(&registry.x_handle_owner, handle) == recipient, <a href="../social_contracts/platform.md#social_contracts_platform_EXHandleTaken">EXHandleTaken</a>);
+    };
+    <b>if</b> (table::contains(&registry.wallet_x_handle, recipient)) {
+        <b>assert</b>!(*table::borrow(&registry.wallet_x_handle, recipient) == handle, <a href="../social_contracts/platform.md#social_contracts_platform_EWalletHasXHandle">EWalletHasXHandle</a>);
+    };
+    <a href="../social_contracts/platform.md#social_contracts_platform_mint_ecosystem_badge_internal">mint_ecosystem_badge_internal</a>(
+        registry, recipient, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>, media_url, icon_url, badge_type,
+        option::some(handle), clock, ctx,
+    );
+    <b>if</b> (!table::contains(&registry.x_handle_owner, handle)) {
+        table::add(&<b>mut</b> registry.x_handle_owner, handle, recipient);
+    };
+    <b>if</b> (!table::contains(&registry.wallet_x_handle, recipient)) {
+        table::add(&<b>mut</b> registry.wallet_x_handle, recipient, handle);
+    };
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_mint_ecosystem_badge_internal"></a>
+
+## Function `mint_ecosystem_badge_internal`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_mint_ecosystem_badge_internal">mint_ecosystem_badge_internal</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">social_contracts::platform::EcosystemBadgeRegistry</a>, recipient: <b>address</b>, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: <a href="../std/string.md#std_string_String">std::string::String</a>, media_url: <a href="../std/string.md#std_string_String">std::string::String</a>, icon_url: <a href="../std/string.md#std_string_String">std::string::String</a>, badge_type: u8, subject: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_mint_ecosystem_badge_internal">mint_ecosystem_badge_internal</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>,
+    recipient: <b>address</b>,
+    <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: String,
+    <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: String,
+    media_url: String,
+    icon_url: String,
+    badge_type: u8,
+    subject: Option&lt;String&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_ecosystem_badge_registry_version">assert_ecosystem_badge_registry_version</a>(registry);
+    <b>assert</b>!(badge_type &gt;= 1 && badge_type &lt;= 100, <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidBadgeType">EInvalidBadgeType</a>);
+    <b>assert</b>!(string::length(&<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>) &gt; 0 && string::length(&<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_NAME_LENGTH">MAX_BADGE_NAME_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeNameTooLong">EBadgeNameTooLong</a>);
+    <b>assert</b>!(string::length(&<a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_DESCRIPTION_LENGTH">MAX_BADGE_DESCRIPTION_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeDescriptionTooLong">EBadgeDescriptionTooLong</a>);
+    <b>assert</b>!(
+        string::length(&media_url) &gt; 0 && string::length(&media_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_MEDIA_URL_LENGTH">MAX_BADGE_MEDIA_URL_LENGTH</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeMediaUrlTooLong">EBadgeMediaUrlTooLong</a>,
+    );
+    <b>assert</b>!(
+        string::length(&icon_url) &gt; 0 && string::length(&icon_url) &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_BADGE_ICON_URL_LENGTH">MAX_BADGE_ICON_URL_LENGTH</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_EBadgeIconUrlTooLong">EBadgeIconUrlTooLong</a>,
+    );
+    <b>let</b> badge_id = <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_id_for_name">ecosystem_badge_id_for_name</a>(&<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>);
+    <b>let</b> key = <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeIssuedKey">EcosystemBadgeIssuedKey</a> { owner: recipient, badge_id };
+    <b>assert</b>!(!table::contains(&registry.issued, key), <a href="../social_contracts/platform.md#social_contracts_platform_EEcosystemBadgeAlreadyIssued">EEcosystemBadgeAlreadyIssued</a>);
+    <b>let</b> issued_by = tx_context::sender(ctx);
+    <b>let</b> issued_at = clock::timestamp_ms(clock);
+    <b>let</b> badge = <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a> {
+        <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>: object::new(ctx),
+        badge_id,
+        badge_type,
+        <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>,
+        media_url,
+        icon_url,
+        subject,
+        issued_by,
+        issued_at,
+    };
+    <b>let</b> badge_object_id = object::id(&badge);
+    table::add(&<b>mut</b> registry.issued, key, badge_object_id);
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeMintedEvent">EcosystemBadgeMintedEvent</a> {
+        badge_object_id,
+        owner: recipient,
+        badge_id,
+        <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>,
+        <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>,
+        media_url,
+        icon_url,
+        badge_type,
+        subject,
+        issued_by,
+        issued_at,
+    });
+    transfer::transfer(badge, recipient);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_burn_ecosystem_badge"></a>
+
+## Function `burn_ecosystem_badge`
+
+The holder permanently destroys their badge. Frees the (wallet, badge_id) slot and any X
+handle binding, so it can be issued again (e.g. re-linking X).
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_burn_ecosystem_badge">burn_ecosystem_badge</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">social_contracts::platform::EcosystemBadgeRegistry</a>, badge: <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_burn_ecosystem_badge">burn_ecosystem_badge</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>,
+    badge: <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/platform.md#social_contracts_platform_assert_ecosystem_badge_registry_version">assert_ecosystem_badge_registry_version</a>(registry);
+    <b>let</b> owner = tx_context::sender(ctx);
+    <b>let</b> badge_object_id = object::id(&badge);
+    <b>let</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a> {
+        <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, badge_id, badge_type: _, <a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: _, <a href="../social_contracts/platform.md#social_contracts_platform_description">description</a>: _, media_url: _, icon_url: _,
+        subject, issued_by: _, issued_at: _,
+    } = badge;
+    object::delete(<a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>);
+    <b>let</b> key = <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeIssuedKey">EcosystemBadgeIssuedKey</a> { owner, badge_id };
+    <b>if</b> (table::contains(&registry.issued, key)) {
+        table::remove(&<b>mut</b> registry.issued, key);
+    };
+    <b>if</b> (option::is_some(&subject)) {
+        <b>let</b> handle = *option::borrow(&subject);
+        <b>if</b> (table::contains(&registry.x_handle_owner, handle)
+            && *table::borrow(&registry.x_handle_owner, handle) == owner) {
+            table::remove(&<b>mut</b> registry.x_handle_owner, handle);
+        };
+        <b>if</b> (table::contains(&registry.wallet_x_handle, owner)
+            && *table::borrow(&registry.wallet_x_handle, owner) == handle) {
+            table::remove(&<b>mut</b> registry.wallet_x_handle, owner);
+        };
+    };
+    event::emit(<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeBurnedEvent">EcosystemBadgeBurnedEvent</a> {
+        badge_object_id,
+        owner,
+        badge_id,
+        subject,
+        burned_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_select_ecosystem_badge_on_profile"></a>
+
+## Function `select_ecosystem_badge_on_profile`
+
+Display <code>badge</code> on the caller's profile. Passing the owned <code><a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a></code> proves the
+caller holds it.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_select_ecosystem_badge_on_profile">select_ecosystem_badge_on_profile</a>(<a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">social_contracts::profile::Profile</a>, badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_select_ecosystem_badge_on_profile">select_ecosystem_badge_on_profile</a>(
+    <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>: &<b>mut</b> <a href="../social_contracts/profile.md#social_contracts_profile_Profile">profile::Profile</a>,
+    badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/profile.md#social_contracts_profile_set_selected_ecosystem_badge_id">profile::set_selected_ecosystem_badge_id</a>(
         <a href="../social_contracts/profile.md#social_contracts_profile">profile</a>,
-        &badge_id,
-        platform_id,
-        caller,
-        now
+        badge.badge_id,
+        tx_context::sender(ctx),
+        clock::timestamp_ms(clock),
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_has_ecosystem_badge"></a>
+
+## Function `has_ecosystem_badge`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_has_ecosystem_badge">has_ecosystem_badge</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">social_contracts::platform::EcosystemBadgeRegistry</a>, owner: <b>address</b>, badge_id: <a href="../std/string.md#std_string_String">std::string::String</a>): bool
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_has_ecosystem_badge">has_ecosystem_badge</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>, owner: <b>address</b>, badge_id: String): bool {
+    table::contains(&registry.issued, <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeIssuedKey">EcosystemBadgeIssuedKey</a> { owner, badge_id })
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_x_handle_of"></a>
+
+## Function `x_handle_of`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_x_handle_of">x_handle_of</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">social_contracts::platform::EcosystemBadgeRegistry</a>, wallet: <b>address</b>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_x_handle_of">x_handle_of</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>, wallet: <b>address</b>): Option&lt;String&gt; {
+    <b>if</b> (table::contains(&registry.wallet_x_handle, wallet)) {
+        option::some(*table::borrow(&registry.wallet_x_handle, wallet))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_wallet_of_x_handle"></a>
+
+## Function `wallet_of_x_handle`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_wallet_of_x_handle">wallet_of_x_handle</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">social_contracts::platform::EcosystemBadgeRegistry</a>, x_handle: <a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_wallet_of_x_handle">wallet_of_x_handle</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>, x_handle: String): Option&lt;<b>address</b>&gt; {
+    <b>let</b> handle = <a href="../social_contracts/platform.md#social_contracts_platform_canonical_x_handle">canonical_x_handle</a>(&x_handle);
+    <b>if</b> (table::contains(&registry.x_handle_owner, handle)) {
+        option::some(*table::borrow(&registry.x_handle_owner, handle))
+    } <b>else</b> {
+        option::none()
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_id_for_name"></a>
+
+## Function `ecosystem_badge_id_for_name`
+
+<code>ecosystem_badge_&lt;<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>&gt;</code> — the id stored on profiles and platform ledgers.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_id_for_name">ecosystem_badge_id_for_name</a>(<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_id_for_name">ecosystem_badge_id_for_name</a>(<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>: &String): String {
+    <b>let</b> <b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a> = string::utf8(<a href="../social_contracts/platform.md#social_contracts_platform_ECOSYSTEM_BADGE_ID_PREFIX">ECOSYSTEM_BADGE_ID_PREFIX</a>);
+    string::append(&<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>, *<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a>);
+    <a href="../social_contracts/platform.md#social_contracts_platform_id">id</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_id"></a>
+
+## Function `ecosystem_badge_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_id">ecosystem_badge_id</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_id">ecosystem_badge_id</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>): String { badge.badge_id }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_type"></a>
+
+## Function `ecosystem_badge_type`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_type">ecosystem_badge_type</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>): u8
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_type">ecosystem_badge_type</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>): u8 { badge.badge_type }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_name"></a>
+
+## Function `ecosystem_badge_name`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_name">ecosystem_badge_name</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_name">ecosystem_badge_name</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>): String { badge.<a href="../social_contracts/platform.md#social_contracts_platform_name">name</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_description"></a>
+
+## Function `ecosystem_badge_description`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_description">ecosystem_badge_description</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_description">ecosystem_badge_description</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>): String { badge.<a href="../social_contracts/platform.md#social_contracts_platform_description">description</a> }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_media_url"></a>
+
+## Function `ecosystem_badge_media_url`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_media_url">ecosystem_badge_media_url</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_media_url">ecosystem_badge_media_url</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>): String { badge.media_url }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_icon_url"></a>
+
+## Function `ecosystem_badge_icon_url`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_icon_url">ecosystem_badge_icon_url</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_icon_url">ecosystem_badge_icon_url</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>): String { badge.icon_url }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_subject"></a>
+
+## Function `ecosystem_badge_subject`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_subject">ecosystem_badge_subject</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_subject">ecosystem_badge_subject</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>): Option&lt;String&gt; { badge.subject }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_issued_by"></a>
+
+## Function `ecosystem_badge_issued_by`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_issued_by">ecosystem_badge_issued_by</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_issued_by">ecosystem_badge_issued_by</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>): <b>address</b> { badge.issued_by }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_ecosystem_badge_issued_at"></a>
+
+## Function `ecosystem_badge_issued_at`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_issued_at">ecosystem_badge_issued_at</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">social_contracts::platform::EcosystemBadge</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_ecosystem_badge_issued_at">ecosystem_badge_issued_at</a>(badge: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadge">EcosystemBadge</a>): u64 { badge.issued_at }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_assert_ecosystem_badge_registry_version"></a>
+
+## Function `assert_ecosystem_badge_registry_version`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_ecosystem_badge_registry_version">assert_ecosystem_badge_registry_version</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">social_contracts::platform::EcosystemBadgeRegistry</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_assert_ecosystem_badge_registry_version">assert_ecosystem_badge_registry_version</a>(registry: &<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>) {
+    <b>assert</b>!(registry.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_canonical_x_handle"></a>
+
+## Function `canonical_x_handle`
+
+Lowercase, strip one leading <code>@</code>, and validate against the username charset.
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_canonical_x_handle">canonical_x_handle</a>(raw: &<a href="../std/string.md#std_string_String">std::string::String</a>): <a href="../std/string.md#std_string_String">std::string::String</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_canonical_x_handle">canonical_x_handle</a>(raw: &String): String {
+    <b>let</b> <b>mut</b> bytes = *string::as_bytes(raw);
+    <b>if</b> (vector::length(&bytes) &gt; 0 && *vector::borrow(&bytes, 0) == 64 /* '@' */) {
+        vector::remove(&<b>mut</b> bytes, 0);
+    };
+    <b>let</b> len = vector::length(&bytes);
+    <b>assert</b>!(len &gt; 0 && len &lt;= <a href="../social_contracts/platform.md#social_contracts_platform_MAX_X_HANDLE_LENGTH">MAX_X_HANDLE_LENGTH</a>, <a href="../social_contracts/platform.md#social_contracts_platform_EInvalidXHandle">EInvalidXHandle</a>);
+    <a href="../social_contracts/profile.md#social_contracts_profile_canonical_registry_username_from_bytes">profile::canonical_registry_username_from_bytes</a>(bytes)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_platform_migrate_ecosystem_badge_registry"></a>
+
+## Function `migrate_ecosystem_badge_registry`
+
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_migrate_ecosystem_badge_registry">migrate_ecosystem_badge_registry</a>(registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">social_contracts::platform::EcosystemBadgeRegistry</a>, _: &<a href="../social_contracts/upgrade.md#social_contracts_upgrade_UpgradeAdminCap">social_contracts::upgrade::UpgradeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_migrate_ecosystem_badge_registry">migrate_ecosystem_badge_registry</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>,
+    _: &UpgradeAdminCap,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>let</b> current_version = <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>();
+    <b>assert</b>!(registry.version &lt; current_version, <a href="../social_contracts/platform.md#social_contracts_platform_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> old_version = registry.version;
+    registry.version = current_version;
+    <a href="../social_contracts/upgrade.md#social_contracts_upgrade_emit_migration_event">upgrade::emit_migration_event</a>(
+        object::id(registry),
+        string::utf8(b"<a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistry">EcosystemBadgeRegistry</a>"),
+        old_version,
+        tx_context::sender(ctx),
     );
 }
 </code></pre>

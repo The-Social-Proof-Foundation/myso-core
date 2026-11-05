@@ -137,31 +137,6 @@ struct ProfileUpdatedEvent {
 
     #[serde(default)]
     location: Option<String>,
-
-    #[serde(default)]
-    x_username: Option<String>,
-}
-
-/// Emitted when an EcosystemBadgeAdminCap holder sets or clears `x_username` on-chain.
-#[derive(Debug, Clone, Deserialize)]
-struct ProfileXUsernameUpdatedEvent {
-    #[serde(rename = "profile_id", alias = "id", default)]
-    profile_id: String,
-
-    #[serde(rename = "owner_address", alias = "owner", default)]
-    owner_address: String,
-
-    x_username: Option<String>,
-
-    #[serde(default)]
-    updated_by: String,
-
-    #[serde(
-        rename = "updated_at",
-        default = "default_timestamp",
-        deserialize_with = "deserialize_number_from_string"
-    )]
-    updated_at: u64,
 }
 
 impl ProfileCreatedEvent {
@@ -239,9 +214,6 @@ pub fn handle_profile_event(
         "ProfileUpdatedEvent" => {
             process_profile_updated_event(data, event_id, checkpoint_timestamp_ms)
         }
-        "ProfileXUsernameUpdatedEvent" => {
-            process_profile_x_username_updated_event(data, event_id, checkpoint_timestamp_ms)
-        }
         "UsernameClaimedEvent" => process_username_claimed_event(data, event_id),
         "ProfileOwnerRotatedEvent" => {
             process_profile_owner_rotated_event(data, event_id, checkpoint_timestamp_ms)
@@ -249,11 +221,6 @@ pub fn handle_profile_event(
         "UsernameReassignedEvent" => {
             process_username_reassigned_event(data, event_id, checkpoint_timestamp_ms)
         }
-        "BadgeAssignedEvent" => {
-            process_badge_assigned_event(data, event_id, checkpoint_timestamp_ms)
-        }
-        "BadgeRevokedEvent" => process_badge_revoked_event(data, event_id, checkpoint_timestamp_ms),
-        "BadgeRemovedEvent" => process_badge_removed_event(data, event_id, checkpoint_timestamp_ms),
         "BadgeSelectedEvent" => process_badge_selected_event(data, event_id),
         "EcosystemBadgeSelectionClearedEvent" => {
             process_ecosystem_badge_selection_cleared_event(data, event_id)
@@ -450,7 +417,8 @@ fn process_profile_updated_event(
         website: ev.website,
         birthdate: ev.birthdate,
         location: ev.location,
-        x_username: ev.x_username,
+        // Set only from the Verified X ecosystem badge (platform module), never profile updates.
+        x_username: None,
         username: None,
         selected_badge_id: None,
         selected_ecosystem_badge_id: None,
@@ -459,47 +427,6 @@ fn process_profile_updated_event(
     };
     Some(vec![
         SocialEventRow::ProfileUpdate(up),
-        SocialEventRow::ProfileEvent(audit_event),
-    ])
-}
-
-fn process_profile_x_username_updated_event(
-    data: &serde_json::Value,
-    event_id: &str,
-    checkpoint_timestamp_ms: u64,
-) -> Option<Vec<SocialEventRow>> {
-    let ev: ProfileXUsernameUpdatedEvent = common::deserialize_social_event_json(
-        "profile",
-        "ProfileXUsernameUpdatedEvent",
-        event_id,
-        data,
-        "profile ProfileXUsernameUpdatedEvent JSON did not match ProfileXUsernameUpdatedEvent",
-    )?;
-    let ms = common::chain_timestamp_ms(Some(ev.updated_at as i64), checkpoint_timestamp_ms);
-    let now = common::chain_time_from_ms(ms).naive_utc();
-    let profile_id = ev.profile_id.clone();
-    let owner_address = ev.owner_address.clone();
-
-    let audit_event = NewProfileEvent {
-        event_type: "ProfileXUsernameUpdated".to_string(),
-        profile_id: profile_id.clone(),
-        event_data: serde_json::json!({
-            "owner_address": owner_address,
-            "x_username": ev.x_username,
-            "updated_by": ev.updated_by,
-            "updated_at": ev.updated_at,
-        }),
-        event_id: Some(event_id.to_string()),
-        created_at: now,
-        updated_at: now,
-    };
-
-    Some(vec![
-        SocialEventRow::ProfileXUsernameUpdate {
-            profile_id: ev.profile_id,
-            owner_address: ev.owner_address,
-            x_username: ev.x_username,
-        },
         SocialEventRow::ProfileEvent(audit_event),
     ])
 }
@@ -740,177 +667,6 @@ fn process_username_reassigned_event(
     Some(rows)
 }
 
-fn default_zero_u8() -> u8 {
-    0
-}
-
-/// Event emitted when a badge is assigned. Ported from mys-indexer.
-#[derive(Debug, Clone, Deserialize)]
-struct BadgeAssignedEvent {
-    #[serde(rename = "profile_id", default)]
-    profile_id: String,
-
-    #[serde(rename = "badge_id", default)]
-    badge_id: String,
-
-    #[serde(rename = "name", default)]
-    name: String,
-
-    #[serde(rename = "description", default)]
-    description: Option<String>,
-
-    #[serde(rename = "media_url", default)]
-    media_url: Option<String>,
-
-    #[serde(rename = "icon_url", default)]
-    icon_url: Option<String>,
-
-    #[serde(rename = "platform_id", default)]
-    platform_id: String,
-
-    #[serde(rename = "assigned_by", default)]
-    assigned_by: String,
-
-    #[serde(
-        rename = "assigned_at",
-        default = "default_timestamp",
-        deserialize_with = "deserialize_number_from_string"
-    )]
-    assigned_at: u64,
-
-    #[serde(
-        rename = "badge_type",
-        default = "default_zero_u8",
-        deserialize_with = "deserialize_number_from_string"
-    )]
-    badge_type: u8,
-}
-
-fn process_badge_assigned_event(
-    data: &serde_json::Value,
-    event_id: &str,
-    checkpoint_timestamp_ms: u64,
-) -> Option<Vec<SocialEventRow>> {
-    let ev: BadgeAssignedEvent = common::deserialize_social_event_json(
-        "profile",
-        "BadgeAssignedEvent",
-        event_id,
-        data,
-        "profile BadgeAssignedEvent JSON did not match BadgeAssignedEvent",
-    )?;
-    let ms = common::chain_timestamp_ms(Some(ev.assigned_at as i64), checkpoint_timestamp_ms);
-    let now = common::chain_time_from_ms(ms);
-    let naive = now.naive_utc();
-    let profile_id = ev.profile_id.clone();
-    let badge_id = ev.badge_id.clone();
-    let name = ev.name.clone();
-    let platform_id = ev.platform_id.clone();
-    let assigned_by = ev.assigned_by.clone();
-    let assigned_at = ev.assigned_at;
-    let badge = myso_indexer_alt_social_schema::models::NewProfileBadge {
-        profile_id: Some(profile_id.clone()),
-        wallet_address: None,
-        badge_kind: "owned".to_string(),
-        expires_at: None,
-        badge_id: badge_id.clone(),
-        badge_name: name.clone(),
-        badge_description: ev.description,
-        badge_media_url: ev.media_url,
-        badge_icon_url: ev.icon_url,
-        platform_id: platform_id.clone(),
-        assigned_by: assigned_by.clone(),
-        assigned_at: assigned_at as i64,
-        revoked: false,
-        revoked_at: None,
-        revoked_by: None,
-        badge_type: ev.badge_type as i16,
-        transaction_id: event_id.to_string(),
-        time: now,
-    };
-    let event = NewProfileEvent {
-        event_type: "BadgeAssigned".to_string(),
-        profile_id,
-        event_data: serde_json::json!({
-            "badge_id": badge_id,
-            "name": name,
-            "platform_id": platform_id,
-            "assigned_by": assigned_by,
-            "assigned_at": assigned_at,
-        }),
-        event_id: Some(event_id.to_string()),
-        created_at: naive,
-        updated_at: naive,
-    };
-    Some(vec![
-        SocialEventRow::ProfileBadge(badge),
-        SocialEventRow::ProfileEvent(event),
-    ])
-}
-
-/// Event emitted when a badge is revoked. Ported from mys-indexer.
-#[derive(Debug, Clone, Deserialize)]
-struct BadgeRevokedEvent {
-    #[serde(rename = "profile_id", default)]
-    profile_id: String,
-
-    #[serde(rename = "badge_id", default)]
-    badge_id: String,
-
-    #[serde(rename = "platform_id", default)]
-    platform_id: String,
-
-    #[serde(rename = "revoked_by", default)]
-    revoked_by: String,
-
-    #[serde(
-        rename = "revoked_at",
-        default = "default_timestamp",
-        deserialize_with = "deserialize_number_from_string"
-    )]
-    revoked_at: u64,
-}
-
-fn process_badge_revoked_event(
-    data: &serde_json::Value,
-    event_id: &str,
-    checkpoint_timestamp_ms: u64,
-) -> Option<Vec<SocialEventRow>> {
-    let ev: BadgeRevokedEvent = common::deserialize_social_event_json(
-        "profile",
-        "BadgeRevokedEvent",
-        event_id,
-        data,
-        "profile BadgeRevokedEvent JSON did not match BadgeRevokedEvent",
-    )?;
-    let ms = common::chain_timestamp_ms(Some(ev.revoked_at as i64), checkpoint_timestamp_ms);
-    let now = common::chain_time_from_ms(ms).naive_utc();
-    let event = NewProfileEvent {
-        event_type: "BadgeRevoked".to_string(),
-        profile_id: ev.profile_id.clone(),
-        event_data: serde_json::json!({
-            "badge_id": ev.badge_id,
-            "platform_id": ev.platform_id,
-            "revoked_by": ev.revoked_by,
-            "revoked_at": ev.revoked_at,
-        }),
-        event_id: Some(event_id.to_string()),
-        created_at: now,
-        updated_at: now,
-    };
-    Some(vec![
-        SocialEventRow::ProfileBadgeRevoke {
-            profile_id: ev.profile_id,
-            badge_id: ev.badge_id,
-            revoked_at: ev.revoked_at as i64,
-            revoked_by: ev.revoked_by,
-        },
-        SocialEventRow::ProfileEvent(event),
-    ])
-}
-
-const ECOSYSTEM_BADGE_PREFIX: &str = "ecosystem_badge_";
-
-/// Event emitted when a badge is selected. Ported from mys-indexer.
 #[derive(Debug, Clone, Deserialize)]
 struct BadgeSelectedEvent {
     #[serde(rename = "profile_id", default)]
@@ -943,12 +699,13 @@ fn process_badge_selected_event(
         data,
         "profile BadgeSelectedEvent JSON did not match BadgeSelectedEvent",
     )?;
-    let (selected_badge_id, selected_ecosystem_badge_id) = if ev.badge_id.is_empty() {
-        (Some(None), Some(None))
-    } else if ev.badge_id.starts_with(ECOSYSTEM_BADGE_PREFIX) {
-        (None, Some(Some(ev.badge_id)))
+    // Profiles only carry the soulbound ecosystem badge selection
+    // (`platform::select_ecosystem_badge_on_profile`); platform picks live in the wallet ledger.
+    let selected_badge_id = None;
+    let selected_ecosystem_badge_id = if ev.badge_id.is_empty() {
+        Some(None)
     } else {
-        (Some(Some(ev.badge_id)), None)
+        Some(Some(ev.badge_id))
     };
     let up = ProfileUpdate {
         profile_id: ev.profile_id,
@@ -999,61 +756,6 @@ fn process_ecosystem_badge_selection_cleared_event(
         social_proof_token_address: None,
     };
     Some(vec![SocialEventRow::ProfileUpdate(up)])
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct BadgeRemovedEvent {
-    #[serde(rename = "profile_id", default)]
-    profile_id: String,
-    #[serde(rename = "badge_id", default)]
-    badge_id: String,
-    #[serde(rename = "platform_id", default)]
-    _platform_id: String,
-    #[serde(rename = "removed_by", default)]
-    removed_by: String,
-    #[serde(
-        rename = "removed_at",
-        default = "default_timestamp",
-        deserialize_with = "deserialize_number_from_string"
-    )]
-    removed_at: u64,
-}
-
-fn process_badge_removed_event(
-    data: &serde_json::Value,
-    event_id: &str,
-    checkpoint_timestamp_ms: u64,
-) -> Option<Vec<SocialEventRow>> {
-    let ev: BadgeRemovedEvent = common::deserialize_social_event_json(
-        "profile",
-        "BadgeRemovedEvent",
-        event_id,
-        data,
-        "profile BadgeRemovedEvent JSON did not match BadgeRemovedEvent",
-    )?;
-    let ms = common::chain_timestamp_ms(Some(ev.removed_at as i64), checkpoint_timestamp_ms);
-    let now = common::chain_time_from_ms(ms).naive_utc();
-    let event = NewProfileEvent {
-        event_type: "BadgeRemoved".to_string(),
-        profile_id: ev.profile_id.clone(),
-        event_data: serde_json::json!({
-            "badge_id": ev.badge_id,
-            "removed_by": ev.removed_by,
-            "removed_at": ev.removed_at,
-        }),
-        event_id: Some(event_id.to_string()),
-        created_at: now,
-        updated_at: now,
-    };
-    Some(vec![
-        SocialEventRow::ProfileBadgeRevoke {
-            profile_id: ev.profile_id,
-            badge_id: ev.badge_id,
-            revoked_at: ev.removed_at as i64,
-            revoked_by: ev.removed_by,
-        },
-        SocialEventRow::ProfileEvent(event),
-    ])
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -1831,106 +1533,6 @@ mod tests {
             r,
             SocialEventRow::ProfileUsernameSet { username, .. } if username == "pocub1782751083"
         )));
-    }
-
-    #[test]
-    fn test_profile_x_username_updated_json_sets_handle() {
-        let data = serde_json::json!({
-            "profile_id": "0xaa",
-            "owner_address": "0xbb",
-            "x_username": "verified",
-            "updated_by": "0xcc",
-            "updated_at": 1700000000000u64,
-        });
-        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &data, "e-x-1", CK_MS)
-            .expect("handle_profile_event should return Some");
-        assert_eq!(
-            rows.len(),
-            2,
-            "expect ProfileXUsernameUpdate + ProfileEvent"
-        );
-        let (up_row, audit) = match (&rows[0], &rows[1]) {
-            (SocialEventRow::ProfileXUsernameUpdate { .. }, SocialEventRow::ProfileEvent(e)) => {
-                (&rows[0], e)
-            }
-            (SocialEventRow::ProfileEvent(e), SocialEventRow::ProfileXUsernameUpdate { .. }) => {
-                (&rows[1], e)
-            }
-            _ => panic!("expected ProfileXUsernameUpdate and ProfileEvent"),
-        };
-        let SocialEventRow::ProfileXUsernameUpdate {
-            profile_id,
-            owner_address,
-            x_username,
-        } = up_row
-        else {
-            unreachable!()
-        };
-        assert_eq!(profile_id, "0xaa");
-        assert_eq!(owner_address, "0xbb");
-        assert_eq!(x_username.as_deref(), Some("verified"));
-        assert_eq!(audit.event_type, "ProfileXUsernameUpdated");
-        assert_eq!(
-            audit.event_data.get("x_username").and_then(|v| v.as_str()),
-            Some("verified")
-        );
-        let expected = common::chain_time_from_ms(1700000000000).naive_utc();
-        assert_eq!(audit.created_at, expected);
-    }
-
-    #[test]
-    fn test_profile_x_username_updated_json_clear_handle() {
-        let data = serde_json::json!({
-            "profile_id": "0xaa",
-            "owner_address": "0xbb",
-            "x_username": serde_json::Value::Null,
-            "updated_by": "0xcc",
-            "updated_at": 1700000000001u64,
-        });
-        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &data, "e-x-2", CK_MS)
-            .expect("handle_profile_event should return Some");
-        let up_row = rows.iter().find_map(|r| match r {
-            SocialEventRow::ProfileXUsernameUpdate {
-                profile_id,
-                owner_address,
-                x_username,
-            } => Some((
-                profile_id.clone(),
-                owner_address.clone(),
-                x_username.clone(),
-            )),
-            _ => None,
-        });
-        let Some((pid, owner, x)) = up_row else {
-            panic!("expected ProfileXUsernameUpdate row");
-        };
-        assert_eq!(pid, "0xaa");
-        assert_eq!(owner, "0xbb");
-        assert_eq!(x, None);
-    }
-
-    #[test]
-    fn test_profile_x_username_updated_bcs_roundtrip() {
-        let pid = move_core_types::account_address::AccountAddress::random();
-        let owner = move_core_types::account_address::AccountAddress::random();
-        let upd = move_core_types::account_address::AccountAddress::random();
-        let ev = crate::handlers::events::BcsProfileXUsernameUpdatedEvent {
-            profile_id: pid,
-            owner,
-            x_username: Some("from_bcs".to_string()),
-            updated_by: upd,
-            updated_at: 42,
-        };
-        let bytes = bcs::to_bytes(&ev).expect("bcs serialize");
-        let json = parse_event_contents("profile", "ProfileXUsernameUpdatedEvent", &bytes)
-            .expect("parse_event_contents");
-        let rows = handle_profile_event("ProfileXUsernameUpdatedEvent", &json, "e-bcs", CK_MS)
-            .expect("handler");
-        let up_row = rows.iter().find_map(|r| match r {
-            SocialEventRow::ProfileXUsernameUpdate { x_username, .. } => x_username.clone(),
-            _ => None,
-        });
-        assert_eq!(up_row.as_deref(), Some("from_bcs"));
     }
 
     #[test]

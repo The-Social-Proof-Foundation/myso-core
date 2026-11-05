@@ -56,13 +56,18 @@ module social_contracts::platform {
     const ELedgerPlatformMismatch: u64 = 20;
     const EGrantNotFound: u64 = 21;
     const EGrantInactive: u64 = 22;
-    const ENotEcosystemBadge: u64 = 23;
+    const EEcosystemBadgeAlreadyIssued: u64 = 23;
+    const EXHandleTaken: u64 = 24;
+    const EWalletHasXHandle: u64 = 25;
+    const EInvalidXHandle: u64 = 26;
 
     /// Maximum lengths for badge fields
     const MAX_BADGE_NAME_LENGTH: u64 = 100;
     const MAX_BADGE_DESCRIPTION_LENGTH: u64 = 500;
     const MAX_BADGE_MEDIA_URL_LENGTH: u64 = 2048;
     const MAX_BADGE_ICON_URL_LENGTH: u64 = 2048;
+    const MAX_X_HANDLE_LENGTH: u64 = 50;
+    const ECOSYSTEM_BADGE_ID_PREFIX: vector<u8> = b"ecosystem_badge_";
     const MAX_COVER_PHOTO_URL_LENGTH: u64 = 2048;
     const MAX_MEDIA_PREVIEWS: u64 = 10;
     const MAX_MEDIA_PREVIEW_URL_LENGTH: u64 = 2048;
@@ -463,6 +468,7 @@ module social_contracts::platform {
 
     /// Bootstrap initialization function - creates the platform registry and config
     public(package) fun bootstrap_init(clock: &Clock, ctx: &mut TxContext) {
+        share_new_ecosystem_badge_registry(ctx);
         let admin = tx_context::sender(ctx);
         let ver = upgrade::current_version();
 
@@ -2550,18 +2556,17 @@ module social_contracts::platform {
         });
     }
 
+    /// Pick which soulbound ecosystem badge to show on this platform. Passing the owned
+    /// `EcosystemBadge` proves the sender holds it.
     public fun select_ecosystem_badge(
         ledger: &mut PlatformBadgeLedger,
-        profile: &profile::Profile,
-        badge_id: String,
+        badge: &EcosystemBadge,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         assert!(ledger.version == upgrade::current_version(), EWrongVersion);
         let owner = tx_context::sender(ctx);
-        assert!(profile::get_owner(profile) == owner, EUnauthorized);
-        assert!(profile::is_ecosystem_badge_id(&badge_id), ENotEcosystemBadge);
-        assert!(profile::has_badge(profile, &badge_id), EGrantNotFound);
+        let badge_id = badge.badge_id;
 
         if (table::contains(&ledger.ecosystem_selections, owner)) {
             *table::borrow_mut(&mut ledger.ecosystem_selections, owner) = badge_id;
@@ -2593,98 +2598,348 @@ module social_contracts::platform {
         });
     }
 
-    /// Assign a badge to a profile - can only be called by platform admin/moderator
-    /// This is the primary entry point for badge assignment
-    public fun assign_badge(
-        platform_registry: &PlatformRegistry,
-        config: &PlatformConfig,
-        platform: &Platform,
-        group: &PermissionedGroup<PlatformPackage>,
-        profile: &mut profile::Profile,
-        badge_name: String,
-        badge_description: String,
-        badge_media_url: String,
-        badge_icon_url: String,
+    // =====================================================================
+    // Ecosystem badges — soulbound, minted by the EcosystemBadgeAdminCap holder
+    // =====================================================================
+    //
+    // `EcosystemBadge` has `key` but not `store`, and nothing here transfers it after minting, so a
+    // badge can never leave the wallet it was minted to. There is no revocation: badges are
+    // permanent and only the holder can destroy one (`burn_ecosystem_badge`). Minting never touches
+    // a user-owned object, so no user signature is needed and the wallet needs no profile.
+    // `EcosystemBadgeRegistry` only prevents duplicates and binds each verified X handle to one wallet.
+
+    /// Soulbound ecosystem badge (Verified X, Early Adopter, Ambassador, ...).
+    public struct EcosystemBadge has key {
+        id: UID,
+        /// Stable identifier `ecosystem_badge_<name>` (one per wallet).
+        badge_id: String,
+        badge_type: u8,
+        name: String,
+        description: String,
+        media_url: String,
+        icon_url: String,
+        /// What the badge attests to, e.g. the canonical X handle for Verified X.
+        subject: Option<String>,
+        issued_by: address,
+        issued_at: u64,
+    }
+
+    public struct EcosystemBadgeIssuedKey has copy, drop, store {
+        owner: address,
+        badge_id: String,
+    }
+
+    public struct EcosystemBadgeRegistry has key {
+        id: UID,
+        /// (wallet, badge_id) → badge object id
+        issued: Table<EcosystemBadgeIssuedKey, ID>,
+        /// canonical X handle → wallet holding the Verified X badge for it
+        x_handle_owner: Table<String, address>,
+        /// wallet → canonical X handle it verified
+        wallet_x_handle: Table<address, String>,
+        version: u64,
+    }
+
+    public struct EcosystemBadgeRegistryCreatedEvent has copy, drop {
+        registry_id: ID,
+        created_by: address,
+    }
+
+    public struct EcosystemBadgeMintedEvent has copy, drop {
+        badge_object_id: ID,
+        owner: address,
+        badge_id: String,
+        name: String,
+        description: String,
+        media_url: String,
+        icon_url: String,
+        badge_type: u8,
+        subject: Option<String>,
+        issued_by: address,
+        issued_at: u64,
+    }
+
+    public struct EcosystemBadgeBurnedEvent has copy, drop {
+        badge_object_id: ID,
+        owner: address,
+        badge_id: String,
+        subject: Option<String>,
+        burned_at: u64,
+    }
+
+    /// One-time creation by the badge admin on a network whose bootstrap already ran.
+    /// Record the id as `ECOSYSTEM_BADGE_REGISTRY_ID` for off-chain services.
+    public entry fun create_ecosystem_badge_registry(
+        _: &profile::EcosystemBadgeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        share_new_ecosystem_badge_registry(ctx);
+    }
+
+    fun share_new_ecosystem_badge_registry(ctx: &mut TxContext) {
+        let registry = EcosystemBadgeRegistry {
+            id: object::new(ctx),
+            issued: table::new(ctx),
+            x_handle_owner: table::new(ctx),
+            wallet_x_handle: table::new(ctx),
+            version: upgrade::current_version(),
+        };
+        event::emit(EcosystemBadgeRegistryCreatedEvent {
+            registry_id: object::id(&registry),
+            created_by: tx_context::sender(ctx),
+        });
+        transfer::share_object(registry);
+    }
+
+    /// Mint a soulbound badge into `recipient`'s wallet. Aborts with
+    /// `EEcosystemBadgeAlreadyIssued` when that wallet already holds a badge with this name.
+    public entry fun mint_ecosystem_badge(
+        _: &profile::EcosystemBadgeAdminCap,
+        registry: &mut EcosystemBadgeRegistry,
+        recipient: address,
+        name: String,
+        description: String,
+        media_url: String,
+        icon_url: String,
         badge_type: u8,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
-        // Check version compatibility
-        assert!(platform.version == upgrade::current_version(), EWrongVersion);
-        
-        let caller = tx_context::sender(ctx);
-        assert_moderator_permission<PlatformBadgeAdmin>(platform, group, caller);
-        
-        // Verify platform is approved
-        let platform_id = object::uid_to_address(&platform.id);
-        assert!(is_approved(platform_registry, platform_id), EUnauthorized);
-        
-        // Validate badge type (1-100 as documented)
-        assert!(badge_type >= 1 && badge_type <= 100, EInvalidBadgeType);
-        
-        // Validate badge field lengths
-        assert!(string::length(&badge_name) > 0 && string::length(&badge_name) <= config.max_badge_name_length, EBadgeNameTooLong);
-        assert!(string::length(&badge_description) <= config.max_badge_description_length, EBadgeDescriptionTooLong);
-        validate_badge_urls(&badge_media_url, &badge_icon_url);
-        
-        // Get current time
-        let now = clock::timestamp_ms(clock);
-        
-        // Create a unique badge ID by including platform ID to prevent collisions
-        let mut badge_id = string::utf8(b"badge_");
-        // Convert platform ID to hex string and append to ensure uniqueness
-        let platform_id_str = myso::address::to_string(platform_id);
-        string::append(&mut badge_id, platform_id_str);
-        string::append(&mut badge_id, string::utf8(b"_"));
-        string::append(&mut badge_id, badge_name);
-        
-        // Add the badge directly to the profile
-        profile::add_badge_to_profile(
-            profile,
-            badge_id,
-            badge_name,
-            badge_description,
-            badge_media_url,
-            badge_icon_url,
-            platform_id,
-            now,
-            caller,
-            badge_type
+        mint_ecosystem_badge_internal(
+            registry, recipient, name, description, media_url, icon_url, badge_type,
+            option::none(), clock, ctx,
         );
     }
 
-    /// Revoke a badge from a profile - can only be called by platform admin/moderator
-    /// This is the primary entry point for badge revocation
-    public fun revoke_badge(
-        platform_registry: &PlatformRegistry,
-        platform: &Platform,
-        group: &PermissionedGroup<PlatformPackage>,
-        profile: &mut profile::Profile,
-        badge_id: String,
+    /// Mint the Verified X badge and bind `x_handle` to `recipient`. Aborts with `EXHandleTaken`
+    /// when another wallet verified this handle, `EWalletHasXHandle` when this wallet verified a
+    /// different handle, and `EEcosystemBadgeAlreadyIssued` when the badge already exists.
+    public entry fun mint_verified_x_badge(
+        _: &profile::EcosystemBadgeAdminCap,
+        registry: &mut EcosystemBadgeRegistry,
+        recipient: address,
+        x_handle: String,
+        name: String,
+        description: String,
+        media_url: String,
+        icon_url: String,
+        badge_type: u8,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
-        // Check version compatibility
-        assert!(platform.version == upgrade::current_version(), EWrongVersion);
-        
-        let caller = tx_context::sender(ctx);
-        assert_moderator_permission<PlatformBadgeAdmin>(platform, group, caller);
-        
-        // Verify platform is approved
-        let platform_id = object::uid_to_address(&platform.id);
-        assert!(is_approved(platform_registry, platform_id), EUnauthorized);
-        
-        // Get current time
-        let now = clock::timestamp_ms(clock);
-        
-        // Remove the badge directly from the profile
-        profile::remove_badge_from_profile(
-            profile,
-            &badge_id,
-            platform_id,
-            caller,
-            now
+        assert_ecosystem_badge_registry_version(registry);
+        let handle = canonical_x_handle(&x_handle);
+        if (table::contains(&registry.x_handle_owner, handle)) {
+            assert!(*table::borrow(&registry.x_handle_owner, handle) == recipient, EXHandleTaken);
+        };
+        if (table::contains(&registry.wallet_x_handle, recipient)) {
+            assert!(*table::borrow(&registry.wallet_x_handle, recipient) == handle, EWalletHasXHandle);
+        };
+        mint_ecosystem_badge_internal(
+            registry, recipient, name, description, media_url, icon_url, badge_type,
+            option::some(handle), clock, ctx,
         );
+        if (!table::contains(&registry.x_handle_owner, handle)) {
+            table::add(&mut registry.x_handle_owner, handle, recipient);
+        };
+        if (!table::contains(&registry.wallet_x_handle, recipient)) {
+            table::add(&mut registry.wallet_x_handle, recipient, handle);
+        };
+    }
+
+    fun mint_ecosystem_badge_internal(
+        registry: &mut EcosystemBadgeRegistry,
+        recipient: address,
+        name: String,
+        description: String,
+        media_url: String,
+        icon_url: String,
+        badge_type: u8,
+        subject: Option<String>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert_ecosystem_badge_registry_version(registry);
+        assert!(badge_type >= 1 && badge_type <= 100, EInvalidBadgeType);
+        assert!(string::length(&name) > 0 && string::length(&name) <= MAX_BADGE_NAME_LENGTH, EBadgeNameTooLong);
+        assert!(string::length(&description) <= MAX_BADGE_DESCRIPTION_LENGTH, EBadgeDescriptionTooLong);
+        assert!(
+            string::length(&media_url) > 0 && string::length(&media_url) <= MAX_BADGE_MEDIA_URL_LENGTH,
+            EBadgeMediaUrlTooLong,
+        );
+        assert!(
+            string::length(&icon_url) > 0 && string::length(&icon_url) <= MAX_BADGE_ICON_URL_LENGTH,
+            EBadgeIconUrlTooLong,
+        );
+
+        let badge_id = ecosystem_badge_id_for_name(&name);
+        let key = EcosystemBadgeIssuedKey { owner: recipient, badge_id };
+        assert!(!table::contains(&registry.issued, key), EEcosystemBadgeAlreadyIssued);
+
+        let issued_by = tx_context::sender(ctx);
+        let issued_at = clock::timestamp_ms(clock);
+        let badge = EcosystemBadge {
+            id: object::new(ctx),
+            badge_id,
+            badge_type,
+            name,
+            description,
+            media_url,
+            icon_url,
+            subject,
+            issued_by,
+            issued_at,
+        };
+        let badge_object_id = object::id(&badge);
+        table::add(&mut registry.issued, key, badge_object_id);
+
+        event::emit(EcosystemBadgeMintedEvent {
+            badge_object_id,
+            owner: recipient,
+            badge_id,
+            name,
+            description,
+            media_url,
+            icon_url,
+            badge_type,
+            subject,
+            issued_by,
+            issued_at,
+        });
+        transfer::transfer(badge, recipient);
+    }
+
+    /// The holder permanently destroys their badge. Frees the (wallet, badge_id) slot and any X
+    /// handle binding, so it can be issued again (e.g. re-linking X).
+    public entry fun burn_ecosystem_badge(
+        registry: &mut EcosystemBadgeRegistry,
+        badge: EcosystemBadge,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_ecosystem_badge_registry_version(registry);
+        let owner = tx_context::sender(ctx);
+        let badge_object_id = object::id(&badge);
+        let EcosystemBadge {
+            id, badge_id, badge_type: _, name: _, description: _, media_url: _, icon_url: _,
+            subject, issued_by: _, issued_at: _,
+        } = badge;
+        object::delete(id);
+
+        let key = EcosystemBadgeIssuedKey { owner, badge_id };
+        if (table::contains(&registry.issued, key)) {
+            table::remove(&mut registry.issued, key);
+        };
+        if (option::is_some(&subject)) {
+            let handle = *option::borrow(&subject);
+            if (table::contains(&registry.x_handle_owner, handle)
+                && *table::borrow(&registry.x_handle_owner, handle) == owner) {
+                table::remove(&mut registry.x_handle_owner, handle);
+            };
+            if (table::contains(&registry.wallet_x_handle, owner)
+                && *table::borrow(&registry.wallet_x_handle, owner) == handle) {
+                table::remove(&mut registry.wallet_x_handle, owner);
+            };
+        };
+
+        event::emit(EcosystemBadgeBurnedEvent {
+            badge_object_id,
+            owner,
+            badge_id,
+            subject,
+            burned_at: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Display `badge` on the caller's profile. Passing the owned `EcosystemBadge` proves the
+    /// caller holds it.
+    public entry fun select_ecosystem_badge_on_profile(
+        profile: &mut profile::Profile,
+        badge: &EcosystemBadge,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        profile::set_selected_ecosystem_badge_id(
+            profile,
+            badge.badge_id,
+            tx_context::sender(ctx),
+            clock::timestamp_ms(clock),
+        );
+    }
+
+    public fun has_ecosystem_badge(registry: &EcosystemBadgeRegistry, owner: address, badge_id: String): bool {
+        table::contains(&registry.issued, EcosystemBadgeIssuedKey { owner, badge_id })
+    }
+
+    public fun x_handle_of(registry: &EcosystemBadgeRegistry, wallet: address): Option<String> {
+        if (table::contains(&registry.wallet_x_handle, wallet)) {
+            option::some(*table::borrow(&registry.wallet_x_handle, wallet))
+        } else {
+            option::none()
+        }
+    }
+
+    public fun wallet_of_x_handle(registry: &EcosystemBadgeRegistry, x_handle: String): Option<address> {
+        let handle = canonical_x_handle(&x_handle);
+        if (table::contains(&registry.x_handle_owner, handle)) {
+            option::some(*table::borrow(&registry.x_handle_owner, handle))
+        } else {
+            option::none()
+        }
+    }
+
+    /// `ecosystem_badge_<name>` — the id stored on profiles and platform ledgers.
+    public fun ecosystem_badge_id_for_name(name: &String): String {
+        let mut id = string::utf8(ECOSYSTEM_BADGE_ID_PREFIX);
+        string::append(&mut id, *name);
+        id
+    }
+
+    public fun ecosystem_badge_id(badge: &EcosystemBadge): String { badge.badge_id }
+    public fun ecosystem_badge_type(badge: &EcosystemBadge): u8 { badge.badge_type }
+    public fun ecosystem_badge_name(badge: &EcosystemBadge): String { badge.name }
+    public fun ecosystem_badge_description(badge: &EcosystemBadge): String { badge.description }
+    public fun ecosystem_badge_media_url(badge: &EcosystemBadge): String { badge.media_url }
+    public fun ecosystem_badge_icon_url(badge: &EcosystemBadge): String { badge.icon_url }
+    public fun ecosystem_badge_subject(badge: &EcosystemBadge): Option<String> { badge.subject }
+    public fun ecosystem_badge_issued_by(badge: &EcosystemBadge): address { badge.issued_by }
+    public fun ecosystem_badge_issued_at(badge: &EcosystemBadge): u64 { badge.issued_at }
+
+    fun assert_ecosystem_badge_registry_version(registry: &EcosystemBadgeRegistry) {
+        assert!(registry.version == upgrade::current_version(), EWrongVersion);
+    }
+
+    /// Lowercase, strip one leading `@`, and validate against the username charset.
+    fun canonical_x_handle(raw: &String): String {
+        let mut bytes = *string::as_bytes(raw);
+        if (vector::length(&bytes) > 0 && *vector::borrow(&bytes, 0) == 64 /* '@' */) {
+            vector::remove(&mut bytes, 0);
+        };
+        let len = vector::length(&bytes);
+        assert!(len > 0 && len <= MAX_X_HANDLE_LENGTH, EInvalidXHandle);
+        profile::canonical_registry_username_from_bytes(bytes)
+    }
+
+    public entry fun migrate_ecosystem_badge_registry(
+        registry: &mut EcosystemBadgeRegistry,
+        _: &UpgradeAdminCap,
+        ctx: &mut TxContext,
+    ) {
+        let current_version = upgrade::current_version();
+        assert!(registry.version < current_version, EWrongVersion);
+        let old_version = registry.version;
+        registry.version = current_version;
+        upgrade::emit_migration_event(
+            object::id(registry),
+            string::utf8(b"EcosystemBadgeRegistry"),
+            old_version,
+            tx_context::sender(ctx),
+        );
+    }
+
+    #[test_only]
+    public fun init_ecosystem_badge_registry_for_testing(ctx: &mut TxContext) {
+        share_new_ecosystem_badge_registry(ctx);
     }
 
     /// When adding a moderator to a platform, register them with the profile module

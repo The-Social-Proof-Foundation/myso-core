@@ -31,6 +31,7 @@ strict wall-clock guarantee when governance is idle.
 -  [Struct `ProposalRefundedJuryUnavailableEvent`](#social_contracts_governance_ProposalRefundedJuryUnavailableEvent)
 -  [Struct `VoteRefundClaimedEvent`](#social_contracts_governance_VoteRefundClaimedEvent)
 -  [Struct `VoteRefundsSweptEvent`](#social_contracts_governance_VoteRefundsSweptEvent)
+-  [Struct `JuryCaseRemainderSweptEvent`](#social_contracts_governance_JuryCaseRemainderSweptEvent)
 -  [Struct `JuryPolicyUpdatedEvent`](#social_contracts_governance_JuryPolicyUpdatedEvent)
 -  [Struct `DelegateReferredToJuryEvent`](#social_contracts_governance_DelegateReferredToJuryEvent)
 -  [Struct `ProposalEscalatedToJuryEvent`](#social_contracts_governance_ProposalEscalatedToJuryEvent)
@@ -1076,6 +1077,43 @@ refund never loops over every voter.
 </dd>
 <dt>
 <code>swept_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_governance_JuryCaseRemainderSweptEvent"></a>
+
+## Struct `JuryCaseRemainderSweptEvent`
+
+Records the exact treasury transfer (or zero remainder) from a finished jury case.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/governance.md#social_contracts_governance_JuryCaseRemainderSweptEvent">JuryCaseRemainderSweptEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>case_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount_mist: u64</code>
 </dt>
 <dd>
 </dd>
@@ -5737,7 +5775,7 @@ Run delegate-in-review vote logic; returns 0=still in review, 1=advanced to comm
 
 ## Function `delegate_vote_on_proposal`
 
-Ecosystem and proof-of-creativity only: <code>ecosystem_treasury</code> used when the delegate council rejects the proposal.
+Global governance registries, including Spot: <code>ecosystem_treasury</code> receives a rejected proposal pool.
 
 
 <pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/governance.md#social_contracts_governance_delegate_vote_on_proposal">delegate_vote_on_proposal</a>(registry: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_GovernanceDAO">social_contracts::governance::GovernanceDAO</a>, proposal: &<b>mut</b> <a href="../social_contracts/governance.md#social_contracts_governance_Proposal">social_contracts::governance::Proposal</a>, ecosystem_treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, approve: bool, reason: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../std/string.md#std_string_String">std::string::String</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
@@ -8938,11 +8976,14 @@ that could not form returns its fee to the proposal instead of the treasury.
         <b>assert</b>!(<a href="../social_contracts/jury.md#social_contracts_jury_case_executed">jury::case_executed</a>(case), <a href="../social_contracts/governance.md#social_contracts_governance_EJuryNotFinished">EJuryNotFinished</a>);
     };
     <b>let</b> remainder = <a href="../social_contracts/jury.md#social_contracts_jury_sweep_remainder">jury::sweep_remainder</a>(case);
-    <b>if</b> (balance::value(&remainder) &gt; 0) {
-        transfer::public_transfer(coin::from_balance(remainder, ctx), <a href="../social_contracts/jury.md#social_contracts_jury_case_sweep_to">jury::case_sweep_to</a>(case));
+    <b>let</b> amount_mist = balance::value(&remainder);
+    <b>let</b> recipient = <a href="../social_contracts/jury.md#social_contracts_jury_case_sweep_to">jury::case_sweep_to</a>(case);
+    <b>if</b> (amount_mist &gt; 0) {
+        transfer::public_transfer(coin::from_balance(remainder, ctx), recipient);
     } <b>else</b> {
         balance::destroy_zero(remainder);
     };
+    event::emit(<a href="../social_contracts/governance.md#social_contracts_governance_JuryCaseRemainderSweptEvent">JuryCaseRemainderSweptEvent</a> { case_id: object::id(case), recipient, amount_mist });
 }
 </code></pre>
 

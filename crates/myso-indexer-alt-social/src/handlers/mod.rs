@@ -124,8 +124,8 @@ pub enum SocialEventRow {
         username: String,
         deleted_at: i64,
     },
-    ProfileXUsernameUpdate {
-        profile_id: String,
+    /// Verified X handle for a wallet (from the soulbound Verified X ecosystem badge).
+    WalletXUsernameUpdate {
         owner_address: String,
         x_username: Option<String>,
     },
@@ -183,11 +183,11 @@ pub enum SocialEventRow {
     UsernameOffer(NewUsernameOffer),
     UsernameSaleFee(NewUsernameSaleFee),
     ProfileBadge(NewProfileBadge),
-    ProfileBadgeRevoke {
-        profile_id: String,
-        badge_id: String,
-        revoked_at: i64,
-        revoked_by: String,
+    /// Holder burned a soulbound ecosystem badge object.
+    EcosystemBadgeBurn {
+        badge_object_id: String,
+        burned_at: i64,
+        owner_address: String,
     },
     ProfileBadgeWalletRevoke {
         wallet_address: String,
@@ -540,11 +540,25 @@ pub enum SocialEventRow {
     PocUsernameBeneficiaryClaimed {
         beneficiary_id: String,
         username: String,
-        profile_id: String,
+        /// Set when the claim created the creator's profile.
+        profile_id: Option<String>,
+        /// The PoC oracle that sent the claim.
         claimed_by: String,
-        wallet: String,
+        /// Creator recipient wallet (vault access keys off this).
+        linked_wallet: String,
+        /// Wallet the username is reserved for when it already had a profile.
+        reserved_for: Option<String>,
         oracle_evidence_hash: String,
         claimed_at_ms: i64,
+        transaction_id: String,
+    },
+    PocReservedUsernameAdopted {
+        beneficiary_id: String,
+        profile_id: String,
+        transaction_id: String,
+    },
+    PocReservedUsernameReleased {
+        beneficiary_id: String,
         transaction_id: String,
     },
     PocUsernameBeneficiaryEnded {

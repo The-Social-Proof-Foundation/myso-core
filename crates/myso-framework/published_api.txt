@@ -7363,6 +7363,12 @@ MemoryConfigUpdatedEvent
 MemoryRegistry
 	public struct
 	0x50c1::memory
+MemoryOwnerRotationKey
+	public struct
+	0x50c1::memory
+MemoryOwnerRotation
+	public struct
+	0x50c1::memory
 SubAgentKey
 	public struct
 	0x50c1::memory
@@ -7373,6 +7379,12 @@ MemorySharePackage
 	public struct
 	0x50c1::memory
 OrgMemoryGroupTag
+	public struct
+	0x50c1::memory
+OrgTreasuryBalanceKey
+	public struct
+	0x50c1::memory
+OrgTreasuryAccessKey
 	public struct
 	0x50c1::memory
 OrgMemoryReader
@@ -7400,6 +7412,15 @@ OrgGovernanceProposer
 	public struct
 	0x50c1::memory
 OrgGovernanceVoter
+	public struct
+	0x50c1::memory
+OrgTreasuryAccessChanged
+	public struct
+	0x50c1::memory
+OrgTreasuryFunded
+	public struct
+	0x50c1::memory
+OrgTreasuryWithdrawn
 	public struct
 	0x50c1::memory
 OrgInvitationKey
@@ -7468,6 +7489,9 @@ SubAgentRegistered
 SubAgentUpdated
 	public struct
 	0x50c1::memory
+SubAgentOwnerPolicyChanged
+	public struct
+	0x50c1::memory
 SubAgentDeactivated
 	public struct
 	0x50c1::memory
@@ -7478,6 +7502,18 @@ MemoryAccountDeactivated
 	public struct
 	0x50c1::memory
 MemoryAccountReactivated
+	public struct
+	0x50c1::memory
+MemoryAccountOwnerRotationProposed
+	public struct
+	0x50c1::memory
+MemoryAccountOwnerRotationAccepted
+	public struct
+	0x50c1::memory
+MemoryAccountOwnerRotated
+	public struct
+	0x50c1::memory
+MemoryAccountOwnerRotationReferenceUpdated
 	public struct
 	0x50c1::memory
 MemoryAccountMigrated
@@ -7738,6 +7774,30 @@ update_memory_config
 create_account_for_profile
 	public(package) fun
 	0x50c1::memory
+propose_owner_rotation
+	public entry fun
+	0x50c1::memory
+accept_agent_owner_rotation_reference
+	public entry fun
+	0x50c1::memory
+accept_organization_owner_rotation_reference
+	public entry fun
+	0x50c1::memory
+rollback_agent_owner_rotation_reference
+	public entry fun
+	0x50c1::memory
+rollback_organization_owner_rotation_reference
+	public entry fun
+	0x50c1::memory
+accept_owner_rotation
+	public entry fun
+	0x50c1::memory
+complete_owner_rotation
+	public(package) fun
+	0x50c1::memory
+cancel_owner_rotation
+	public entry fun
+	0x50c1::memory
 create_agentic_organization
 	public entry fun
 	0x50c1::memory
@@ -7760,6 +7820,18 @@ org_memory_group_address
 	public fun
 	0x50c1::memory
 org_memory_group_exists
+	public fun
+	0x50c1::memory
+grant_org_treasury_access
+	public entry fun
+	0x50c1::memory
+fund_org_treasury
+	public entry fun
+	0x50c1::memory
+withdraw_from_org_treasury
+	public entry fun
+	0x50c1::memory
+org_treasury_balance
 	public fun
 	0x50c1::memory
 assert_org_permission
@@ -7809,6 +7881,27 @@ register_sub_agent_delegated
 	0x50c1::memory
 update_sub_agent
 	public entry fun
+	0x50c1::memory
+assert_owner_agent_identity
+	public fun
+	0x50c1::memory
+supported_agent_capabilities
+	public fun
+	0x50c1::memory
+owner_grant_sub_agent_capabilities
+	public entry fun
+	0x50c1::memory
+owner_revoke_sub_agent_capabilities
+	public entry fun
+	0x50c1::memory
+owner_raise_sub_agent_spending_limit
+	public entry fun
+	0x50c1::memory
+owner_lower_sub_agent_spending_limit
+	public entry fun
+	0x50c1::memory
+emit_owner_policy_changed
+	fun
 	0x50c1::memory
 update_sub_agent_label
 	public entry fun
@@ -7873,10 +7966,22 @@ profile_id
 owner
 	public fun
 	0x50c1::memory
+pending_rotation_new_owner
+	public fun
+	0x50c1::memory
 sub_agent_derived_address
 	public fun
 	0x50c1::memory
 sub_agent_capabilities
+	public fun
+	0x50c1::memory
+sub_agent_delegatable_caps
+	public fun
+	0x50c1::memory
+sub_agent_max_action_spend
+	public fun
+	0x50c1::memory
+sub_agent_approval_required_caps
 	public fun
 	0x50c1::memory
 sub_agent_platform_scope
@@ -8231,6 +8336,9 @@ assert_org_group
 	fun
 	0x50c1::memory
 assert_org_permission_manager
+	fun
+	0x50c1::memory
+assert_org_treasury_admin
 	fun
 	0x50c1::memory
 assert_valid_org_permission_mask
@@ -9637,6 +9745,18 @@ release_reservation_counters
 capture_reservation_counters
 	fun
 	0x50c1::ai_credit
+set_principal_owner
+	public(package) fun
+	0x50c1::ai_credit
+balance_principal_owner
+	public fun
+	0x50c1::ai_credit
+balance_profile_id
+	public fun
+	0x50c1::ai_credit
+balance_memory_account_id
+	public fun
+	0x50c1::ai_credit
 ProfileAdminCap
 	public struct
 	0x50c1::profile
@@ -9673,22 +9793,10 @@ UsernameOffer
 Profile
 	public struct
 	0x50c1::profile
-ProfileBadge
-	public struct
-	0x50c1::profile
-BadgeData
-	public struct
-	0x50c1::profile
 VestingPiece
 	public struct
 	0x50c1::profile
 VestingWallet
-	public struct
-	0x50c1::profile
-BadgeAssignedEvent
-	public struct
-	0x50c1::profile
-BadgeRevokedEvent
 	public struct
 	0x50c1::profile
 BadgeSelectedEvent
@@ -9697,13 +9805,13 @@ BadgeSelectedEvent
 EcosystemBadgeSelectionClearedEvent
 	public struct
 	0x50c1::profile
-BadgeRemovedEvent
-	public struct
-	0x50c1::profile
 ProfileMediaAssetUpdatedEvent
 	public struct
 	0x50c1::profile
 ProfileCreatedEvent
+	public struct
+	0x50c1::profile
+ProfileOwnerRotatedEvent
 	public struct
 	0x50c1::profile
 DeletedProfileEvent
@@ -9722,9 +9830,6 @@ UsernameReservedEvent
 	public struct
 	0x50c1::profile
 UsernameReleasedEvent
-	public struct
-	0x50c1::profile
-ProfileXUsernameUpdatedEvent
 	public struct
 	0x50c1::profile
 UsernameListingCreatedEvent
@@ -9785,15 +9890,6 @@ normalize_username
 	fun
 	0x50c1::profile
 ascii_to_string
-	fun
-	0x50c1::profile
-is_ecosystem_badge_id
-	public fun
-	0x50c1::profile
-is_ecosystem_badge
-	fun
-	0x50c1::profile
-copy_string
 	fun
 	0x50c1::profile
 canonical_registry_username_from_bytes
@@ -9857,6 +9953,12 @@ create_profile_from_beneficiary_claim
 	public(package) fun
 	0x50c1::profile
 ensure_memory_account
+	public entry fun
+	0x50c1::profile
+propose_owner_rotation
+	public entry fun
+	0x50c1::profile
+complete_owner_rotation
 	public entry fun
 	0x50c1::profile
 update_profile
@@ -10003,17 +10105,14 @@ create_ecosystem_badge_admin_cap
 create_username_admin_cap
 	public(package) fun
 	0x50c1::profile
-assign_ecosystem_badge
-	public entry fun
-	0x50c1::profile
-admin_set_profile_x_username
-	public entry fun
-	0x50c1::profile
-revoke_ecosystem_badge
-	public entry fun
-	0x50c1::profile
 admin_reassign_username
 	public entry fun
+	0x50c1::profile
+reassign_username_for_beneficiary
+	public(package) fun
+	0x50c1::profile
+profile_id_for_owner
+	public(package) fun
 	0x50c1::profile
 version
 	public fun
@@ -10033,82 +10132,10 @@ linked_memory_account_id
 linked_ai_credit_balance_id
 	public fun
 	0x50c1::profile
-x_username
-	public fun
-	0x50c1::profile
-add_badge_to_profile
+set_selected_ecosystem_badge_id
 	public(package) fun
-	0x50c1::profile
-remove_badge_from_profile
-	public(package) fun
-	0x50c1::profile
-remove_own_badge
-	public entry fun
-	0x50c1::profile
-get_profile_badges
-	public fun
-	0x50c1::profile
-has_badge
-	public fun
-	0x50c1::profile
-get_badge
-	public fun
-	0x50c1::profile
-get_platform_badges
-	public fun
-	0x50c1::profile
-badge_id
-	public fun
-	0x50c1::profile
-badge_data_id
-	public fun
-	0x50c1::profile
-badge_data_name
-	public fun
-	0x50c1::profile
-badge_data_description
-	public fun
-	0x50c1::profile
-badge_data_media_url
-	public fun
-	0x50c1::profile
-badge_data_icon_url
-	public fun
-	0x50c1::profile
-badge_data_platform_id
-	public fun
-	0x50c1::profile
-badge_data_issued_at
-	public fun
-	0x50c1::profile
-badge_data_issued_by
-	public fun
-	0x50c1::profile
-badge_data_badge_type
-	public fun
-	0x50c1::profile
-badge_count
-	public fun
-	0x50c1::profile
-set_selected_badge
-	public entry fun
-	0x50c1::profile
-get_selected_badge_id
-	public fun
-	0x50c1::profile
-get_display_badge
-	public fun
-	0x50c1::profile
-clear_selected_badge
-	public entry fun
-	0x50c1::profile
-set_selected_ecosystem_badge
-	public fun
 	0x50c1::profile
 get_selected_ecosystem_badge_id
-	public fun
-	0x50c1::profile
-get_display_ecosystem_badge
 	public fun
 	0x50c1::profile
 clear_selected_ecosystem_badge
@@ -10238,6 +10265,9 @@ RosterJoined
 	public struct
 	0x50c1::jury
 RosterLeft
+	public struct
+	0x50c1::jury
+RosterEntryRefreshed
 	public struct
 	0x50c1::jury
 RosterSuspended
@@ -10796,6 +10826,9 @@ VoteRefundClaimedEvent
 	public struct
 	0x50c1::governance
 VoteRefundsSweptEvent
+	public struct
+	0x50c1::governance
+JuryCaseRemainderSweptEvent
 	public struct
 	0x50c1::governance
 JuryPolicyUpdatedEvent
@@ -11401,6 +11434,9 @@ EcosystemBadgeLedgerSelectedEvent
 PlatformUpdatedEvent
 	public struct
 	0x50c1::platform
+PlatformDeveloperChangedEvent
+	public struct
+	0x50c1::platform
 ModeratorPermissionsGrantedEvent
 	public struct
 	0x50c1::platform
@@ -11426,6 +11462,24 @@ PlatformTreasuryWithdrawalEvent
 	public struct
 	0x50c1::platform
 PlatformTreasuryFundedEvent
+	public struct
+	0x50c1::platform
+EcosystemBadge
+	public struct
+	0x50c1::platform
+EcosystemBadgeIssuedKey
+	public struct
+	0x50c1::platform
+EcosystemBadgeRegistry
+	public struct
+	0x50c1::platform
+EcosystemBadgeRegistryCreatedEvent
+	public struct
+	0x50c1::platform
+EcosystemBadgeMintedEvent
+	public struct
+	0x50c1::platform
+EcosystemBadgeBurnedEvent
 	public struct
 	0x50c1::platform
 bootstrap_init
@@ -11526,6 +11580,9 @@ unblock_wallet
 	0x50c1::platform
 toggle_platform_approval
 	public fun
+	0x50c1::platform
+transfer_platform
+	public entry fun
 	0x50c1::platform
 delete_platform
 	public fun
@@ -11752,11 +11809,74 @@ select_ecosystem_badge
 clear_ecosystem_badge_selection
 	public fun
 	0x50c1::platform
-assign_badge
+create_ecosystem_badge_registry
+	public entry fun
+	0x50c1::platform
+share_new_ecosystem_badge_registry
+	fun
+	0x50c1::platform
+mint_ecosystem_badge
+	public entry fun
+	0x50c1::platform
+mint_verified_x_badge
+	public entry fun
+	0x50c1::platform
+mint_ecosystem_badge_internal
+	fun
+	0x50c1::platform
+burn_ecosystem_badge
+	public entry fun
+	0x50c1::platform
+select_ecosystem_badge_on_profile
+	public entry fun
+	0x50c1::platform
+has_ecosystem_badge
 	public fun
 	0x50c1::platform
-revoke_badge
+x_handle_of
 	public fun
+	0x50c1::platform
+wallet_of_x_handle
+	public fun
+	0x50c1::platform
+ecosystem_badge_id_for_name
+	public fun
+	0x50c1::platform
+ecosystem_badge_id
+	public fun
+	0x50c1::platform
+ecosystem_badge_type
+	public fun
+	0x50c1::platform
+ecosystem_badge_name
+	public fun
+	0x50c1::platform
+ecosystem_badge_description
+	public fun
+	0x50c1::platform
+ecosystem_badge_media_url
+	public fun
+	0x50c1::platform
+ecosystem_badge_icon_url
+	public fun
+	0x50c1::platform
+ecosystem_badge_subject
+	public fun
+	0x50c1::platform
+ecosystem_badge_issued_by
+	public fun
+	0x50c1::platform
+ecosystem_badge_issued_at
+	public fun
+	0x50c1::platform
+assert_ecosystem_badge_registry_version
+	fun
+	0x50c1::platform
+canonical_x_handle
+	fun
+	0x50c1::platform
+migrate_ecosystem_badge_registry
+	public entry fun
 	0x50c1::platform
 add_moderator_register
 	public(package) fun
@@ -11827,6 +11947,9 @@ TaskReviewSubmitted
 TaskConfigUpdated
 	public struct
 	0x50c1::agent_task
+TaskFeeRecipientChanged
+	public struct
+	0x50c1::agent_task
 TaskDisputed
 	public struct
 	0x50c1::agent_task
@@ -11850,6 +11973,9 @@ TaskDisputeResolved
 	0x50c1::agent_task
 TaskDisputeFeesSettled
 	public struct
+	0x50c1::agent_task
+update_fee_recipient
+	public entry fun
 	0x50c1::agent_task
 bootstrap_init
 	public(package) fun
@@ -12100,6 +12226,9 @@ buyer_agent_id
 seller_agent_id
 	public fun
 	0x50c1::agent_task
+room_group_id
+	public fun
+	0x50c1::agent_task
 terms_digest
 	public fun
 	0x50c1::agent_task
@@ -12211,7 +12340,16 @@ RenewalBalanceKey
 ProfileSubscriptionService
 	public struct
 	0x50c1::subscription
+ServicePaymentRecipientKey
+	public struct
+	0x50c1::subscription
+ServicePaymentRecipientUpdatedEvent
+	public struct
+	0x50c1::subscription
 ProfileSubscription
+	public struct
+	0x50c1::subscription
+SubscriptionAutoRenewUpdatedEvent
 	public struct
 	0x50c1::subscription
 ProfileSubscriptionCreatedEvent
@@ -12243,6 +12381,12 @@ ProfileSubscriptionServiceDeactivatedEvent
 	0x50c1::subscription
 assert_subscriber_not_blocked
 	fun
+	0x50c1::subscription
+payment_recipient
+	fun
+	0x50c1::subscription
+get_service_payment_recipient
+	public fun
 	0x50c1::subscription
 validate_fee_config
 	fun
@@ -12379,6 +12523,15 @@ subscription_satisfies_access
 deactivate_service
 	public entry fun
 	0x50c1::subscription
+assert_plan_terms
+	public entry fun
+	0x50c1::subscription
+assert_subscription_terms
+	public entry fun
+	0x50c1::subscription
+set_auto_renew
+	public entry fun
+	0x50c1::subscription
 cancel_subscription
 	public entry fun
 	0x50c1::subscription
@@ -12425,6 +12578,9 @@ update_subscription_config
 	public entry fun
 	0x50c1::subscription
 migrate_config
+	public entry fun
+	0x50c1::subscription
+change_service_payment_recipient
 	public entry fun
 	0x50c1::subscription
 migrate_service
@@ -12584,6 +12740,36 @@ MyDataUnregisteredEvent
 	public struct
 	0x50c1::mydata
 MyDataConfigUpdatedEvent
+	public struct
+	0x50c1::mydata
+BoundedBuyerBindingKey
+	public struct
+	0x50c1::mydata
+BoundedBuyerBinding
+	public struct
+	0x50c1::mydata
+BoundedSnapshotFrozenKey
+	public struct
+	0x50c1::mydata
+BoundedBuyerOrgAudienceKey
+	public struct
+	0x50c1::mydata
+BoundedBuyerOrgAudience
+	public struct
+	0x50c1::mydata
+OrgGraphAudienceKey
+	public struct
+	0x50c1::mydata
+OrgGraphAudienceGrant
+	public struct
+	0x50c1::mydata
+BoundedPurchaseEvent
+	public struct
+	0x50c1::mydata
+GraphPurchaseSnapshotEvent
+	public struct
+	0x50c1::mydata
+OrgGraphAudienceBoundEvent
 	public struct
 	0x50c1::mydata
 AccessConfiguration
@@ -12784,6 +12970,39 @@ purchase_one_time_no_platform
 purchase_one_time_with_platform_internal
 	fun
 	0x50c1::mydata
+bind_bounded_buyer
+	fun
+	0x50c1::mydata
+freeze_bounded_snapshot
+	fun
+	0x50c1::mydata
+is_bounded_snapshot_frozen
+	fun
+	0x50c1::mydata
+bind_org_graph_audience
+	fun
+	0x50c1::mydata
+clear_org_graph_audience
+	fun
+	0x50c1::mydata
+assert_org_audience_entitlement
+	fun
+	0x50c1::mydata
+assert_bounded_buyer_active
+	fun
+	0x50c1::mydata
+purchase_access_bounded_with_platform
+	public entry fun
+	0x50c1::mydata
+purchase_access_bounded_with_org_audience
+	public entry fun
+	0x50c1::mydata
+purchase_graph_access_bounded_with_platform
+	public entry fun
+	0x50c1::mydata
+purchase_graph_access_bounded_with_org_audience
+	public entry fun
+	0x50c1::mydata
 purchase_one_time
 	public entry fun
 	0x50c1::mydata
@@ -12821,6 +13040,9 @@ encryption_id_matches
 	public fun
 	0x50c1::mydata
 mydata_approve
+	public entry fun
+	0x50c1::mydata
+mydata_approve_org_audience
 	public entry fun
 	0x50c1::mydata
 mydata_approve_profile_subscription
@@ -13087,6 +13309,9 @@ ModerationRecord
 PostSubscriptionAccessEvent
 	public struct
 	0x50c1::post
+PostAccessPurchaseEvent
+	public struct
+	0x50c1::post
 PostAccess
 	public enum
 	0x50c1::post
@@ -13310,6 +13535,9 @@ create_profile_subscription_post_with_mydata
 	public entry fun
 	0x50c1::post
 create_marketplace_one_time_post
+	public entry fun
+	0x50c1::post
+purchase_post_access_bounded_with_platform
 	public entry fun
 	0x50c1::post
 create_comment
@@ -13858,6 +14086,9 @@ begin_creator_fee_settlement
 settle_creator_fee_vault
 	public(package) fun
 	0x50c1::social_proof_tokens
+settle_creator_fee_vault_public
+	public fun
+	0x50c1::social_proof_tokens
 finish_creator_fee_settlement
 	public fun
 	0x50c1::social_proof_tokens
@@ -13904,6 +14135,9 @@ sell_tokens
 	public fun
 	0x50c1::social_proof_tokens
 sell_tokens_with_vault_routing
+	public fun
+	0x50c1::social_proof_tokens
+sell_tokens_with_vault_routing_min
 	public fun
 	0x50c1::social_proof_tokens
 sell_tokens_impl
@@ -14491,6 +14725,21 @@ get_following
 get_followers
 	public fun
 	0x50c1::social_graph
+PendingBeneficiaryTransferKey
+	public struct
+	0x50c1::poc_username_beneficiary
+AcceptedBeneficiaryTransferKey
+	public struct
+	0x50c1::poc_username_beneficiary
+PendingBeneficiaryTransfer
+	public struct
+	0x50c1::poc_username_beneficiary
+UsernameBeneficiaryTransferProposedEvent
+	public struct
+	0x50c1::poc_username_beneficiary
+UsernameBeneficiaryTransferAcceptedEvent
+	public struct
+	0x50c1::poc_username_beneficiary
 PoCBeneficiaryAdminCap
 	public struct
 	0x50c1::poc_username_beneficiary
@@ -14513,6 +14762,12 @@ UsernameBeneficiaryProvisionedEvent
 	public struct
 	0x50c1::poc_username_beneficiary
 UsernameBeneficiaryClaimedEvent
+	public struct
+	0x50c1::poc_username_beneficiary
+ReservedUsernameAdoptedEvent
+	public struct
+	0x50c1::poc_username_beneficiary
+ReservedUsernameReleasedEvent
 	public struct
 	0x50c1::poc_username_beneficiary
 UsernameBeneficiaryEndedEvent
@@ -14575,8 +14830,17 @@ canonical_username
 canonical_x_handle
 	fun
 	0x50c1::poc_username_beneficiary
+copy_bytes
+	fun
+	0x50c1::poc_username_beneficiary
 beneficiary_status
 	public fun
+	0x50c1::poc_username_beneficiary
+propose_transfer
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+accept_transfer
+	public(package) fun
 	0x50c1::poc_username_beneficiary
 identity_key
 	fun
@@ -14589,6 +14853,24 @@ create_username_beneficiary
 	0x50c1::poc_username_beneficiary
 claim_username_beneficiary
 	public(package) fun
+	0x50c1::poc_username_beneficiary
+adopt_reserved_username
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+release_reserved_username
+	public(package) fun
+	0x50c1::poc_username_beneficiary
+assert_reserved_for
+	fun
+	0x50c1::poc_username_beneficiary
+linked_wallet
+	public fun
+	0x50c1::poc_username_beneficiary
+reserved_for
+	public fun
+	0x50c1::poc_username_beneficiary
+claimed_profile_id
+	public fun
 	0x50c1::poc_username_beneficiary
 claim_username_beneficiary_vault_balance
 	public(package) fun
@@ -14711,6 +14993,18 @@ end_username_beneficiary
 	public entry fun
 	0x50c1::proof_of_creativity
 claim_username_beneficiary
+	public entry fun
+	0x50c1::proof_of_creativity
+adopt_reserved_username
+	public entry fun
+	0x50c1::proof_of_creativity
+release_reserved_username
+	public entry fun
+	0x50c1::proof_of_creativity
+propose_username_beneficiary_transfer
+	public entry fun
+	0x50c1::proof_of_creativity
+accept_username_beneficiary_transfer
 	public entry fun
 	0x50c1::proof_of_creativity
 claim_username_beneficiary_vault_balance
@@ -15601,6 +15895,9 @@ AgentGroupCreated
 AgentRoomBound
 	public struct
 	0xe110::messaging
+AgentRoomTaskBound
+	public struct
+	0xe110::messaging
 init
 	fun
 	0xe110::messaging
@@ -15614,6 +15911,12 @@ create_group
 	public fun
 	0xe110::messaging
 create_group_inner
+	fun
+	0xe110::messaging
+bind_agent_room_to_task
+	public fun
+	0xe110::messaging
+acting_is_task_party
 	fun
 	0xe110::messaging
 create_and_share_group

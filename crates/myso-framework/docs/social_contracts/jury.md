@@ -39,6 +39,7 @@ the case id means a copied commitment can never be revealed by anyone else.
 -  [Struct `JuryConfigUpdated`](#social_contracts_jury_JuryConfigUpdated)
 -  [Struct `RosterJoined`](#social_contracts_jury_RosterJoined)
 -  [Struct `RosterLeft`](#social_contracts_jury_RosterLeft)
+-  [Struct `RosterEntryRefreshed`](#social_contracts_jury_RosterEntryRefreshed)
 -  [Struct `RosterSuspended`](#social_contracts_jury_RosterSuspended)
 -  [Struct `DutyScoreChanged`](#social_contracts_jury_DutyScoreChanged)
 -  [Struct `CaseOpened`](#social_contracts_jury_CaseOpened)
@@ -1289,6 +1290,38 @@ Who can never sit on this case, and who already has.
 </dd>
 <dt>
 <code>left_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_jury_RosterEntryRefreshed"></a>
+
+## Struct `RosterEntryRefreshed`
+
+A keeper refreshed the public eligibility snapshot used by future jury draws.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/jury.md#social_contracts_jury_RosterEntryRefreshed">RosterEntryRefreshed</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>agent_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>refreshed_at_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -3612,6 +3645,7 @@ Anyone passes the live objects to refresh the eligibility snapshot the draw filt
     <b>entry</b>.snapshot_expires_at = snap.expires_at;
     <b>entry</b>.ancestor_ids = snap.ancestors;
     <b>entry</b>.exempt = exempt;
+    event::emit(<a href="../social_contracts/jury.md#social_contracts_jury_RosterEntryRefreshed">RosterEntryRefreshed</a> { agent_id, refreshed_at_ms: now });
 }
 </code></pre>
 

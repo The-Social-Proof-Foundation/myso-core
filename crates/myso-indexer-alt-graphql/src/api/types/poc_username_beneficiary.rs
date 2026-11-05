@@ -75,8 +75,20 @@ impl PocUsernameBeneficiary {
         self.inner.claimed_profile_id.as_deref()
     }
 
+    /// The PoC oracle that sent the claim transaction (not the creator).
     async fn claimed_by(&self) -> Option<&str> {
         self.inner.claimed_by.as_deref()
+    }
+
+    /// The creator's recipient wallet recorded at claim. Vault access keys off this.
+    async fn linked_wallet(&self) -> Option<&str> {
+        self.inner.linked_wallet.as_deref()
+    }
+
+    /// Wallet the username is reserved for (claim found an existing profile) until it
+    /// adopts or releases it.
+    async fn reserved_for(&self) -> Option<&str> {
+        self.inner.reserved_for.as_deref()
     }
 
     async fn claimed_at_ms(&self) -> Option<i64> {

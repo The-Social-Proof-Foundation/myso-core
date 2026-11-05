@@ -236,6 +236,7 @@ module social_contracts::memory {
     const EOwnerRotationReferenceNotUpdated: u64 = 111;
     const EOwnerRotationWrongWallet: u64 = 112;
     const EOwnerRotationNotFullyReverted: u64 = 113;
+    const EOwnerRotationNotAccepted: u64 = 114;
 
     const ED25519_PUBLIC_KEY_LENGTH: u64 = 32;
     /// Default bootstrap values for MemoryConfig
@@ -316,6 +317,9 @@ module social_contracts::memory {
         updated_agents: Table<ID, bool>,
         updated_organizations: Table<ID, bool>,
         proposed_at_ms: u64,
+        /// Set by the recipient wallet once every manifest reference is updated; the old owner
+        /// then completes the rotation by handing over the owned `Profile` by value.
+        accepted: bool,
     }
 
     public struct SubAgentKey has copy, drop, store {
@@ -728,6 +732,13 @@ module social_contracts::memory {
         agent_count: u64,
         organization_count: u64,
         proposed_at_ms: u64,
+    }
+
+    public struct MemoryAccountOwnerRotationAccepted has copy, drop {
+        account_id: ID,
+        old_owner: address,
+        new_owner: address,
+        accepted_at_ms: u64,
     }
 
     public struct MemoryAccountOwnerRotated has copy, drop {
@@ -1182,6 +1193,7 @@ module social_contracts::memory {
                 updated_agents: table::new(ctx),
                 updated_organizations: table::new(ctx),
                 proposed_at_ms,
+                accepted: false,
             },
         );
         event::emit(MemoryAccountOwnerRotationProposed {
@@ -1285,6 +1297,7 @@ module social_contracts::memory {
         );
         agent.principal_owner = rotation.old_owner;
         let _updated = table::remove(&mut rotation.updated_agents, agent_id);
+        rotation.accepted = false;
         let old_owner = rotation.old_owner;
         let new_owner = rotation.new_owner;
         event::emit(MemoryAccountOwnerRotationReferenceUpdated {
@@ -1317,6 +1330,7 @@ module social_contracts::memory {
         );
         organization.principal_owner = rotation.old_owner;
         let _updated = table::remove(&mut rotation.updated_organizations, organization_id);
+        rotation.accepted = false;
         let old_owner = rotation.old_owner;
         let new_owner = rotation.new_owner;
         event::emit(MemoryAccountOwnerRotationReferenceUpdated {
@@ -1326,8 +1340,37 @@ module social_contracts::memory {
         });
     }
 
-    /// Called by the profile module after it updates its own linked profile and owner lookup.
-    /// Registry/account ownership changes only after every manifest reference was updated.
+    /// The recipient wallet confirms the migration after updating every manifest reference.
+    /// The old owner must then call `profile::complete_owner_rotation`, which hands over the
+    /// owned `Profile` object in the same transaction that moves this account.
+    public entry fun accept_owner_rotation(
+        account: &mut MemoryAccount,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_object_version(&account.id);
+        let sender = tx_context::sender(ctx);
+        let key = MemoryOwnerRotationKey();
+        assert!(df::exists_<MemoryOwnerRotationKey>(&account.id, key), EOwnerRotationNotPending);
+        let account_id = object::id(account);
+        let rotation = df::borrow_mut<MemoryOwnerRotationKey, MemoryOwnerRotation>(&mut account.id, key);
+        assert!(sender == rotation.new_owner, EOwnerRotationWrongWallet);
+        assert!(
+            table::length(&rotation.updated_agents) == table::length(&rotation.agent_manifest)
+                && table::length(&rotation.updated_organizations) == table::length(&rotation.organization_manifest),
+            EOwnerRotationReferenceNotUpdated,
+        );
+        rotation.accepted = true;
+        event::emit(MemoryAccountOwnerRotationAccepted {
+            account_id,
+            old_owner: rotation.old_owner,
+            new_owner: rotation.new_owner,
+            accepted_at_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Called by `profile::complete_owner_rotation` (signed by the old owner) once the recipient
+    /// accepted. Registry/account ownership changes only after every manifest reference was updated.
     public(package) fun complete_owner_rotation(
         registry: &mut MemoryRegistry,
         account: &mut MemoryAccount,
@@ -1339,7 +1382,8 @@ module social_contracts::memory {
         let key = MemoryOwnerRotationKey();
         assert!(df::exists_<MemoryOwnerRotationKey>(&account.id, key), EOwnerRotationNotPending);
         let rotation = df::borrow<MemoryOwnerRotationKey, MemoryOwnerRotation>(&account.id, key);
-        assert!(sender == rotation.new_owner, EOwnerRotationWrongWallet);
+        assert!(sender == rotation.old_owner, EOwnerRotationWrongWallet);
+        assert!(rotation.accepted, EOwnerRotationNotAccepted);
         assert!(
             table::length(&rotation.updated_agents) == table::length(&rotation.agent_manifest)
                 && table::length(&rotation.updated_organizations) == table::length(&rotation.organization_manifest),
@@ -1359,7 +1403,7 @@ module social_contracts::memory {
         let rotation = df::remove<MemoryOwnerRotationKey, MemoryOwnerRotation>(&mut account.id, key);
         let MemoryOwnerRotation {
             old_owner: _, new_owner: _, agent_manifest, organization_manifest,
-            updated_agents, updated_organizations, proposed_at_ms: _,
+            updated_agents, updated_organizations, proposed_at_ms: _, accepted: _,
         } = rotation;
         table::drop(agent_manifest);
         table::drop(organization_manifest);
@@ -1390,7 +1434,7 @@ module social_contracts::memory {
         let rotation = df::remove<MemoryOwnerRotationKey, MemoryOwnerRotation>(&mut account.id, key);
         let MemoryOwnerRotation {
             old_owner: _, new_owner: _, agent_manifest, organization_manifest,
-            updated_agents, updated_organizations, proposed_at_ms: _,
+            updated_agents, updated_organizations, proposed_at_ms: _, accepted: _,
         } = rotation;
         table::drop(agent_manifest);
         table::drop(organization_manifest);
@@ -2787,6 +2831,13 @@ module social_contracts::memory {
 
     public fun profile_id(account: &MemoryAccount): address { account.profile_id }
     public fun owner(account: &MemoryAccount): address { account.owner }
+
+    /// Recipient wallet of the pending owner rotation (aborts if none is pending).
+    public fun pending_rotation_new_owner(account: &MemoryAccount): address {
+        let key = MemoryOwnerRotationKey();
+        assert!(df::exists_<MemoryOwnerRotationKey>(&account.id, key), EOwnerRotationNotPending);
+        df::borrow<MemoryOwnerRotationKey, MemoryOwnerRotation>(&account.id, key).new_owner
+    }
 
     public fun sub_agent_derived_address(agent: &SubAgent): address { agent.derived_address }
     public fun sub_agent_capabilities(agent: &SubAgent): u64 { agent.capabilities }
