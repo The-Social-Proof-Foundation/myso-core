@@ -24,7 +24,7 @@ use myso_indexer_alt_social_schema::models::{
 use myso_indexer_alt_social_schema::schema::{
     platform_blocked_profiles, platform_config, platform_events, platform_memberships,
     platform_moderator_permissions, platform_moderators, platform_treasury_coin_balances,
-    platform_treasury_withdrawals, platforms, profile_badges,
+    platform_treasury_withdrawals, platforms, profile_badges, profiles,
 };
 
 use super::common;
@@ -133,6 +133,15 @@ pub enum PlatformRow {
         wallet_address: String,
         ecosystem_badge_id: Option<String>,
         ecosystem_selected_at: i64,
+    },
+    EcosystemBadgeBurn {
+        badge_object_id: String,
+        burned_at: i64,
+        owner_address: String,
+    },
+    WalletXUsernameUpdate {
+        owner_address: String,
+        x_username: Option<String>,
     },
 }
 
@@ -297,6 +306,22 @@ impl PlatformRow {
                 deleted_at,
             }),
             crate::handlers::SocialEventRow::ProfileBadge(b) => Some(PlatformRow::ProfileBadge(b)),
+            crate::handlers::SocialEventRow::EcosystemBadgeBurn {
+                badge_object_id,
+                burned_at,
+                owner_address,
+            } => Some(PlatformRow::EcosystemBadgeBurn {
+                badge_object_id,
+                burned_at,
+                owner_address,
+            }),
+            crate::handlers::SocialEventRow::WalletXUsernameUpdate {
+                owner_address,
+                x_username,
+            } => Some(PlatformRow::WalletXUsernameUpdate {
+                owner_address,
+                x_username,
+            }),
             crate::handlers::SocialEventRow::ProfileBadgeWalletRevoke {
                 wallet_address,
                 badge_id,
@@ -813,6 +838,35 @@ impl Handler for PlatformHandler {
                     .bind::<BigInt, _>(sel.selected_at)
                     .execute(conn)
                     .await?;
+                }
+                PlatformRow::EcosystemBadgeBurn {
+                    badge_object_id,
+                    burned_at,
+                    owner_address,
+                } => {
+                    total += diesel::update(profile_badges::table)
+                        .filter(profile_badges::badge_object_id.eq(badge_object_id))
+                        .filter(profile_badges::badge_kind.eq("ecosystem"))
+                        .set((
+                            profile_badges::revoked.eq(true),
+                            profile_badges::revoked_at.eq(Some(*burned_at)),
+                            profile_badges::revoked_by.eq(Some(owner_address.clone())),
+                        ))
+                        .execute(conn)
+                        .await?;
+                }
+                PlatformRow::WalletXUsernameUpdate {
+                    owner_address,
+                    x_username,
+                } => {
+                    total += diesel::update(profiles::table)
+                        .filter(profiles::owner_address.eq(owner_address))
+                        .set((
+                            profiles::x_username.eq(x_username),
+                            profiles::updated_at.eq(chrono::Utc::now().naive_utc()),
+                        ))
+                        .execute(conn)
+                        .await?;
                 }
                 PlatformRow::WalletEcosystemBadgeSelection {
                     wallet_address,

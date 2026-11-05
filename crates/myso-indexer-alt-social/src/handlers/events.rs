@@ -1044,7 +1044,6 @@ pub struct BcsProfileUpdatedEvent {
     cover_photo: Option<String>,
     owner: AccountAddress,
     updated_at: u64,
-    x_username: Option<String>,
     website: Option<String>,
     birthdate: Option<String>,
     location: Option<String>,
@@ -1156,38 +1155,6 @@ pub struct BcsUsernameSaleFeeEvent {
     timestamp: u64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct BcsProfileXUsernameUpdatedEvent {
-    pub(crate) profile_id: AccountAddress,
-    pub(crate) owner: AccountAddress,
-    pub(crate) x_username: Option<String>,
-    pub(crate) updated_by: AccountAddress,
-    pub(crate) updated_at: u64,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BcsBadgeAssignedEvent {
-    profile_id: AccountAddress,
-    badge_id: String,
-    name: String,
-    description: String,
-    media_url: String,
-    icon_url: String,
-    platform_id: AccountAddress,
-    assigned_by: AccountAddress,
-    assigned_at: u64,
-    badge_type: u8,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BcsBadgeRevokedEvent {
-    profile_id: AccountAddress,
-    badge_id: String,
-    platform_id: AccountAddress,
-    revoked_by: AccountAddress,
-    revoked_at: u64,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct BcsBadgeSelectedEvent {
     profile_id: AccountAddress,
@@ -1201,15 +1168,6 @@ pub struct BcsEcosystemBadgeSelectionClearedEvent {
     profile_id: AccountAddress,
     cleared_by: AccountAddress,
     cleared_at: u64,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BcsBadgeRemovedEvent {
-    profile_id: AccountAddress,
-    badge_id: String,
-    platform_id: AccountAddress,
-    removed_by: AccountAddress,
-    removed_at: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -3521,11 +3479,34 @@ pub struct BcsUsernameBeneficiaryProvisionedEvent {
 pub struct BcsUsernameBeneficiaryClaimedEvent {
     beneficiary_id: AccountAddress,
     username: String,
-    profile_id: AccountAddress,
+    /// Set when the claim created the creator's profile.
+    profile_id: Option<AccountAddress>,
+    /// The PoC oracle that sent the claim (not the creator).
     claimed_by: AccountAddress,
-    wallet: AccountAddress,
+    /// The creator's recipient wallet — vault access keys off this.
+    linked_wallet: AccountAddress,
+    /// Set instead of `profile_id` when `linked_wallet` already had a profile.
+    reserved_for: Option<AccountAddress>,
     oracle_evidence_hash: Vec<u8>,
     claimed_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsReservedUsernameAdoptedEvent {
+    beneficiary_id: AccountAddress,
+    username: String,
+    old_username: Option<String>,
+    profile_id: AccountAddress,
+    wallet: AccountAddress,
+    adopted_at: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsReservedUsernameReleasedEvent {
+    beneficiary_id: AccountAddress,
+    username: String,
+    wallet: AccountAddress,
+    released_at: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -3671,6 +3652,32 @@ pub struct BcsSharedBadgeSelectedEvent {
     owner: AccountAddress,
     badge_id: String,
     selected_at: u64,
+}
+
+/// `platform::EcosystemBadgeMintedEvent` — soulbound badge minted into `owner`'s wallet.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsEcosystemBadgeMintedEvent {
+    pub(crate) badge_object_id: BcsMoveObjectId,
+    pub(crate) owner: AccountAddress,
+    pub(crate) badge_id: String,
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) media_url: String,
+    pub(crate) icon_url: String,
+    pub(crate) badge_type: u8,
+    pub(crate) subject: Option<String>,
+    pub(crate) issued_by: AccountAddress,
+    pub(crate) issued_at: u64,
+}
+
+/// `platform::EcosystemBadgeBurnedEvent` — holder destroyed their badge.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BcsEcosystemBadgeBurnedEvent {
+    pub(crate) badge_object_id: BcsMoveObjectId,
+    pub(crate) owner: AccountAddress,
+    pub(crate) badge_id: String,
+    pub(crate) subject: Option<String>,
+    pub(crate) burned_at: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -4039,7 +4046,6 @@ fn parse_profile_event(
                 "profile_picture": ev.profile_picture,
                 "cover_photo": ev.cover_photo,
                 "updated_at": ev.updated_at,
-                "x_username": ev.x_username,
                 "website": ev.website,
                 "birthdate": ev.birthdate,
                 "location": ev.location,
@@ -4082,44 +4088,6 @@ fn parse_profile_event(
                 "released_by": addr_to_string(&ev.released_by),
             })))
         }
-        "ProfileXUsernameUpdatedEvent" => {
-            let ev = bcs::from_bytes::<BcsProfileXUsernameUpdatedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "profile_id": addr_to_string(&ev.profile_id),
-                "owner_address": addr_to_string(&ev.owner),
-                "x_username": ev.x_username,
-                "updated_by": addr_to_string(&ev.updated_by),
-                "updated_at": ev.updated_at,
-            })))
-        }
-        "BadgeAssignedEvent" => {
-            let ev = bcs::from_bytes::<BcsBadgeAssignedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "profile_id": addr_to_string(&ev.profile_id),
-                "badge_id": ev.badge_id,
-                "name": ev.name,
-                "description": ev.description,
-                "media_url": ev.media_url,
-                "icon_url": ev.icon_url,
-                "platform_id": addr_to_string(&ev.platform_id),
-                "assigned_by": addr_to_string(&ev.assigned_by),
-                "assigned_at": ev.assigned_at,
-                "badge_type": ev.badge_type,
-            })))
-        }
-        "BadgeRevokedEvent" => {
-            let ev = bcs::from_bytes::<BcsBadgeRevokedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "profile_id": addr_to_string(&ev.profile_id),
-                "badge_id": ev.badge_id,
-                "platform_id": addr_to_string(&ev.platform_id),
-                "revoked_by": addr_to_string(&ev.revoked_by),
-                "revoked_at": ev.revoked_at,
-            })))
-        }
         "BadgeSelectedEvent" => {
             let ev = bcs::from_bytes::<BcsBadgeSelectedEvent>(contents)
                 .map_err(|e| bcs_parse_err(e, contents))?;
@@ -4137,17 +4105,6 @@ fn parse_profile_event(
                 "profile_id": addr_to_string(&ev.profile_id),
                 "cleared_by": addr_to_string(&ev.cleared_by),
                 "cleared_at": ev.cleared_at,
-            })))
-        }
-        "BadgeRemovedEvent" => {
-            let ev = bcs::from_bytes::<BcsBadgeRemovedEvent>(contents)
-                .map_err(|e| bcs_parse_err(e, contents))?;
-            Ok(Some(serde_json::json!({
-                "profile_id": addr_to_string(&ev.profile_id),
-                "badge_id": ev.badge_id,
-                "platform_id": addr_to_string(&ev.platform_id),
-                "removed_by": addr_to_string(&ev.removed_by),
-                "removed_at": ev.removed_at,
             })))
         }
         "TokensVestedEvent" => {
@@ -6685,6 +6642,34 @@ fn parse_platform_event(
                 "selected_at": ev.selected_at,
             })))
         }
+        "EcosystemBadgeMintedEvent" => {
+            let ev = bcs::from_bytes::<BcsEcosystemBadgeMintedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "badge_object_id": move_object_id_to_string(&ev.badge_object_id),
+                "owner": addr_to_string(&ev.owner),
+                "badge_id": ev.badge_id,
+                "name": ev.name,
+                "description": ev.description,
+                "media_url": ev.media_url,
+                "icon_url": ev.icon_url,
+                "badge_type": ev.badge_type,
+                "subject": ev.subject,
+                "issued_by": addr_to_string(&ev.issued_by),
+                "issued_at": ev.issued_at,
+            })))
+        }
+        "EcosystemBadgeBurnedEvent" => {
+            let ev = bcs::from_bytes::<BcsEcosystemBadgeBurnedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "badge_object_id": move_object_id_to_string(&ev.badge_object_id),
+                "owner": addr_to_string(&ev.owner),
+                "badge_id": ev.badge_id,
+                "subject": ev.subject,
+                "burned_at": ev.burned_at,
+            })))
+        }
         _ => Ok(None),
     }
 }
@@ -6907,7 +6892,9 @@ fn parse_poc_event(
         | "UsernameBeneficiaryClaimedEvent"
         | "UsernameBeneficiaryEndedEvent"
         | "UsernameBeneficiaryConflictEvent"
-        | "CreatorIdentityWalletLinkedEvent" => {
+        | "CreatorIdentityWalletLinkedEvent"
+        | "ReservedUsernameAdoptedEvent"
+        | "ReservedUsernameReleasedEvent" => {
             return parse_poc_username_beneficiary_event(event_name, contents);
         }
         _ => Ok(None),
@@ -6941,11 +6928,34 @@ fn parse_poc_username_beneficiary_event(
             Ok(Some(serde_json::json!({
                 "beneficiary_id": addr_to_string(&ev.beneficiary_id),
                 "username": ev.username,
-                "profile_id": addr_to_string(&ev.profile_id),
+                "profile_id": ev.profile_id.as_ref().map(addr_to_string),
                 "claimed_by": addr_to_string(&ev.claimed_by),
-                "wallet": addr_to_string(&ev.wallet),
+                "linked_wallet": addr_to_string(&ev.linked_wallet),
+                "reserved_for": ev.reserved_for.as_ref().map(addr_to_string),
                 "oracle_evidence_hash": format!("0x{}", hex::encode(&ev.oracle_evidence_hash)),
                 "claimed_at": ev.claimed_at,
+            })))
+        }
+        "ReservedUsernameAdoptedEvent" => {
+            let ev = bcs::from_bytes::<BcsReservedUsernameAdoptedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "beneficiary_id": addr_to_string(&ev.beneficiary_id),
+                "username": ev.username,
+                "old_username": ev.old_username,
+                "profile_id": addr_to_string(&ev.profile_id),
+                "wallet": addr_to_string(&ev.wallet),
+                "adopted_at": ev.adopted_at,
+            })))
+        }
+        "ReservedUsernameReleasedEvent" => {
+            let ev = bcs::from_bytes::<BcsReservedUsernameReleasedEvent>(contents)
+                .map_err(|e| bcs_parse_err(e, contents))?;
+            Ok(Some(serde_json::json!({
+                "beneficiary_id": addr_to_string(&ev.beneficiary_id),
+                "username": ev.username,
+                "wallet": addr_to_string(&ev.wallet),
+                "released_at": ev.released_at,
             })))
         }
         "UsernameBeneficiaryEndedEvent" => {
@@ -8235,18 +8245,21 @@ pub(crate) fn username_beneficiary_claimed_bcs_fixture() -> Vec<u8> {
         )
         .unwrap(),
         username: "pocub1782775058".to_string(),
-        profile_id: AccountAddress::from_hex_literal(
-            "0x3853b739126a0e3773c415eab400b4adc26a4257d58abf08be12992e0d0ee48f",
-        )
-        .unwrap(),
+        profile_id: Some(
+            AccountAddress::from_hex_literal(
+                "0x3853b739126a0e3773c415eab400b4adc26a4257d58abf08be12992e0d0ee48f",
+            )
+            .unwrap(),
+        ),
         claimed_by: AccountAddress::from_hex_literal(
             "0x7eb74c2ca45c41a4c4126f13c2286cbc9ac400c7b5ab5fe38694ecd71161ccaf",
         )
         .unwrap(),
-        wallet: AccountAddress::from_hex_literal(
+        linked_wallet: AccountAddress::from_hex_literal(
             "0x7e91c216898618e1c5f614a01dde30b5f5d7e1e2fb4fdfe0b4a3423d55202430",
         )
         .unwrap(),
+        reserved_for: None,
         oracle_evidence_hash: vec![],
         claimed_at: 5_837_000_000,
     };

@@ -39,10 +39,14 @@ computed off-chain (indexer/server).
 -  [Struct `MemoryConfig`](#social_contracts_memory_MemoryConfig)
 -  [Struct `MemoryConfigUpdatedEvent`](#social_contracts_memory_MemoryConfigUpdatedEvent)
 -  [Struct `MemoryRegistry`](#social_contracts_memory_MemoryRegistry)
+-  [Struct `MemoryOwnerRotationKey`](#social_contracts_memory_MemoryOwnerRotationKey)
+-  [Struct `MemoryOwnerRotation`](#social_contracts_memory_MemoryOwnerRotation)
 -  [Struct `SubAgentKey`](#social_contracts_memory_SubAgentKey)
 -  [Struct `AgentMemoryVaultKey`](#social_contracts_memory_AgentMemoryVaultKey)
 -  [Struct `MemorySharePackage`](#social_contracts_memory_MemorySharePackage)
 -  [Struct `OrgMemoryGroupTag`](#social_contracts_memory_OrgMemoryGroupTag)
+-  [Struct `OrgTreasuryBalanceKey`](#social_contracts_memory_OrgTreasuryBalanceKey)
+-  [Struct `OrgTreasuryAccessKey`](#social_contracts_memory_OrgTreasuryAccessKey)
 -  [Struct `OrgMemoryReader`](#social_contracts_memory_OrgMemoryReader)
 -  [Struct `OrgMemoryWriter`](#social_contracts_memory_OrgMemoryWriter)
 -  [Struct `OrgAgentManager`](#social_contracts_memory_OrgAgentManager)
@@ -52,6 +56,9 @@ computed off-chain (indexer/server).
 -  [Struct `OrgAuditor`](#social_contracts_memory_OrgAuditor)
 -  [Struct `OrgGovernanceProposer`](#social_contracts_memory_OrgGovernanceProposer)
 -  [Struct `OrgGovernanceVoter`](#social_contracts_memory_OrgGovernanceVoter)
+-  [Struct `OrgTreasuryAccessChanged`](#social_contracts_memory_OrgTreasuryAccessChanged)
+-  [Struct `OrgTreasuryFunded`](#social_contracts_memory_OrgTreasuryFunded)
+-  [Struct `OrgTreasuryWithdrawn`](#social_contracts_memory_OrgTreasuryWithdrawn)
 -  [Struct `OrgInvitationKey`](#social_contracts_memory_OrgInvitationKey)
 -  [Struct `OrgInvitation`](#social_contracts_memory_OrgInvitation)
 -  [Struct `OrgCustomRoleKey`](#social_contracts_memory_OrgCustomRoleKey)
@@ -74,10 +81,15 @@ computed off-chain (indexer/server).
 -  [Struct `CredibilityUpdated`](#social_contracts_memory_CredibilityUpdated)
 -  [Struct `SubAgentRegistered`](#social_contracts_memory_SubAgentRegistered)
 -  [Struct `SubAgentUpdated`](#social_contracts_memory_SubAgentUpdated)
+-  [Struct `SubAgentOwnerPolicyChanged`](#social_contracts_memory_SubAgentOwnerPolicyChanged)
 -  [Struct `SubAgentDeactivated`](#social_contracts_memory_SubAgentDeactivated)
 -  [Struct `SubAgentRevoked`](#social_contracts_memory_SubAgentRevoked)
 -  [Struct `MemoryAccountDeactivated`](#social_contracts_memory_MemoryAccountDeactivated)
 -  [Struct `MemoryAccountReactivated`](#social_contracts_memory_MemoryAccountReactivated)
+-  [Struct `MemoryAccountOwnerRotationProposed`](#social_contracts_memory_MemoryAccountOwnerRotationProposed)
+-  [Struct `MemoryAccountOwnerRotationAccepted`](#social_contracts_memory_MemoryAccountOwnerRotationAccepted)
+-  [Struct `MemoryAccountOwnerRotated`](#social_contracts_memory_MemoryAccountOwnerRotated)
+-  [Struct `MemoryAccountOwnerRotationReferenceUpdated`](#social_contracts_memory_MemoryAccountOwnerRotationReferenceUpdated)
 -  [Struct `MemoryAccountMigrated`](#social_contracts_memory_MemoryAccountMigrated)
 -  [Struct `MemoryRegistryMigrated`](#social_contracts_memory_MemoryRegistryMigrated)
 -  [Struct `AgentMemoryVaultCreated`](#social_contracts_memory_AgentMemoryVaultCreated)
@@ -165,6 +177,14 @@ computed off-chain (indexer/server).
 -  [Function `create_memory_admin_cap`](#social_contracts_memory_create_memory_admin_cap)
 -  [Function `update_memory_config`](#social_contracts_memory_update_memory_config)
 -  [Function `create_account_for_profile`](#social_contracts_memory_create_account_for_profile)
+-  [Function `propose_owner_rotation`](#social_contracts_memory_propose_owner_rotation)
+-  [Function `accept_agent_owner_rotation_reference`](#social_contracts_memory_accept_agent_owner_rotation_reference)
+-  [Function `accept_organization_owner_rotation_reference`](#social_contracts_memory_accept_organization_owner_rotation_reference)
+-  [Function `rollback_agent_owner_rotation_reference`](#social_contracts_memory_rollback_agent_owner_rotation_reference)
+-  [Function `rollback_organization_owner_rotation_reference`](#social_contracts_memory_rollback_organization_owner_rotation_reference)
+-  [Function `accept_owner_rotation`](#social_contracts_memory_accept_owner_rotation)
+-  [Function `complete_owner_rotation`](#social_contracts_memory_complete_owner_rotation)
+-  [Function `cancel_owner_rotation`](#social_contracts_memory_cancel_owner_rotation)
 -  [Function `create_agentic_organization`](#social_contracts_memory_create_agentic_organization)
 -  [Function `create_agentic_organization_internal`](#social_contracts_memory_create_agentic_organization_internal)
 -  [Function `update_agentic_organization_metadata`](#social_contracts_memory_update_agentic_organization_metadata)
@@ -173,6 +193,10 @@ computed off-chain (indexer/server).
 -  [Function `ensure_org_memory_group`](#social_contracts_memory_ensure_org_memory_group)
 -  [Function `org_memory_group_address`](#social_contracts_memory_org_memory_group_address)
 -  [Function `org_memory_group_exists`](#social_contracts_memory_org_memory_group_exists)
+-  [Function `grant_org_treasury_access`](#social_contracts_memory_grant_org_treasury_access)
+-  [Function `fund_org_treasury`](#social_contracts_memory_fund_org_treasury)
+-  [Function `withdraw_from_org_treasury`](#social_contracts_memory_withdraw_from_org_treasury)
+-  [Function `org_treasury_balance`](#social_contracts_memory_org_treasury_balance)
 -  [Function `assert_org_permission`](#social_contracts_memory_assert_org_permission)
 -  [Function `has_org_permission`](#social_contracts_memory_has_org_permission)
 -  [Function `grant_org_memory_permission`](#social_contracts_memory_grant_org_memory_permission)
@@ -189,6 +213,13 @@ computed off-chain (indexer/server).
 -  [Function `register_sub_agent`](#social_contracts_memory_register_sub_agent)
 -  [Function `register_sub_agent_delegated`](#social_contracts_memory_register_sub_agent_delegated)
 -  [Function `update_sub_agent`](#social_contracts_memory_update_sub_agent)
+-  [Function `assert_owner_agent_identity`](#social_contracts_memory_assert_owner_agent_identity)
+-  [Function `supported_agent_capabilities`](#social_contracts_memory_supported_agent_capabilities)
+-  [Function `owner_grant_sub_agent_capabilities`](#social_contracts_memory_owner_grant_sub_agent_capabilities)
+-  [Function `owner_revoke_sub_agent_capabilities`](#social_contracts_memory_owner_revoke_sub_agent_capabilities)
+-  [Function `owner_raise_sub_agent_spending_limit`](#social_contracts_memory_owner_raise_sub_agent_spending_limit)
+-  [Function `owner_lower_sub_agent_spending_limit`](#social_contracts_memory_owner_lower_sub_agent_spending_limit)
+-  [Function `emit_owner_policy_changed`](#social_contracts_memory_emit_owner_policy_changed)
 -  [Function `update_sub_agent_label`](#social_contracts_memory_update_sub_agent_label)
 -  [Function `deactivate_sub_agent`](#social_contracts_memory_deactivate_sub_agent)
 -  [Function `revoke_sub_agent`](#social_contracts_memory_revoke_sub_agent)
@@ -210,8 +241,12 @@ computed off-chain (indexer/server).
 -  [Function `assert_sub_agent_active`](#social_contracts_memory_assert_sub_agent_active)
 -  [Function `profile_id`](#social_contracts_memory_profile_id)
 -  [Function `owner`](#social_contracts_memory_owner)
+-  [Function `pending_rotation_new_owner`](#social_contracts_memory_pending_rotation_new_owner)
 -  [Function `sub_agent_derived_address`](#social_contracts_memory_sub_agent_derived_address)
 -  [Function `sub_agent_capabilities`](#social_contracts_memory_sub_agent_capabilities)
+-  [Function `sub_agent_delegatable_caps`](#social_contracts_memory_sub_agent_delegatable_caps)
+-  [Function `sub_agent_max_action_spend`](#social_contracts_memory_sub_agent_max_action_spend)
+-  [Function `sub_agent_approval_required_caps`](#social_contracts_memory_sub_agent_approval_required_caps)
 -  [Function `sub_agent_platform_scope`](#social_contracts_memory_sub_agent_platform_scope)
 -  [Function `sub_agent_active`](#social_contracts_memory_sub_agent_active)
 -  [Function `sub_agent_depth`](#social_contracts_memory_sub_agent_depth)
@@ -330,6 +365,7 @@ computed off-chain (indexer/server).
 -  [Function `is_org_group`](#social_contracts_memory_is_org_group)
 -  [Function `assert_org_group`](#social_contracts_memory_assert_org_group)
 -  [Function `assert_org_permission_manager`](#social_contracts_memory_assert_org_permission_manager)
+-  [Function `assert_org_treasury_admin`](#social_contracts_memory_assert_org_treasury_admin)
 -  [Function `assert_valid_org_permission_mask`](#social_contracts_memory_assert_valid_org_permission_mask)
 -  [Function `assert_valid_org_ops_permission_mask`](#social_contracts_memory_assert_valid_org_ops_permission_mask)
 -  [Function `assert_valid_org_governance_permission_mask`](#social_contracts_memory_assert_valid_org_governance_permission_mask)
@@ -357,12 +393,19 @@ computed off-chain (indexer/server).
 <pre><code><b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
 <b>use</b> <a href="../myso/accumulator_settlement.md#myso_accumulator_settlement">myso::accumulator_settlement</a>;
 <b>use</b> <a href="../myso/address.md#myso_address">myso::address</a>;
+<b>use</b> <a href="../myso/bag.md#myso_bag">myso::bag</a>;
+<b>use</b> <a href="../myso/balance.md#myso_balance">myso::balance</a>;
 <b>use</b> <a href="../myso/bcs.md#myso_bcs">myso::bcs</a>;
 <b>use</b> <a href="../myso/bootstrap_key.md#myso_bootstrap_key">myso::bootstrap_key</a>;
 <b>use</b> <a href="../myso/clock.md#myso_clock">myso::clock</a>;
+<b>use</b> <a href="../myso/coin.md#myso_coin">myso::coin</a>;
+<b>use</b> <a href="../myso/config.md#myso_config">myso::config</a>;
+<b>use</b> <a href="../myso/deny_list.md#myso_deny_list">myso::deny_list</a>;
 <b>use</b> <a href="../myso/derived_object.md#myso_derived_object">myso::derived_object</a>;
 <b>use</b> <a href="../myso/dynamic_field.md#myso_dynamic_field">myso::dynamic_field</a>;
+<b>use</b> <a href="../myso/dynamic_object_field.md#myso_dynamic_object_field">myso::dynamic_object_field</a>;
 <b>use</b> <a href="../myso/event.md#myso_event">myso::event</a>;
+<b>use</b> <a href="../myso/funds_accumulator.md#myso_funds_accumulator">myso::funds_accumulator</a>;
 <b>use</b> <a href="../myso/hash.md#myso_hash">myso::hash</a>;
 <b>use</b> <a href="../myso/hex.md#myso_hex">myso::hex</a>;
 <b>use</b> <a href="../myso/object.md#myso_object">myso::object</a>;
@@ -370,20 +413,24 @@ computed off-chain (indexer/server).
 <b>use</b> <a href="../myso/party.md#myso_party">myso::party</a>;
 <b>use</b> <a href="../myso/permissioned_group.md#myso_permissioned_group">myso::permissioned_group</a>;
 <b>use</b> <a href="../myso/permissions_table.md#myso_permissions_table">myso::permissions_table</a>;
+<b>use</b> <a href="../myso/protocol_config.md#myso_protocol_config">myso::protocol_config</a>;
 <b>use</b> <a href="../myso/table.md#myso_table">myso::table</a>;
 <b>use</b> <a href="../myso/transfer.md#myso_transfer">myso::transfer</a>;
 <b>use</b> <a href="../myso/tx_context.md#myso_tx_context">myso::tx_context</a>;
 <b>use</b> <a href="../myso/types.md#myso_types">myso::types</a>;
 <b>use</b> <a href="../myso/unpause_cap.md#myso_unpause_cap">myso::unpause_cap</a>;
+<b>use</b> <a href="../myso/url.md#myso_url">myso::url</a>;
 <b>use</b> <a href="../myso/vec_map.md#myso_vec_map">myso::vec_map</a>;
 <b>use</b> <a href="../myso/vec_set.md#myso_vec_set">myso::vec_set</a>;
 <b>use</b> <a href="../social_contracts/upgrade.md#social_contracts_upgrade">social_contracts::upgrade</a>;
 <b>use</b> <a href="../std/address.md#std_address">std::address</a>;
 <b>use</b> <a href="../std/ascii.md#std_ascii">std::ascii</a>;
 <b>use</b> <a href="../std/bcs.md#std_bcs">std::bcs</a>;
+<b>use</b> <a href="../std/internal.md#std_internal">std::internal</a>;
 <b>use</b> <a href="../std/option.md#std_option">std::option</a>;
 <b>use</b> <a href="../std/string.md#std_string">std::string</a>;
 <b>use</b> <a href="../std/type_name.md#std_type_name">std::type_name</a>;
+<b>use</b> <a href="../std/u128.md#std_u128">std::u128</a>;
 <b>use</b> <a href="../std/vector.md#std_vector">std::vector</a>;
 </code></pre>
 
@@ -570,6 +617,93 @@ Global memory feature configuration
 
 </details>
 
+<a name="social_contracts_memory_MemoryOwnerRotationKey"></a>
+
+## Struct `MemoryOwnerRotationKey`
+
+Dynamic-field key for the account's pending two-wallet owner migration.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_MemoryOwnerRotation"></a>
+
+## Struct `MemoryOwnerRotation`
+
+Proposed complete set of registered objects that must change principal owner before
+the account and linked profile can move to the recipient wallet.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a> <b>has</b> store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>old_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_manifest: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, bool&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>organization_manifest: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, bool&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_agents: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, bool&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_organizations: <a href="../myso/table.md#myso_table_Table">myso::table::Table</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, bool&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposed_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>accepted: bool</code>
+</dt>
+<dd>
+ Set by the recipient wallet once every manifest reference is updated; the old owner
+ then completes the rotation by handing over the owned <code>Profile</code> by value.
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_memory_SubAgentKey"></a>
 
 ## Struct `SubAgentKey`
@@ -656,6 +790,56 @@ Derivation key for the per-organization memory share group (derived from the org
 
 
 <dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgTreasuryBalanceKey"></a>
+
+## Struct `OrgTreasuryBalanceKey`
+
+Per-coin balances are stored as dynamic fields on the organization, so this treasury
+can be added to existing shared organizations without changing their object layout.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;<b>phantom</b> T&gt; <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgTreasuryAccessKey"></a>
+
+## Struct `OrgTreasuryAccessKey`
+
+Explicit withdrawal allowlist managed by the organization owner or group admin.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessKey">OrgTreasuryAccessKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -854,6 +1038,159 @@ Permission to vote on governance proposals for the organization.
 
 
 <dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgTreasuryAccessChanged"></a>
+
+## Struct `OrgTreasuryAccessChanged`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessChanged">OrgTreasuryAccessChanged</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>has_access: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgTreasuryFunded"></a>
+
+## Struct `OrgTreasuryFunded`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryFunded">OrgTreasuryFunded</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>funded_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_balance: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_OrgTreasuryWithdrawn"></a>
+
+## Struct `OrgTreasuryWithdrawn`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryWithdrawn">OrgTreasuryWithdrawn</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>amount: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>withdrawn_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>remaining_balance: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>coin_type: <a href="../std/type_name.md#std_type_name_TypeName">std::type_name::TypeName</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
 </dl>
 
 
@@ -2259,6 +2596,94 @@ One per principal per settled receipt.
 
 </details>
 
+<a name="social_contracts_memory_SubAgentOwnerPolicyChanged"></a>
+
+## Struct `SubAgentOwnerPolicyChanged`
+
+Exact owner policy delta. Existing SubAgentUpdated is also emitted for indexers.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgentOwnerPolicyChanged">SubAgentOwnerPolicyChanged</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>principal_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">agent_object_id</a>: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>derived_address: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>change_kind: u8</code>
+</dt>
+<dd>
+ 1 = execution capability grant; 2 = execution capability revoke; 3 = limit raise.
+</dd>
+<dt>
+<code>capability_mask: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>previous_capabilities: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>next_capabilities: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>delegatable_caps: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>previous_max_action_spend: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>next_max_action_spend: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_memory_SubAgentDeactivated"></a>
 
 ## Struct `SubAgentDeactivated`
@@ -2405,6 +2830,200 @@ One per principal per settled receipt.
 </dd>
 <dt>
 <code><a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_MemoryAccountOwnerRotationProposed"></a>
+
+## Struct `MemoryAccountOwnerRotationProposed`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotationProposed">MemoryAccountOwnerRotationProposed</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>old_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>agent_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>organization_count: u64</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>proposed_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_MemoryAccountOwnerRotationAccepted"></a>
+
+## Struct `MemoryAccountOwnerRotationAccepted`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotationAccepted">MemoryAccountOwnerRotationAccepted</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>old_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>accepted_at_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_MemoryAccountOwnerRotated"></a>
+
+## Struct `MemoryAccountOwnerRotated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotated">MemoryAccountOwnerRotated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>old_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code><a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_memory_MemoryAccountOwnerRotationReferenceUpdated"></a>
+
+## Struct `MemoryAccountOwnerRotationReferenceUpdated`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotationReferenceUpdated">MemoryAccountOwnerRotationReferenceUpdated</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>account_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reference_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>reference_kind: u8</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>old_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_owner: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp_ms: u64</code>
 </dt>
 <dd>
 </dd>
@@ -4344,6 +4963,123 @@ Governance permission bits (proposer + voter).
 
 
 
+<a name="social_contracts_memory_EAgentPolicyChanged"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EAgentPolicyChanged">EAgentPolicyChanged</a>: u64 = 102;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EInvalidAgentPolicyChange"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidAgentPolicyChange">EInvalidAgentPolicyChange</a>: u64 = 103;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgTreasuryUnauthorized"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryUnauthorized">EOrgTreasuryUnauthorized</a>: u64 = 104;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgTreasuryInvalidAmount"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryInvalidAmount">EOrgTreasuryInvalidAmount</a>: u64 = 105;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgTreasuryInsufficientBalance"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryInsufficientBalance">EOrgTreasuryInsufficientBalance</a>: u64 = 106;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOrgTreasuryRecipientNotAuthorized"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryRecipientNotAuthorized">EOrgTreasuryRecipientNotAuthorized</a>: u64 = 107;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOwnerRotationPending"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationPending">EOwnerRotationPending</a>: u64 = 108;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOwnerRotationNotPending"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotPending">EOwnerRotationNotPending</a>: u64 = 109;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOwnerRotationInvalidManifest"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>: u64 = 110;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOwnerRotationReferenceNotUpdated"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationReferenceNotUpdated">EOwnerRotationReferenceNotUpdated</a>: u64 = 111;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOwnerRotationWrongWallet"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationWrongWallet">EOwnerRotationWrongWallet</a>: u64 = 112;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOwnerRotationNotFullyReverted"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotFullyReverted">EOwnerRotationNotFullyReverted</a>: u64 = 113;
+</code></pre>
+
+
+
+<a name="social_contracts_memory_EOwnerRotationNotAccepted"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotAccepted">EOwnerRotationNotAccepted</a>: u64 = 114;
+</code></pre>
+
+
+
 <a name="social_contracts_memory_ED25519_PUBLIC_KEY_LENGTH"></a>
 
 
@@ -6212,6 +6948,474 @@ Update global memory configuration (admin only).
 
 </details>
 
+<a name="social_contracts_memory_propose_owner_rotation"></a>
+
+## Function `propose_owner_rotation`
+
+The current wallet proposes a complete account-owner migration. The new wallet must
+separately sign each reference update and the final profile/account acceptance.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_propose_owner_rotation">propose_owner_rotation</a>(registry: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, new_owner: <b>address</b>, agent_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, organization_ids: vector&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_propose_owner_rotation">propose_owner_rotation</a>(
+    registry: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">MemoryRegistry</a>,
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    new_owner: <b>address</b>,
+    agent_ids: vector&lt;ID&gt;,
+    organization_ids: vector&lt;ID&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>let</b> old_owner = tx_context::sender(ctx);
+    <b>assert</b>!(account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a> == old_owner, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <b>assert</b>!(account.active, <a href="../social_contracts/memory.md#social_contracts_memory_EAccountDeactivated">EAccountDeactivated</a>);
+    <b>assert</b>!(old_owner != new_owner && new_owner != @0x0, <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>);
+    <b>assert</b>!(table::contains(&registry.accounts, old_owner), <a href="../social_contracts/memory.md#social_contracts_memory_ERegistryAccountMismatch">ERegistryAccountMismatch</a>);
+    <b>assert</b>!(*table::borrow(&registry.accounts, old_owner) == object::id(account), <a href="../social_contracts/memory.md#social_contracts_memory_ERegistryAccountMismatch">ERegistryAccountMismatch</a>);
+    <b>assert</b>!(!table::contains(&registry.accounts, new_owner), <a href="../social_contracts/memory.md#social_contracts_memory_ENewOwnerHasMemoryAccount">ENewOwnerHasMemoryAccount</a>);
+    <b>assert</b>!(
+        !df::exists_&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>&gt;(&account.id, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>()),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationPending">EOwnerRotationPending</a>,
+    );
+    <b>assert</b>!(
+        vector::length(&agent_ids) == table::length(&account.agent_ids)
+            && vector::length(&organization_ids) == table::length(&account.organizations),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>,
+    );
+    <b>let</b> <b>mut</b> agent_manifest = table::new(ctx);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; vector::length(&agent_ids)) {
+        <b>let</b> agent_id = *vector::borrow(&agent_ids, i);
+        <b>assert</b>!(table::contains(&account.agent_ids, agent_id), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>);
+        <b>assert</b>!(!table::contains(&agent_manifest, agent_id), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>);
+        table::add(&<b>mut</b> agent_manifest, agent_id, <b>true</b>);
+        i = i + 1;
+    };
+    <b>let</b> <b>mut</b> organization_manifest = table::new(ctx);
+    <b>let</b> <b>mut</b> i = 0;
+    <b>while</b> (i &lt; vector::length(&organization_ids)) {
+        <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a> = *vector::borrow(&organization_ids, i);
+        <b>assert</b>!(table::contains(&account.organizations, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>);
+        <b>assert</b>!(!table::contains(&organization_manifest, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>);
+        table::add(&<b>mut</b> organization_manifest, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>, <b>true</b>);
+        i = i + 1;
+    };
+    <b>let</b> agent_count = table::length(&agent_manifest);
+    <b>let</b> organization_count = table::length(&organization_manifest);
+    <b>let</b> proposed_at_ms = clock::timestamp_ms(clock);
+    df::add(
+        &<b>mut</b> account.id,
+        <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>(),
+        <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a> {
+            old_owner,
+            new_owner,
+            agent_manifest,
+            organization_manifest,
+            updated_agents: table::new(ctx),
+            updated_organizations: table::new(ctx),
+            proposed_at_ms,
+            accepted: <b>false</b>,
+        },
+    );
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotationProposed">MemoryAccountOwnerRotationProposed</a> {
+        account_id: object::id(account), old_owner, new_owner,
+        agent_count, organization_count, proposed_at_ms,
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_accept_agent_owner_rotation_reference"></a>
+
+## Function `accept_agent_owner_rotation_reference`
+
+The recipient wallet updates one registered agent reference. The app batches all calls
+and final acceptance in one PTB; if it must split for gas, pending state remains explicit
+and can be completed or rolled back before cancellation.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_accept_agent_owner_rotation_reference">accept_agent_owner_rotation_reference</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_accept_agent_owner_rotation_reference">accept_agent_owner_rotation_reference</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&agent.id);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>();
+    <b>assert</b>!(df::exists_&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>&gt;(&account.id, key), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotPending">EOwnerRotationNotPending</a>);
+    <b>let</b> account_id = object::id(account);
+    <b>let</b> rotation = df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&<b>mut</b> account.id, key);
+    <b>assert</b>!(sender == rotation.new_owner, <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationWrongWallet">EOwnerRotationWrongWallet</a>);
+    <b>let</b> agent_id = object::id(agent);
+    <b>assert</b>!(
+        agent.memory_account_id == account_id
+            && agent.principal_owner == rotation.old_owner
+            && table::contains(&account.agent_ids, agent_id)
+            && table::contains(&rotation.agent_manifest, agent_id)
+            && !table::contains(&rotation.updated_agents, agent_id),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>,
+    );
+    agent.principal_owner = rotation.new_owner;
+    table::add(&<b>mut</b> rotation.updated_agents, agent_id, <b>true</b>);
+    <b>let</b> old_owner = rotation.old_owner;
+    <b>let</b> new_owner = rotation.new_owner;
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotationReferenceUpdated">MemoryAccountOwnerRotationReferenceUpdated</a> {
+        account_id, reference_id: agent_id, reference_kind: 1,
+        old_owner, new_owner,
+        updated_by: sender, timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_accept_organization_owner_rotation_reference"></a>
+
+## Function `accept_organization_owner_rotation_reference`
+
+The recipient wallet updates one registered organization reference.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_accept_organization_owner_rotation_reference">accept_organization_owner_rotation_reference</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, organization: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_accept_organization_owner_rotation_reference">accept_organization_owner_rotation_reference</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    organization: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&organization.id);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>();
+    <b>assert</b>!(df::exists_&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>&gt;(&account.id, key), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotPending">EOwnerRotationNotPending</a>);
+    <b>let</b> account_id = object::id(account);
+    <b>let</b> rotation = df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&<b>mut</b> account.id, key);
+    <b>assert</b>!(sender == rotation.new_owner, <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationWrongWallet">EOwnerRotationWrongWallet</a>);
+    <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a> = object::id(organization);
+    <b>assert</b>!(
+        organization.memory_account_id == account_id
+            && organization.principal_owner == rotation.old_owner
+            && table::contains(&account.organizations, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>)
+            && table::contains(&rotation.organization_manifest, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>)
+            && !table::contains(&rotation.updated_organizations, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>,
+    );
+    organization.principal_owner = rotation.new_owner;
+    table::add(&<b>mut</b> rotation.updated_organizations, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>, <b>true</b>);
+    <b>let</b> old_owner = rotation.old_owner;
+    <b>let</b> new_owner = rotation.new_owner;
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotationReferenceUpdated">MemoryAccountOwnerRotationReferenceUpdated</a> {
+        account_id, reference_id: <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>, reference_kind: 2,
+        old_owner, new_owner,
+        updated_by: sender, timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_rollback_agent_owner_rotation_reference"></a>
+
+## Function `rollback_agent_owner_rotation_reference`
+
+Rolls an already updated agent back so the old wallet can safely cancel a migration.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_rollback_agent_owner_rotation_reference">rollback_agent_owner_rotation_reference</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_rollback_agent_owner_rotation_reference">rollback_agent_owner_rotation_reference</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>();
+    <b>assert</b>!(df::exists_&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>&gt;(&account.id, key), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotPending">EOwnerRotationNotPending</a>);
+    <b>let</b> account_id = object::id(account);
+    <b>let</b> rotation = df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&<b>mut</b> account.id, key);
+    <b>assert</b>!(sender == rotation.old_owner || sender == rotation.new_owner, <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationWrongWallet">EOwnerRotationWrongWallet</a>);
+    <b>let</b> agent_id = object::id(agent);
+    <b>assert</b>!(
+        agent.memory_account_id == account_id
+            && agent.principal_owner == rotation.new_owner
+            && table::contains(&rotation.updated_agents, agent_id),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>,
+    );
+    agent.principal_owner = rotation.old_owner;
+    <b>let</b> _updated = table::remove(&<b>mut</b> rotation.updated_agents, agent_id);
+    rotation.accepted = <b>false</b>;
+    <b>let</b> old_owner = rotation.old_owner;
+    <b>let</b> new_owner = rotation.new_owner;
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotationReferenceUpdated">MemoryAccountOwnerRotationReferenceUpdated</a> {
+        account_id, reference_id: agent_id, reference_kind: 1,
+        old_owner: new_owner, new_owner: old_owner,
+        updated_by: sender, timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_rollback_organization_owner_rotation_reference"></a>
+
+## Function `rollback_organization_owner_rotation_reference`
+
+Rolls an already updated organization back so the old wallet can safely cancel.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_rollback_organization_owner_rotation_reference">rollback_organization_owner_rotation_reference</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, organization: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_rollback_organization_owner_rotation_reference">rollback_organization_owner_rotation_reference</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    organization: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>();
+    <b>assert</b>!(df::exists_&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>&gt;(&account.id, key), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotPending">EOwnerRotationNotPending</a>);
+    <b>let</b> account_id = object::id(account);
+    <b>let</b> rotation = df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&<b>mut</b> account.id, key);
+    <b>assert</b>!(sender == rotation.old_owner || sender == rotation.new_owner, <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationWrongWallet">EOwnerRotationWrongWallet</a>);
+    <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a> = object::id(organization);
+    <b>assert</b>!(
+        organization.memory_account_id == account_id
+            && organization.principal_owner == rotation.new_owner
+            && table::contains(&rotation.updated_organizations, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationInvalidManifest">EOwnerRotationInvalidManifest</a>,
+    );
+    organization.principal_owner = rotation.old_owner;
+    <b>let</b> _updated = table::remove(&<b>mut</b> rotation.updated_organizations, <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>);
+    rotation.accepted = <b>false</b>;
+    <b>let</b> old_owner = rotation.old_owner;
+    <b>let</b> new_owner = rotation.new_owner;
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotationReferenceUpdated">MemoryAccountOwnerRotationReferenceUpdated</a> {
+        account_id, reference_id: <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>, reference_kind: 2,
+        old_owner: new_owner, new_owner: old_owner,
+        updated_by: sender, timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_accept_owner_rotation"></a>
+
+## Function `accept_owner_rotation`
+
+The recipient wallet confirms the migration after updating every manifest reference.
+The old owner must then call <code><a href="../social_contracts/profile.md#social_contracts_profile_complete_owner_rotation">profile::complete_owner_rotation</a></code>, which hands over the
+owned <code>Profile</code> object in the same transaction that moves this account.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_accept_owner_rotation">accept_owner_rotation</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_accept_owner_rotation">accept_owner_rotation</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>();
+    <b>assert</b>!(df::exists_&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>&gt;(&account.id, key), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotPending">EOwnerRotationNotPending</a>);
+    <b>let</b> account_id = object::id(account);
+    <b>let</b> rotation = df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&<b>mut</b> account.id, key);
+    <b>assert</b>!(sender == rotation.new_owner, <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationWrongWallet">EOwnerRotationWrongWallet</a>);
+    <b>assert</b>!(
+        table::length(&rotation.updated_agents) == table::length(&rotation.agent_manifest)
+            && table::length(&rotation.updated_organizations) == table::length(&rotation.organization_manifest),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationReferenceNotUpdated">EOwnerRotationReferenceNotUpdated</a>,
+    );
+    rotation.accepted = <b>true</b>;
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotationAccepted">MemoryAccountOwnerRotationAccepted</a> {
+        account_id,
+        old_owner: rotation.old_owner,
+        new_owner: rotation.new_owner,
+        accepted_at_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_complete_owner_rotation"></a>
+
+## Function `complete_owner_rotation`
+
+Called by <code><a href="../social_contracts/profile.md#social_contracts_profile_complete_owner_rotation">profile::complete_owner_rotation</a></code> (signed by the old owner) once the recipient
+accepted. Registry/account ownership changes only after every manifest reference was updated.
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_complete_owner_rotation">complete_owner_rotation</a>(registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">social_contracts::memory::MemoryRegistry</a>, account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_complete_owner_rotation">complete_owner_rotation</a>(
+    registry: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryRegistry">MemoryRegistry</a>,
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>();
+    <b>assert</b>!(df::exists_&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>&gt;(&account.id, key), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotPending">EOwnerRotationNotPending</a>);
+    <b>let</b> rotation = df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&account.id, key);
+    <b>assert</b>!(sender == rotation.old_owner, <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationWrongWallet">EOwnerRotationWrongWallet</a>);
+    <b>assert</b>!(rotation.accepted, <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotAccepted">EOwnerRotationNotAccepted</a>);
+    <b>assert</b>!(
+        table::length(&rotation.updated_agents) == table::length(&rotation.agent_manifest)
+            && table::length(&rotation.updated_organizations) == table::length(&rotation.organization_manifest),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationReferenceNotUpdated">EOwnerRotationReferenceNotUpdated</a>,
+    );
+    <b>let</b> old_owner = rotation.old_owner;
+    <b>let</b> new_owner = rotation.new_owner;
+    <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a> = account.<a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>;
+    <b>assert</b>!(account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a> == old_owner, <a href="../social_contracts/memory.md#social_contracts_memory_ERegistryAccountMismatch">ERegistryAccountMismatch</a>);
+    <b>assert</b>!(table::contains(&registry.accounts, old_owner), <a href="../social_contracts/memory.md#social_contracts_memory_ERegistryAccountMismatch">ERegistryAccountMismatch</a>);
+    <b>assert</b>!(*table::borrow(&registry.accounts, old_owner) == object::id(account), <a href="../social_contracts/memory.md#social_contracts_memory_ERegistryAccountMismatch">ERegistryAccountMismatch</a>);
+    <b>assert</b>!(!table::contains(&registry.accounts, new_owner), <a href="../social_contracts/memory.md#social_contracts_memory_ENewOwnerHasMemoryAccount">ENewOwnerHasMemoryAccount</a>);
+    <b>let</b> _old_id = table::remove(&<b>mut</b> registry.accounts, old_owner);
+    table::add(&<b>mut</b> registry.accounts, new_owner, object::id(account));
+    account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a> = new_owner;
+    <b>let</b> rotation = df::remove&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&<b>mut</b> account.id, key);
+    <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a> {
+        old_owner: _, new_owner: _, agent_manifest, organization_manifest,
+        updated_agents, updated_organizations, proposed_at_ms: _, accepted: _,
+    } = rotation;
+    table::drop(agent_manifest);
+    table::drop(organization_manifest);
+    table::drop(updated_agents);
+    table::drop(updated_organizations);
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccountOwnerRotated">MemoryAccountOwnerRotated</a> {
+        account_id: object::id(account), old_owner, new_owner, <a href="../social_contracts/memory.md#social_contracts_memory_profile_id">profile_id</a>,
+        timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_cancel_owner_rotation"></a>
+
+## Function `cancel_owner_rotation`
+
+Removes an unaccepted proposal only after all previously changed references were rolled
+back. This keeps partial migrations recoverable without allowing a split-brain account.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cancel_owner_rotation">cancel_owner_rotation</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_cancel_owner_rotation">cancel_owner_rotation</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>();
+    <b>assert</b>!(df::exists_&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>&gt;(&account.id, key), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotPending">EOwnerRotationNotPending</a>);
+    <b>let</b> rotation = df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&account.id, key);
+    <b>assert</b>!(sender == rotation.old_owner, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <b>assert</b>!(
+        table::is_empty(&rotation.updated_agents) && table::is_empty(&rotation.updated_organizations),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotFullyReverted">EOwnerRotationNotFullyReverted</a>,
+    );
+    <b>let</b> rotation = df::remove&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&<b>mut</b> account.id, key);
+    <b>let</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a> {
+        old_owner: _, new_owner: _, agent_manifest, organization_manifest,
+        updated_agents, updated_organizations, proposed_at_ms: _, accepted: _,
+    } = rotation;
+    table::drop(agent_manifest);
+    table::drop(organization_manifest);
+    table::drop(updated_agents);
+    table::drop(updated_organizations);
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_create_agentic_organization"></a>
 
 ## Function `create_agentic_organization`
@@ -6552,6 +7756,214 @@ Whether the org's memory share group has been created.
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_memory_group_exists">org_memory_group_exists</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): bool {
     derived_object::exists(&org.id, <a href="../social_contracts/memory.md#social_contracts_memory_OrgMemoryGroupTag">OrgMemoryGroupTag</a>())
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_grant_org_treasury_access"></a>
+
+## Function `grant_org_treasury_access`
+
+Add or revoke a wallet's explicit organization-treasury withdrawal access. The
+principal owner or a delegated permission-group administrator controls this list.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_treasury_access">grant_org_treasury_access</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, recipient: <b>address</b>, has_access: bool, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_grant_org_treasury_access">grant_org_treasury_access</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    recipient: <b>address</b>,
+    has_access: bool,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_treasury_admin">assert_org_treasury_admin</a>(org, group, ctx);
+    <b>assert</b>!(recipient != @0x0, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryUnauthorized">EOrgTreasuryUnauthorized</a>);
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessKey">OrgTreasuryAccessKey</a> { recipient };
+    <b>if</b> (has_access) {
+        <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessKey">OrgTreasuryAccessKey</a>, bool&gt;(&org.id, key)) {
+            *df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessKey">OrgTreasuryAccessKey</a>, bool&gt;(&<b>mut</b> org.id, key) = <b>true</b>;
+        } <b>else</b> {
+            df::add(&<b>mut</b> org.id, key, <b>true</b>);
+        };
+    } <b>else</b> <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessKey">OrgTreasuryAccessKey</a>, bool&gt;(&org.id, key)) {
+        <b>let</b> _ = df::remove&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessKey">OrgTreasuryAccessKey</a>, bool&gt;(&<b>mut</b> org.id, key);
+    };
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessChanged">OrgTreasuryAccessChanged</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        recipient,
+        has_access,
+        updated_by: tx_context::sender(ctx),
+        timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_fund_org_treasury"></a>
+
+## Function `fund_org_treasury`
+
+Fund an organization's shared MYSO-denominated or other typed treasury. Any wallet
+may contribute its own coin; only an explicitly authorized org signer can withdraw.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_fund_org_treasury">fund_org_treasury</a>&lt;T&gt;(org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, coin: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;T&gt;, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_fund_org_treasury">fund_org_treasury</a>&lt;T&gt;(
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    coin: &<b>mut</b> Coin&lt;T&gt;,
+    amount: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+    <b>assert</b>!(amount &gt; 0 && coin::value(coin) &gt;= amount, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryInvalidAmount">EOrgTreasuryInvalidAmount</a>);
+    <b>let</b> incoming = coin::into_balance(coin::split(coin, amount, ctx));
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt; {};
+    <b>if</b> (df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&org.id, key)) {
+        balance::join(df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&<b>mut</b> org.id, key), incoming);
+    } <b>else</b> {
+        df::add(&<b>mut</b> org.id, key, incoming);
+    };
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryFunded">OrgTreasuryFunded</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        amount,
+        funded_by: tx_context::sender(ctx),
+        new_balance: <a href="../social_contracts/memory.md#social_contracts_memory_org_treasury_balance">org_treasury_balance</a>&lt;T&gt;(org),
+        coin_type: type_name::with_defining_ids&lt;T&gt;(),
+        timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_withdraw_from_org_treasury"></a>
+
+## Function `withdraw_from_org_treasury`
+
+Withdraw an exact amount to one recipient. The account owner is always authorized;
+another wallet must be both an org-group admin and explicitly allowlisted. The live
+balance is checked and split atomically by Move, with no delegated-agent spend cap.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_withdraw_from_org_treasury">withdraw_from_org_treasury</a>&lt;T&gt;(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, recipient: <b>address</b>, amount: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_withdraw_from_org_treasury">withdraw_from_org_treasury</a>&lt;T&gt;(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    org: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    recipient: <b>address</b>,
+    amount: u64,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_organization_belongs_to_account">assert_organization_belongs_to_account</a>(account, org);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_group">assert_org_group</a>(org, group);
+    <b>assert</b>!(recipient != @0x0 && amount &gt; 0, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryInvalidAmount">EOrgTreasuryInvalidAmount</a>);
+    <b>let</b> caller = tx_context::sender(ctx);
+    <b>if</b> (caller != account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>) {
+        <b>assert</b>!(org.active, <a href="../social_contracts/memory.md#social_contracts_memory_EOrganizationNotActive">EOrganizationNotActive</a>);
+        <b>assert</b>!(
+            permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, ExtensionPermissionsAdmin&gt;(group, caller),
+            <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryUnauthorized">EOrgTreasuryUnauthorized</a>,
+        );
+        <b>let</b> access_key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessKey">OrgTreasuryAccessKey</a> { recipient: caller };
+        <b>assert</b>!(
+            df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessKey">OrgTreasuryAccessKey</a>, bool&gt;(&org.id, access_key)
+                && *df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryAccessKey">OrgTreasuryAccessKey</a>, bool&gt;(&org.id, access_key),
+            <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryRecipientNotAuthorized">EOrgTreasuryRecipientNotAuthorized</a>,
+        );
+    };
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt; {};
+    <b>assert</b>!(
+        df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&org.id, key),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryInsufficientBalance">EOrgTreasuryInsufficientBalance</a>,
+    );
+    <b>let</b> remaining_balance;
+    {
+        <b>let</b> slot: &Balance&lt;T&gt; = df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&org.id, key);
+        <b>assert</b>!(balance::value(slot) &gt;= amount, <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryInsufficientBalance">EOrgTreasuryInsufficientBalance</a>);
+    };
+    {
+        <b>let</b> slot: &<b>mut</b> Balance&lt;T&gt; = df::borrow_mut&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&<b>mut</b> org.id, key);
+        <b>let</b> payout = coin::from_balance(balance::split(slot, amount), ctx);
+        remaining_balance = balance::value(slot);
+        transfer::public_transfer(payout, recipient);
+    };
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryWithdrawn">OrgTreasuryWithdrawn</a> {
+        <a href="../social_contracts/memory.md#social_contracts_memory_organization_id">organization_id</a>: object::id(org),
+        recipient,
+        amount,
+        withdrawn_by: caller,
+        remaining_balance,
+        coin_type: type_name::with_defining_ids&lt;T&gt;(),
+        timestamp: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_org_treasury_balance"></a>
+
+## Function `org_treasury_balance`
+
+Read the current treasury balance for one exact coin type.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_treasury_balance">org_treasury_balance</a>&lt;T&gt;(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_org_treasury_balance">org_treasury_balance</a>&lt;T&gt;(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>): u64 {
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt; {};
+    <b>if</b> (!df::exists_with_type&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&org.id, key)) { <b>return</b> 0 };
+    balance::value(df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_OrgTreasuryBalanceKey">OrgTreasuryBalanceKey</a>&lt;T&gt;, Balance&lt;T&gt;&gt;(&org.id, key))
 }
 </code></pre>
 
@@ -7420,6 +8832,292 @@ Delegated agent registers a child or peer sub-agent.
 
 </details>
 
+<a name="social_contracts_memory_assert_owner_agent_identity"></a>
+
+## Function `assert_owner_agent_identity`
+
+Owner-only identity/scope guard for exact-input policy and revocation PTBs.
+This does not emit a success event or mutate any policy field.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_owner_agent_identity">assert_owner_agent_identity</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, expected_derived_address: <b>address</b>, expected_platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_owner_agent_identity">assert_owner_agent_identity</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    expected_derived_address: <b>address</b>,
+    expected_platform_scope: Option&lt;<b>address</b>&gt;,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_object_version">assert_object_version</a>(&account.id);
+    <b>assert</b>!(tx_context::sender(ctx) == account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>, <a href="../social_contracts/memory.md#social_contracts_memory_ENotOwner">ENotOwner</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_agent_belongs_to_account">assert_agent_belongs_to_account</a>(account, agent);
+    <b>assert</b>!(agent.derived_address == expected_derived_address, <a href="../social_contracts/memory.md#social_contracts_memory_EAgentPolicyChanged">EAgentPolicyChanged</a>);
+    <b>assert</b>!(agent.platform_scope == expected_platform_scope, <a href="../social_contracts/memory.md#social_contracts_memory_EAgentPolicyChanged">EAgentPolicyChanged</a>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_supported_agent_capabilities"></a>
+
+## Function `supported_agent_capabilities`
+
+Current named capability bits accepted by the granular grant operation.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_supported_agent_capabilities">supported_agent_capabilities</a>(): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_supported_agent_capabilities">supported_agent_capabilities</a>(): u64 {
+    <a href="../social_contracts/memory.md#social_contracts_memory_CAP_MEMORY_READ">CAP_MEMORY_READ</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_MEMORY_WRITE">CAP_MEMORY_WRITE</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_MYDATA_READ">CAP_MYDATA_READ</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_POST_PUBLISH">CAP_POST_PUBLISH</a>
+        | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_MESSAGE_READ">CAP_MESSAGE_READ</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_MESSAGE_SEND">CAP_MESSAGE_SEND</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_TRADE_MONITOR">CAP_TRADE_MONITOR</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_TRADE_EXECUTE">CAP_TRADE_EXECUTE</a>
+        | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_COMMENT">CAP_COMMENT</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_REACT">CAP_REACT</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_AGENT_REVOKE">CAP_AGENT_REVOKE</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_AGENT_UPDATE">CAP_AGENT_UPDATE</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_AGENT_REGISTER">CAP_AGENT_REGISTER</a>
+        | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_AI_SPEND">CAP_AI_SPEND</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_BUDGET_MANAGE">CAP_BUDGET_MANAGE</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_SOCIAL_GRAPH">CAP_SOCIAL_GRAPH</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_TASK_TRADE">CAP_TASK_TRADE</a> | <a href="../social_contracts/memory.md#social_contracts_memory_CAP_JURY">CAP_JURY</a>
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_owner_grant_sub_agent_capabilities"></a>
+
+## Function `owner_grant_sub_agent_capabilities`
+
+Grant execution capability bits. Delegation and approval masks are preserved.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_owner_grant_sub_agent_capabilities">owner_grant_sub_agent_capabilities</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, expected_derived_address: <b>address</b>, expected_platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expected_capabilities: u64, capability_mask: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_owner_grant_sub_agent_capabilities">owner_grant_sub_agent_capabilities</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    expected_derived_address: <b>address</b>,
+    expected_platform_scope: Option&lt;<b>address</b>&gt;,
+    expected_capabilities: u64,
+    capability_mask: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_owner_agent_identity">assert_owner_agent_identity</a>(account, agent, expected_derived_address, expected_platform_scope, ctx);
+    <b>assert</b>!(agent.capabilities == expected_capabilities, <a href="../social_contracts/memory.md#social_contracts_memory_EAgentPolicyChanged">EAgentPolicyChanged</a>);
+    <b>assert</b>!(capability_mask != 0, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidAgentPolicyChange">EInvalidAgentPolicyChange</a>);
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_caps_subset">assert_caps_subset</a>(capability_mask, <a href="../social_contracts/memory.md#social_contracts_memory_supported_agent_capabilities">supported_agent_capabilities</a>());
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_sub_agent_not_expired">assert_sub_agent_not_expired</a>(agent, clock);
+    <b>let</b> next = expected_capabilities | capability_mask;
+    <b>assert</b>!(next != expected_capabilities, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidAgentPolicyChange">EInvalidAgentPolicyChange</a>);
+    <b>let</b> previous_limit = agent.constraints.max_action_spend;
+    agent.capabilities = next;
+    <a href="../social_contracts/memory.md#social_contracts_memory_sync_registry_from_agent">sync_registry_from_agent</a>(account, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agent_updated">emit_sub_agent_updated</a>(account, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_owner_policy_changed">emit_owner_policy_changed</a>(account, agent, 1, capability_mask, expected_capabilities, previous_limit, clock);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_owner_revoke_sub_agent_capabilities"></a>
+
+## Function `owner_revoke_sub_agent_capabilities`
+
+Revoke execution capability bits, including legacy unknown bits. This is
+target-local; existing child grants and the separate delegation mask remain intact.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_owner_revoke_sub_agent_capabilities">owner_revoke_sub_agent_capabilities</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, expected_derived_address: <b>address</b>, expected_platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expected_capabilities: u64, capability_mask: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_owner_revoke_sub_agent_capabilities">owner_revoke_sub_agent_capabilities</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    expected_derived_address: <b>address</b>,
+    expected_platform_scope: Option&lt;<b>address</b>&gt;,
+    expected_capabilities: u64,
+    capability_mask: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_owner_agent_identity">assert_owner_agent_identity</a>(account, agent, expected_derived_address, expected_platform_scope, ctx);
+    <b>assert</b>!(agent.capabilities == expected_capabilities, <a href="../social_contracts/memory.md#social_contracts_memory_EAgentPolicyChanged">EAgentPolicyChanged</a>);
+    <b>assert</b>!(capability_mask != 0, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidAgentPolicyChange">EInvalidAgentPolicyChange</a>);
+    <b>let</b> next = expected_capabilities ^ (expected_capabilities & capability_mask);
+    <b>assert</b>!(next != expected_capabilities, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidAgentPolicyChange">EInvalidAgentPolicyChange</a>);
+    <b>let</b> previous_limit = agent.constraints.max_action_spend;
+    agent.capabilities = next;
+    <a href="../social_contracts/memory.md#social_contracts_memory_sync_registry_from_agent">sync_registry_from_agent</a>(account, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agent_updated">emit_sub_agent_updated</a>(account, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_owner_policy_changed">emit_owner_policy_changed</a>(account, agent, 2, capability_mask, expected_capabilities, previous_limit, clock);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_owner_raise_sub_agent_spending_limit"></a>
+
+## Function `owner_raise_sub_agent_spending_limit`
+
+Raise an existing finite per-action MIST ceiling. None explicitly removes
+that ceiling. No cumulative allowance, AI budget or balance is changed.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_owner_raise_sub_agent_spending_limit">owner_raise_sub_agent_spending_limit</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, expected_derived_address: <b>address</b>, expected_platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expected_limit: u64, next_limit: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_owner_raise_sub_agent_spending_limit">owner_raise_sub_agent_spending_limit</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    expected_derived_address: <b>address</b>,
+    expected_platform_scope: Option&lt;<b>address</b>&gt;,
+    expected_limit: u64,
+    next_limit: Option&lt;u64&gt;,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_owner_agent_identity">assert_owner_agent_identity</a>(account, agent, expected_derived_address, expected_platform_scope, ctx);
+    <b>assert</b>!(agent.constraints.max_action_spend == option::some(expected_limit), <a href="../social_contracts/memory.md#social_contracts_memory_EAgentPolicyChanged">EAgentPolicyChanged</a>);
+    <b>if</b> (option::is_some(&next_limit)) {
+        <b>assert</b>!(*option::borrow(&next_limit) &gt; expected_limit, <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidAgentPolicyChange">EInvalidAgentPolicyChange</a>);
+    };
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_sub_agent_not_expired">assert_sub_agent_not_expired</a>(agent, clock);
+    <b>let</b> previous_capabilities = agent.capabilities;
+    <b>let</b> previous_limit = agent.constraints.max_action_spend;
+    agent.constraints.max_action_spend = next_limit;
+    <a href="../social_contracts/memory.md#social_contracts_memory_sync_registry_from_agent">sync_registry_from_agent</a>(account, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agent_updated">emit_sub_agent_updated</a>(account, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_owner_policy_changed">emit_owner_policy_changed</a>(account, agent, 3, 0, previous_capabilities, previous_limit, clock);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_owner_lower_sub_agent_spending_limit"></a>
+
+## Function `owner_lower_sub_agent_spending_limit`
+
+Lower an agent's per-action MIST ceiling, including replacing an
+unlimited ceiling with a finite one. This never changes a cumulative
+allowance or the account's balance.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_owner_lower_sub_agent_spending_limit">owner_lower_sub_agent_spending_limit</a>(account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, expected_derived_address: <b>address</b>, expected_platform_scope: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, expected_limit: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, next_limit: u64, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_owner_lower_sub_agent_spending_limit">owner_lower_sub_agent_spending_limit</a>(
+    account: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    agent: &<b>mut</b> <a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    expected_derived_address: <b>address</b>,
+    expected_platform_scope: Option&lt;<b>address</b>&gt;,
+    expected_limit: Option&lt;u64&gt;,
+    next_limit: u64,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_owner_agent_identity">assert_owner_agent_identity</a>(account, agent, expected_derived_address, expected_platform_scope, ctx);
+    <b>assert</b>!(agent.constraints.max_action_spend == expected_limit, <a href="../social_contracts/memory.md#social_contracts_memory_EAgentPolicyChanged">EAgentPolicyChanged</a>);
+    <b>if</b> (option::is_some(&expected_limit)) {
+        <b>assert</b>!(next_limit &lt; *option::borrow(&expected_limit), <a href="../social_contracts/memory.md#social_contracts_memory_EInvalidAgentPolicyChange">EInvalidAgentPolicyChange</a>);
+    };
+    <a href="../social_contracts/memory.md#social_contracts_memory_assert_sub_agent_not_expired">assert_sub_agent_not_expired</a>(agent, clock);
+    <b>let</b> previous_capabilities = agent.capabilities;
+    <b>let</b> previous_limit = agent.constraints.max_action_spend;
+    agent.constraints.max_action_spend = option::some(next_limit);
+    <a href="../social_contracts/memory.md#social_contracts_memory_sync_registry_from_agent">sync_registry_from_agent</a>(account, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_sub_agent_updated">emit_sub_agent_updated</a>(account, agent);
+    <a href="../social_contracts/memory.md#social_contracts_memory_emit_owner_policy_changed">emit_owner_policy_changed</a>(account, agent, 4, 0, previous_capabilities, previous_limit, clock);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_emit_owner_policy_changed"></a>
+
+## Function `emit_owner_policy_changed`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_emit_owner_policy_changed">emit_owner_policy_changed</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>, change_kind: u8, capability_mask: u64, previous_capabilities: u64, previous_limit: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_emit_owner_policy_changed">emit_owner_policy_changed</a>(
+    account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>,
+    agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>,
+    change_kind: u8,
+    capability_mask: u64,
+    previous_capabilities: u64,
+    previous_limit: Option&lt;u64&gt;,
+    clock: &Clock,
+) {
+    event::emit(<a href="../social_contracts/memory.md#social_contracts_memory_SubAgentOwnerPolicyChanged">SubAgentOwnerPolicyChanged</a> {
+        account_id: object::id(account), principal_owner: account.<a href="../social_contracts/memory.md#social_contracts_memory_owner">owner</a>,
+        <a href="../social_contracts/memory.md#social_contracts_memory_agent_object_id">agent_object_id</a>: object::id(agent), derived_address: agent.derived_address,
+        change_kind, capability_mask, previous_capabilities, next_capabilities: agent.capabilities,
+        delegatable_caps: agent.delegatable_caps,
+        previous_max_action_spend: previous_limit,
+        next_max_action_spend: agent.constraints.max_action_spend,
+        platform_scope: agent.platform_scope, timestamp_ms: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_update_sub_agent_label"></a>
 
 ## Function `update_sub_agent_label`
@@ -8153,6 +9851,33 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 </details>
 
+<a name="social_contracts_memory_pending_rotation_new_owner"></a>
+
+## Function `pending_rotation_new_owner`
+
+Recipient wallet of the pending owner rotation (aborts if none is pending).
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_pending_rotation_new_owner">pending_rotation_new_owner</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_pending_rotation_new_owner">pending_rotation_new_owner</a>(account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">MemoryAccount</a>): <b>address</b> {
+    <b>let</b> key = <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>();
+    <b>assert</b>!(df::exists_&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>&gt;(&account.id, key), <a href="../social_contracts/memory.md#social_contracts_memory_EOwnerRotationNotPending">EOwnerRotationNotPending</a>);
+    df::borrow&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotationKey">MemoryOwnerRotationKey</a>, <a href="../social_contracts/memory.md#social_contracts_memory_MemoryOwnerRotation">MemoryOwnerRotation</a>&gt;(&account.id, key).new_owner
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_memory_sub_agent_derived_address"></a>
 
 ## Function `sub_agent_derived_address`
@@ -8191,6 +9916,72 @@ Per-transaction MYSO (MIST) spend ceiling for sub-agents. Principal owner is exe
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_capabilities">sub_agent_capabilities</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): u64 { agent.capabilities }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_delegatable_caps"></a>
+
+## Function `sub_agent_delegatable_caps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_delegatable_caps">sub_agent_delegatable_caps</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_delegatable_caps">sub_agent_delegatable_caps</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): u64 { agent.delegatable_caps }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_max_action_spend"></a>
+
+## Function `sub_agent_max_action_spend`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_max_action_spend">sub_agent_max_action_spend</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_max_action_spend">sub_agent_max_action_spend</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): Option&lt;u64&gt; { agent.constraints.max_action_spend }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_sub_agent_approval_required_caps"></a>
+
+## Function `sub_agent_approval_required_caps`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_approval_required_caps">sub_agent_approval_required_caps</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">social_contracts::memory::SubAgent</a>): u64
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_sub_agent_approval_required_caps">sub_agent_approval_required_caps</a>(agent: &<a href="../social_contracts/memory.md#social_contracts_memory_SubAgent">SubAgent</a>): u64 { agent.constraints.approval_required_caps }
 </code></pre>
 
 
@@ -11750,6 +13541,39 @@ so wrappers fail fast (and so no-op masks cannot bypass authorization entirely).
             tx_context::sender(ctx),
         ),
         <a href="../social_contracts/memory.md#social_contracts_memory_ENoAccess">ENoAccess</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_memory_assert_org_treasury_admin"></a>
+
+## Function `assert_org_treasury_admin`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_treasury_admin">assert_org_treasury_admin</a>(org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">social_contracts::memory::AgenticOrganization</a>, group: &<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">social_contracts::memory::MemorySharePackage</a>&gt;, ctx: &<a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/memory.md#social_contracts_memory_assert_org_treasury_admin">assert_org_treasury_admin</a>(
+    org: &<a href="../social_contracts/memory.md#social_contracts_memory_AgenticOrganization">AgenticOrganization</a>,
+    group: &PermissionedGroup&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>&gt;,
+    ctx: &TxContext,
+) {
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(
+        sender == org.principal_owner
+            || permissioned_group::has_permission&lt;<a href="../social_contracts/memory.md#social_contracts_memory_MemorySharePackage">MemorySharePackage</a>, ExtensionPermissionsAdmin&gt;(group, sender),
+        <a href="../social_contracts/memory.md#social_contracts_memory_EOrgTreasuryUnauthorized">EOrgTreasuryUnauthorized</a>,
     );
 }
 </code></pre>

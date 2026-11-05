@@ -12,7 +12,10 @@ Handles subscription services for profiles & MyData
 -  [Struct `SubscriptionPlan`](#social_contracts_subscription_SubscriptionPlan)
 -  [Struct `RenewalBalanceKey`](#social_contracts_subscription_RenewalBalanceKey)
 -  [Struct `ProfileSubscriptionService`](#social_contracts_subscription_ProfileSubscriptionService)
+-  [Struct `ServicePaymentRecipientKey`](#social_contracts_subscription_ServicePaymentRecipientKey)
+-  [Struct `ServicePaymentRecipientUpdatedEvent`](#social_contracts_subscription_ServicePaymentRecipientUpdatedEvent)
 -  [Struct `ProfileSubscription`](#social_contracts_subscription_ProfileSubscription)
+-  [Struct `SubscriptionAutoRenewUpdatedEvent`](#social_contracts_subscription_SubscriptionAutoRenewUpdatedEvent)
 -  [Struct `ProfileSubscriptionCreatedEvent`](#social_contracts_subscription_ProfileSubscriptionCreatedEvent)
 -  [Struct `ProfileSubscriptionRenewedEvent`](#social_contracts_subscription_ProfileSubscriptionRenewedEvent)
 -  [Struct `ProfileSubscriptionCancelledEvent`](#social_contracts_subscription_ProfileSubscriptionCancelledEvent)
@@ -24,6 +27,8 @@ Handles subscription services for profiles & MyData
 -  [Struct `ProfileSubscriptionServiceDeactivatedEvent`](#social_contracts_subscription_ProfileSubscriptionServiceDeactivatedEvent)
 -  [Constants](#@Constants_0)
 -  [Function `assert_subscriber_not_blocked`](#social_contracts_subscription_assert_subscriber_not_blocked)
+-  [Function `payment_recipient`](#social_contracts_subscription_payment_recipient)
+-  [Function `get_service_payment_recipient`](#social_contracts_subscription_get_service_payment_recipient)
 -  [Function `validate_fee_config`](#social_contracts_subscription_validate_fee_config)
 -  [Function `calculate_subscription_fees`](#social_contracts_subscription_calculate_subscription_fees)
 -  [Function `route_non_platform_platform_fee`](#social_contracts_subscription_route_non_platform_platform_fee)
@@ -69,6 +74,9 @@ Handles subscription services for profiles & MyData
 -  [Function `is_subscription_valid_for`](#social_contracts_subscription_is_subscription_valid_for)
 -  [Function `subscription_satisfies_access`](#social_contracts_subscription_subscription_satisfies_access)
 -  [Function `deactivate_service`](#social_contracts_subscription_deactivate_service)
+-  [Function `assert_plan_terms`](#social_contracts_subscription_assert_plan_terms)
+-  [Function `assert_subscription_terms`](#social_contracts_subscription_assert_subscription_terms)
+-  [Function `set_auto_renew`](#social_contracts_subscription_set_auto_renew)
 -  [Function `cancel_subscription`](#social_contracts_subscription_cancel_subscription)
 -  [Function `service_profile_id`](#social_contracts_subscription_service_profile_id)
 -  [Function `service_plan_count`](#social_contracts_subscription_service_plan_count)
@@ -85,6 +93,7 @@ Handles subscription services for profiles & MyData
 -  [Function `create_subscription_admin_cap`](#social_contracts_subscription_create_subscription_admin_cap)
 -  [Function `update_subscription_config`](#social_contracts_subscription_update_subscription_config)
 -  [Function `migrate_config`](#social_contracts_subscription_migrate_config)
+-  [Function `change_service_payment_recipient`](#social_contracts_subscription_change_service_payment_recipient)
 -  [Function `migrate_service`](#social_contracts_subscription_migrate_service)
 
 
@@ -470,6 +479,75 @@ Profile subscription service - one per profile, holds multiple plans
 
 </details>
 
+<a name="social_contracts_subscription_ServicePaymentRecipientKey"></a>
+
+## Struct `ServicePaymentRecipientKey`
+
+Optional, backward-compatible payout destination. Existing services without
+this dynamic field continue to pay their profile owner.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientKey">ServicePaymentRecipientKey</a> <b>has</b> <b>copy</b>, drop, store
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_subscription_ServicePaymentRecipientUpdatedEvent"></a>
+
+## Struct `ServicePaymentRecipientUpdatedEvent`
+
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientUpdatedEvent">ServicePaymentRecipientUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>service_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>previous_recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>new_recipient: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>updated_by: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
 <a name="social_contracts_subscription_ProfileSubscription"></a>
 
 ## Struct `ProfileSubscription`
@@ -557,6 +635,53 @@ Individual subscription to a profile
 </dt>
 <dd>
  Number of times this subscription has been renewed
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_subscription_SubscriptionAutoRenewUpdatedEvent"></a>
+
+## Struct `SubscriptionAutoRenewUpdatedEvent`
+
+Subscriber-controlled renewal preference. This event never implies new funding.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionAutoRenewUpdatedEvent">SubscriptionAutoRenewUpdatedEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>subscription_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>service_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>subscriber: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>auto_renew: bool</code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
 </dd>
 </dl>
 
@@ -1226,6 +1351,15 @@ Error codes
 
 
 
+<a name="social_contracts_subscription_EPlanTermsChanged"></a>
+
+
+
+<pre><code><b>const</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_EPlanTermsChanged">EPlanTermsChanged</a>: u64 = 88;
+</code></pre>
+
+
+
 <a name="social_contracts_subscription_MAX_RENEWAL_MONTHS"></a>
 
 Default bootstrap values (used only at init)
@@ -1320,6 +1454,63 @@ Default bootstrap values (used only at init)
     profile_owner: <b>address</b>,
 ) {
     <a href="../social_contracts/block_list.md#social_contracts_block_list_assert_not_blocked">block_list::assert_not_blocked</a>(registry, subscriber, profile_owner);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_payment_recipient"></a>
+
+## Function `payment_recipient`
+
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>): <b>address</b> {
+    <b>if</b> (dynamic_field::exists_(&service.id, <a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientKey">ServicePaymentRecipientKey</a> {})) {
+        *dynamic_field::borrow&lt;<a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientKey">ServicePaymentRecipientKey</a>, <b>address</b>&gt;(
+            &service.id,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientKey">ServicePaymentRecipientKey</a> {},
+        )
+    } <b>else</b> {
+        service.profile_owner
+    }
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_get_service_payment_recipient"></a>
+
+## Function `get_service_payment_recipient`
+
+The current payout destination for this service. For older services this
+resolves to the profile owner until the owner changes it.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_get_service_payment_recipient">get_service_payment_recipient</a>(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_get_service_payment_recipient">get_service_payment_recipient</a>(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>): <b>address</b> {
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service)
 }
 </code></pre>
 
@@ -2214,7 +2405,7 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_no_platform">distribute_subscription_payment_fees_no_platform</a>(
             config,
             treasury,
-            service.profile_owner,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service),
             first_period_payment,
             ctx,
         );
@@ -2295,7 +2486,7 @@ Deactivate a plan so it no longer accepts new subscriptions (profile owner only)
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_with_platform">distribute_subscription_payment_fees_with_platform</a>(
             config,
             treasury,
-            service.profile_owner,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service),
             first_period_payment,
             <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
             clock,
@@ -2545,7 +2736,7 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_no_platform">distribute_subscription_payment_fees_no_platform</a>(
             config,
             treasury,
-            service.profile_owner,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service),
             payment,
             ctx,
         );
@@ -2606,7 +2797,7 @@ Subscribe to a profile plan with platform treasury routing for the platform-fee 
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_with_platform">distribute_subscription_payment_fees_with_platform</a>(
             config,
             treasury,
-            service.profile_owner,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service),
             payment,
             <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
             clock,
@@ -2834,7 +3025,7 @@ Manually renew a subscription with platform treasury routing.
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_no_platform">distribute_subscription_payment_fees_no_platform</a>(
             config,
             treasury,
-            service.profile_owner,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service),
             renewal_payment,
             ctx,
         );
@@ -2912,7 +3103,7 @@ Manually renew a subscription with platform treasury routing.
         <a href="../social_contracts/subscription.md#social_contracts_subscription_distribute_subscription_payment_fees_with_platform">distribute_subscription_payment_fees_with_platform</a>(
             config,
             treasury,
-            service.profile_owner,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service),
             renewal_payment,
             <a href="../social_contracts/platform.md#social_contracts_platform">platform</a>,
             clock,
@@ -3285,6 +3476,148 @@ Deactivate service (profile owner only)
         service_id: object::id(service),
         profile_owner: service.profile_owner,
         deactivated_at: clock::timestamp_ms(clock),
+    });
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_assert_plan_terms"></a>
+
+## Function `assert_plan_terms`
+
+Pin a quoted plan in the same PTB as subscribing or renewing. Plan changes
+abort the whole transaction before any payment is moved. The coin type is
+part of the quote; numeric prices are base units of T, never assumed MIST.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_terms">assert_plan_terms</a>&lt;T&gt;(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, expected_profile_owner: <b>address</b>, expected_price: u64, expected_duration_ms: u64, expected_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, expected_platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, for_new_subscription: bool)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_terms">assert_plan_terms</a>&lt;T&gt;(
+    service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
+    plan_id: ID,
+    expected_profile_owner: <b>address</b>,
+    expected_price: u64,
+    expected_duration_ms: u64,
+    expected_tier_level: Option&lt;u64&gt;,
+    expected_platform_id: Option&lt;<b>address</b>&gt;,
+    for_new_subscription: bool,
+) {
+    <b>assert</b>!(service.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(service.profile_owner == expected_profile_owner, <a href="../social_contracts/subscription.md#social_contracts_subscription_EPlanTermsChanged">EPlanTermsChanged</a>);
+    <b>if</b> (for_new_subscription) { <b>assert</b>!(service.active, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>); };
+    <b>let</b> plan = <b>if</b> (for_new_subscription) {
+        <a href="../social_contracts/subscription.md#social_contracts_subscription_borrow_active_plan">borrow_active_plan</a>(service, plan_id)
+    } <b>else</b> {
+        <a href="../social_contracts/subscription.md#social_contracts_subscription_borrow_plan_for_renewal">borrow_plan_for_renewal</a>(service, plan_id)
+    };
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_coin_type">assert_plan_coin_type</a>&lt;T&gt;(plan);
+    <b>assert</b>!(
+        plan.price == expected_price &&
+        plan.duration_ms == expected_duration_ms &&
+        plan.tier_level == expected_tier_level &&
+        plan.platform_id == expected_platform_id,
+        <a href="../social_contracts/subscription.md#social_contracts_subscription_EPlanTermsChanged">EPlanTermsChanged</a>,
+    );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_assert_subscription_terms"></a>
+
+## Function `assert_subscription_terms`
+
+A renewal quote must describe this subscription's actual plan, rather
+than a different cheaper plan in the same service.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_terms">assert_subscription_terms</a>&lt;T&gt;(service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, expected_plan_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>, expected_profile_owner: <b>address</b>, expected_price: u64, expected_duration_ms: u64, expected_tier_level: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u64&gt;, expected_platform_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_terms">assert_subscription_terms</a>&lt;T&gt;(
+    service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
+    expected_plan_id: ID,
+    expected_profile_owner: <b>address</b>,
+    expected_price: u64,
+    expected_duration_ms: u64,
+    expected_tier_level: Option&lt;u64&gt;,
+    expected_platform_id: Option&lt;<b>address</b>&gt;,
+) {
+    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id == object::id(service), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
+    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.plan_id == expected_plan_id, <a href="../social_contracts/subscription.md#social_contracts_subscription_EPlanTermsChanged">EPlanTermsChanged</a>);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscription_coin_type">assert_subscription_coin_type</a>&lt;T&gt;(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>);
+    <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_plan_terms">assert_plan_terms</a>&lt;T&gt;(service, expected_plan_id, expected_profile_owner,
+        expected_price, expected_duration_ms, expected_tier_level,
+        expected_platform_id, <b>false</b>);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_set_auto_renew"></a>
+
+## Function `set_auto_renew`
+
+Change only the subscriber's renewal preference. Enabling uses the
+existing pre-funded renewal bag; it cannot pull more money from a wallet.
+Disabling remains possible while the creator/service is blocked/inactive.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_set_auto_renew">set_auto_renew</a>(block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">social_contracts::subscription::ProfileSubscription</a>, enabled: bool, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_set_auto_renew">set_auto_renew</a>(
+    block_list_registry: &BlockListRegistry,
+    service: &<a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscription">ProfileSubscription</a>,
+    enabled: bool,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(service.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
+    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.service_id == object::id(service), <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
+    <b>let</b> subscriber = tx_context::sender(ctx);
+    <b>assert</b>!(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.subscriber == subscriber, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENotSubscriptionOwner">ENotSubscriptionOwner</a>);
+    <b>if</b> (enabled) {
+        <b>assert</b>!(service.active, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
+        <a href="../social_contracts/subscription.md#social_contracts_subscription_assert_subscriber_not_blocked">assert_subscriber_not_blocked</a>(block_list_registry, subscriber, service.profile_owner);
+        <b>let</b> plan = <a href="../social_contracts/subscription.md#social_contracts_subscription_borrow_plan_for_renewal">borrow_plan_for_renewal</a>(service, <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.plan_id);
+        <b>assert</b>!(plan.coin_type == <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.coin_type, <a href="../social_contracts/subscription.md#social_contracts_subscription_ECoinTypeMismatch">ECoinTypeMismatch</a>);
+    };
+    <a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>.auto_renew = enabled;
+    event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_SubscriptionAutoRenewUpdatedEvent">SubscriptionAutoRenewUpdatedEvent</a> {
+        subscription_id: object::id(<a href="../social_contracts/subscription.md#social_contracts_subscription">subscription</a>),
+        service_id: object::id(service),
+        subscriber,
+        auto_renew: enabled,
+        timestamp: clock::timestamp_ms(clock),
     });
 }
 </code></pre>
@@ -3784,6 +4117,62 @@ Migration function for SubscriptionConfig
         old_version,
         tx_context::sender(ctx)
     );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_subscription_change_service_payment_recipient"></a>
+
+## Function `change_service_payment_recipient`
+
+Migration function for ProfileSubscriptionService
+Change only where future subscription payments are sent. The profile owner
+remains the service administrator and historical transfers are untouched.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_change_service_payment_recipient">change_service_payment_recipient</a>(service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">social_contracts::subscription::ProfileSubscriptionService</a>, new_recipient: <b>address</b>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_change_service_payment_recipient">change_service_payment_recipient</a>(
+    service: &<b>mut</b> <a href="../social_contracts/subscription.md#social_contracts_subscription_ProfileSubscriptionService">ProfileSubscriptionService</a>,
+    new_recipient: <b>address</b>,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(service.version == <a href="../social_contracts/upgrade.md#social_contracts_upgrade_current_version">upgrade::current_version</a>(), <a href="../social_contracts/subscription.md#social_contracts_subscription_EWrongVersion">EWrongVersion</a>);
+    <b>let</b> sender = tx_context::sender(ctx);
+    <b>assert</b>!(sender == service.profile_owner, <a href="../social_contracts/subscription.md#social_contracts_subscription_ENoAccess">ENoAccess</a>);
+    <b>assert</b>!(new_recipient != @0x0, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidInput">EInvalidInput</a>);
+    <b>let</b> previous_recipient = <a href="../social_contracts/subscription.md#social_contracts_subscription_payment_recipient">payment_recipient</a>(service);
+    <b>assert</b>!(previous_recipient != new_recipient, <a href="../social_contracts/subscription.md#social_contracts_subscription_EInvalidInput">EInvalidInput</a>);
+    <b>if</b> (dynamic_field::exists_(&service.id, <a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientKey">ServicePaymentRecipientKey</a> {})) {
+        *dynamic_field::borrow_mut&lt;<a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientKey">ServicePaymentRecipientKey</a>, <b>address</b>&gt;(
+            &<b>mut</b> service.id,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientKey">ServicePaymentRecipientKey</a> {},
+        ) = new_recipient;
+    } <b>else</b> {
+        dynamic_field::add(
+            &<b>mut</b> service.id,
+            <a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientKey">ServicePaymentRecipientKey</a> {},
+            new_recipient,
+        );
+    };
+    event::emit(<a href="../social_contracts/subscription.md#social_contracts_subscription_ServicePaymentRecipientUpdatedEvent">ServicePaymentRecipientUpdatedEvent</a> {
+        service_id: object::id(service),
+        previous_recipient,
+        new_recipient,
+        updated_by: sender,
+        timestamp: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 

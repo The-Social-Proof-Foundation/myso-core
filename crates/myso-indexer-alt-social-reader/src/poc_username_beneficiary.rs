@@ -100,6 +100,32 @@ pub async fn is_username_available_for_registration(
     Ok(detail.available)
 }
 
+/// Beneficiaries claimed to `wallet` (the creator's recipient wallet, `linked_wallet`).
+/// Never keyed on `claimed_by` (the oracle) or the current username, so vault access survives
+/// adopting or releasing a reserved username.
+pub async fn list_by_linked_wallet(
+    conn: &mut Connection<'_>,
+    wallet: &str,
+    metrics: &DbReaderMetrics,
+) -> anyhow::Result<Vec<PocUsernameBeneficiaryRow>> {
+    use diesel::dsl::sql;
+    use diesel::sql_types::{Bool, Text};
+    metrics.requests_received.inc();
+    let _guard = metrics.latency.start_timer();
+    let rows = poc_username_beneficiaries::table
+        .filter(
+            sql::<Bool>("LOWER(linked_wallet) = LOWER(")
+                .bind::<Text, _>(wallet.to_string())
+                .sql(")"),
+        )
+        .order(poc_username_beneficiaries::claimed_at_ms.desc())
+        .select(PocUsernameBeneficiaryRow::as_select())
+        .load(conn)
+        .await?;
+    metrics.requests_succeeded.inc();
+    Ok(rows)
+}
+
 pub async fn list_username_beneficiaries(
     conn: &mut Connection<'_>,
     status: Option<i16>,

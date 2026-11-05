@@ -21,6 +21,8 @@ pub const EVENT_TYPE_CLAIMED: &str = "claimed";
 pub const EVENT_TYPE_ENDED: &str = "ended";
 pub const EVENT_TYPE_CONFLICT: &str = "conflict";
 pub const EVENT_TYPE_CREATOR_IDENTITY_WALLET_LINKED: &str = "creator_identity_wallet_linked";
+pub const EVENT_TYPE_RESERVED_USERNAME_ADOPTED: &str = "reserved_username_adopted";
+pub const EVENT_TYPE_RESERVED_USERNAME_RELEASED: &str = "reserved_username_released";
 
 pub const VAULT_CLAIM_KIND_STANDARD: &str = "standard";
 pub const VAULT_CLAIM_KIND_JOIN_REFERRAL: &str = "join_referral";
@@ -50,6 +52,10 @@ pub struct NewPocUsernameBeneficiary {
     pub join_referral_paid_at_ms: Option<i64>,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+    /// Creator recipient wallet recorded at claim (vault access keys off this, never the oracle).
+    pub linked_wallet: Option<String>,
+    /// Wallet the username is reserved for (claim found an existing profile) until adopt/release.
+    pub reserved_for: Option<String>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -77,6 +83,10 @@ pub struct PocUsernameBeneficiaryRow {
     pub join_referral_paid_at_ms: Option<i64>,
     pub transaction_id: String,
     pub time: chrono::DateTime<chrono::Utc>,
+    /// Creator recipient wallet recorded at claim (vault access keys off this, never the oracle).
+    pub linked_wallet: Option<String>,
+    /// Wallet the username is reserved for (claim found an existing profile) until adopt/release.
+    pub reserved_for: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]

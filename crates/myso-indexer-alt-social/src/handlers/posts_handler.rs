@@ -303,11 +303,25 @@ pub enum PostRow {
     PocUsernameBeneficiaryClaimed {
         beneficiary_id: String,
         username: String,
-        profile_id: String,
+        /// Set when the claim created the creator's profile.
+        profile_id: Option<String>,
+        /// The PoC oracle that sent the claim.
         claimed_by: String,
-        wallet: String,
+        /// Creator recipient wallet (vault access keys off this).
+        linked_wallet: String,
+        /// Wallet the username is reserved for when it already had a profile.
+        reserved_for: Option<String>,
         oracle_evidence_hash: String,
         claimed_at_ms: i64,
+        transaction_id: String,
+    },
+    PocReservedUsernameAdopted {
+        beneficiary_id: String,
+        profile_id: String,
+        transaction_id: String,
+    },
+    PocReservedUsernameReleased {
+        beneficiary_id: String,
         transaction_id: String,
     },
     PocUsernameBeneficiaryEnded {
@@ -750,7 +764,8 @@ impl PostRow {
                 username,
                 profile_id,
                 claimed_by,
-                wallet,
+                linked_wallet,
+                reserved_for,
                 oracle_evidence_hash,
                 claimed_at_ms,
                 transaction_id,
@@ -759,9 +774,26 @@ impl PostRow {
                 username,
                 profile_id,
                 claimed_by,
-                wallet,
+                linked_wallet,
+                reserved_for,
                 oracle_evidence_hash,
                 claimed_at_ms,
+                transaction_id,
+            }),
+            SocialEventRow::PocReservedUsernameAdopted {
+                beneficiary_id,
+                profile_id,
+                transaction_id,
+            } => Some(PostRow::PocReservedUsernameAdopted {
+                beneficiary_id,
+                profile_id,
+                transaction_id,
+            }),
+            SocialEventRow::PocReservedUsernameReleased {
+                beneficiary_id,
+                transaction_id,
+            } => Some(PostRow::PocReservedUsernameReleased {
+                beneficiary_id,
                 transaction_id,
             }),
             SocialEventRow::PocUsernameBeneficiaryEnded {
@@ -2460,26 +2492,59 @@ impl Handler for PostsHandler {
                     beneficiary_id,
                     profile_id,
                     claimed_by,
+                    linked_wallet,
+                    reserved_for,
                     oracle_evidence_hash,
                     claimed_at_ms,
                     transaction_id,
                     ..
                 } => {
-                    use diesel::sql_types::Int2;
+                    use diesel::sql_types::{Int2, Nullable};
                     use myso_indexer_alt_social_schema::models::USERNAME_BENEFICIARY_STATUS_CLAIMED;
                     let update_sql = "UPDATE poc_username_beneficiaries SET status = $2, claimed_profile_id = $3, claimed_by = $4, \
-                        oracle_evidence_hash = $5, claimed_at_ms = $6, transaction_id = $7, time = NOW() \
+                        oracle_evidence_hash = $5, claimed_at_ms = $6, transaction_id = $7, linked_wallet = $8, \
+                        reserved_for = $9, time = NOW() \
                         WHERE beneficiary_id = $1";
                     total += diesel::sql_query(update_sql)
                         .bind::<Text, _>(beneficiary_id)
                         .bind::<Int2, _>(USERNAME_BENEFICIARY_STATUS_CLAIMED)
-                        .bind::<Text, _>(profile_id)
+                        .bind::<Nullable<Text>, _>(profile_id.as_deref())
                         .bind::<Text, _>(claimed_by)
                         .bind::<Text, _>(oracle_evidence_hash)
                         .bind::<BigInt, _>(*claimed_at_ms)
                         .bind::<Text, _>(transaction_id)
+                        .bind::<Text, _>(linked_wallet)
+                        .bind::<Nullable<Text>, _>(reserved_for.as_deref())
                         .execute(conn)
                         .await?;
+                }
+                PostRow::PocReservedUsernameAdopted {
+                    beneficiary_id,
+                    profile_id,
+                    transaction_id,
+                } => {
+                    total += diesel::sql_query(
+                        "UPDATE poc_username_beneficiaries SET claimed_profile_id = $2, reserved_for = NULL, \
+                         transaction_id = $3, time = NOW() WHERE beneficiary_id = $1",
+                    )
+                    .bind::<Text, _>(beneficiary_id)
+                    .bind::<Text, _>(profile_id)
+                    .bind::<Text, _>(transaction_id)
+                    .execute(conn)
+                    .await?;
+                }
+                PostRow::PocReservedUsernameReleased {
+                    beneficiary_id,
+                    transaction_id,
+                } => {
+                    total += diesel::sql_query(
+                        "UPDATE poc_username_beneficiaries SET reserved_for = NULL, \
+                         transaction_id = $2, time = NOW() WHERE beneficiary_id = $1",
+                    )
+                    .bind::<Text, _>(beneficiary_id)
+                    .bind::<Text, _>(transaction_id)
+                    .execute(conn)
+                    .await?;
                 }
                 PostRow::PocUsernameBeneficiaryEnded {
                     beneficiary_id,
@@ -2817,6 +2882,8 @@ mod post_row_poc_mapping_tests {
             join_referral_paid_at_ms: None,
             transaction_id: "tx".to_string(),
             time: chrono::Utc::now(),
+            linked_wallet: None,
+            reserved_for: None,
         };
         let mapped = PostRow::from_social(SocialEventRow::PocUsernameBeneficiary(row.clone()));
         assert!(

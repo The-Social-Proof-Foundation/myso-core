@@ -358,6 +358,10 @@ pub fn handle_platform_event(
         "SharedBadgeExtendedEvent" => process_shared_badge_extended_event(data, event_id),
         "SharedBadgeSelectedEvent" => process_shared_badge_selected_event(data),
         "EcosystemBadgeLedgerSelectedEvent" => process_ecosystem_badge_ledger_selected_event(data),
+        "EcosystemBadgeMintedEvent" => {
+            process_ecosystem_badge_minted_event(data, event_id, checkpoint_timestamp_ms)
+        }
+        "EcosystemBadgeBurnedEvent" => process_ecosystem_badge_burned_event(data),
         _ => None,
     }
 }
@@ -450,8 +454,93 @@ fn process_shared_badge_assigned_event(
         badge_type: common::json_field_as_i64(data.get("badge_type")).unwrap_or(0) as i16,
         transaction_id: event_id.to_string(),
         time: now,
+        badge_object_id: None,
+        badge_subject: None,
     };
     Some(vec![SocialEventRow::ProfileBadge(badge)])
+}
+
+/// `EcosystemBadgeMintedEvent`: soulbound badge minted into `owner`'s wallet. A Verified X badge
+/// carries the canonical handle in `subject`, which becomes the wallet's `x_username`.
+fn process_ecosystem_badge_minted_event(
+    data: &serde_json::Value,
+    event_id: &str,
+    checkpoint_timestamp_ms: u64,
+) -> Option<Vec<SocialEventRow>> {
+    let owner = data.get("owner")?.as_str()?.to_string();
+    let badge_object_id = data.get("badge_object_id")?.as_str()?.to_string();
+    let badge_id = data.get("badge_id")?.as_str()?.to_string();
+    let issued_at = common::json_field_as_i64(data.get("issued_at")).unwrap_or(0);
+    let issued_by = data
+        .get("issued_by")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+    let ms = common::chain_timestamp_ms(Some(issued_at), checkpoint_timestamp_ms);
+    let subject = data
+        .get("subject")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let badge = NewProfileBadge {
+        profile_id: None,
+        wallet_address: Some(owner.clone()),
+        badge_kind: "ecosystem".to_string(),
+        expires_at: None,
+        badge_id,
+        badge_name: data
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        badge_description: data
+            .get("description")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        badge_media_url: data
+            .get("media_url")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        badge_icon_url: data
+            .get("icon_url")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        platform_id: issued_by.clone(),
+        assigned_by: issued_by,
+        assigned_at: issued_at,
+        revoked: false,
+        revoked_at: None,
+        revoked_by: None,
+        badge_type: common::json_field_as_i64(data.get("badge_type")).unwrap_or(0) as i16,
+        transaction_id: event_id.to_string(),
+        time: common::chain_time_from_ms(ms),
+        badge_object_id: Some(badge_object_id),
+        badge_subject: subject.clone(),
+    };
+    let mut rows = vec![SocialEventRow::ProfileBadge(badge)];
+    if let Some(handle) = subject {
+        rows.push(SocialEventRow::WalletXUsernameUpdate {
+            owner_address: owner,
+            x_username: Some(handle),
+        });
+    }
+    Some(rows)
+}
+
+/// `EcosystemBadgeBurnedEvent`: the holder destroyed the badge object.
+fn process_ecosystem_badge_burned_event(data: &serde_json::Value) -> Option<Vec<SocialEventRow>> {
+    let owner = data.get("owner")?.as_str()?.to_string();
+    let mut rows = vec![SocialEventRow::EcosystemBadgeBurn {
+        badge_object_id: data.get("badge_object_id")?.as_str()?.to_string(),
+        burned_at: common::json_field_as_i64(data.get("burned_at")).unwrap_or(0),
+        owner_address: owner.clone(),
+    }];
+    if data.get("subject").and_then(|v| v.as_str()).is_some() {
+        rows.push(SocialEventRow::WalletXUsernameUpdate {
+            owner_address: owner,
+            x_username: None,
+        });
+    }
+    Some(rows)
 }
 
 fn process_shared_badge_revoked_event(
@@ -1575,5 +1664,126 @@ mod platform_deleted_tests {
         };
         assert_eq!(remove_platform_id.as_str(), platform_id);
         assert_eq!(wallet_address.as_str(), profile_id);
+    }
+}
+
+#[cfg(test)]
+mod ecosystem_badge_tests {
+    use super::handle_platform_event;
+    use crate::handlers::events::{
+        parse_event_contents, BcsEcosystemBadgeBurnedEvent, BcsEcosystemBadgeMintedEvent,
+        BcsMoveObjectId,
+    };
+    use crate::handlers::SocialEventRow;
+    use move_core_types::account_address::AccountAddress;
+
+    const CK_MS: u64 = 1_700_000_000_000;
+
+    fn addr(hex: &str) -> AccountAddress {
+        AccountAddress::from_hex_literal(hex).unwrap()
+    }
+
+    #[test]
+    fn minted_verified_x_bcs_to_wallet_badge_and_x_username() {
+        let ev = BcsEcosystemBadgeMintedEvent {
+            badge_object_id: BcsMoveObjectId::from_address(addr("0xb1")),
+            owner: addr("0xa1"),
+            badge_id: "ecosystem_badge_verified_x_account".to_string(),
+            name: "verified_x_account".to_string(),
+            description: "Verified X".to_string(),
+            media_url: "https://m".to_string(),
+            icon_url: "https://i".to_string(),
+            badge_type: 1,
+            subject: Some("alice".to_string()),
+            issued_by: addr("0xad"),
+            issued_at: 42,
+        };
+        let json = parse_event_contents(
+            "platform",
+            "EcosystemBadgeMintedEvent",
+            &bcs::to_bytes(&ev).unwrap(),
+        )
+        .expect("parse");
+        let rows =
+            handle_platform_event("EcosystemBadgeMintedEvent", &json, "tx:1", CK_MS).expect("rows");
+        assert_eq!(rows.len(), 2);
+        match &rows[0] {
+            SocialEventRow::ProfileBadge(b) => {
+                assert_eq!(b.badge_kind, "ecosystem");
+                assert!(b.profile_id.is_none());
+                assert!(b.wallet_address.as_deref().unwrap().ends_with("a1"));
+                assert!(b.badge_object_id.as_deref().unwrap().ends_with("b1"));
+                assert_eq!(b.badge_subject.as_deref(), Some("alice"));
+                assert_eq!(b.badge_id, "ecosystem_badge_verified_x_account");
+            }
+            _ => panic!("expected ProfileBadge"),
+        }
+        match &rows[1] {
+            SocialEventRow::WalletXUsernameUpdate { x_username, .. } => {
+                assert_eq!(x_username.as_deref(), Some("alice"));
+            }
+            _ => panic!("expected WalletXUsernameUpdate"),
+        }
+    }
+
+    #[test]
+    fn minted_plain_badge_has_no_x_username_row() {
+        let ev = BcsEcosystemBadgeMintedEvent {
+            badge_object_id: BcsMoveObjectId::from_address(addr("0xb2")),
+            owner: addr("0xa1"),
+            badge_id: "ecosystem_badge_early_adopter".to_string(),
+            name: "early_adopter".to_string(),
+            description: String::new(),
+            media_url: "https://m".to_string(),
+            icon_url: "https://i".to_string(),
+            badge_type: 2,
+            subject: None,
+            issued_by: addr("0xad"),
+            issued_at: 42,
+        };
+        let json = parse_event_contents(
+            "platform",
+            "EcosystemBadgeMintedEvent",
+            &bcs::to_bytes(&ev).unwrap(),
+        )
+        .expect("parse");
+        let rows =
+            handle_platform_event("EcosystemBadgeMintedEvent", &json, "tx:2", CK_MS).expect("rows");
+        assert_eq!(rows.len(), 1);
+    }
+
+    #[test]
+    fn burned_verified_x_revokes_by_object_and_clears_x_username() {
+        let ev = BcsEcosystemBadgeBurnedEvent {
+            badge_object_id: BcsMoveObjectId::from_address(addr("0xb1")),
+            owner: addr("0xa1"),
+            badge_id: "ecosystem_badge_verified_x_account".to_string(),
+            subject: Some("alice".to_string()),
+            burned_at: 99,
+        };
+        let json = parse_event_contents(
+            "platform",
+            "EcosystemBadgeBurnedEvent",
+            &bcs::to_bytes(&ev).unwrap(),
+        )
+        .expect("parse");
+        let rows =
+            handle_platform_event("EcosystemBadgeBurnedEvent", &json, "tx:3", CK_MS).expect("rows");
+        assert_eq!(rows.len(), 2);
+        match &rows[0] {
+            SocialEventRow::EcosystemBadgeBurn {
+                badge_object_id,
+                burned_at,
+                ..
+            } => {
+                assert!(badge_object_id.ends_with("b1"));
+                assert_eq!(*burned_at, 99);
+            }
+            _ => panic!("expected EcosystemBadgeBurn"),
+        }
+        assert!(matches!(
+            &rows[1],
+            SocialEventRow::WalletXUsernameUpdate { x_username: None, .. }
+        ));
     }
 }

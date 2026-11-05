@@ -109,6 +109,7 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `distribute_reservation_fees_no_poc_with_platform`](#social_contracts_social_proof_tokens_distribute_reservation_fees_no_poc_with_platform)
 -  [Function `begin_creator_fee_settlement`](#social_contracts_social_proof_tokens_begin_creator_fee_settlement)
 -  [Function `settle_creator_fee_vault`](#social_contracts_social_proof_tokens_settle_creator_fee_vault)
+-  [Function `settle_creator_fee_vault_public`](#social_contracts_social_proof_tokens_settle_creator_fee_vault_public)
 -  [Function `finish_creator_fee_settlement`](#social_contracts_social_proof_tokens_finish_creator_fee_settlement)
 -  [Function `buy_tokens`](#social_contracts_social_proof_tokens_buy_tokens)
 -  [Function `buy_tokens_with_vault_routing`](#social_contracts_social_proof_tokens_buy_tokens_with_vault_routing)
@@ -125,6 +126,7 @@ plus optional sub-token nano remainder into the <code>u64</code> nano-SPT values
 -  [Function `buy_more_tokens_with_platform_impl`](#social_contracts_social_proof_tokens_buy_more_tokens_with_platform_impl)
 -  [Function `sell_tokens`](#social_contracts_social_proof_tokens_sell_tokens)
 -  [Function `sell_tokens_with_vault_routing`](#social_contracts_social_proof_tokens_sell_tokens_with_vault_routing)
+-  [Function `sell_tokens_with_vault_routing_min`](#social_contracts_social_proof_tokens_sell_tokens_with_vault_routing_min)
 -  [Function `sell_tokens_impl`](#social_contracts_social_proof_tokens_sell_tokens_impl)
 -  [Function `sell_tokens_with_platform`](#social_contracts_social_proof_tokens_sell_tokens_with_platform)
 -  [Function `sell_tokens_with_platform_with_vault_routing`](#social_contracts_social_proof_tokens_sell_tokens_with_platform_with_vault_routing)
@@ -6598,6 +6600,39 @@ aborts; deposit events retain the originating post id for the social indexer.
 
 </details>
 
+<a name="social_contracts_social_proof_tokens_settle_creator_fee_vault_public"></a>
+
+## Function `settle_creator_fee_vault_public`
+
+Public PTB adapter for agents and third-party trading clients. The settlement
+stays linear and must still be consumed by <code><a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_finish_creator_fee_settlement">finish_creator_fee_settlement</a></code> in
+the same transaction; this only exposes the package settlement step.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_settle_creator_fee_vault_public">settle_creator_fee_vault_public</a>(settlement: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_CreatorFeeSettlement">social_contracts::social_proof_tokens::CreatorFeeSettlement</a>, min_deposit: u64, vault: &<b>mut</b> <a href="../social_contracts/proof_of_creativity.md#social_contracts_poc_vault_PoCBeneficiaryVault">social_contracts::poc_vault::PoCBeneficiaryVault</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_settle_creator_fee_vault_public">settle_creator_fee_vault_public</a>(
+    settlement: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_CreatorFeeSettlement">CreatorFeeSettlement</a>,
+    min_deposit: u64,
+    vault: &<b>mut</b> PoCBeneficiaryVault,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext
+) {
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_settle_creator_fee_vault">settle_creator_fee_vault</a>(settlement, min_deposit, vault, clock, ctx)
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="social_contracts_social_proof_tokens_finish_creator_fee_settlement"></a>
 
 ## Function `finish_creator_fee_settlement`
@@ -7585,6 +7620,46 @@ in the SAME programmable transaction; an unfinished receipt cannot be dropped or
     ctx: &<b>mut</b> TxContext
 ): <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_CreatorFeeSettlement">CreatorFeeSettlement</a> {
     <b>let</b> creator_payment = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sell_tokens_impl">sell_tokens_impl</a>(_registry, pool, config, treasury, profile_registry, _block_list_registry, social_token, amount, ctx);
+    <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_begin_creator_fee_settlement">begin_creator_fee_settlement</a>(pool, creator_payment, ctx)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_social_proof_tokens_sell_tokens_with_vault_routing_min"></a>
+
+## Function `sell_tokens_with_vault_routing_min`
+
+Slippage-protected vault-aware sell. <code>min_receive</code> is the minimum net MYSO
+returned after trading fees; callers still settle creator vault payouts and
+finish the linear receipt in the same programmable transaction.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sell_tokens_with_vault_routing_min">sell_tokens_with_vault_routing_min</a>(_registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">social_contracts::social_proof_tokens::TokenRegistry</a>, pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">social_contracts::social_proof_tokens::TokenPool</a>, config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">social_contracts::social_proof_tokens::SocialProofTokensConfig</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, profile_registry: &<a href="../social_contracts/profile.md#social_contracts_profile_UsernameRegistry">social_contracts::profile::UsernameRegistry</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, social_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">social_contracts::social_proof_tokens::SocialToken</a>, amount: u64, min_receive: u64, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_CreatorFeeSettlement">social_contracts::social_proof_tokens::CreatorFeeSettlement</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sell_tokens_with_vault_routing_min">sell_tokens_with_vault_routing_min</a>(
+    _registry: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenRegistry">TokenRegistry</a>,
+    pool: &<b>mut</b> <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_TokenPool">TokenPool</a>,
+    config: &<a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialProofTokensConfig">SocialProofTokensConfig</a>,
+    treasury: &EcosystemTreasury,
+    profile_registry: &UsernameRegistry,
+    block_list_registry: &BlockListRegistry,
+    social_token: <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_SocialToken">SocialToken</a>,
+    amount: u64,
+    min_receive: u64,
+    ctx: &<b>mut</b> TxContext
+): <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_CreatorFeeSettlement">CreatorFeeSettlement</a> {
+    <b>let</b> creator_payment = <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_sell_tokens_impl">sell_tokens_impl</a>(_registry, pool, config, treasury, profile_registry, block_list_registry, social_token, amount, ctx);
+    <b>assert</b>!(coin::value(&creator_payment) &gt;= min_receive, <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_ESlippageExceeded">ESlippageExceeded</a>);
     <a href="../social_contracts/social_proof_tokens.md#social_contracts_social_proof_tokens_begin_creator_fee_settlement">begin_creator_fee_settlement</a>(pool, creator_payment, ctx)
 }
 </code></pre>

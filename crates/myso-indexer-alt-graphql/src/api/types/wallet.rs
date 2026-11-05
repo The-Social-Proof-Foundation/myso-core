@@ -65,11 +65,20 @@ impl Wallet {
         let reader = reader_opt.as_ref().as_ref()?;
         let limit = limit.unwrap_or(20).min(100) as i64;
         let offset = offset.unwrap_or(0) as i64;
+        // Soulbound ecosystem badges + platform ledger grants (no profile required).
         let rows = reader
-            .get_wallet_platform_badges(&self.address, limit, offset)
+            .get_profile_badges(&self.address, limit, offset)
             .await
             .ok()?;
         Some(rows.into_iter().map(ProfileBadge::from_row).collect())
+    }
+
+    /// Verified X handle from the wallet's soulbound Verified X badge.
+    async fn x_username(&self, ctx: &Context<'_>) -> Option<String> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        reader.get_wallet_x_username(&self.address).await.ok().flatten()
     }
 
     async fn selected_badge(&self, ctx: &Context<'_>) -> Option<SelectedBadge> {

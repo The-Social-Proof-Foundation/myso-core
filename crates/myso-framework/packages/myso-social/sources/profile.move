@@ -23,7 +23,6 @@ module social_contracts::profile {
         clock::{Self, Clock}
     };
     use myso::myso::MYSO;
-    use myso::address;
 
     use social_contracts::upgrade;
     use social_contracts::memory as memory;
@@ -42,15 +41,6 @@ module social_contracts::profile {
     const EInsufficientTokens: u64 = 10;
     const EUnauthorizedOfferAction: u64 = 11;
     const EOfferBelowMinimum: u64 = 12;
-    const EBadgeNotFound: u64 = 13;
-    const EBadgeAlreadyExists: u64 = 14;
-    const ESelectedBadgeNotFound: u64 = 18;
-    const EInvalidBadgeType: u64 = 19;
-    const EBadgeNameTooLong: u64 = 20;
-    const EBadgeDescriptionTooLong: u64 = 21;
-    const EBadgeMediaUrlTooLong: u64 = 22;
-    const EBadgeIconUrlTooLong: u64 = 23;
-    const ENotEcosystemBadge: u64 = 24;
     const EInvalidStartTime: u64 = 15;
     const ENotVestingWalletOwner: u64 = 16;
     const EOverflow: u64 = 17;
@@ -65,6 +55,7 @@ module social_contracts::profile {
     const EOwnerRotationWrongRecipient: u64 = 44;
     const EOwnerRotationProfileMismatch: u64 = 45;
     const EOwnerRotationNewWalletHasProfile: u64 = 46;
+    const EReservedUsernameNoProfile: u64 = 47;
     const EUsernameProfileMismatch: u64 = 31;
     const EInvalidSchedule: u64 = 30;
     const EInvalidPieceDuration: u64 = 32;
@@ -109,12 +100,6 @@ module social_contracts::profile {
         b"foundation",
     ];
 
-    const MAX_BADGE_NAME_LENGTH: u64 = 100;
-    const MAX_BADGE_DESCRIPTION_LENGTH: u64 = 500;
-    const MAX_BADGE_MEDIA_URL_LENGTH: u64 = 2048;
-    const MAX_BADGE_ICON_URL_LENGTH: u64 = 2048;
-    const ECOSYSTEM_BADGE_PREFIX: vector<u8> = b"ecosystem_badge_";
-
     /// Admin capability for profile configuration
     public struct ProfileAdminCap has key, store {
         id: UID,
@@ -153,7 +138,7 @@ module social_contracts::profile {
         id: UID,
     }
 
-    /// Admin capability for assigning ecosystem badges to user profiles
+    /// Admin capability for minting soulbound ecosystem badges (see `ecosystem_badge`)
     public struct EcosystemBadgeAdminCap has key, store {
         id: UID,
     }
@@ -232,21 +217,14 @@ module social_contracts::profile {
         created_at: u64,
         /// Profile owner address
         owner: address,
-        /// X/Twitter username as encrypted string (optional)
-        x_username: Option<String>,
         /// Profile website URL (optional)
         website: Option<String>,
         /// Birthdate as opaque string, e.g. ISO-8601 (optional)
         birthdate: Option<String>,
         /// Location label (optional)
         location: Option<String>,
-        /// Collection of badges assigned to the profile
-        badges: vector<ProfileBadge>,
-        /// Badge ID of the selected/primary badge to display (optional)
-        /// If None, the first badge in the badges vector should be displayed
-        selected_badge_id: Option<String>,
-        /// Badge ID of the selected ecosystem badge to display (optional)
-        /// If None, the first ecosystem badge in the badges vector should be displayed
+        /// `badge_id` of the soulbound `ecosystem_badge::EcosystemBadge` the owner chose to display.
+        /// Set only via `ecosystem_badge::select_on_profile` (holding the badge proves ownership).
         selected_ecosystem_badge_id: Option<String>,
         /// Shared [`memory::MemoryAccount`] object id when linked (`None` until [`profile::ensure_memory_account`] or legacy profiles).
         memory_account_id: Option<ID>,
@@ -254,44 +232,6 @@ module social_contracts::profile {
         ai_credit_balance_id: Option<ID>,
         /// Version for upgrades
         version: u64,
-    }
-
-    /// Profile Badge that can be assigned to profiles by platform admins/moderators
-    /// These badges cannot be transferred, sold, or copied and stay with the profile
-    public struct ProfileBadge has store, drop {
-        /// Unique identifier for the badge (platform ID + badge name)
-        badge_id: String,
-        /// Name of the badge
-        name: String,
-        /// Description of what the badge represents
-        description: String,
-        /// Media URL for the badge (can be image, video, etc.)
-        media_url: String,
-        /// Icon URL for the badge (small icon displayed next to username)
-        icon_url: String,
-        /// ID of the platform that issued the badge
-        platform_id: address,
-        /// Timestamp when the badge was issued
-        issued_at: u64,
-        /// Address of the admin/moderator who issued the badge
-        issued_by: address,
-        /// Badge type/tier (1-100), allows for badge hierarchy
-        badge_type: u8,
-    }
-
-    /// Read-only badge data returned by query functions
-    /// This struct has copy ability to allow returning badge information,
-    /// but the actual ProfileBadge cannot be copied or transferred
-    public struct BadgeData has copy, drop {
-        badge_id: String,
-        name: String,
-        description: String,
-        media_url: String,
-        icon_url: String,
-        platform_id: address,
-        issued_at: u64,
-        issued_by: address,
-        badge_type: u8,
     }
 
     /// One schedule piece: lump cliff unlock or continuous curved vesting.
@@ -322,44 +262,6 @@ module social_contracts::profile {
 
     // === Events ===
 
-    /// Event emitted when a badge is assigned to a profile
-    public struct BadgeAssignedEvent has copy, drop {
-        /// ID of the profile receiving the badge
-        profile_id: address,
-        /// Badge identifier
-        badge_id: String,
-        /// Badge name
-        name: String,
-        /// Description of what the badge represents
-        description: String,
-        /// Media URL for the badge (can be image, video, etc.)
-        media_url: String,
-        /// Icon URL for the badge (small icon displayed next to username)
-        icon_url: String,
-        /// Platform ID that issued the badge
-        platform_id: address,
-        /// Admin/moderator who assigned the badge
-        assigned_by: address,
-        /// Timestamp when assigned
-        assigned_at: u64,
-        /// Badge type/tier
-        badge_type: u8,
-    }
-
-    /// Event emitted when a badge is revoked from a profile
-    public struct BadgeRevokedEvent has copy, drop {
-        /// ID of the profile losing the badge
-        profile_id: address,
-        /// Badge identifier
-        badge_id: String,
-        /// Platform ID that issued the badge
-        platform_id: address,
-        /// Admin/moderator who revoked the badge
-        revoked_by: address,
-        /// Timestamp when revoked
-        revoked_at: u64,
-    }
-
     /// Event emitted when a profile owner selects a badge to display
     public struct BadgeSelectedEvent has copy, drop {
         /// ID of the profile
@@ -377,20 +279,6 @@ module social_contracts::profile {
         profile_id: address,
         cleared_by: address,
         cleared_at: u64,
-    }
-
-    /// Event emitted when a profile owner removes their own badge
-    public struct BadgeRemovedEvent has copy, drop {
-        /// ID of the profile
-        profile_id: address,
-        /// Badge identifier that was removed
-        badge_id: String,
-        /// Platform ID that issued the badge
-        platform_id: address,
-        /// Owner who removed the badge
-        removed_by: address,
-        /// Timestamp when removed
-        removed_at: u64,
     }
 
     /// Emitted when profile media references a MediaAsset (usage graph).
@@ -439,7 +327,6 @@ module social_contracts::profile {
         cover_photo: Option<String>,
         owner: address,
         updated_at: u64,
-        x_username: Option<String>,
         website: Option<String>,
         birthdate: Option<String>,
         location: Option<String>,
@@ -474,15 +361,6 @@ module social_contracts::profile {
         username: String,
         reason: u8,
         released_by: address,
-    }
-
-    /// X username set or cleared by an EcosystemBadgeAdminCap holder (audit trail).
-    public struct ProfileXUsernameUpdatedEvent has copy, drop {
-        profile_id: address,
-        owner: address,
-        x_username: Option<String>,
-        updated_by: address,
-        updated_at: u64,
     }
 
     /// Emitted when a username listing is created on the marketplace
@@ -779,39 +657,6 @@ module social_contracts::profile {
         string::utf8(ascii::into_bytes(ascii_str))
     }
 
-    public fun is_ecosystem_badge_id(badge_id: &String): bool {
-        is_ecosystem_badge(badge_id)
-    }
-
-    fun is_ecosystem_badge(badge_id: &String): bool {
-        let bytes = string::as_bytes(badge_id);
-        let prefix = ECOSYSTEM_BADGE_PREFIX;
-        let prefix_len = vector::length(&prefix);
-        if (vector::length(bytes) < prefix_len) {
-            return false
-        };
-        let mut i = 0;
-        while (i < prefix_len) {
-            if (*vector::borrow(bytes, i) != *vector::borrow(&prefix, i)) {
-                return false
-            };
-            i = i + 1;
-        };
-        true
-    }
-
-    fun copy_string(s: &String): String {
-        let bytes = string::as_bytes(s);
-        let len = vector::length(bytes);
-        let mut result = vector::empty<u8>();
-        let mut i = 0;
-        while (i < len) {
-            vector::push_back(&mut result, *vector::borrow(bytes, i));
-            i = i + 1;
-        };
-        string::utf8(result)
-    }
-
     /// Canonical username for [`UsernameRegistry`] keys (package helper for PoC beneficiary flows).
     /// Lowercases ASCII `A–Z` then validates charset (`a-z`, `0-9`, `_`, `.`).
     public(package) fun canonical_registry_username_from_bytes(username: vector<u8>): String {
@@ -1002,7 +847,6 @@ module social_contracts::profile {
             cover_photo: cover_photo_event_string(profile),
             owner: profile.owner,
             updated_at: clock::timestamp_ms(clock),
-            x_username: profile.x_username,
             website: profile.website,
             birthdate: profile.birthdate,
             location: profile.location,
@@ -1082,12 +926,9 @@ module social_contracts::profile {
             cover_photo_asset_id: option::none(),
             created_at: now,
             owner,
-            x_username: option::none(),
             website: option::none(),
             birthdate: option::none(),
             location: option::none(),
-            badges: vector::empty<ProfileBadge>(),
-            selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
             memory_account_id: option::none(),
             ai_credit_balance_id: option::none(),
@@ -1190,12 +1031,9 @@ module social_contracts::profile {
             cover_photo_asset_id: option::none(),
             created_at: now,
             owner,
-            x_username: option::none(),
             website: option::none(),
             birthdate: option::none(),
             location: option::none(),
-            badges: vector::empty<ProfileBadge>(),
-            selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
             memory_account_id: option::none(),
             ai_credit_balance_id: option::none(),
@@ -1237,7 +1075,7 @@ module social_contracts::profile {
             created_at: now,
         });
 
-        transfer::share_object(profile);
+        transfer::transfer(profile, owner);
         profile_id
     }
 
@@ -1293,42 +1131,68 @@ module social_contracts::profile {
         );
     }
 
-    /// The recipient wallet completes the two-wallet migration after all registered child
-    /// references have been updated. MemoryAccount and both owner indexes change atomically.
-    public entry fun accept_owner_rotation(
+    /// The old owner completes the account-key migration after the recipient wallet updated every
+    /// manifest reference and called `memory::accept_owner_rotation`. Because profiles are owned
+    /// objects, only the current owner can hand the `Profile` over; it is passed by value.
+    ///
+    /// Atomically: MemoryAccount owner + `MemoryRegistry.accounts`, `AiCreditBalance.principal_owner`,
+    /// `UsernameRegistry.address_profiles`, `Profile.owner`, then the object moves to the new wallet.
+    /// The ecosystem badge selection is cleared — soulbound badges stay with the old wallet.
+    public entry fun complete_owner_rotation(
         username_registry: &mut UsernameRegistry,
         memory_registry: &mut memory::MemoryRegistry,
         account: &mut memory::MemoryAccount,
-        profile: &mut Profile,
+        ai_credit_balance: &mut ai_credit::AiCreditBalance,
+        mut profile: Profile,
         clock: &Clock,
         ctx: &TxContext,
     ) {
-        let new_owner = tx_context::sender(ctx);
-        let old_owner = memory::owner(account);
+        let old_owner = tx_context::sender(ctx);
+        let new_owner = memory::pending_rotation_new_owner(account);
         assert!(new_owner != old_owner, EOwnerRotationWrongRecipient);
         let profile_id = object::uid_to_address(&profile.id);
-        assert!(profile.owner == old_owner, EOwnerRotationProfileMismatch);
+        assert!(profile.owner == old_owner && memory::owner(account) == old_owner, EUnauthorized);
         assert!(memory::profile_id(account) == profile_id, EOwnerRotationProfileMismatch);
         assert!(option::is_some(&profile.memory_account_id), EOwnerRotationProfileMismatch);
         assert!(
             *option::borrow(&profile.memory_account_id) == object::id(account),
             EOwnerRotationProfileMismatch,
         );
+        assert!(option::is_some(&profile.ai_credit_balance_id), EOwnerRotationProfileMismatch);
+        assert!(
+            *option::borrow(&profile.ai_credit_balance_id) == object::id(ai_credit_balance),
+            EOwnerRotationProfileMismatch,
+        );
+        assert!(ai_credit::balance_profile_id(ai_credit_balance) == profile_id, EOwnerRotationProfileMismatch);
+        assert!(ai_credit::balance_principal_owner(ai_credit_balance) == old_owner, EOwnerRotationProfileMismatch);
         assert!(table::contains(&username_registry.address_profiles, old_owner), EUnauthorized);
         assert!(*table::borrow(&username_registry.address_profiles, old_owner) == profile_id, EOwnerRotationProfileMismatch);
         assert!(!table::contains(&username_registry.address_profiles, new_owner), EOwnerRotationNewWalletHasProfile);
 
+        // Aborts unless the recipient accepted and every manifest reference was updated.
         memory::complete_owner_rotation(memory_registry, account, clock, ctx);
+        ai_credit::set_principal_owner(ai_credit_balance, new_owner);
         let _old_profile = table::remove(&mut username_registry.address_profiles, old_owner);
         table::add(&mut username_registry.address_profiles, new_owner, profile_id);
         profile.owner = new_owner;
+
+        let now = clock::timestamp_ms(clock);
+        if (option::is_some(&profile.selected_ecosystem_badge_id)) {
+            profile.selected_ecosystem_badge_id = option::none();
+            event::emit(EcosystemBadgeSelectionClearedEvent {
+                profile_id,
+                cleared_by: old_owner,
+                cleared_at: now,
+            });
+        };
         event::emit(ProfileOwnerRotatedEvent {
             profile_id,
             memory_account_id: object::id(account),
             old_owner,
             new_owner,
-            timestamp_ms: clock::timestamp_ms(clock),
+            timestamp_ms: now,
         });
+        transfer::transfer(profile, new_owner);
     }
 
     /// Only the profile owner can update profile information
@@ -1399,9 +1263,6 @@ module social_contracts::profile {
         profile.website = option::none();
         profile.birthdate = option::none();
         profile.location = option::none();
-        profile.x_username = option::none();
-        profile.badges = vector::empty();
-        profile.selected_badge_id = option::none();
         profile.selected_ecosystem_badge_id = option::none();
 
         event::emit(DeletedProfileEvent {
@@ -2204,86 +2065,6 @@ module social_contracts::profile {
         }
     }
 
-    /// Assign an ecosystem badge to a profile - called by EcosystemBadgeAdminCap holder
-    public entry fun assign_ecosystem_badge(
-        _: &EcosystemBadgeAdminCap,
-        profile: &mut Profile,
-        badge_name: String,
-        badge_description: String,
-        badge_media_url: String,
-        badge_icon_url: String,
-        badge_type: u8,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        assert!(badge_type >= 1 && badge_type <= 100, EInvalidBadgeType);
-        assert!(string::length(&badge_name) > 0 && string::length(&badge_name) <= MAX_BADGE_NAME_LENGTH, EBadgeNameTooLong);
-        assert!(string::length(&badge_description) <= MAX_BADGE_DESCRIPTION_LENGTH, EBadgeDescriptionTooLong);
-        assert!(string::length(&badge_media_url) > 0 && string::length(&badge_media_url) <= MAX_BADGE_MEDIA_URL_LENGTH, EBadgeMediaUrlTooLong);
-        assert!(string::length(&badge_icon_url) > 0 && string::length(&badge_icon_url) <= MAX_BADGE_ICON_URL_LENGTH, EBadgeIconUrlTooLong);
-
-        let issuer = tx_context::sender(ctx);
-        let now = clock::timestamp_ms(clock);
-
-        let badge_name_for_id = copy_string(&badge_name);
-        let mut badge_id = string::utf8(ECOSYSTEM_BADGE_PREFIX);
-        let issuer_str = address::to_string(issuer);
-        string::append(&mut badge_id, issuer_str);
-        string::append(&mut badge_id, string::utf8(b"_"));
-        string::append(&mut badge_id, badge_name_for_id);
-
-        let badge_id_for_select = copy_string(&badge_id);
-
-        add_badge_to_profile(
-            profile,
-            badge_id,
-            badge_name,
-            badge_description,
-            badge_media_url,
-            badge_icon_url,
-            issuer,
-            now,
-            issuer,
-            badge_type
-        );
-
-        if (option::is_none(&profile.selected_ecosystem_badge_id)) {
-            profile.selected_ecosystem_badge_id = option::some(badge_id_for_select);
-        };
-    }
-
-    /// Set or clear a profile X username — only callable by an EcosystemBadgeAdminCap holder.
-    public entry fun admin_set_profile_x_username(
-        _: &EcosystemBadgeAdminCap,
-        profile: &mut Profile,
-        new_x_username: Option<String>,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        profile.x_username = new_x_username;
-        let now = clock::timestamp_ms(clock);
-        event::emit(ProfileXUsernameUpdatedEvent {
-            profile_id: object::uid_to_address(&profile.id),
-            owner: profile.owner,
-            x_username: profile.x_username,
-            updated_by: tx_context::sender(ctx),
-            updated_at: now,
-        });
-    }
-
-    /// Revoke an ecosystem badge from a profile - called by EcosystemBadgeAdminCap holder
-    public entry fun revoke_ecosystem_badge(
-        _: &EcosystemBadgeAdminCap,
-        profile: &mut Profile,
-        badge_id: String,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let revoker = tx_context::sender(ctx);
-        let now = clock::timestamp_ms(clock);
-        remove_badge_from_profile(profile, &badge_id, revoker, revoker, now);
-    }
-
     // === Username Admin (registry-only; no Profile object required) ===
 
     /// Assign an unclaimed username to one profile. If that profile already owns a username,
@@ -2322,6 +2103,42 @@ module social_contracts::profile {
             reason_code,
             prior_username,
         });
+    }
+
+    /// PoC: move a reserved beneficiary username onto `profile_id` (owner-signed adopt flow).
+    /// Frees the profile's current username (if any), releases the beneficiary lock and assigns.
+    /// Registry-only — the owned `Profile` object is not needed.
+    public(package) fun reassign_username_for_beneficiary(
+        registry: &mut UsernameRegistry,
+        profile_id: address,
+        username: String,
+        adopted_by: address,
+    ): Option<String> {
+        assert!(registry.version == upgrade::current_version(), 1);
+        let canonical = normalize_username(&username);
+        unlock_username_internal(registry, canonical);
+        let prior_username = if (table::contains(&registry.profile_username, profile_id)) {
+            let old_username = *table::borrow(&registry.profile_username, profile_id);
+            revoke_username(registry, old_username);
+            option::some(old_username)
+        } else {
+            option::none()
+        };
+        assign_username(registry, canonical, profile_id);
+        event::emit(UsernameReassignedEvent {
+            username: canonical,
+            profile_id,
+            admin: adopted_by,
+            reason_code: USERNAME_LOCK_BENEFICIARY,
+            prior_username,
+        });
+        prior_username
+    }
+
+    /// Profile id registered for `owner`, aborting when the wallet has no profile.
+    public(package) fun profile_id_for_owner(registry: &UsernameRegistry, owner: address): address {
+        assert!(table::contains(&registry.address_profiles, owner), EReservedUsernameNoProfile);
+        *table::borrow(&registry.address_profiles, owner)
     }
 
     // Accessor for version field
@@ -2442,12 +2259,9 @@ module social_contracts::profile {
             cover_photo_asset_id: option::none(),
             created_at: epoch,
             owner,
-            x_username: option::none(),
             website: option::none(),
             birthdate: option::none(),
             location: option::none(),
-            badges: vector::empty<ProfileBadge>(),
-            selected_badge_id: option::none(),
             selected_ecosystem_badge_id: option::none(),
             memory_account_id: option::none(),
             ai_credit_balance_id: option::none(),
@@ -2474,552 +2288,27 @@ module social_contracts::profile {
         &profile.ai_credit_balance_id
     }
 
-    /// X/Twitter username on the profile (set or cleared only via admin entry).
-    public fun x_username(profile: &Profile): &Option<String> {
-        &profile.x_username
-    }
-
-    /// Adds a badge to a profile - called by platform module
-    /// This function trusts the caller has done authorization checks
-    public(package) fun add_badge_to_profile(
+    /// Record the selected ecosystem badge. Package-only: `ecosystem_badge::select_on_profile`
+    /// checks the caller owns the profile and passes the soulbound badge object as proof.
+    public(package) fun set_selected_ecosystem_badge_id(
         profile: &mut Profile,
         badge_id: String,
-        badge_name: String,
-        badge_description: String,
-        badge_media_url: String,
-        badge_icon_url: String,
-        platform_id: address,
-        timestamp: u64,
-        issuer: address,
-        badge_type: u8
+        selected_by: address,
+        selected_at: u64,
     ) {
-        // Create the new badge
-        let badge = ProfileBadge {
-            badge_id: badge_id,
-            name: badge_name,
-            description: badge_description,
-            media_url: badge_media_url,
-            icon_url: badge_icon_url,
-            platform_id,
-            issued_at: timestamp,
-            issued_by: issuer,
-            badge_type,
-        };
-        
-        // Check if badge with same ID already exists
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        while (i < len) {
-            let existing_badge = vector::borrow(&profile.badges, i);
-            if (string::as_bytes(&existing_badge.badge_id) == string::as_bytes(&badge_id)) {
-                abort EBadgeAlreadyExists
-            };
-            i = i + 1;
-        };
-        
-        // Add the badge to the profile
-        vector::push_back(&mut profile.badges, badge);
-        
-        // If no badge is currently selected and this is the first badge, auto-select it
-        if (option::is_none(&profile.selected_badge_id) && vector::length(&profile.badges) == 1) {
-            profile.selected_badge_id = option::some(badge_id);
-        };
-        
-        // Emit badge assigned event
-        event::emit(BadgeAssignedEvent {
-            profile_id: object::uid_to_address(&profile.id),
-            badge_id: badge_id,
-            name: badge_name,
-            description: badge_description,
-            media_url: badge_media_url,
-            icon_url: badge_icon_url,
-            platform_id,
-            assigned_by: issuer,
-            assigned_at: timestamp,
-            badge_type,
-        });
-    }
-    
-    /// Removes a badge from a profile - called by platform module
-    /// This function trusts the caller has done authorization checks
-    public(package) fun remove_badge_from_profile(
-        profile: &mut Profile,
-        badge_id: &String,
-        platform_id: address,
-        revoker: address,
-        timestamp: u64
-    ) {
-        // Search for and remove the badge with the given ID
-        let mut found = false;
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        
-        while (i < len) {
-            let badge = vector::borrow(&profile.badges, i);
-            if (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
-                // Ensure badge was issued by this platform
-                assert!(badge.platform_id == platform_id, EUnauthorized);
-                
-                // Remove the badge at this index
-                vector::remove(&mut profile.badges, i);
-                found = true;
-                
-                // If the removed badge was the selected badge, clear the selection
-                if (option::is_some(&profile.selected_badge_id)) {
-                    let selected_id = option::borrow(&profile.selected_badge_id);
-                    if (string::as_bytes(selected_id) == string::as_bytes(badge_id)) {
-                        profile.selected_badge_id = option::none();
-                    };
-                };
-                if (option::is_some(&profile.selected_ecosystem_badge_id) && is_ecosystem_badge(badge_id)) {
-                    let selected_id = option::borrow(&profile.selected_ecosystem_badge_id);
-                    if (string::as_bytes(selected_id) == string::as_bytes(badge_id)) {
-                        profile.selected_ecosystem_badge_id = option::none();
-                    };
-                };
-                
-                // Emit badge revoked event
-                event::emit(BadgeRevokedEvent {
-                    profile_id: object::uid_to_address(&profile.id),
-                    badge_id: *badge_id,
-                    platform_id,
-                    revoked_by: revoker,
-                    revoked_at: timestamp,
-                });
-                
-                break
-            };
-            i = i + 1;
-        };
-        
-        // Make sure we found and removed the badge
-        assert!(found, EBadgeNotFound);
-    }
-
-    /// Remove a badge from a profile - can be called by profile owner
-    /// Users can delete badges they don't want to display
-    /// Note: Badges are tied to profile identity and cannot be transferred separately
-    public entry fun remove_own_badge(
-        profile: &mut Profile,
-        badge_id: String,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        
-        // Verify sender is the profile owner
-        assert!(profile.owner == sender, EUnauthorized);
-        
-        // Search for and remove the badge with the given ID
-        let mut found = false;
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        
-        while (i < len) {
-            let badge = vector::borrow(&profile.badges, i);
-            if (string::as_bytes(&badge.badge_id) == string::as_bytes(&badge_id)) {
-                // Get platform_id before removing (needed for event)
-                let platform_id = badge.platform_id;
-                
-                // Remove the badge at this index
-                vector::remove(&mut profile.badges, i);
-                found = true;
-                
-                // If the removed badge was the selected badge, clear the selection
-                if (option::is_some(&profile.selected_badge_id)) {
-                    let selected_id = option::borrow(&profile.selected_badge_id);
-                    if (string::as_bytes(selected_id) == string::as_bytes(&badge_id)) {
-                        profile.selected_badge_id = option::none();
-                    };
-                };
-                if (option::is_some(&profile.selected_ecosystem_badge_id) && is_ecosystem_badge(&badge_id)) {
-                    let selected_id = option::borrow(&profile.selected_ecosystem_badge_id);
-                    if (string::as_bytes(selected_id) == string::as_bytes(&badge_id)) {
-                        profile.selected_ecosystem_badge_id = option::none();
-                    };
-                };
-                
-                // Emit badge removed event (user-initiated, different from revoked)
-                event::emit(BadgeRemovedEvent {
-                    profile_id: object::uid_to_address(&profile.id),
-                    badge_id: badge_id,
-                    platform_id,
-                    removed_by: sender,
-                    removed_at: clock::timestamp_ms(clock),
-                });
-                
-                break
-            };
-            i = i + 1;
-        };
-        
-        // Make sure we found and removed the badge
-        assert!(found, EBadgeNotFound);
-    }
-
-    /// Get all badges associated with a profile
-    /// Returns vector of BadgeData for querying badge information
-    /// Note: Badges are tied to this profile and cannot be transferred to other profiles
-    public fun get_profile_badges(profile: &Profile): vector<BadgeData> {
-        let mut result = vector::empty<BadgeData>();
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        
-        while (i < len) {
-            let badge = vector::borrow(&profile.badges, i);
-            vector::push_back(&mut result, BadgeData {
-                badge_id: badge.badge_id,
-                name: badge.name,
-                description: badge.description,
-                media_url: badge.media_url,
-                icon_url: badge.icon_url,
-                platform_id: badge.platform_id,
-                issued_at: badge.issued_at,
-                issued_by: badge.issued_by,
-                badge_type: badge.badge_type,
-            });
-            i = i + 1;
-        };
-        
-        result
-    }
-    
-    /// Check if a profile has a specific badge
-    public fun has_badge(profile: &Profile, badge_id: &String): bool {
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        
-        while (i < len) {
-            let badge = vector::borrow(&profile.badges, i);
-            if (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
-                return true
-            };
-            i = i + 1;
-        };
-        
-        false
-    }
-    
-    /// Get a specific badge from a profile by badge ID
-    /// Returns BadgeData for querying badge information
-    public fun get_badge(profile: &Profile, badge_id: &String): Option<BadgeData> {
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        
-        while (i < len) {
-            let badge = vector::borrow(&profile.badges, i);
-            if (string::as_bytes(&badge.badge_id) == string::as_bytes(badge_id)) {
-                return option::some(BadgeData {
-                    badge_id: badge.badge_id,
-                    name: badge.name,
-                    description: badge.description,
-                    media_url: badge.media_url,
-                    icon_url: badge.icon_url,
-                    platform_id: badge.platform_id,
-                    issued_at: badge.issued_at,
-                    issued_by: badge.issued_by,
-                    badge_type: badge.badge_type,
-                })
-            };
-            i = i + 1;
-        };
-        
-        option::none()
-    }
-    
-    /// Get badges issued by a specific platform
-    /// Returns vector of BadgeData for querying badge information
-    public fun get_platform_badges(profile: &Profile, platform_id: address): vector<BadgeData> {
-        let mut result = vector::empty<BadgeData>();
-        
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        
-        while (i < len) {
-            let badge = vector::borrow(&profile.badges, i);
-            if (badge.platform_id == platform_id) {
-                vector::push_back(&mut result, BadgeData {
-                    badge_id: badge.badge_id,
-                    name: badge.name,
-                    description: badge.description,
-                    media_url: badge.media_url,
-                    icon_url: badge.icon_url,
-                    platform_id: badge.platform_id,
-                    issued_at: badge.issued_at,
-                    issued_by: badge.issued_by,
-                    badge_type: badge.badge_type,
-                });
-            };
-            i = i + 1;
-        };
-        
-        result
-    }
-    
-    /// Count the number of badges a profile has
-    /// Get the badge ID from a ProfileBadge
-    public fun badge_id(badge: &ProfileBadge): String {
-        badge.badge_id
-    }
-
-    // === BadgeData Accessor Functions ===
-
-    /// Get badge_id from BadgeData
-    public fun badge_data_id(data: &BadgeData): String {
-        data.badge_id
-    }
-
-    /// Get name from BadgeData
-    public fun badge_data_name(data: &BadgeData): String {
-        data.name
-    }
-
-    /// Get description from BadgeData
-    public fun badge_data_description(data: &BadgeData): String {
-        data.description
-    }
-
-    /// Get media_url from BadgeData
-    public fun badge_data_media_url(data: &BadgeData): String {
-        data.media_url
-    }
-
-    /// Get icon_url from BadgeData
-    public fun badge_data_icon_url(data: &BadgeData): String {
-        data.icon_url
-    }
-
-    /// Get platform_id from BadgeData
-    public fun badge_data_platform_id(data: &BadgeData): address {
-        data.platform_id
-    }
-
-    /// Get issued_at from BadgeData
-    public fun badge_data_issued_at(data: &BadgeData): u64 {
-        data.issued_at
-    }
-
-    /// Get issued_by from BadgeData
-    public fun badge_data_issued_by(data: &BadgeData): address {
-        data.issued_by
-    }
-
-    /// Get badge_type from BadgeData
-    public fun badge_data_badge_type(data: &BadgeData): u8 {
-        data.badge_type
-    }
-
-    public fun badge_count(profile: &Profile): u64 {
-        vector::length(&profile.badges)
-    }
-
-    /// Set the selected badge to display for a profile (owner only)
-    /// The badge must exist in the profile's badges collection
-    public entry fun set_selected_badge(
-        profile: &mut Profile,
-        badge_id: String,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        
-        // Verify sender is the profile owner
-        assert!(profile.owner == sender, EUnauthorized);
-        
-        // Verify the badge exists in the profile's badges
-        let mut badge_exists = false;
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        while (i < len) {
-            let badge = vector::borrow(&profile.badges, i);
-            if (string::as_bytes(&badge.badge_id) == string::as_bytes(&badge_id)) {
-                badge_exists = true;
-                break
-            };
-            i = i + 1;
-        };
-        
-        assert!(badge_exists, ESelectedBadgeNotFound);
-        
-        // Set the selected badge
-        profile.selected_badge_id = option::some(badge_id);
-        
-        // Emit badge selected event
-        event::emit(BadgeSelectedEvent {
-            profile_id: object::uid_to_address(&profile.id),
-            badge_id: badge_id,
-            selected_by: sender,
-            selected_at: clock::timestamp_ms(clock),
-        });
-    }
-
-    /// Get the selected badge ID for a profile
-    public fun get_selected_badge_id(profile: &Profile): Option<String> {
-        profile.selected_badge_id
-    }
-
-    /// Get the badge that should be displayed for a profile
-    /// Returns the selected badge if one is set, otherwise returns the first badge
-    /// Returns None if the profile has no badges
-    /// Returns BadgeData for querying badge information
-    public fun get_display_badge(profile: &Profile): Option<BadgeData> {
-        let badge_count = vector::length(&profile.badges);
-        
-        // If no badges exist, return None
-        if (badge_count == 0) {
-            return option::none()
-        };
-        
-        // If a badge is selected, find and return it
-        if (option::is_some(&profile.selected_badge_id)) {
-            let selected_id = option::borrow(&profile.selected_badge_id);
-            let mut i = 0;
-            while (i < badge_count) {
-                let badge = vector::borrow(&profile.badges, i);
-                if (string::as_bytes(&badge.badge_id) == string::as_bytes(selected_id)) {
-                    return option::some(BadgeData {
-                        badge_id: badge.badge_id,
-                        name: badge.name,
-                        description: badge.description,
-                        media_url: badge.media_url,
-                        icon_url: badge.icon_url,
-                        platform_id: badge.platform_id,
-                        issued_at: badge.issued_at,
-                        issued_by: badge.issued_by,
-                        badge_type: badge.badge_type,
-                    })
-                };
-                i = i + 1;
-            };
-        };
-        
-        // If no badge is selected or selected badge not found, return the first badge
-        let badge = vector::borrow(&profile.badges, 0);
-        option::some(BadgeData {
-            badge_id: badge.badge_id,
-            name: badge.name,
-            description: badge.description,
-            media_url: badge.media_url,
-            icon_url: badge.icon_url,
-            platform_id: badge.platform_id,
-            issued_at: badge.issued_at,
-            issued_by: badge.issued_by,
-            badge_type: badge.badge_type,
-        })
-    }
-
-    /// Clear the selected badge (owner only). Clears both platform and ecosystem selection overrides;
-    /// display falls back to first badge per [`get_display_badge`] / [`get_display_ecosystem_badge`].
-    public entry fun clear_selected_badge(
-        profile: &mut Profile,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        
-        // Verify sender is the profile owner
-        assert!(profile.owner == sender, EUnauthorized);
-        
-        let had_platform = option::is_some(&profile.selected_badge_id);
-        let had_ecosystem = option::is_some(&profile.selected_ecosystem_badge_id);
-        profile.selected_badge_id = option::none();
-        profile.selected_ecosystem_badge_id = option::none();
-
-        if (had_platform || had_ecosystem) {
-            event::emit(BadgeSelectedEvent {
-                profile_id: object::uid_to_address(&profile.id),
-                badge_id: string::utf8(b""),
-                selected_by: sender,
-                selected_at: clock::timestamp_ms(clock),
-            });
-        };
-    }
-
-    /// Set the selected ecosystem badge to display for a profile (owner only)
-    /// The badge must exist and have the ecosystem_badge_ prefix
-    public fun set_selected_ecosystem_badge(
-        profile: &mut Profile,
-        badge_id: String,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        assert!(profile.owner == sender, EUnauthorized);
-        assert!(is_ecosystem_badge(&badge_id), ENotEcosystemBadge);
-
-        let mut badge_exists = false;
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        while (i < len) {
-            let badge = vector::borrow(&profile.badges, i);
-            if (string::as_bytes(&badge.badge_id) == string::as_bytes(&badge_id)) {
-                badge_exists = true;
-                break
-            };
-            i = i + 1;
-        };
-        assert!(badge_exists, ESelectedBadgeNotFound);
-
-        let badge_id_for_event = copy_string(&badge_id);
+        assert!(profile.owner == selected_by, EUnauthorized);
         profile.selected_ecosystem_badge_id = option::some(badge_id);
-
         event::emit(BadgeSelectedEvent {
             profile_id: object::uid_to_address(&profile.id),
-            badge_id: badge_id_for_event,
-            selected_by: sender,
-            selected_at: clock::timestamp_ms(clock),
+            badge_id,
+            selected_by,
+            selected_at,
         });
     }
 
     /// Get the selected ecosystem badge ID for a profile
     public fun get_selected_ecosystem_badge_id(profile: &Profile): Option<String> {
         profile.selected_ecosystem_badge_id
-    }
-
-    /// Get the ecosystem badge that should be displayed for a profile
-    /// Returns the selected ecosystem badge if one is set, otherwise the first ecosystem badge
-    /// Returns None if the profile has no ecosystem badges
-    public fun get_display_ecosystem_badge(profile: &Profile): Option<BadgeData> {
-        let mut ecosystem_badges = vector::empty<BadgeData>();
-        let mut i = 0;
-        let len = vector::length(&profile.badges);
-        while (i < len) {
-            let badge = vector::borrow(&profile.badges, i);
-            if (is_ecosystem_badge(&badge.badge_id)) {
-                vector::push_back(&mut ecosystem_badges, BadgeData {
-                    badge_id: badge.badge_id,
-                    name: badge.name,
-                    description: badge.description,
-                    media_url: badge.media_url,
-                    icon_url: badge.icon_url,
-                    platform_id: badge.platform_id,
-                    issued_at: badge.issued_at,
-                    issued_by: badge.issued_by,
-                    badge_type: badge.badge_type,
-                });
-            };
-            i = i + 1;
-        };
-
-        let count = vector::length(&ecosystem_badges);
-        if (count == 0) {
-            return option::none()
-        };
-
-        if (option::is_some(&profile.selected_ecosystem_badge_id)) {
-            let selected_id = option::borrow(&profile.selected_ecosystem_badge_id);
-            let mut j = 0;
-            while (j < count) {
-                let data = vector::borrow(&ecosystem_badges, j);
-                if (string::as_bytes(&data.badge_id) == string::as_bytes(selected_id)) {
-                    return option::some(*data)
-                };
-                j = j + 1;
-            };
-        };
-
-        let first = vector::borrow(&ecosystem_badges, 0);
-        option::some(*first)
     }
 
     /// Clear the selected ecosystem badge (owner only)

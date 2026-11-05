@@ -152,6 +152,12 @@ AgenticOrganization.statistics
 AgenticOrganization.agentSpendBreakdown
   => {}
 
+AgenticOrganization.treasuryBalances
+  => {}
+
+AgenticOrganization.treasuryAccess
+  => {}
+
 AgenticOrganization.roles
   => {}
 
@@ -2051,6 +2057,12 @@ JuryCase.createdAtMs
 JuryCase.finalizedAtMs
   => {}
 
+JuryCase.remainderRecipient
+  => {}
+
+JuryCase.remainderSweptMist
+  => {}
+
 LicenseTemplateTerms.templateVersionId
   => {}
 
@@ -3479,6 +3491,24 @@ OrgRoleAssignment.assignedBy
 OrgRoleAssignment.assignedAtMs
   => {}
 
+OrgTreasuryAccess.recipient
+  => {}
+
+OrgTreasuryAccess.grantedBy
+  => {}
+
+OrgTreasuryAccess.grantedAtMs
+  => {}
+
+OrgTreasuryBalance.coinType
+  => {}
+
+OrgTreasuryBalance.balance
+  => {}
+
+OrgTreasuryBalance.updatedAtMs
+  => {}
+
 OrganizationCategory.value
   => {}
 
@@ -4292,6 +4322,12 @@ PocUsernameBeneficiary.claimedProfileId
 PocUsernameBeneficiary.claimedBy
   => {}
 
+PocUsernameBeneficiary.linkedWallet
+  => {}
+
+PocUsernameBeneficiary.reservedFor
+  => {}
+
 PocUsernameBeneficiary.claimedAtMs
   => {}
 
@@ -4574,6 +4610,12 @@ Post.reactions
 Post.reposts
   => {}
 
+Post.accessPurchases
+  => {}
+
+Post.accessPurchaseCount
+  => {}
+
 Post.tips
   => {}
 
@@ -4638,6 +4680,21 @@ PostAccess.subscriptionMinTierLevel
   => {}
 
 PostAccess.mydataId
+  => {}
+
+PostAccessPurchase.postId
+  => {}
+
+PostAccessPurchase.mydataId
+  => {}
+
+PostAccessPurchase.buyer
+  => {}
+
+PostAccessPurchase.seller
+  => {}
+
+PostAccessPurchase.purchasedAtMs
   => {}
 
 PostConfig.updatedBy
@@ -5024,6 +5081,9 @@ ProfileBadge.badgeType
 ProfileBadge.badgeKind
   => {}
 
+ProfileBadge.badgeObjectId
+  => {}
+
 ProfileBadge.expiresAt
   => {}
 
@@ -5196,6 +5256,9 @@ ProfileSubscriptionService.serviceId
   => {}
 
 ProfileSubscriptionService.profileOwner
+  => {}
+
+ProfileSubscriptionService.paymentRecipient
   => {}
 
 ProfileSubscriptionService.profileId
@@ -5582,6 +5645,9 @@ Query.wallet
 Query.profile
   => {}
 
+Query.profilesByXUsernames
+  => {}
+
 Query.profiles
   => {}
 
@@ -5835,6 +5901,9 @@ Query.pocUsernameBeneficiaryByIdentity
   => {}
 
 Query.pocUsernameBeneficiaryByUsername
+  => {}
+
+Query.pocUsernameBeneficiariesByWallet
   => {}
 
 Query.pocUsernameBeneficiaryById
@@ -8079,6 +8148,9 @@ Wallet.profile
   => {}
 
 Wallet.badges
+  => {}
+
+Wallet.xUsername
   => {}
 
 Wallet.selectedBadge

@@ -60,11 +60,6 @@ pub enum ProfileRow {
         username: String,
         deleted_at: i64,
     },
-    ProfileXUsernameUpdate {
-        profile_id: String,
-        owner_address: String,
-        x_username: Option<String>,
-    },
     UsernameRegistryUpsert(NewUsernameRegistry),
     UsernameRegistryDelete {
         username: String,
@@ -104,12 +99,6 @@ pub enum ProfileRow {
     UsernameOffer(NewUsernameOffer),
     UsernameSaleFee(NewUsernameSaleFee),
     ProfileBadge(NewProfileBadge),
-    ProfileBadgeRevoke {
-        profile_id: String,
-        badge_id: String,
-        revoked_at: i64,
-        revoked_by: String,
-    },
     EcosystemTreasury(NewEcosystemTreasury),
     ProfileConfig(NewProfileConfig),
     VestingWallet(NewVestingWallet),
@@ -141,15 +130,6 @@ impl ProfileRow {
                 owner_address,
                 username,
                 deleted_at,
-            }),
-            crate::handlers::SocialEventRow::ProfileXUsernameUpdate {
-                profile_id,
-                owner_address,
-                x_username,
-            } => Some(ProfileRow::ProfileXUsernameUpdate {
-                profile_id,
-                owner_address,
-                x_username,
             }),
             crate::handlers::SocialEventRow::UsernameRegistryUpsert(row) => {
                 Some(ProfileRow::UsernameRegistryUpsert(row))
@@ -222,17 +202,6 @@ impl ProfileRow {
                 Some(ProfileRow::UsernameSaleFee(f))
             }
             crate::handlers::SocialEventRow::ProfileBadge(b) => Some(ProfileRow::ProfileBadge(b)),
-            crate::handlers::SocialEventRow::ProfileBadgeRevoke {
-                profile_id,
-                badge_id,
-                revoked_at,
-                revoked_by,
-            } => Some(ProfileRow::ProfileBadgeRevoke {
-                profile_id,
-                badge_id,
-                revoked_at,
-                revoked_by,
-            }),
             crate::handlers::SocialEventRow::EcosystemTreasury(c) => {
                 Some(ProfileRow::EcosystemTreasury(c))
             }
@@ -498,6 +467,8 @@ async fn commit_profile_insert<'a>(
         .do_nothing()
         .execute(conn)
         .await?;
+    // A Verified X badge may have been minted before this wallet created its profile.
+    total += sync_wallet_x_username(&profile.owner_address, conn).await?;
     if let Some(ref profile_id) = profile.profile_id {
         if profile.memory_account_id.is_none() {
             if let Some(account_id) = memory_accounts::table
@@ -537,6 +508,22 @@ async fn commit_profile_insert<'a>(
         }
     }
     Ok(total)
+}
+
+/// Set `profiles.x_username` for `owner` from its active soulbound Verified X badge
+/// (`profile_badges.badge_subject`), or clear it when the wallet holds none.
+async fn sync_wallet_x_username<'a>(owner: &str, conn: &mut Connection<'a>) -> Result<usize> {
+    Ok(diesel::sql_query(
+        "UPDATE profiles SET x_username = ( \
+             SELECT b.badge_subject FROM profile_badges b \
+             WHERE b.wallet_address = $1 AND b.badge_kind = 'ecosystem' \
+               AND b.revoked = false AND b.badge_subject IS NOT NULL \
+             ORDER BY b.assigned_at DESC LIMIT 1) \
+         WHERE owner_address = $1",
+    )
+    .bind::<Text, _>(owner)
+    .execute(conn)
+    .await?)
 }
 
 fn default_ecosystem_treasury() -> NewEcosystemTreasury {
@@ -690,24 +677,6 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
     let mut total = 0;
     match row {
         ProfileRow::Profile(profile) => return commit_profile_insert(profile, conn).await,
-        ProfileRow::ProfileXUsernameUpdate {
-            profile_id,
-            owner_address,
-            x_username,
-        } => {
-            let now = chrono::Utc::now().naive_utc();
-            let filter = profiles::profile_id
-                .eq(profile_id)
-                .or(profiles::owner_address.eq(owner_address));
-            total += diesel::update(profiles::table)
-                .filter(filter)
-                .set((
-                    profiles::x_username.eq(x_username),
-                    profiles::updated_at.eq(now),
-                ))
-                .execute(conn)
-                .await?;
-        }
         ProfileRow::ProfileDeleted {
             profile_id,
             owner_address,
@@ -777,6 +746,8 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
                 ))
                 .execute(conn)
                 .await?;
+            // Soulbound badges stay with the old wallet: re-derive the verified X handle.
+            total += sync_wallet_x_username(&common::normalize_hex_address(new_owner), conn).await?;
         }
         ProfileRow::ProfileUsernameSet {
             profile_id,
@@ -995,24 +966,6 @@ async fn commit_profile_row<'a>(row: &ProfileRow, conn: &mut Connection<'a>) -> 
         ProfileRow::ProfileBadge(badge) => {
             total += diesel::insert_into(profile_badges::table)
                 .values(badge)
-                .execute(conn)
-                .await?;
-        }
-        ProfileRow::ProfileBadgeRevoke {
-            profile_id,
-            badge_id,
-            revoked_at,
-            revoked_by,
-        } => {
-            total += diesel::update(profile_badges::table)
-                .filter(profile_badges::profile_id.eq(profile_id))
-                .filter(profile_badges::badge_id.eq(badge_id))
-                .filter(profile_badges::revoked.eq(false))
-                .set((
-                    profile_badges::revoked.eq(true),
-                    profile_badges::revoked_at.eq(Some(*revoked_at)),
-                    profile_badges::revoked_by.eq(Some(revoked_by.clone())),
-                ))
                 .execute(conn)
                 .await?;
         }

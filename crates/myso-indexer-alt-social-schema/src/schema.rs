@@ -1012,6 +1012,8 @@ diesel::table! {
         join_referral_paid_at_ms -> Nullable<Int8>,
         transaction_id -> Text,
         time -> Timestamptz,
+        linked_wallet -> Nullable<Text>,
+        reserved_for -> Nullable<Text>,
     }
 }
 
@@ -1445,6 +1447,8 @@ diesel::table! {
         wallet_address -> Nullable<Text>,
         badge_kind -> Text,
         expires_at -> Nullable<Int8>,
+        badge_object_id -> Nullable<Text>,
+        badge_subject -> Nullable<Text>,
     }
 }
 

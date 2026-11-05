@@ -1386,9 +1386,15 @@ impl ProfileBadge {
         self.inner.badge_type
     }
 
-    /// owned | platform
+    /// ecosystem (soulbound object in the wallet) | platform (platform ledger grant)
     async fn badge_kind(&self) -> &str {
         &self.inner.badge_kind
+    }
+
+    /// `platform::EcosystemBadge` object id — pass it to `select_ecosystem_badge_on_profile`
+    /// or `burn_ecosystem_badge`. Null for platform ledger badges.
+    async fn badge_object_id(&self) -> Option<&str> {
+        self.inner.badge_object_id.as_deref()
     }
 
     /// Expiry (epoch ms). Null means no expiry.

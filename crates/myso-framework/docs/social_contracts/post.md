@@ -48,6 +48,7 @@ Implements features like comments, reposts, and quotes
 -  [Struct `PromotionFundsWithdrawnEvent`](#social_contracts_post_PromotionFundsWithdrawnEvent)
 -  [Struct `ModerationRecord`](#social_contracts_post_ModerationRecord)
 -  [Struct `PostSubscriptionAccessEvent`](#social_contracts_post_PostSubscriptionAccessEvent)
+-  [Struct `PostAccessPurchaseEvent`](#social_contracts_post_PostAccessPurchaseEvent)
 -  [Enum `PostAccess`](#social_contracts_post_PostAccess)
 -  [Constants](#@Constants_0)
 -  [Function `has_flag`](#social_contracts_post_has_flag)
@@ -124,6 +125,7 @@ Implements features like comments, reposts, and quotes
 -  [Function `create_profile_subscription_post`](#social_contracts_post_create_profile_subscription_post)
 -  [Function `create_profile_subscription_post_with_mydata`](#social_contracts_post_create_profile_subscription_post_with_mydata)
 -  [Function `create_marketplace_one_time_post`](#social_contracts_post_create_marketplace_one_time_post)
+-  [Function `purchase_post_access_bounded_with_platform`](#social_contracts_post_purchase_post_access_bounded_with_platform)
 -  [Function `create_comment`](#social_contracts_post_create_comment)
 -  [Function `create_repost`](#social_contracts_post_create_repost)
 -  [Function `delete_post`](#social_contracts_post_delete_post)
@@ -2768,6 +2770,53 @@ Simple moderation record for tracking moderation decisions
 </dd>
 <dt>
 <code>subscriber: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>timestamp: u64</code>
+</dt>
+<dd>
+</dd>
+</dl>
+
+
+</details>
+
+<a name="social_contracts_post_PostAccessPurchaseEvent"></a>
+
+## Struct `PostAccessPurchaseEvent`
+
+Same-transaction receipt binding a MyData purchase to the gated post.
+
+
+<pre><code><b>public</b> <b>struct</b> <a href="../social_contracts/post.md#social_contracts_post_PostAccessPurchaseEvent">PostAccessPurchaseEvent</a> <b>has</b> <b>copy</b>, drop
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>post_id: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>mydata_id: <a href="../myso/object.md#myso_object_ID">myso::object::ID</a></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>buyer: <b>address</b></code>
+</dt>
+<dd>
+</dd>
+<dt>
+<code>seller: <b>address</b></code>
 </dt>
 <dd>
 </dd>
@@ -6683,6 +6732,65 @@ Create a marketplace one-time purchase gated post (requires linked MyData listin
         clock,
         ctx,
     );
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_post_purchase_post_access_bounded_with_platform"></a>
+
+## Function `purchase_post_access_bounded_with_platform`
+
+Purchase the exact one-time MyData record bound to this gated post.
+The current post object is checked in Move before the bounded MyData
+entry executes, so an off-chain lookup cannot redirect the purchase.
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_purchase_post_access_bounded_with_platform">purchase_post_access_bounded_with_platform</a>(target_post: &<a href="../social_contracts/post.md#social_contracts_post_Post">social_contracts::post::Post</a>, mydata_config: &<a href="../social_contracts/mydata.md#social_contracts_mydata_MyDataConfig">social_contracts::mydata::MyDataConfig</a>, block_list_registry: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, listing: &<b>mut</b> <a href="../social_contracts/mydata.md#social_contracts_mydata_MyData">social_contracts::mydata::MyData</a>, treasury: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemTreasury">social_contracts::profile::EcosystemTreasury</a>, target_platform: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, payment: &<b>mut</b> <a href="../myso/coin.md#myso_coin_Coin">myso::coin::Coin</a>&lt;<a href="../myso/myso.md#myso_myso_MYSO">myso::myso::MYSO</a>&gt;, memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, expected_seller: <b>address</b>, expected_price: u64, expected_encryption_id: vector&lt;u8&gt;, expected_data_digest: vector&lt;u8&gt;, expected_listing_platform: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<b>address</b>&gt;, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/post.md#social_contracts_post_purchase_post_access_bounded_with_platform">purchase_post_access_bounded_with_platform</a>(
+    target_post: &<a href="../social_contracts/post.md#social_contracts_post_Post">Post</a>,
+    mydata_config: &mydata::MyDataConfig,
+    block_list_registry: &BlockListRegistry,
+    memory_config: &MemoryConfig,
+    listing: &<b>mut</b> mydata::MyData,
+    treasury: &EcosystemTreasury,
+    target_platform: &<b>mut</b> <a href="../social_contracts/platform.md#social_contracts_platform_Platform">platform::Platform</a>,
+    payment: &<b>mut</b> Coin&lt;MYSO&gt;,
+    memory_account: &MemoryAccount,
+    expected_seller: <b>address</b>,
+    expected_price: u64,
+    expected_encryption_id: vector&lt;u8&gt;,
+    expected_data_digest: vector&lt;u8&gt;,
+    expected_listing_platform: Option&lt;<b>address</b>&gt;,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+) {
+    <b>assert</b>!(<a href="../social_contracts/post.md#social_contracts_post_requires_marketplace_purchase">requires_marketplace_purchase</a>(target_post), <a href="../social_contracts/post.md#social_contracts_post_ENoEncryptedContent">ENoEncryptedContent</a>);
+    <b>assert</b>!(mydata::requires_marketplace_purchase(listing), <a href="../social_contracts/post.md#social_contracts_post_ENoEncryptedContent">ENoEncryptedContent</a>);
+    <b>let</b> linked_id = <a href="../social_contracts/post.md#social_contracts_post_linked_mydata">linked_mydata</a>(target_post);
+    <b>assert</b>!(option::is_some(&linked_id), <a href="../social_contracts/post.md#social_contracts_post_ENoEncryptedContent">ENoEncryptedContent</a>);
+    <b>assert</b>!(*option::borrow(&linked_id) == object::id(listing), <a href="../social_contracts/post.md#social_contracts_post_EMyDataOwnerMismatch">EMyDataOwnerMismatch</a>);
+    mydata::purchase_access_bounded_with_platform(
+        mydata_config, block_list_registry, memory_config, listing,
+        treasury, target_platform, payment, memory_account,
+        expected_seller, 2, expected_price, 0, expected_encryption_id,
+        expected_data_digest, expected_listing_platform, clock, ctx,
+    );
+    event::emit(<a href="../social_contracts/post.md#social_contracts_post_PostAccessPurchaseEvent">PostAccessPurchaseEvent</a> {
+        post_id: object::uid_to_address(<a href="../social_contracts/post.md#social_contracts_post_get_post_id">get_post_id</a>(target_post)), mydata_id: object::id(listing),
+        buyer: tx_context::sender(ctx), seller: expected_seller,
+        timestamp: clock::timestamp_ms(clock),
+    });
 }
 </code></pre>
 

@@ -135,6 +135,10 @@ reserve-and-capture migration.
 -  [Function `assert_agent_caps`](#social_contracts_ai_credit_assert_agent_caps)
 -  [Function `release_reservation_counters`](#social_contracts_ai_credit_release_reservation_counters)
 -  [Function `capture_reservation_counters`](#social_contracts_ai_credit_capture_reservation_counters)
+-  [Function `set_principal_owner`](#social_contracts_ai_credit_set_principal_owner)
+-  [Function `balance_principal_owner`](#social_contracts_ai_credit_balance_principal_owner)
+-  [Function `balance_profile_id`](#social_contracts_ai_credit_balance_profile_id)
+-  [Function `balance_memory_account_id`](#social_contracts_ai_credit_balance_memory_account_id)
 
 
 <pre><code><b>use</b> <a href="../myso/accumulator.md#myso_accumulator">myso::accumulator</a>;
@@ -6064,6 +6068,98 @@ enforcement of <code>require_approval_above_mist</code>.
         };
     };
 }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_set_principal_owner"></a>
+
+## Function `set_principal_owner`
+
+Owner rotation: move payout/approval ownership with the profile (called by
+<code><a href="../social_contracts/profile.md#social_contracts_profile_complete_owner_rotation">profile::complete_owner_rotation</a></code> in the same transaction as the MemoryAccount move).
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_principal_owner">set_principal_owner</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>, new_owner: <b>address</b>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(package) <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_set_principal_owner">set_principal_owner</a>(balance: &<b>mut</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>, new_owner: <b>address</b>) {
+    balance.principal_owner = new_owner;
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_balance_principal_owner"></a>
+
+## Function `balance_principal_owner`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_principal_owner">balance_principal_owner</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_principal_owner">balance_principal_owner</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>): <b>address</b> { balance.principal_owner }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_balance_profile_id"></a>
+
+## Function `balance_profile_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_profile_id">balance_profile_id</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>): <b>address</b>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_profile_id">balance_profile_id</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>): <b>address</b> { balance.profile_id }
+</code></pre>
+
+
+
+</details>
+
+<a name="social_contracts_ai_credit_balance_memory_account_id"></a>
+
+## Function `balance_memory_account_id`
+
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_memory_account_id">balance_memory_account_id</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">social_contracts::ai_credit::AiCreditBalance</a>): <a href="../myso/object.md#myso_object_ID">myso::object::ID</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_balance_memory_account_id">balance_memory_account_id</a>(balance: &<a href="../social_contracts/ai_credit.md#social_contracts_ai_credit_AiCreditBalance">AiCreditBalance</a>): ID { balance.memory_account_id }
 </code></pre>
 
 

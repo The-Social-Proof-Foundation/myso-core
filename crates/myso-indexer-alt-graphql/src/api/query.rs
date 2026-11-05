@@ -281,6 +281,40 @@ impl Query {
         )
     }
 
+    /// Profiles whose wallet holds a soulbound Verified X badge for one of `usernames`
+    /// (case-insensitive, leading `@` ignored). At most 100 usernames.
+    async fn profiles_by_x_usernames(
+        &self,
+        ctx: &Context<'_>,
+        usernames: Vec<String>,
+    ) -> Option<Result<Vec<Profile>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        let normalized: Vec<String> = usernames
+            .iter()
+            .map(|u| u.trim().trim_start_matches('@').to_lowercase())
+            .filter(|u| !u.is_empty())
+            .take(100)
+            .collect();
+        let owners = match reader.get_owner_addresses_by_x_usernames(&normalized).await {
+            Ok(o) => o,
+            Err(e) => return Some(Err(e.into())),
+        };
+        let mut out = Vec::with_capacity(owners.len());
+        for owner in owners {
+            match reader.get_profile_or_wallet_by_address(&owner).await {
+                Ok(r) => {
+                    if let Some(p) = Profile::from_response(r) {
+                        out.push(p);
+                    }
+                }
+                Err(e) => return Some(Err(e.into())),
+            }
+        }
+        Some(Ok(out))
+    }
+
     /// List social profiles with pagination. Returns empty when social DB not configured.
     async fn profiles(
         &self,
@@ -2404,6 +2438,25 @@ impl Query {
                 .await
                 .map_err(Into::into)
                 .map(|opt| opt.map(PocUsernameBeneficiary::from_row)),
+        )
+    }
+
+    /// PoC username beneficiaries claimed to `wallet` (the creator's `linkedWallet`). Unaffected
+    /// by adopting or releasing a reserved username.
+    async fn poc_username_beneficiaries_by_wallet(
+        &self,
+        ctx: &Context<'_>,
+        wallet: MySoAddress,
+    ) -> Option<Result<Vec<PocUsernameBeneficiary>, RpcError>> {
+        let reader_opt = ctx
+            .data_opt::<std::sync::Arc<Option<myso_indexer_alt_social_reader::SocialPgReader>>>()?;
+        let reader = reader_opt.as_ref().as_ref()?;
+        Some(
+            reader
+                .list_poc_username_beneficiaries_by_wallet(&wallet.to_string())
+                .await
+                .map_err(Into::into)
+                .map(|rows| rows.into_iter().map(PocUsernameBeneficiary::from_row).collect()),
         )
     }
 
