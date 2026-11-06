@@ -462,6 +462,75 @@ fun agent_create_group(
     destroy(msg_log);
 }
 
+/// `create_agent_group_with_e2ee` as the agent; returns the stored `e2ee` value.
+fun agent_create_group_with_e2ee(scenario: &mut ts::Scenario, e2ee: vector<u8>): Option<string::String> {
+    ts::next_tx(scenario, AGENT_ADDR);
+    let version = ts::take_shared<Version>(scenario);
+    let mut namespace = ts::take_shared<MessagingNamespace>(scenario);
+    let group_manager = ts::take_shared<GroupManager>(scenario);
+    let group_leaver = ts::take_shared<GroupLeaver>(scenario);
+    let block_list = ts::take_shared<BlockListRegistry>(scenario);
+    let platform = ts::take_shared<Platform>(scenario);
+    let memory_account = ts::take_shared<MemoryAccount>(scenario);
+    let memory_config = ts::take_shared<MemoryConfig>(scenario);
+    let clock = ts::take_shared<Clock>(scenario);
+    let (group, encryption_history, msg_log) = msg::create_agent_group_with_e2ee(
+        &version,
+        &mut namespace,
+        &group_manager,
+        &group_leaver,
+        &block_list,
+        &platform,
+        &memory_config,
+        &memory_account,
+        &memory_account,
+        string::utf8(TEST_GROUP_NAME),
+        string::utf8(ROOM_UUID),
+        TEST_ENCRYPTED_DEK,
+        vec_set::empty<address>(),
+        option::none(),
+        option::none(),
+        string::utf8(e2ee),
+        &clock,
+        ts::ctx(scenario),
+    );
+    let stored = msg::group_data(&group_manager, &group, string::utf8(b"e2ee"));
+    // Same permissions as a plain agent group: the agent still has no MetadataAdmin.
+    assert!(!group.has_permission<Messaging, MetadataAdmin>(AGENT_ADDR), 0);
+    assert!(group.has_permission<Messaging, MetadataAdmin>(AUTHOR), 1);
+    ts::return_shared(clock);
+    ts::return_shared(memory_config);
+    ts::return_shared(memory_account);
+    ts::return_shared(platform);
+    ts::return_shared(block_list);
+    ts::return_shared(group_leaver);
+    ts::return_shared(group_manager);
+    ts::return_shared(namespace);
+    ts::return_shared(version);
+    destroy(group);
+    destroy(encryption_history);
+    destroy(msg_log);
+    stored
+}
+
+#[test]
+fun agent_group_is_created_with_its_e2ee_flag() {
+    let mut scenario = ts::begin(AUTHOR);
+    prepare_agent(&mut scenario);
+    let stored = agent_create_group_with_e2ee(&mut scenario, b"mls1");
+    assert!(stored == option::some(string::utf8(b"mls1")), 0);
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = msg::EUnknownE2ee)]
+fun agent_group_rejects_an_unknown_e2ee_value() {
+    let mut scenario = ts::begin(AUTHOR);
+    prepare_agent(&mut scenario);
+    agent_create_group_with_e2ee(&mut scenario, b"plaintext");
+    scenario.end();
+}
+
 #[test]
 fun agent_room_is_tagged_and_bound_to_task() {
     let mut scenario = ts::begin(AUTHOR);

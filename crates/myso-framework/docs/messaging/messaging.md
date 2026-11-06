@@ -58,6 +58,7 @@ Messaging-specific:
 -  [Function `init`](#messaging_messaging_init)
 -  [Function `create_genesis_objects`](#messaging_messaging_create_genesis_objects)
 -  [Function `create_genesis_objects_internal`](#messaging_messaging_create_genesis_objects_internal)
+-  [Function `create_mls_device_registry`](#messaging_messaging_create_mls_device_registry)
 -  [Function `create_group`](#messaging_messaging_create_group)
     -  [Parameters](#@Parameters_3)
     -  [Returns](#@Returns_4)
@@ -72,6 +73,7 @@ Messaging-specific:
 -  [Function `create_wallet_group`](#messaging_messaging_create_wallet_group)
 -  [Function `create_and_share_wallet_group`](#messaging_messaging_create_and_share_wallet_group)
 -  [Function `create_agent_group`](#messaging_messaging_create_agent_group)
+-  [Function `create_agent_group_with_e2ee`](#messaging_messaging_create_agent_group_with_e2ee)
 -  [Function `create_agent_and_share_group`](#messaging_messaging_create_agent_and_share_group)
 -  [Function `rotate_encryption_key`](#messaging_messaging_rotate_encryption_key)
     -  [Parameters](#@Parameters_9)
@@ -132,6 +134,7 @@ Messaging-specific:
 <b>use</b> <a href="../messaging/message_log.md#messaging_message_log">messaging::message_log</a>;
 <b>use</b> <a href="../messaging/messaging_config.md#messaging_messaging_config">messaging::messaging_config</a>;
 <b>use</b> <a href="../messaging/metadata.md#messaging_metadata">messaging::metadata</a>;
+<b>use</b> <a href="../messaging/mls_device_registry.md#messaging_mls_device_registry">messaging::mls_device_registry</a>;
 <b>use</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement">messaging::paid_escrow_settlement</a>;
 <b>use</b> <a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy">messaging::paid_messaging_policy</a>;
 <b>use</b> <a href="../messaging/version.md#messaging_version">messaging::version</a>;
@@ -735,6 +738,25 @@ The caller, task, or group does not satisfy the private task-room binding rules.
 
 
 
+<a name="messaging_messaging_EUnknownE2ee"></a>
+
+<code>e2ee</code> must be a known protocol (<code>v2</code> or <code>mls1</code>).
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_EUnknownE2ee">EUnknownE2ee</a>: u64 = 12;
+</code></pre>
+
+
+
+<a name="messaging_messaging_E2EE_KEY"></a>
+
+
+
+<pre><code><b>const</b> <a href="../messaging/messaging.md#messaging_messaging_E2EE_KEY">E2EE_KEY</a>: vector&lt;u8&gt; = vector[101, 50, 101, 101];
+</code></pre>
+
+
+
 <a name="messaging_messaging_CONVERSATION_KIND_KEY"></a>
 
 
@@ -921,13 +943,42 @@ A normal user transaction aborts because the sender is not <code>@0x0</code>.
     <b>let</b> <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a> = <a href="../messaging/group_manager.md#messaging_group_manager_new">group_manager::new</a>(&<b>mut</b> namespace.id);
     <b>let</b> <a href="../messaging/group_handle_registry.md#messaging_group_handle_registry">group_handle_registry</a> = <a href="../messaging/group_handle_registry.md#messaging_group_handle_registry_new">group_handle_registry::new</a>(&<b>mut</b> namespace.id, ctx);
     <b>let</b> paid_messaging_registry = <a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy_new">paid_messaging_policy::new</a>(&<b>mut</b> namespace.id, ctx);
+    <b>let</b> <a href="../messaging/mls_device_registry.md#messaging_mls_device_registry">mls_device_registry</a> = <a href="../messaging/mls_device_registry.md#messaging_mls_device_registry_new">mls_device_registry::new</a>(&<b>mut</b> namespace.id, ctx);
     transfer::share_object(namespace);
+    <a href="../messaging/mls_device_registry.md#messaging_mls_device_registry">mls_device_registry</a>.share();
     <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>.share();
     <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>.share();
     <a href="../messaging/group_handle_registry.md#messaging_group_handle_registry">group_handle_registry</a>.share();
     paid_messaging_registry.share();
     <a href="../messaging/version.md#messaging_version_share_initial">version::share_initial</a>(ctx);
     <a href="../messaging/messaging_config.md#messaging_messaging_config_share_initial">messaging_config::share_initial</a>(ctx);
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_create_mls_device_registry"></a>
+
+## Function `create_mls_device_registry`
+
+Creates the shared <code>MlsDeviceRegistry</code> on a chain whose genesis predates it (new chains get it
+from <code><a href="../messaging/messaging.md#messaging_messaging_create_genesis_objects">create_genesis_objects</a></code>). Its address is derived from the namespace, so this succeeds
+exactly once; any later call aborts in <code>derived_object::claim</code>.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_mls_device_registry">create_mls_device_registry</a>(namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_mls_device_registry">create_mls_device_registry</a>(namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>, ctx: &<b>mut</b> TxContext) {
+    <a href="../messaging/mls_device_registry.md#messaging_mls_device_registry_new">mls_device_registry::new</a>(&<b>mut</b> namespace.id, ctx).share();
 }
 </code></pre>
 
@@ -1550,6 +1601,76 @@ humans or agents under the same principal, pass the creator account again.
             created_at_ms: clock::timestamp_ms(clock),
         });
     };
+    (group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, <a href="../messaging/message_log.md#messaging_message_log">message_log</a>)
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="messaging_messaging_create_agent_group_with_e2ee"></a>
+
+## Function `create_agent_group_with_e2ee`
+
+[<code><a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a></code>], plus <code>data["e2ee"] = e2ee</code> written in the same call (E2EE M7: every
+new chat starts on MLS). The sender is the agent, which doesn't hold <code><a href="../messaging/messaging.md#messaging_messaging_MetadataAdmin">MetadataAdmin</a></code> (only the
+principal does), so the flag can't be set with <code><a href="../messaging/messaging.md#messaging_messaging_insert_group_data">insert_group_data</a></code> in the creating
+transaction; this writes it while the group is still being built, before it is shared. Only
+known protocols are accepted.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_group_with_e2ee">create_agent_group_with_e2ee</a>(<a href="../messaging/version.md#messaging_version">version</a>: &<a href="../messaging/version.md#messaging_version_Version">messaging::version::Version</a>, namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &<a href="../messaging/group_manager.md#messaging_group_manager_GroupManager">messaging::group_manager::GroupManager</a>, <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &<a href="../messaging/group_leaver.md#messaging_group_leaver_GroupLeaver">messaging::group_leaver::GroupLeaver</a>, block_list: &<a href="../social_contracts/block_list.md#social_contracts_block_list_BlockListRegistry">social_contracts::block_list::BlockListRegistry</a>, platform: &<a href="../social_contracts/platform.md#social_contracts_platform_Platform">social_contracts::platform::Platform</a>, memory_config: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryConfig">social_contracts::memory::MemoryConfig</a>, creator_memory_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, cross_principal_peer_account: &<a href="../social_contracts/memory.md#social_contracts_memory_MemoryAccount">social_contracts::memory::MemoryAccount</a>, name: <a href="../std/string.md#std_string_String">std::string::String</a>, uuid: <a href="../std/string.md#std_string_String">std::string::String</a>, initial_encrypted_dek: vector&lt;u8&gt;, initial_members: <a href="../myso/vec_set.md#myso_vec_set_VecSet">myso::vec_set::VecSet</a>&lt;<b>address</b>&gt;, room_kind: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;u8&gt;, room_task_id: <a href="../std/option.md#std_option_Option">std::option::Option</a>&lt;<a href="../myso/object.md#myso_object_ID">myso::object::ID</a>&gt;, e2ee: <a href="../std/string.md#std_string_String">std::string::String</a>, clock: &<a href="../myso/clock.md#myso_clock_Clock">myso::clock::Clock</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>): (<a href="../myso/permissioned_group.md#myso_permissioned_group_PermissionedGroup">myso::permissioned_group::PermissionedGroup</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">messaging::messaging::Messaging</a>&gt;, <a href="../messaging/encryption_history.md#messaging_encryption_history_EncryptionHistory">messaging::encryption_history::EncryptionHistory</a>, <a href="../messaging/message_log.md#messaging_message_log_MessageLog">messaging::message_log::MessageLog</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_agent_group_with_e2ee">create_agent_group_with_e2ee</a>(
+    <a href="../messaging/version.md#messaging_version">version</a>: &Version,
+    namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>,
+    <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>: &GroupManager,
+    <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>: &GroupLeaver,
+    block_list: &BlockListRegistry,
+    platform: &Platform,
+    memory_config: &MemoryConfig,
+    creator_memory_account: &MemoryAccount,
+    cross_principal_peer_account: &MemoryAccount,
+    name: String,
+    uuid: String,
+    initial_encrypted_dek: vector&lt;u8&gt;,
+    initial_members: VecSet&lt;<b>address</b>&gt;,
+    room_kind: Option&lt;u8&gt;,
+    room_task_id: Option&lt;ID&gt;,
+    e2ee: String,
+    clock: &Clock,
+    ctx: &<b>mut</b> TxContext,
+): (PermissionedGroup&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;, EncryptionHistory, MessageLog) {
+    <b>assert</b>!(e2ee == string::utf8(b"mls1") || e2ee == string::utf8(b"v2"), <a href="../messaging/messaging.md#messaging_messaging_EUnknownE2ee">EUnknownE2ee</a>);
+    <b>let</b> (<b>mut</b> group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, <a href="../messaging/message_log.md#messaging_message_log">message_log</a>) = <a href="../messaging/messaging.md#messaging_messaging_create_agent_group">create_agent_group</a>(
+        <a href="../messaging/version.md#messaging_version">version</a>,
+        namespace,
+        <a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>,
+        <a href="../messaging/group_leaver.md#messaging_group_leaver">group_leaver</a>,
+        block_list,
+        platform,
+        memory_config,
+        creator_memory_account,
+        cross_principal_peer_account,
+        name,
+        uuid,
+        initial_encrypted_dek,
+        initial_members,
+        room_kind,
+        room_task_id,
+        clock,
+        ctx,
+    );
+    <a href="../messaging/group_manager.md#messaging_group_manager_borrow_metadata_mut">group_manager::borrow_metadata_mut</a>&lt;<a href="../messaging/messaging.md#messaging_messaging_Messaging">Messaging</a>&gt;(<a href="../messaging/group_manager.md#messaging_group_manager">group_manager</a>, &<b>mut</b> group)
+        .insert_data(string::utf8(<a href="../messaging/messaging.md#messaging_messaging_E2EE_KEY">E2EE_KEY</a>), e2ee);
     (group, <a href="../messaging/encryption_history.md#messaging_encryption_history">encryption_history</a>, <a href="../messaging/message_log.md#messaging_message_log">message_log</a>)
 }
 </code></pre>

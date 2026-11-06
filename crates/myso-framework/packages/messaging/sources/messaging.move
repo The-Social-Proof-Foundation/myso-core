@@ -32,6 +32,7 @@ module messaging::messaging;
 use messaging::encryption_history::{Self, EncryptionHistory, EncryptionKeyRotator};
 use messaging::group_leaver::{Self, GroupLeaver};
 use messaging::group_handle_registry::{Self, GroupHandleRegistry};
+use messaging::mls_device_registry;
 use messaging::group_manager::{Self, GroupManager};
 use messaging::message_log::{Self, MessageLog};
 use messaging::messaging_config::{Self as messaging_config, MessagingConfig};
@@ -91,6 +92,10 @@ const ERegisteredAgentCannotCreateGroup: u64 = 9;
 const EUnknownRoomKind: u64 = 10;
 /// The caller, task, or group does not satisfy the private task-room binding rules.
 const EInvalidTaskRoomBinding: u64 = 11;
+/// `e2ee` must be a known protocol (`v2` or `mls1`).
+const EUnknownE2ee: u64 = 12;
+
+const E2EE_KEY: vector<u8> = b"e2ee";
 
 const CONVERSATION_KIND_KEY: vector<u8> = b"conversation_kind";
 const CONVERSATION_KIND_DM: vector<u8> = b"dm";
@@ -206,7 +211,9 @@ fun create_genesis_objects_internal(ctx: &mut TxContext) {
     let group_manager = group_manager::new(&mut namespace.id);
     let group_handle_registry = group_handle_registry::new(&mut namespace.id, ctx);
     let paid_messaging_registry = paid_messaging_policy::new(&mut namespace.id, ctx);
+    let mls_device_registry = mls_device_registry::new(&mut namespace.id, ctx);
     transfer::share_object(namespace);
+    mls_device_registry.share();
     group_leaver.share();
     group_manager.share();
     group_handle_registry.share();
@@ -216,6 +223,13 @@ fun create_genesis_objects_internal(ctx: &mut TxContext) {
 }
 
 // === Public Functions ===
+
+/// Creates the shared `MlsDeviceRegistry` on a chain whose genesis predates it (new chains get it
+/// from `create_genesis_objects`). Its address is derived from the namespace, so this succeeds
+/// exactly once; any later call aborts in `derived_object::claim`.
+public fun create_mls_device_registry(namespace: &mut MessagingNamespace, ctx: &mut TxContext) {
+    mls_device_registry::new(&mut namespace.id, ctx).share();
+}
 
 /// Creates a new messaging group with encryption.
 /// The transaction sender (`ctx.sender()`) automatically becomes the creator with all permissions.
@@ -708,6 +722,56 @@ public fun create_agent_group(
         });
     };
 
+    (group, encryption_history, message_log)
+}
+
+/// [`create_agent_group`], plus `data["e2ee"] = e2ee` written in the same call (E2EE M7: every
+/// new chat starts on MLS). The sender is the agent, which doesn't hold `MetadataAdmin` (only the
+/// principal does), so the flag can't be set with `insert_group_data` in the creating
+/// transaction; this writes it while the group is still being built, before it is shared. Only
+/// known protocols are accepted.
+public fun create_agent_group_with_e2ee(
+    version: &Version,
+    namespace: &mut MessagingNamespace,
+    group_manager: &GroupManager,
+    group_leaver: &GroupLeaver,
+    block_list: &BlockListRegistry,
+    platform: &Platform,
+    memory_config: &MemoryConfig,
+    creator_memory_account: &MemoryAccount,
+    cross_principal_peer_account: &MemoryAccount,
+    name: String,
+    uuid: String,
+    initial_encrypted_dek: vector<u8>,
+    initial_members: VecSet<address>,
+    room_kind: Option<u8>,
+    room_task_id: Option<ID>,
+    e2ee: String,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): (PermissionedGroup<Messaging>, EncryptionHistory, MessageLog) {
+    assert!(e2ee == string::utf8(b"mls1") || e2ee == string::utf8(b"v2"), EUnknownE2ee);
+    let (mut group, encryption_history, message_log) = create_agent_group(
+        version,
+        namespace,
+        group_manager,
+        group_leaver,
+        block_list,
+        platform,
+        memory_config,
+        creator_memory_account,
+        cross_principal_peer_account,
+        name,
+        uuid,
+        initial_encrypted_dek,
+        initial_members,
+        room_kind,
+        room_task_id,
+        clock,
+        ctx,
+    );
+    group_manager::borrow_metadata_mut<Messaging>(group_manager, &mut group)
+        .insert_data(string::utf8(E2EE_KEY), e2ee);
     (group, encryption_history, message_log)
 }
 

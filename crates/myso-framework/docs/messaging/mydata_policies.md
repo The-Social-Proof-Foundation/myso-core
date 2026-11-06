@@ -51,6 +51,7 @@ Apps can implement custom <code>mydata_approve</code> with different logic:
 <b>use</b> <a href="../messaging/messaging.md#messaging_messaging">messaging::messaging</a>;
 <b>use</b> <a href="../messaging/messaging_config.md#messaging_messaging_config">messaging::messaging_config</a>;
 <b>use</b> <a href="../messaging/metadata.md#messaging_metadata">messaging::metadata</a>;
+<b>use</b> <a href="../messaging/mls_device_registry.md#messaging_mls_device_registry">messaging::mls_device_registry</a>;
 <b>use</b> <a href="../messaging/paid_escrow_settlement.md#messaging_paid_escrow_settlement">messaging::paid_escrow_settlement</a>;
 <b>use</b> <a href="../messaging/paid_messaging_policy.md#messaging_paid_messaging_policy">messaging::paid_messaging_policy</a>;
 <b>use</b> <a href="../messaging/version.md#messaging_version">messaging::version</a>;

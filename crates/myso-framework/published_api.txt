@@ -15862,6 +15862,87 @@ set_paid_messaging_policy
 requires_payment_from
 	public fun
 	0xe110::paid_messaging_policy
+MlsDeviceRegistry
+	public struct
+	0xe110::mls_device_registry
+DeviceKey
+	public struct
+	0xe110::mls_device_registry
+DeviceRecord
+	public struct
+	0xe110::mls_device_registry
+MlsDeviceRegistered
+	public struct
+	0xe110::mls_device_registry
+MlsDeviceKeyRotated
+	public struct
+	0xe110::mls_device_registry
+MlsDeviceRevoked
+	public struct
+	0xe110::mls_device_registry
+new
+	public(package) fun
+	0xe110::mls_device_registry
+share
+	public(package) fun
+	0xe110::mls_device_registry
+derivation_key
+	public(package) fun
+	0xe110::mls_device_registry
+authority_address
+	public fun
+	0xe110::mls_device_registry
+assert_key
+	fun
+	0xe110::mls_device_registry
+assert_device_id
+	fun
+	0xe110::mls_device_registry
+do_revoke
+	fun
+	0xe110::mls_device_registry
+sender_device
+	fun
+	0xe110::mls_device_registry
+register
+	public fun
+	0xe110::mls_device_registry
+rotate
+	public fun
+	0xe110::mls_device_registry
+revoke
+	public fun
+	0xe110::mls_device_registry
+revoke_by_device
+	public fun
+	0xe110::mls_device_registry
+device
+	public fun
+	0xe110::mls_device_registry
+is_valid_key
+	public fun
+	0xe110::mls_device_registry
+authority_key
+	public fun
+	0xe110::mls_device_registry
+previous_key
+	public fun
+	0xe110::mls_device_registry
+previous_valid_until_ms
+	public fun
+	0xe110::mls_device_registry
+generation
+	public fun
+	0xe110::mls_device_registry
+registered_at_ms
+	public fun
+	0xe110::mls_device_registry
+revoked_at_ms
+	public fun
+	0xe110::mls_device_registry
+rotation_grace_ms
+	public fun
+	0xe110::mls_device_registry
 MESSAGING
 	public struct
 	0xe110::messaging
@@ -15907,6 +15988,9 @@ create_genesis_objects
 create_genesis_objects_internal
 	fun
 	0xe110::messaging
+create_mls_device_registry
+	public fun
+	0xe110::messaging
 create_group
 	public fun
 	0xe110::messaging
@@ -15929,6 +16013,9 @@ create_and_share_wallet_group
 	entry fun
 	0xe110::messaging
 create_agent_group
+	public fun
+	0xe110::messaging
+create_agent_group_with_e2ee
 	public fun
 	0xe110::messaging
 create_agent_and_share_group
