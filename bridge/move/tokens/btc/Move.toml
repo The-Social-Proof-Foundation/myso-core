@@ -12,4 +12,4 @@ bridged_btc = "0x0"
 
 [environments]
 localnet = "32f36abf"
-testnet = "56a7099f"
+testnet = "4a7fb537"
