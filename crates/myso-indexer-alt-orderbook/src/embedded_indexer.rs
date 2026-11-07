@@ -83,6 +83,8 @@ pub async fn build_orderbook_indexer(
         store.clone(),
     )))?;
 
+    crate::ohclv_refresher::spawn(store.clone());
+
     let metrics = MetricsService::new(metrics_args, registry.clone());
 
     let mut indexer = Indexer::new(

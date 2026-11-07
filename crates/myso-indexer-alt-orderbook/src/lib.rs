@@ -5,6 +5,7 @@ use url::Url;
 pub mod embedded_indexer;
 pub mod handlers;
 pub(crate) mod models;
+mod ohclv_refresher;
 pub mod traits;
 
 pub use embedded_indexer::build_orderbook_indexer;
