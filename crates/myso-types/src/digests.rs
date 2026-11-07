@@ -163,7 +163,7 @@ impl fmt::UpperHex for Digest {
 pub struct ChainIdentifier(CheckpointDigest);
 
 pub const MAINNET_CHAIN_IDENTIFIER_BASE58: &str = "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S";
-pub const TESTNET_CHAIN_IDENTIFIER_BASE58: &str = "69WiPg3DAQiwdxfncX6wYQ2siKwAe6L9BZthQea3JNMD";
+pub const TESTNET_CHAIN_IDENTIFIER_BASE58: &str = "61p7gJJN5ePWEN4QKvJ81E9AQQ3bWfSNvzshzmuky3jm";
 
 pub static MAINNET_CHAIN_IDENTIFIER: OnceCell<ChainIdentifier> = OnceCell::new();
 pub static TESTNET_CHAIN_IDENTIFIER: OnceCell<ChainIdentifier> = OnceCell::new();
