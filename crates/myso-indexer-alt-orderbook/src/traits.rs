@@ -134,7 +134,14 @@ fn parse_address_from_hex(hex_str: &str) -> Result<AccountAddress, String> {
         hex_str
     };
 
-    let bytes = hex::decode(hex_str).map_err(|e| format!("Failed to decode hex: {}", e))?;
+    // Package addresses come from `AccountAddress::to_hex_literal()`, which drops leading zeros
+    // ("0xb0c"). Left-pad to the full 32 bytes: without this the orderbook package failed to parse,
+    // was silently skipped, and no core/margin event ever matched (every table stayed empty).
+    if hex_str.is_empty() || hex_str.len() > AccountAddress::LENGTH * 2 {
+        return Err(format!("Invalid address length: {}", hex_str.len()));
+    }
+    let padded = format!("{:0>width$}", hex_str, width = AccountAddress::LENGTH * 2);
+    let bytes = hex::decode(&padded).map_err(|e| format!("Failed to decode hex: {}", e))?;
 
     if bytes.len() != AccountAddress::LENGTH {
         return Err(format!(
@@ -148,4 +155,31 @@ fn parse_address_from_hex(hex_str: &str) -> Result<AccountAddress, String> {
     addr_bytes.copy_from_slice(&bytes);
 
     Ok(AccountAddress::new(addr_bytes))
+}
+
+#[cfg(test)]
+mod address_parsing_tests {
+    use super::*;
+
+    #[test]
+    fn short_and_full_package_addresses_parse_to_the_same_address() {
+        let short = parse_address_from_hex("0xb0c").unwrap();
+        let full = parse_address_from_hex(
+            "0x0000000000000000000000000000000000000000000000000000000000000b0c",
+        )
+        .unwrap();
+        assert_eq!(short, full);
+        assert_eq!(short, AccountAddress::from_str("0xb0c").unwrap());
+    }
+
+    #[test]
+    fn orderbook_core_events_have_an_acceptable_package() {
+        let addrs = get_package_addresses_for_module("order_info", crate::OrderbookEnv::Testnet).unwrap();
+        assert_eq!(addrs, vec![myso_types::ORDERBOOK_ADDRESS]);
+    }
+
+    #[test]
+    fn rejects_overlong_addresses() {
+        assert!(parse_address_from_hex(&format!("0x{}", "1".repeat(65))).is_err());
+    }
 }
