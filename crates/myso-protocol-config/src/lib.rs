@@ -25,7 +25,7 @@ use tracing::{info, warn};
 
 /// The minimum and maximum protocol versions supported by this build.
 const MIN_PROTOCOL_VERSION: u64 = 1;
-const MAX_PROTOCOL_VERSION: u64 = 112;
+const MAX_PROTOCOL_VERSION: u64 = 113;
 
 // Record history of protocol version allocations here:
 //
@@ -296,6 +296,8 @@ const MAX_PROTOCOL_VERSION: u64 = 112;
 //              function on mainnet.
 //              split_checkpoints_in_consensus_handler in devnet
 //              Enable additional validation on zkLogin public identifier.
+// Version 113: Raise zklogin_max_epoch_upper_bound_delta to 365 (one year of 1-day epochs) so a
+//              zkLogin proof lasts as long as the app's refresh session.
 
 #[derive(Copy, Clone, Debug, Hash, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProtocolVersion(u64);
@@ -4629,6 +4631,9 @@ impl ProtocolConfig {
                     cfg.feature_flags.enable_ristretto255_group_ops = true;
                     cfg.feature_flags.enable_verify_bulletproofs_ristretto255 = true;
                     cfg.max_move_package_size = Some(512 * 1024);
+                }
+                113 => {
+                    cfg.feature_flags.zklogin_max_epoch_upper_bound_delta = Some(365);
                 }
                 // Use this template when making changes:
                 //
