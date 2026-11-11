@@ -13,8 +13,7 @@
 ///   including itself): permanent for that device id; both keys stop verifying at once.
 ///
 /// The registry is a derived object of `MessagingNamespace` (key `mls_device_registry`), so its
-/// address is deterministic. New chains create it in `messaging::create_genesis_objects`; an
-/// existing chain creates it once via `messaging::create_mls_device_registry`.
+/// address is deterministic. It is created once, at genesis, in `messaging::create_genesis_objects`.
 ///
 /// Verification rule (clients; docs/myso-messaging-stack/E2EE-Protocol-MLS.md): a v2 device
 /// certificate signed by key K is valid iff the record for `(wallet, device_id)` exists, is not

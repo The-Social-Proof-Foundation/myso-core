@@ -58,7 +58,6 @@ Messaging-specific:
 -  [Function `init`](#messaging_messaging_init)
 -  [Function `create_genesis_objects`](#messaging_messaging_create_genesis_objects)
 -  [Function `create_genesis_objects_internal`](#messaging_messaging_create_genesis_objects_internal)
--  [Function `create_mls_device_registry`](#messaging_messaging_create_mls_device_registry)
 -  [Function `create_group`](#messaging_messaging_create_group)
     -  [Parameters](#@Parameters_3)
     -  [Returns](#@Returns_4)
@@ -952,33 +951,6 @@ A normal user transaction aborts because the sender is not <code>@0x0</code>.
     paid_messaging_registry.share();
     <a href="../messaging/version.md#messaging_version_share_initial">version::share_initial</a>(ctx);
     <a href="../messaging/messaging_config.md#messaging_messaging_config_share_initial">messaging_config::share_initial</a>(ctx);
-}
-</code></pre>
-
-
-
-</details>
-
-<a name="messaging_messaging_create_mls_device_registry"></a>
-
-## Function `create_mls_device_registry`
-
-Creates the shared <code>MlsDeviceRegistry</code> on a chain whose genesis predates it (new chains get it
-from <code><a href="../messaging/messaging.md#messaging_messaging_create_genesis_objects">create_genesis_objects</a></code>). Its address is derived from the namespace, so this succeeds
-exactly once; any later call aborts in <code>derived_object::claim</code>.
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_mls_device_registry">create_mls_device_registry</a>(namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">messaging::messaging::MessagingNamespace</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>fun</b> <a href="../messaging/messaging.md#messaging_messaging_create_mls_device_registry">create_mls_device_registry</a>(namespace: &<b>mut</b> <a href="../messaging/messaging.md#messaging_messaging_MessagingNamespace">MessagingNamespace</a>, ctx: &<b>mut</b> TxContext) {
-    <a href="../messaging/mls_device_registry.md#messaging_mls_device_registry_new">mls_device_registry::new</a>(&<b>mut</b> namespace.id, ctx).share();
 }
 </code></pre>
 

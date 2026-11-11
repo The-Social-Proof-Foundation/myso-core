@@ -2667,15 +2667,8 @@ module social_contracts::platform {
         burned_at: u64,
     }
 
-    /// One-time creation by the badge admin on a network whose bootstrap already ran.
-    /// Record the id as `ECOSYSTEM_BADGE_REGISTRY_ID` for off-chain services.
-    public entry fun create_ecosystem_badge_registry(
-        _: &profile::EcosystemBadgeAdminCap,
-        ctx: &mut TxContext,
-    ) {
-        share_new_ecosystem_badge_registry(ctx);
-    }
-
+    /// Shares the singleton registry. Called only from `bootstrap_init`; record its id
+    /// (from `EcosystemBadgeRegistryCreatedEvent`) as `ECOSYSTEM_BADGE_REGISTRY_ID` for off-chain services.
     fun share_new_ecosystem_badge_registry(ctx: &mut TxContext) {
         let registry = EcosystemBadgeRegistry {
             id: object::new(ctx),

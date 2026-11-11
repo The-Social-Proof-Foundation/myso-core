@@ -3063,58 +3063,6 @@ module social_contracts::governance {
         );
     }
 
-    /// One-time admin path for existing networks that bootstrapped before the SPoT registry existed.
-    public entry fun create_spot_governance_registry(
-        _: &GovernanceAdminCap,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let current_time = clock::timestamp_ms(clock);
-        let founder = tx_context::sender(ctx);
-
-        let mut spot_registry = GovernanceDAO {
-            id: object::new(ctx),
-            registry_type: PROPOSAL_TYPE_SPOT,
-            delegate_count: 3,
-            delegate_term_epochs: 90,
-            proposal_submission_cost: 10_000_000_000,
-            max_votes_per_user: 5,
-            quadratic_base_cost: 1_000_000_000,
-            voting_period_ms: 3 * 24 * 60 * 60 * 1000,
-            quorum_votes: 10,
-            delegates: table::new<address, Delegate>(ctx),
-            proposals: table::new<ID, bool>(ctx),
-            proposal_types: table::new<ID, u8>(ctx),
-            proposals_by_status: table::new<u8, vector<ID>>(ctx),
-            treasury: balance::zero(),
-            nominated_delegates: table::new<address, NominatedDelegate>(ctx),
-            delegate_addresses: vec_set::empty<address>(),
-            nominee_addresses: vec_set::empty<address>(),
-            voters: table::new<address, Table<address, bool>>(ctx),
-            version: upgrade::current_version(),
-            last_delegate_panel_boundary_epoch: 0,
-        };
-
-        initialize_registry_tables(&mut spot_registry, ctx);
-        let spot_registry_id = object::id(&spot_registry);
-
-        event::emit(GovernanceRegistryCreatedEvent {
-            registry_id: spot_registry_id,
-            registry_type: PROPOSAL_TYPE_SPOT,
-            delegate_count: spot_registry.delegate_count,
-            delegate_term_epochs: spot_registry.delegate_term_epochs,
-            proposal_submission_cost: spot_registry.proposal_submission_cost,
-            max_votes_per_user: spot_registry.max_votes_per_user,
-            quadratic_base_cost: spot_registry.quadratic_base_cost,
-            voting_period_ms: spot_registry.voting_period_ms,
-            quorum_votes: spot_registry.quorum_votes,
-            updated_at: current_time,
-        });
-
-        seed_founding_delegate(&mut spot_registry, founder, ctx);
-        transfer::share_object(spot_registry);
-    }
-
     /// Create a GovernanceAdminCap for bootstrap (package visibility only)
     /// This function is only callable by other modules in the same package
     public(package) fun create_governance_admin_cap(ctx: &mut TxContext): GovernanceAdminCap {

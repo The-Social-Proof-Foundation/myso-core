@@ -155,7 +155,6 @@ Manages social media platforms and their timelines
 -  [Function `clear_shared_badge_selection`](#social_contracts_platform_clear_shared_badge_selection)
 -  [Function `select_ecosystem_badge`](#social_contracts_platform_select_ecosystem_badge)
 -  [Function `clear_ecosystem_badge_selection`](#social_contracts_platform_clear_ecosystem_badge_selection)
--  [Function `create_ecosystem_badge_registry`](#social_contracts_platform_create_ecosystem_badge_registry)
 -  [Function `share_new_ecosystem_badge_registry`](#social_contracts_platform_share_new_ecosystem_badge_registry)
 -  [Function `mint_ecosystem_badge`](#social_contracts_platform_mint_ecosystem_badge)
 -  [Function `mint_verified_x_badge`](#social_contracts_platform_mint_verified_x_badge)
@@ -7186,39 +7185,12 @@ Pick which soulbound ecosystem badge to show on this platform. Passing the owned
 
 </details>
 
-<a name="social_contracts_platform_create_ecosystem_badge_registry"></a>
-
-## Function `create_ecosystem_badge_registry`
-
-One-time creation by the badge admin on a network whose bootstrap already ran.
-Record the id as <code>ECOSYSTEM_BADGE_REGISTRY_ID</code> for off-chain services.
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_ecosystem_badge_registry">create_ecosystem_badge_registry</a>(_: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">social_contracts::profile::EcosystemBadgeAdminCap</a>, ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>public</b> <b>entry</b> <b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_create_ecosystem_badge_registry">create_ecosystem_badge_registry</a>(
-    _: &<a href="../social_contracts/profile.md#social_contracts_profile_EcosystemBadgeAdminCap">profile::EcosystemBadgeAdminCap</a>,
-    ctx: &<b>mut</b> TxContext,
-) {
-    <a href="../social_contracts/platform.md#social_contracts_platform_share_new_ecosystem_badge_registry">share_new_ecosystem_badge_registry</a>(ctx);
-}
-</code></pre>
-
-
-
-</details>
-
 <a name="social_contracts_platform_share_new_ecosystem_badge_registry"></a>
 
 ## Function `share_new_ecosystem_badge_registry`
 
+Shares the singleton registry. Called only from <code><a href="../social_contracts/platform.md#social_contracts_platform_bootstrap_init">bootstrap_init</a></code>; record its id
+(from <code><a href="../social_contracts/platform.md#social_contracts_platform_EcosystemBadgeRegistryCreatedEvent">EcosystemBadgeRegistryCreatedEvent</a></code>) as <code>ECOSYSTEM_BADGE_REGISTRY_ID</code> for off-chain services.
 
 
 <pre><code><b>fun</b> <a href="../social_contracts/platform.md#social_contracts_platform_share_new_ecosystem_badge_registry">share_new_ecosystem_badge_registry</a>(ctx: &<b>mut</b> <a href="../myso/tx_context.md#myso_tx_context_TxContext">myso::tx_context::TxContext</a>)

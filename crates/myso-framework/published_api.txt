@@ -11158,9 +11158,6 @@ set_version
 migrate_registry
 	public entry fun
 	0x50c1::governance
-create_spot_governance_registry
-	public entry fun
-	0x50c1::governance
 create_governance_admin_cap
 	public(package) fun
 	0x50c1::governance
@@ -11808,9 +11805,6 @@ select_ecosystem_badge
 	0x50c1::platform
 clear_ecosystem_badge_selection
 	public fun
-	0x50c1::platform
-create_ecosystem_badge_registry
-	public entry fun
 	0x50c1::platform
 share_new_ecosystem_badge_registry
 	fun
@@ -15987,9 +15981,6 @@ create_genesis_objects
 	0xe110::messaging
 create_genesis_objects_internal
 	fun
-	0xe110::messaging
-create_mls_device_registry
-	public fun
 	0xe110::messaging
 create_group
 	public fun

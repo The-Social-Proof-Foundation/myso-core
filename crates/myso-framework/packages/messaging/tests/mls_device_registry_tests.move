@@ -276,6 +276,6 @@ fun the_registry_is_a_singleton() {
     let mut s = setup();
     s.next_tx(ALICE);
     let mut ns = s.take_shared<MessagingNamespace>();
-    msg::create_mls_device_registry(&mut ns, s.ctx());
+    msg::create_mls_device_registry_for_testing(&mut ns, s.ctx());
     abort 0
 }

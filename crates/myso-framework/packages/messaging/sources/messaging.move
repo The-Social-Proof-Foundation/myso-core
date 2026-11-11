@@ -224,13 +224,6 @@ fun create_genesis_objects_internal(ctx: &mut TxContext) {
 
 // === Public Functions ===
 
-/// Creates the shared `MlsDeviceRegistry` on a chain whose genesis predates it (new chains get it
-/// from `create_genesis_objects`). Its address is derived from the namespace, so this succeeds
-/// exactly once; any later call aborts in `derived_object::claim`.
-public fun create_mls_device_registry(namespace: &mut MessagingNamespace, ctx: &mut TxContext) {
-    mls_device_registry::new(&mut namespace.id, ctx).share();
-}
-
 /// Creates a new messaging group with encryption.
 /// The transaction sender (`ctx.sender()`) automatically becomes the creator with all permissions.
 ///
@@ -1630,6 +1623,15 @@ fun assert_paid_parties_not_blocked(
 }
 
 // === Test Helpers ===
+
+/// Attempts a second `MlsDeviceRegistry` under the namespace; aborts because it is a derived singleton.
+#[test_only]
+public fun create_mls_device_registry_for_testing(
+    namespace: &mut MessagingNamespace,
+    ctx: &mut TxContext,
+) {
+    mls_device_registry::new(&mut namespace.id, ctx).share();
+}
 
 #[test_only]
 public fun init_for_testing(ctx: &mut TxContext) {
