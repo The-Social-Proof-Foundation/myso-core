@@ -13,8 +13,9 @@ use myso_pg_db::Connection;
 
 use crate::metrics::DbReaderMetrics;
 
-/// Default min capital (MYSO nano) to appear on leaderboards (~100 MYSO).
-pub const MIN_LEADERBOARD_CAPITAL_MYSO: i64 = 100_000_000_000;
+/// Default min capital (MYSO nano) to appear on leaderboards (1 MYSO). Reservation deposits count,
+/// so pre-launch reservers qualify; the floor only filters dust positions.
+pub const MIN_LEADERBOARD_CAPITAL_MYSO: i64 = 1_000_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -249,26 +250,31 @@ fn metrics_from_row(r: &PositionRow) -> SptPositionMetrics {
     }
 }
 
+/// One side (window start or now) of a position for [`position_window_from_snaps`].
+#[derive(Debug, Clone, Copy, Default)]
+pub struct WindowSnap {
+    pub balance: i64,
+    pub cost: i64,
+    pub reserved: i64,
+    pub realized: i64,
+    pub price: i64,
+}
+
 /// Snapshot-diff window math used by position reads and trader boards.
-/// Capital-at-risk = start cost + net buys in window (not lifetime invested).
-pub fn position_window_from_snaps(
-    now_balance: i64,
-    now_cost: i64,
-    now_realized: i64,
-    now_price: i64,
-    start_balance: i64,
-    start_cost: i64,
-    start_realized: i64,
-    start_price: i64,
-) -> (i64, i64, Option<f64>) {
-    let window_realized = now_realized.saturating_sub(start_realized);
-    let now_mark = (now_balance as i128).saturating_mul(now_price as i128);
-    let start_mark = (start_balance as i128).saturating_mul(start_price as i128);
-    let cost_delta = now_cost as i128 - start_cost as i128;
+/// Capital-at-risk = start committed + net additions in window (not lifetime invested), where
+/// committed = cost basis + pre-launch reservation deposits. Reservations are excluded from the
+/// mark-to-market term: launch moves them into cost basis, so committed capital stays continuous.
+pub fn position_window_from_snaps(now: WindowSnap, start: WindowSnap) -> (i64, i64, Option<f64>) {
+    let window_realized = now.realized.saturating_sub(start.realized);
+    let now_mark = (now.balance as i128).saturating_mul(now.price as i128);
+    let start_mark = (start.balance as i128).saturating_mul(start.price as i128);
+    let cost_delta = now.cost as i128 - start.cost as i128;
     let window_mtm = (now_mark - start_mark - cost_delta) as i64;
     let window_pl = window_realized.saturating_add(window_mtm);
-    let added = now_cost.saturating_sub(start_cost).max(0);
-    let capital = start_cost.saturating_add(added);
+    let now_committed = now.cost.saturating_add(now.reserved);
+    let start_committed = start.cost.saturating_add(start.reserved);
+    let added = now_committed.saturating_sub(start_committed).max(0);
+    let capital = start_committed.saturating_add(added);
     let pct = if capital > 0 {
         Some((window_pl as f64 / capital as f64) * 100.0)
     } else {
@@ -357,6 +363,8 @@ struct WindowSnapRow {
     #[diesel(sql_type = BigInt)]
     now_cost: i64,
     #[diesel(sql_type = BigInt)]
+    now_reserved: i64,
+    #[diesel(sql_type = BigInt)]
     now_realized: i64,
     #[diesel(sql_type = BigInt)]
     now_price: i64,
@@ -364,6 +372,8 @@ struct WindowSnapRow {
     start_balance: i64,
     #[diesel(sql_type = BigInt)]
     start_cost: i64,
+    #[diesel(sql_type = BigInt)]
+    start_reserved: i64,
     #[diesel(sql_type = BigInt)]
     start_realized: i64,
     #[diesel(sql_type = BigInt)]
@@ -384,14 +394,14 @@ async fn attach_window_metrics(
         r#"
         WITH snap_now AS (
             SELECT DISTINCT ON (pool_id)
-                pool_id, token_balance, cost_basis_myso, realized_myso
+                pool_id, token_balance, cost_basis_myso, reservation_cost_myso, realized_myso
             FROM user_spt_position_snapshots
             WHERE holder_address = $1
             ORDER BY pool_id, time DESC
         ),
         snap_start AS (
             SELECT DISTINCT ON (pool_id)
-                pool_id, token_balance, cost_basis_myso, realized_myso
+                pool_id, token_balance, cost_basis_myso, reservation_cost_myso, realized_myso
             FROM user_spt_position_snapshots
             WHERE holder_address = $1
               AND ($2::bigint < 0 OR time <= NOW() - ($2::bigint * INTERVAL '1 hour'))
@@ -410,10 +420,12 @@ async fn attach_window_metrics(
             n.pool_id,
             n.token_balance AS now_balance,
             n.cost_basis_myso AS now_cost,
+            n.reservation_cost_myso AS now_reserved,
             n.realized_myso AS now_realized,
             COALESCE(pn.price, 0)::bigint AS now_price,
             COALESCE(st.token_balance, 0)::bigint AS start_balance,
             COALESCE(st.cost_basis_myso, 0)::bigint AS start_cost,
+            COALESCE(st.reservation_cost_myso, 0)::bigint AS start_reserved,
             COALESCE(st.realized_myso, 0)::bigint AS start_realized,
             COALESCE(ps.price, 0)::bigint AS start_price
         FROM snap_now n
@@ -430,14 +442,20 @@ async fn attach_window_metrics(
     let mut by_pool = std::collections::HashMap::with_capacity(rows.len());
     for row in rows {
         let (pl, capital, pct) = position_window_from_snaps(
-            row.now_balance,
-            row.now_cost,
-            row.now_realized,
-            row.now_price,
-            row.start_balance,
-            row.start_cost,
-            row.start_realized,
-            row.start_price,
+            WindowSnap {
+                balance: row.now_balance,
+                cost: row.now_cost,
+                reserved: row.now_reserved,
+                realized: row.now_realized,
+                price: row.now_price,
+            },
+            WindowSnap {
+                balance: row.start_balance,
+                cost: row.start_cost,
+                reserved: row.start_reserved,
+                realized: row.start_realized,
+                price: row.start_price,
+            },
         );
         by_pool.insert(row.pool_id, (pl, capital, pct));
     }
@@ -568,7 +586,7 @@ pub async fn get_trader_return_leaderboard(
             )
             SELECT holder_address, CASE WHEN invested > 0 THEN (net::float8 / invested::float8) * 100.0 ELSE 0 END AS sort_value
             FROM priced
-            ORDER BY sort_value DESC NULLS LAST
+            ORDER BY sort_value DESC NULLS LAST, invested DESC, holder_address
             LIMIT $1 OFFSET $2
             "#
         }
@@ -584,7 +602,7 @@ pub async fn get_trader_return_leaderboard(
             LEFT JOIN spt_pool_mark m ON m.pool_id = s.pool_id
             GROUP BY s.holder_address
             HAVING SUM(s.total_invested_myso) >= $3
-            ORDER BY sort_value DESC NULLS LAST
+            ORDER BY sort_value DESC NULLS LAST, SUM(s.total_invested_myso) DESC, s.holder_address
             LIMIT $1 OFFSET $2
             "#
         }
@@ -594,13 +612,15 @@ pub async fn get_trader_return_leaderboard(
             r#"
             WITH snap_now AS (
                 SELECT DISTINCT ON (holder_address, pool_id)
-                    holder_address, pool_id, token_balance, cost_basis_myso, realized_myso
+                    holder_address, pool_id, token_balance, cost_basis_myso, reservation_cost_myso,
+                    realized_myso
                 FROM user_spt_position_snapshots
                 ORDER BY holder_address, pool_id, time DESC
             ),
             snap_start AS (
                 SELECT DISTINCT ON (holder_address, pool_id)
-                    holder_address, pool_id, token_balance, cost_basis_myso, realized_myso
+                    holder_address, pool_id, token_balance, cost_basis_myso, reservation_cost_myso,
+                    realized_myso
                 FROM user_spt_position_snapshots
                 WHERE $5::bigint < 0 OR time <= NOW() - ($5::bigint * INTERVAL '1 hour')
                 ORDER BY holder_address, pool_id, time DESC
@@ -623,7 +643,14 @@ pub async fn get_trader_return_leaderboard(
                         - (COALESCE(st.token_balance, 0) * COALESCE(ps.price, 0))
                         - (n.cost_basis_myso - COALESCE(st.cost_basis_myso, 0))
                     )::bigint AS window_mtm,
-                    SUM(COALESCE(st.cost_basis_myso, 0) + GREATEST(n.cost_basis_myso - COALESCE(st.cost_basis_myso, 0), 0))::bigint AS capital_at_risk
+                    SUM(
+                        (COALESCE(st.cost_basis_myso, 0) + COALESCE(st.reservation_cost_myso, 0))
+                        + GREATEST(
+                            (n.cost_basis_myso + n.reservation_cost_myso)
+                            - (COALESCE(st.cost_basis_myso, 0) + COALESCE(st.reservation_cost_myso, 0)),
+                            0
+                        )
+                    )::bigint AS capital_at_risk
                 FROM snap_now n
                 LEFT JOIN snap_start st ON st.holder_address = n.holder_address AND st.pool_id = n.pool_id
                 LEFT JOIN prices pn ON pn.pool_id = n.pool_id
@@ -640,7 +667,7 @@ pub async fn get_trader_return_leaderboard(
                    END AS sort_value
             FROM agg
             WHERE capital_at_risk >= $3
-            ORDER BY sort_value DESC NULLS LAST
+            ORDER BY sort_value DESC NULLS LAST, capital_at_risk DESC, holder_address
             LIMIT $1 OFFSET $2
             "#
         }
@@ -678,7 +705,17 @@ pub async fn get_trader_return_leaderboard(
 
 #[cfg(test)]
 mod window_math_tests {
-    use super::TraderReturnSort;
+    use super::{TraderReturnSort, WindowSnap};
+
+    fn snap(balance: i64, cost: i64, reserved: i64, price: i64) -> WindowSnap {
+        WindowSnap {
+            balance,
+            cost,
+            reserved,
+            realized: 0,
+            price,
+        }
+    }
 
     #[test]
     fn window_sort_is_not_delta_lifetime_roi() {
@@ -698,12 +735,27 @@ mod window_math_tests {
         // Window: start mark 150 / cost 100; now mark 1060 / cost 1000; realized unchanged.
         // window_mtm = 1060 - 150 - 900 = 10; capital = 100 + 900 = 1000; pct = 1%.
         let (pl, capital, pct) =
-            super::position_window_from_snaps(1060, 1000, 0, 1, 150, 100, 0, 1);
+            super::position_window_from_snaps(snap(1060, 1000, 0, 1), snap(150, 100, 0, 1));
         assert_eq!(pl, 10);
         assert_eq!(capital, 1000);
         let pct = pct.expect("capital");
         assert!((pct - 1.0).abs() < 0.01);
         let delta_lifetime = 6.0 - 50.0;
         assert!((pct - delta_lifetime).abs() > 40.0);
+    }
+
+    #[test]
+    fn reservation_counts_as_capital_and_launch_keeps_it_continuous() {
+        // Reserved 500 inside the window, no tokens yet: 0 P/L on 500 capital.
+        let (pl, capital, pct) =
+            super::position_window_from_snaps(snap(0, 0, 500, 0), WindowSnap::default());
+        assert_eq!((pl, capital), (0, 500));
+        assert_eq!(pct, Some(0.0));
+
+        // Launch inside the window converts the 500 reservation into cost basis for 100 tokens
+        // marked at 6: P/L = 600 - 500 = 100, capital still 500 (not double counted).
+        let (pl, capital, _) =
+            super::position_window_from_snaps(snap(100, 500, 0, 6), snap(0, 0, 500, 0));
+        assert_eq!((pl, capital), (100, 500));
     }
 }

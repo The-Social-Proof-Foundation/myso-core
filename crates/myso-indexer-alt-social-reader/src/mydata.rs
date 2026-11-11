@@ -204,7 +204,9 @@ pub(crate) async fn list_mydata(
     let _guard = metrics.latency.start_timer();
 
     let sort_clause = match sort_by {
-        Some("price") => " ORDER BY COALESCE(one_time_price, subscription_price) DESC, mydata_id ASC",
+        Some("price") => {
+            " ORDER BY COALESCE(one_time_price, subscription_price) DESC, mydata_id ASC"
+        }
         Some("updated") => " ORDER BY last_updated DESC, mydata_id ASC",
         _ => " ORDER BY created_at DESC, mydata_id ASC",
     };
