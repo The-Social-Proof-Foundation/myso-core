@@ -46,7 +46,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tracing::info;
 
-pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0xf2e79b37c734f38a87daf204eb81b1ec81e636bb";
+pub const SEPOLIA_BRIDGE_PROXY_ADDR: &str = "0x4cd113b5c1e13ed89fb77c326b7a5ea359d7989a";
 
 #[derive(Parser)]
 #[clap(rename_all = "kebab-case")]

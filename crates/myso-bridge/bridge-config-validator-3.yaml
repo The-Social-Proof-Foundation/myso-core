@@ -13,9 +13,9 @@
       "${ETH_RPC_URL}"
     ],
     "eth-rpc-quorum": 1,
-    "eth-bridge-proxy-address": "0xf2e79b37c734f38a87daf204eb81b1ec81e636bb",
+    "eth-bridge-proxy-address": "0x4cd113b5c1e13ed89fb77c326b7a5ea359d7989a",
     "eth-bridge-chain-id": 12,
-    "eth-contracts-start-block-fallback": 51899869
+    "eth-contracts-start-block-fallback": 59251384
   }
 }
 
@@ -75,6 +75,6 @@
 #   - EvmContractUpgradeAction:
 #       nonce: 0  # Update with actual proposal nonce
 #       chain_id: EthCustom
-#       proxy_address: "0xf2e79b37c734f38a87daf204eb81b1ec81e636bb"  # Current Base Sepolia proxy
+#       proxy_address: "0x4cd113b5c1e13ed89fb77c326b7a5ea359d7989a"  # Current Base Sepolia proxy
 #       new_impl_address: "0x0000000000000000000000000000000000000000"  # Actual implementation required
 #       call_data: []  # Actual initialization call bytes, if needed

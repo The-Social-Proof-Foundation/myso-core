@@ -18,10 +18,10 @@ RUST_LOG = "info,myso_analytics_indexer=debug"
 RPC_API_URL = "https://fullnode.testnet.mysocial.network:443"
 # gRPC streaming URL - when set, uses gRPC for checkpoint ingestion (primary), HTTP store fallback
 STREAMING_URL = "https://fullnode.testnet.mysocial.network:443"
-# Start near chain head to avoid massive backfill (update periodically as chain grows)
-FIRST_CHECKPOINT = "1159000"
-# Pipelines: full set for GCS (Checkpoint,Transaction,Event,Object,MoveCall) or ClickHouse defaults
-PIPELINES = "Checkpoint,Transaction,Event,Object,MoveCall"
+# Index from genesis so genesis balances and objects are captured
+FIRST_CHECKPOINT = "0"
+# ClickHouse pipelines; Object and BalanceChange feed the backend's objects/balance_changes queries
+PIPELINES = "Transaction,Event,MoveCall,Object,BalanceChange"
 
 # Processing settings
 CHECKPOINT_INTERVAL = "10000"

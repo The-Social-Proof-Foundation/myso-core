@@ -24,9 +24,9 @@ MYSO_RPC_URL = "https://fullnode.testnet.mysocial.network:443"
 
 # Required - Bridge config (testnet values)
 REMOTE_STORE_URL = "https://storage.googleapis.com/mysocial-testnet-checkpoints"
-ETH_MYSO_BRIDGE_CONTRACT_ADDRESS = "0xf2e79b37c734f38a87daf204eb81b1ec81e636bb"
+ETH_MYSO_BRIDGE_CONTRACT_ADDRESS = "0x4cd113b5c1e13ed89fb77c326b7a5ea359d7989a"
 MYSO_BRIDGE_GENESIS_CHECKPOINT = "0"
-ETH_BRIDGE_GENESIS_BLOCK = "51899869"
+ETH_BRIDGE_GENESIS_BLOCK = "59251384"
 
 # Optional - defaults in entrypoint
 # CONCURRENCY = "500"

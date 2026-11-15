@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "crates/myso-bridge/Dockerfile"
 
 [deploy]
-startCommand = "sh -c 'set -eu; umask 077; : \"${BRIDGE_AUTHORITY_KEY:?Set the matching authority secret}\"; export BRIDGE_AUTHORITY_KEY_PATH=/tmp/bridge_key_validator_2; export MYSO_RPC_URL=\"${MYSO_RPC_URL:-https://fullnode.testnet.mysocial.network:443}\"; export ETH_RPC_URL=\"${ETH_RPC_URL:-https://sepolia.base.org}\"; export BRIDGE_DB_PATH=\"${BRIDGE_DB_PATH:-/data/bridge-4a7fb537-f2e79b37/client-db}\"; printf '\"'\"'%s'\"'\"' \"$BRIDGE_AUTHORITY_KEY\" > \"$BRIDGE_AUTHORITY_KEY_PATH\"; chmod 600 \"$BRIDGE_AUTHORITY_KEY_PATH\"; envsubst '\"'\"'$ETH_RPC_URL $MYSO_RPC_URL $BRIDGE_RELAYER_PRIVATE_KEY $BRIDGE_AUTHORITY_KEY_PATH $BRIDGE_DB_PATH'\"'\"' < /app/bridge-config-validator-2.yaml > /tmp/testnet-bridge-node.yaml; chmod 600 /tmp/testnet-bridge-node.yaml; exec /work/target/release/myso-bridge-node --config-path /tmp/testnet-bridge-node.yaml'"
+startCommand = "sh -c 'set -eu; umask 077; : \"${BRIDGE_AUTHORITY_KEY:?Set the matching authority secret}\"; export BRIDGE_AUTHORITY_KEY_PATH=/tmp/bridge_key_validator_2; export MYSO_RPC_URL=\"${MYSO_RPC_URL:-https://fullnode.testnet.mysocial.network:443}\"; export ETH_RPC_URL=\"${ETH_RPC_URL:-https://sepolia.base.org}\"; export BRIDGE_DB_PATH=\"${BRIDGE_DB_PATH:-/data/bridge-7b08bf6d-4cd113b5/client-db}\"; printf '\"'\"'%s'\"'\"' \"$BRIDGE_AUTHORITY_KEY\" > \"$BRIDGE_AUTHORITY_KEY_PATH\"; chmod 600 \"$BRIDGE_AUTHORITY_KEY_PATH\"; envsubst '\"'\"'$ETH_RPC_URL $MYSO_RPC_URL $BRIDGE_RELAYER_PRIVATE_KEY $BRIDGE_AUTHORITY_KEY_PATH $BRIDGE_DB_PATH'\"'\"' < /app/bridge-config-validator-2.yaml > /tmp/testnet-bridge-node.yaml; chmod 600 /tmp/testnet-bridge-node.yaml; exec /work/target/release/myso-bridge-node --config-path /tmp/testnet-bridge-node.yaml'"
 healthcheckPath = "/ping"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -27,7 +27,7 @@ RUST_LOG = "info,myso_bridge=debug"
 # ETH_RPC_URL must be set (contains API keys - do not commit to Git)
 ETH_RPC_URL = ""
 # ETH_BRIDGE_PROXY_ADDRESS must be set (UPDATED to new deployment)
-ETH_BRIDGE_PROXY_ADDRESS = "0xf2e79b37c734f38a87daf204eb81b1ec81e636bb"
+ETH_BRIDGE_PROXY_ADDRESS = "0x4cd113b5c1e13ed89fb77c326b7a5ea359d7989a"
 
 # Optional: Override other config values
 # MYSO_RPC_URL = "https://fullnode.testnet.mysocial.network:443"

@@ -181,6 +181,17 @@ def inspect_key(path, validator=True):
     return addr("0x" + match[1])
 
 
+def eth_key_file_secret(path):
+    """Raw hex key from a MySo-format key file: base64(flag 0x01 secp256k1 || 32-byte secret)."""
+    try:
+        raw = base64.b64decode(Path(path).read_text().strip(), validate=True)
+    except (OSError, ValueError):
+        raise BridgeError("Unreadable --eth-key-file") from None
+    if len(raw) != 33 or raw[0] != 0x01:
+        raise BridgeError("--eth-key-file must be a flagged secp256k1 key")
+    return "0x" + raw[1:].hex()
+
+
 def source_hash():
     files = list((EVM_DIR / "contracts").rglob("*.sol"))
     files.extend(EVM_DIR / x for x in ["script/deploy_native_testnet.s.sol", "foundry.toml", "remappings.txt", "soldeer.lock"])
@@ -330,8 +341,10 @@ def forge_deployment(args, broadcast=False):
     sender = addr(args.sender)
     if args.preview:
         raise BridgeError("--preview is only valid with configure")
-    if broadcast and (bool(args.account) == bool(args.keystore) or args.approve_plan != plan["planHash"]):
-        raise BridgeError("Broadcast requires one encrypted --account or --keystore and --approve-plan matching planHash")
+    signers = [bool(args.account), bool(args.keystore), bool(args.eth_key_file)]
+    if broadcast and (signers.count(True) != 1 or args.approve_plan != plan["planHash"]):
+        raise BridgeError("Broadcast requires one of --account, --keystore, or --eth-key-file "
+                          "and --approve-plan matching planHash")
     sender_nonce = int(rpc(args.evm_rpc, "eth_getTransactionCount", [sender, "latest"]), 16)
     if broadcast:
         simulation = load(out / "simulation.json")
@@ -344,9 +357,14 @@ def forge_deployment(args, broadcast=False):
     cmd = ["forge", "script", SCRIPT, "--rpc-url", args.evm_rpc,
            "--chain", "84532", "--sender", sender, "--optimize"]
     if broadcast:
-        wallet = ["--keystore", args.keystore] if args.keystore else ["--account", args.account]
-        if addr(run(["cast", "wallet", "address", *wallet], env=env)) != sender:
-            raise BridgeError("Signing wallet does not match reviewed deployer")
+        if args.eth_key_file:
+            if inspect_key(args.eth_key_file, validator=False) != sender:
+                raise BridgeError("Signing key file does not match reviewed deployer")
+            wallet = ["--private-key", eth_key_file_secret(args.eth_key_file)]
+        else:
+            wallet = ["--keystore", args.keystore] if args.keystore else ["--account", args.account]
+            if addr(run(["cast", "wallet", "address", *wallet], env=env)) != sender:
+                raise BridgeError("Signing wallet does not match reviewed deployer")
         cmd += ["--broadcast", *wallet]
     # Foundry preserves partial broadcast receipts. Never blindly retry a partially sent suite.
     receipt_path = EVM_DIR / "broadcast/deploy_native_testnet.s.sol/84532/run-latest.json"
@@ -579,6 +597,7 @@ def parser():
     p.add_argument("--sender", help="Public EVM deployer address")
     p.add_argument("--account", help="Named encrypted Foundry wallet (deploy only)")
     p.add_argument("--keystore", help="Encrypted Foundry keystore path (deploy only)")
+    p.add_argument("--eth-key-file", help="MySo-format secp256k1 deployer key file (deploy only)")
     p.add_argument("--approve-plan", help="Exact reviewed plan hash (deploy only)")
     p.add_argument("--preview", action="store_true", help="Generate configs from simulation, never for startup")
     p.add_argument("--validator", type=int, choices=[1, 2, 3], default=1)

@@ -3,10 +3,10 @@
 # This file SHOULD be committed to source control
 
 [published.testnet]
-chain-id = "4a7fb537"
-published-at = "0x1775487acc9998424ade9993c797b5dbe13e9a261e2b049bae2d718b1fdd30f1"
-original-id = "0x1775487acc9998424ade9993c797b5dbe13e9a261e2b049bae2d718b1fdd30f1"
+chain-id = "7b08bf6d"
+published-at = "0x4ebc8aa4837c9d9fb7a78c951f26f3a0a8e4ba1ca84b63e41260cd22ab460520"
+original-id = "0x4ebc8aa4837c9d9fb7a78c951f26f3a0a8e4ba1ca84b63e41260cd22ab460520"
 version = 1
 toolchain-version = "0.0.1"
 build-config = { flavor = "myso", edition = "2024" }
-upgrade-capability = "0x363ee558b563394816e900c47606b3026bc8802dac2120616d80ed9b3ab22252"
+upgrade-capability = "0x21719498197df62c19ca015ff0711ec1e58774a50614be41f9a3cd8c6f8eb470"
