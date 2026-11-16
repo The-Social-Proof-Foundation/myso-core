@@ -522,7 +522,7 @@ impl Default for WatermarkConfig {
 impl Default for ZkLoginConfig {
     fn default() -> Self {
         Self {
-            env: ZkLoginEnv::Prod,
+            env: ZkLoginEnv::Test,
             max_epoch_upper_bound_delta: max_across_protocol(
                 ProtocolConfig::zklogin_max_epoch_upper_bound_delta,
             ),
