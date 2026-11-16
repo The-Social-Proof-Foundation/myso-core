@@ -28,4 +28,5 @@ watermark-polling-interval-ms = 500
 
 [zklogin]
 env = "Prod"
-max-epoch-upper-bound-delta = 30
+# Must match protocol config `zklogin_max_epoch_upper_bound_delta` (365 since v113, was 30).
+max-epoch-upper-bound-delta = 365
