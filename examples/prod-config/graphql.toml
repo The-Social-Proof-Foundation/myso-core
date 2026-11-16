@@ -27,6 +27,8 @@ max-checkpoint-lag-ms = 300000
 watermark-polling-interval-ms = 500
 
 [zklogin]
-env = "Prod"
+# "Test" routes to the MySo prover key (zklogin_myso_final.zkey), the same key validators
+# use on this chain. "Prod" is the upstream Sui key and rejects every MySo proof.
+env = "Test"
 # Must match protocol config `zklogin_max_epoch_upper_bound_delta` (365 since v113, was 30).
 max-epoch-upper-bound-delta = 365
