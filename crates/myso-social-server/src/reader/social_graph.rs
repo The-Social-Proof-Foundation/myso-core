@@ -455,6 +455,8 @@ pub(crate) async fn get_profile_platform_memberships(
         membership_id: i32,
         #[diesel(sql_type = Timestamp)]
         joined_at: chrono::NaiveDateTime,
+        #[diesel(sql_type = Timestamp)]
+        first_joined_at: chrono::NaiveDateTime,
         #[diesel(sql_type = Integer)]
         platform_db_id: i32,
         #[diesel(sql_type = Text)]
@@ -535,6 +537,7 @@ pub(crate) async fn get_profile_platform_memberships(
     let query = "
         SELECT pm.id AS membership_id,
                pm.joined_at,
+               COALESCE(pm.first_joined_at, pm.joined_at) AS first_joined_at,
                p.id AS platform_db_id,
                p.platform_id,
                p.name,
@@ -594,6 +597,7 @@ pub(crate) async fn get_profile_platform_memberships(
         .map(|r| ProfilePlatformMembershipRow {
             membership_id: r.membership_id,
             joined_at: r.joined_at,
+            first_joined_at: r.first_joined_at,
             platform_db_id: r.platform_db_id,
             platform_id: r.platform_id,
             name: r.name,

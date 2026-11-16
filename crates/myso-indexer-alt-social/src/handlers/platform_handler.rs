@@ -650,10 +650,15 @@ impl Handler for PlatformHandler {
                             platform_memberships::wallet_address,
                         ))
                         .do_update()
-                        .set(
+                        .set((
+                            platform_memberships::first_joined_at.eq(diesel::dsl::sql::<
+                                diesel::sql_types::Nullable<diesel::sql_types::Timestamp>,
+                            >(
+                                "COALESCE(platform_memberships.first_joined_at, platform_memberships.joined_at)",
+                            )),
                             platform_memberships::joined_at
                                 .eq(diesel::upsert::excluded(platform_memberships::joined_at)),
-                        )
+                        ))
                         .execute(conn)
                         .await?;
                 }

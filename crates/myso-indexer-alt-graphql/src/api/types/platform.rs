@@ -802,6 +802,11 @@ impl PlatformMembershipSummary {
         self.row.joined_at.and_utc().timestamp_millis()
     }
 
+    /// First time this wallet joined the platform (unchanged by rejoins), unix ms.
+    async fn first_joined_at(&self) -> i64 {
+        self.row.first_joined_at.and_utc().timestamp_millis()
+    }
+
     async fn wants_dao_governance(&self) -> Option<bool> {
         self.row.wants_dao_governance
     }

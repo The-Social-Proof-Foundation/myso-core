@@ -1117,6 +1117,7 @@ fn process_user_joined_platform_event(
         wallet_address,
         joined_at,
         left_at: None,
+        first_joined_at: Some(joined_at),
     };
 
     let now = common::chain_time_from_ms(common::chain_timestamp_ms(

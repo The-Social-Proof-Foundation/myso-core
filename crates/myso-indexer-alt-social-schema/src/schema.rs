@@ -720,6 +720,7 @@ diesel::table! {
         wallet_address -> Text,
         joined_at -> Timestamp,
         left_at -> Nullable<Timestamp>,
+        first_joined_at -> Nullable<Timestamp>,
     }
 }
 
